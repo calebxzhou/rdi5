@@ -1,0 +1,95 @@
+package calebxzhou.rdi.net
+
+import calebxzhou.rdi.auth.RAccount
+import calebxzhou.rdi.ui.screen.LoadingScreen
+import calebxzhou.rdi.util.go
+import calebxzhou.rdi.util.isMcStarted
+import calebxzhou.rdi.util.mc
+import io.ktor.client.statement.HttpResponse
+import io.ktor.util.encodeBase64
+import io.netty.bootstrap.Bootstrap
+import io.netty.channel.Channel
+import io.netty.channel.ChannelFuture
+import io.netty.channel.ChannelInitializer
+import io.netty.channel.ChannelOption
+import io.netty.channel.epoll.Epoll
+import io.netty.channel.epoll.EpollEventLoopGroup
+import io.netty.channel.epoll.EpollServerSocketChannel
+import io.netty.channel.nio.NioEventLoopGroup
+import io.netty.channel.socket.nio.NioServerSocketChannel
+import io.netty.handler.timeout.ReadTimeoutHandler
+import io.netty.util.concurrent.DefaultThreadFactory
+import kotlinx.coroutines.runBlocking
+import net.minecraft.client.gui.ComponentPath.path
+import org.apache.http.client.methods.CloseableHttpResponse
+
+class RServer(
+    val ip: String,
+    val gamePort: Int,
+    val hqPort: Int
+) {
+    lateinit var chafu: ChannelFuture
+
+    companion object {
+        var now: RServer? = null
+    }
+
+    fun connect() {
+        val channel =
+            if (Epoll.isAvailable()) EpollServerSocketChannel::class.java else NioServerSocketChannel::class.java
+        val eventGroup = if (Epoll.isAvailable())
+            EpollEventLoopGroup(0, DefaultThreadFactory("RDI-Epoll"))
+        else
+            NioEventLoopGroup(0, DefaultThreadFactory("RDI-Nio"))
+        chafu = Bootstrap()
+            .channel(channel)
+            .group(eventGroup)
+            .handler(object : ChannelInitializer<Channel>() {
+                override fun initChannel(channel: Channel) {
+                    channel.config().setOption(ChannelOption.TCP_NODELAY, true)
+                    channel.pipeline()
+                        .addLast("timeout", ReadTimeoutHandler(15))
+                    //.....
+                }
+
+            })
+            .connect(ip, gamePort)
+    }
+
+    fun sendGamePacket(pk: SPacket) {
+        chafu.channel().writeAndFlush(pk)
+    }
+
+    private suspend fun prepareRequest(
+        post: Boolean = false,
+        path: String,
+        params: List<Pair<String, Any>> = listOf(),
+    ): HttpResponse {
+        val fullUrl = "http://${ip}:${hqPort}/${path}"
+        val headers = RAccount.now?.let {
+            listOf("Authorization" to "Basic ${"${it._id}:${it.pwd}".encodeBase64()}")
+        } ?: listOf()
+        return httpRequest(post, fullUrl, params, headers)
+
+    }
+
+    suspend fun hqSendAsync(
+        showLoading: Boolean = false,
+        post: Boolean = false,
+        path: String,
+        params: List<Pair<String, Any>> = listOf(),
+    ): HttpResponse {
+        if(showLoading) LoadingScreen.show()
+        val response = prepareRequest(post, path, params)
+        LoadingScreen.close()
+        return response
+    }
+
+    fun hqSendSync(
+        post: Boolean = false,
+        path: String,
+        params: List<Pair<String, Any>> = listOf(),
+    ) = runBlocking {
+        prepareRequest(post, path, params)
+    }
+}

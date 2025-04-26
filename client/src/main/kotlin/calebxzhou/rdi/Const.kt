@@ -16,7 +16,7 @@ object Const {
     //显示版本
     const val VERSION_NUMBER = "5.0"
     @JvmStatic
-    val VERSION_DISP = "RDI5sea${if(DEBUG)"DEBUG" else ""} $VERSION_NUMBER"
-    const val VERSION_STR = "4.6"
+    val VERSION_DISP = "RDI5 ${if(DEBUG)"DEBUG" else ""} $VERSION_NUMBER"
+    const val VERSION_STR = "5.0"
 
 }

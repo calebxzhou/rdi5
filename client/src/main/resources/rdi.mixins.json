@@ -4,11 +4,24 @@
   "package": "calebxzhou.rdi.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
+    "AEditBox",
+    "mOfflineMode2",
+    "mOfflineMode3",
+    "mRAuth",
+    "mScreenTransition",
+    "mTitleScreen",
+    "mWindowTitle"
   ],
   "injectors": {
     "defaultRequire": 1
   },
   "mixins": [
-    "mCompressNbtFormat"
+    "APacketDecoder",
+    "ARegionFileVersion",
+    "mCompressNbtFormat",
+    "mMapCompressFormat",
+    "mOfflineMode",
+    "event.mOnChangeBlockState",
+    "event.mOnPacketSent"
   ]
 }
