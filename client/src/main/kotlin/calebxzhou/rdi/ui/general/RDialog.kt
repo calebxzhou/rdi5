@@ -1,19 +1,19 @@
 package calebxzhou.rdi.ui.general
 
 import calebxzhou.rdi.common.WHITE
+import calebxzhou.rdi.ui.FONT
 import calebxzhou.rdi.ui.RMessageLevel
+import calebxzhou.rdi.ui.UiHeight
+import calebxzhou.rdi.ui.UiWidth
 import calebxzhou.rdi.ui.component.RScreen
 import calebxzhou.rdi.ui.layout.gridLayout
 import calebxzhou.rdi.util.go
 import calebxzhou.rdi.util.mc
-import calebxzhou.rdi.util.mc.Font
-import calebxzhou.rdi.util.mc.UiHeight
-import calebxzhou.rdi.util.mc.UiWidth
-import calebxzhou.rdi.util.mc.mcComp
+import calebxzhou.rdi.util.mcAsset
+import calebxzhou.rdi.util.mcComp
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.components.MultiLineTextWidget
 import net.minecraft.network.chat.MutableComponent
-import net.minecraft.resources.ResourceLocation
 import org.lwjgl.util.tinyfd.TinyFileDialogs
 
 
@@ -74,10 +74,9 @@ class RDialog(
     val onNo: () -> Unit,
 ) : RScreen("提示") {
     companion object {
-        val BG_RL = ResourceLocation("textures/block/stone.png")
+        val BG_RL = mcAsset("textures/block/stone.png")
     }
 
-    override var clearColor = false
     override var closeable = true
     override var showTitle = false
     lateinit var msgWidget: MultiLineTextWidget
@@ -108,7 +107,7 @@ class RDialog(
             }
         }
 
-        msgWidget = MultiLineTextWidget(startX + 3, startY + 18, msg, Font).apply { setMaxWidth(this@RDialog.width) }
+        msgWidget = MultiLineTextWidget(startX + 3, startY + 18, msg, FONT).apply { setMaxWidth(this@RDialog.width) }
         val msgWidgetWidth = msgWidget.width
         val msgWidgetHeight = msgWidget.height
         val centeredX = startX + (width - msgWidgetWidth) / 2
@@ -132,7 +131,7 @@ class RDialog(
         guiGraphics.fill(startX, startY + 16, startX + width, startY + height + 16, 0xAA000000.toInt())
 
         guiGraphics.blit(icon, startX + 1, startY + 1, 0f, 0f, iconSize, iconSize, iconSize, iconSize)
-        guiGraphics.drawString(Font, title, startX + iconSize + 2, startY + 4, WHITE)
+        guiGraphics.drawString(FONT, title, startX + iconSize + 2, startY + 4, WHITE)
         msgWidget.render(guiGraphics, mouseX, mouseY, partialTick)
 
 

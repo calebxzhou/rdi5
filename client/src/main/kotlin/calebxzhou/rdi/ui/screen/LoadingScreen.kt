@@ -1,7 +1,7 @@
 package calebxzhou.rdi.ui.screen
 
 import calebxzhou.rdi.common.WHITE
-import calebxzhou.rdi.ui.Font
+import calebxzhou.rdi.ui.FONT
 import calebxzhou.rdi.ui.UiHeight
 import calebxzhou.rdi.ui.UiWidth
 import calebxzhou.rdi.ui.component.RScreen
@@ -16,13 +16,11 @@ import com.mojang.blaze3d.platform.InputConstants
 import com.mojang.math.Axis
 import net.minecraft.Util
 import net.minecraft.client.gui.GuiGraphics
-import net.minecraft.resources.ResourceLocation
 
 class LoadingScreen() : RScreen("请求中") {
     var startX = 0
     var startY = UiHeight / 2 - 50
     override var showTitle = false
-    override var clearColor = false
     override var closeable = true
     companion object {
         val SIZE=32
@@ -70,7 +68,7 @@ class LoadingScreen() : RScreen("请求中") {
             BG_RL, startX,
             startY, 0, 0.0F, 0.0F, width, 32, 32, 32
         )
-        guiGraphics.drawCenteredString(Font, "载入中，请稍候...", UiWidth / 2, startY + 12, WHITE)
+        guiGraphics.drawCenteredString(FONT, "载入中，请稍候...", UiWidth / 2, startY + 12, WHITE)
         super.render(guiGraphics, mouseX, mouseY, partialTick)
     }
 

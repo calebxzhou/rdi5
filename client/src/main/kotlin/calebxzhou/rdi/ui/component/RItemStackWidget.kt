@@ -1,8 +1,8 @@
 package calebxzhou.rdi.ui.component
 
+import calebxzhou.rdi.ui.FONT
 import calebxzhou.rdi.util.mc
-import calebxzhou.rdi.util.mc.Font
-import calebxzhou.rdi.util.mc.mcComp
+import calebxzhou.rdi.util.mcComp
 import com.mojang.blaze3d.platform.Lighting
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.components.AbstractWidget
@@ -40,7 +40,7 @@ class RItemStackWidget(val itemStack: ItemStack, width: Int = 16, height: Int = 
             150f
         )
         try {
-            pose.mulPoseMatrix(Matrix4f().scaling(1.0f, -1.0f, 1.0f))
+            pose.mulPose(Matrix4f().scaling(1.0f, -1.0f, 1.0f))
             pose.scale(width.toFloat(), height.toFloat(), width.toFloat())
             val flag = !bakedmodel.usesBlockLight()
             if (flag) {
@@ -65,7 +65,7 @@ class RItemStackWidget(val itemStack: ItemStack, width: Int = 16, height: Int = 
         //渲染数量
         pose.pushPose()
         pose.translate(0.0f, 0.0f, 200.0f)
-        pGuiGraphics.drawString(Font, "${itemStack.count}".mcComp, x + width - 10, y + height - 10, 16777215, true)
+        pGuiGraphics.drawString(FONT, "${itemStack.count}".mcComp, x + width - 10, y + height - 10, 16777215, true)
         pose.popPose()
         //真Y要往下串点,不然跟tooltip位置对不上
         this.isHovered =

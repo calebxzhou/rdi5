@@ -8,6 +8,7 @@ import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite
 import net.minecraft.resources.ResourceLocation
+import net.minecraft.world.level.ChunkPos
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -54,3 +55,5 @@ infix fun Minecraft.pressingKey(keyCode: Int): Boolean {
 }
 val Minecraft.pressingEnter
     get() =  this pressingKey InputConstants.KEY_RETURN || this pressingKey InputConstants.KEY_NUMPADENTER
+val ChunkPos.asInt
+    get() = x.toInt() and 0xFFFF or ((z.toInt() and 0xFFFF) shl 16)

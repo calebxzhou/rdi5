@@ -1,8 +1,7 @@
 package calebxzhou.rdi.ui.component.button
 
-import calebxzhou.rdi.auth.RAccount
-import calebxzhou.rdi.net.RServer
-import calebxzhou.rdi.ui.Font
+import calebxzhou.rdi.auth.RAccountService
+import calebxzhou.rdi.ui.FONT
 import calebxzhou.rdi.util.isTextureReady
 import calebxzhou.rdi.util.mcAsync
 import calebxzhou.rdi.util.mcComp
@@ -15,12 +14,7 @@ import org.bson.types.ObjectId
 class RPlayerHeadButton(
     val id: ObjectId,
     onClick: (Button) -> Unit={},
-) : RButton(
-    id.toString(),
-    onClick
-    ) {
-
-
+) : RButton(id.toString(), onClick) {
     init {
         width = ofWidth(DEFAULT_NAME)
         height = HEAD_SIZE
@@ -30,7 +24,7 @@ class RPlayerHeadButton(
         const val HEAD_SIZE = 14
         const val gapHeadName = 5
         private fun ofWidth(name:String): Int {
-            return HEAD_SIZE + gapHeadName + Font.width(name)
+            return HEAD_SIZE + gapHeadName + FONT.width(name)
         }
     }
 
@@ -38,7 +32,7 @@ class RPlayerHeadButton(
     var headSkin = DefaultPlayerSkin.getDefaultTexture()
     init {
         mcAsync {
-            val info = RAccount.retrievePlayerInfo(id)
+            val info = RAccountService.retrievePlayerInfo(id)
 
             headSkin =info.cloth.skinLocation
             textComp = info.name.mcComp
@@ -60,6 +54,6 @@ class RPlayerHeadButton(
             y,
             HEAD_SIZE
         )
-        guiGraphics.drawString(Font, textComp, x + HEAD_SIZE + gapHeadName, y + 3, 0xffffff)
+        guiGraphics.drawString(FONT, textComp, x + HEAD_SIZE + gapHeadName, y + 3, 0xffffff)
     }
 }

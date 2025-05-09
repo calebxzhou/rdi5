@@ -20,7 +20,7 @@ object RAccountService {
     val profileCache = CacheBuilder.newBuilder().expireAfterWrite(30L, TimeUnit.MINUTES).build(object :
         CacheLoader<ObjectId, GameProfile>() {
         override fun load(key: ObjectId): GameProfile {
-            return fillGameProfile(key)
+            return retrievePlayerInfo(key).mcProfile
         }
     })
     fun createMcProfile(uid: ObjectId) = GameProfile(uid.toUUID(), uid.toHexString())
@@ -34,12 +34,7 @@ object RAccountService {
         }
         return ResourceLocation.parse("$prefix/$hashUC")
     }
-    //把只有id的profile变成完成版
-    fun fillGameProfile(profile: GameProfile): GameProfile {
-        return fillGameProfile(profile.id.toObjectId())
-    }
 
-    fun fillGameProfile(uid: ObjectId) = retrievePlayerInfo(uid).mcProfile
 
     fun retrievePlayerInfo(uid: ObjectId): RAccount.Dto {
         return RServer.now?.hqSendSync(false, "playerInfo", listOf("uid" to uid))?.let { resp ->

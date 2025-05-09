@@ -1,6 +1,6 @@
 package calebxzhou.rdi.ui.component.editbox
 
-import calebxzhou.rdi.ui.Font
+import calebxzhou.rdi.ui.FONT
 import net.minecraft.Util
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.renderer.RenderType
@@ -26,7 +26,7 @@ class RPasswordEditBox(label: String) : REditBox(16,label) {
         val value = if(!passwordVisible) value.replace(Regex("."), "*") else value
         val currentTextColor = if (isEditable) textColor else textColorUneditable
         val cursorOffset = cursorPos - displayPos
-        val visibleText = Font.plainSubstrByWidth(value.substring(displayPos), getInnerWidth())
+        val visibleText = FONT.plainSubstrByWidth(value.substring(displayPos), getInnerWidth())
         val isCursorVisible = cursorOffset >= 0 && cursorOffset <= visibleText.length
         val shouldDrawCursor = isFocused() && (Util.getMillis() - focusedTime) / 300L % 2L == 0L && isCursorVisible
         val textX = if (isBordered) x + 4 else x
@@ -36,7 +36,7 @@ class RPasswordEditBox(label: String) : REditBox(16,label) {
 
         if (visibleText.isNotEmpty()) {
             val textBeforeCursor = if (isCursorVisible) visibleText.substring(0, cursorOffset) else visibleText
-            currentX = guiGraphics.drawString(Font, formatter.apply(textBeforeCursor, displayPos), textX, textY, currentTextColor, textShadow)
+            currentX = guiGraphics.drawString(FONT, formatter.apply(textBeforeCursor, displayPos), textX, textY, currentTextColor, textShadow)
         }
 
         val useBlockCursor = cursorPos < value.length || value.length >= maxLength
@@ -49,26 +49,26 @@ class RPasswordEditBox(label: String) : REditBox(16,label) {
         }
 
         if (visibleText.isNotEmpty() && isCursorVisible && cursorOffset < visibleText.length) {
-            guiGraphics.drawString(Font, formatter.apply(visibleText.substring(cursorOffset), cursorPos), currentX, textY, currentTextColor, textShadow)
+            guiGraphics.drawString(FONT, formatter.apply(visibleText.substring(cursorOffset), cursorPos), currentX, textY, currentTextColor, textShadow)
         }
 
         if (hint != null && visibleText.isEmpty() && !isFocused) {
-            guiGraphics.drawString(Font, hint, currentX, textY, currentTextColor, textShadow)
+            guiGraphics.drawString(FONT, hint, currentX, textY, currentTextColor, textShadow)
         }
 
         if (shouldDrawCursor) {
             if (useBlockCursor) {
                 guiGraphics.fill(RenderType.guiOverlay(), cursorX, textY - 1, cursorX + 1, textY + 1 + 9, -3092272)
             } else {
-                guiGraphics.drawString(Font, "_", cursorX, textY, currentTextColor, textShadow)
+                guiGraphics.drawString(FONT, "_", cursorX, textY, currentTextColor, textShadow)
             }
         }
 
         if (highlightOffset != cursorOffset) {
             val startOffset = minOf(cursorOffset, highlightOffset)
             val endOffset = maxOf(cursorOffset, highlightOffset)
-            val startX = textX + Font.width(visibleText.substring(0, startOffset))
-            val endX = textX + Font.width(visibleText.substring(0, endOffset))
+            val startX = textX + FONT.width(visibleText.substring(0, startOffset))
+            val endX = textX + FONT.width(visibleText.substring(0, endOffset))
             renderHighlight(guiGraphics, startX, textY - 1, endX - 1, textY + 1 + 9)
         }
     }

@@ -1,14 +1,14 @@
 package calebxzhou.rdi.ui.screen
 
+import calebxzhou.rdi.ui.MouseLeftClicked
+import calebxzhou.rdi.ui.MouseX
+import calebxzhou.rdi.ui.MouseY
+import calebxzhou.rdi.ui.UiHeight
 import calebxzhou.rdi.ui.component.RScreen
 import calebxzhou.rdi.ui.component.RTooltip
 import calebxzhou.rdi.ui.layout.RLinearLayout
 import calebxzhou.rdi.util.go
 import calebxzhou.rdi.util.mc
-import calebxzhou.rdi.util.mc.MouseLeftClicked
-import calebxzhou.rdi.util.mc.MouseX
-import calebxzhou.rdi.util.mc.MouseY
-import calebxzhou.rdi.util.mc.UiHeight
 import net.minecraft.client.gui.GuiGraphics
 
 fun contextMenu( layoutBuilder: RLinearLayout.() -> Unit) = mc go RContextMenu(layoutBuilder)
@@ -17,7 +17,6 @@ class RContextMenu(
 ): RScreen("选项菜单") {
     override var showCloseButton=false
     override var showTitle=false
-    override var clearColor=false
     var startX = MouseX.toInt()
     var startY = MouseY.toInt()
     lateinit var layout: RLinearLayout

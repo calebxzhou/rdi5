@@ -2,25 +2,22 @@ package calebxzhou.rdi.ui.screen
 
 import calebxzhou.rdi.auth.MojangApi
 import calebxzhou.rdi.auth.RAccount
-import calebxzhou.rdi.mcAsync
-import calebxzhou.rdi.model.RServer
+import calebxzhou.rdi.net.RServer
+import calebxzhou.rdi.net.body
+import calebxzhou.rdi.net.httpRequest
 import calebxzhou.rdi.serdes.serdesJson
+import calebxzhou.rdi.ui.UiWidth
 import calebxzhou.rdi.ui.component.*
 import calebxzhou.rdi.ui.component.button.RButton
 import calebxzhou.rdi.ui.component.editbox.REditBox
 import calebxzhou.rdi.ui.general.*
+import calebxzhou.rdi.ui.justify
 import calebxzhou.rdi.ui.layout.gridLayout
 import calebxzhou.rdi.util.*
-import calebxzhou.rdi.util.mc.UiWidth
-import calebxzhou.rdi.util.mc.justify
-import calebxzhou.rdi.util.mc.mcComp
 import com.mojang.blaze3d.platform.InputConstants
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import net.minecraft.client.gui.GuiGraphics
-import org.apache.http.client.methods.HttpGet
-import org.apache.http.entity.ContentType
-import org.apache.http.impl.client.HttpClients
-import org.apache.http.util.EntityUtils
 
 
 @Serializable
@@ -54,7 +51,7 @@ class RWardrobeScreen(val account: RAccount, val server: RServer) : RScreen("衣
         it.justify()
         addWidget(it)
     }
-    val capeBox = RCheckbox("披风", false,UiWidth - 50, 2).apply {
+    val capeBox = RCheckbox("披风", false, UiWidth - 50, 2).apply {
 
     }.also {
         addWidget(it)
@@ -69,13 +66,7 @@ class RWardrobeScreen(val account: RAccount, val server: RServer) : RScreen("衣
                     page--
                     querySkins(page)
                 }
-            }/*
-            button("vegetable", text = "图床导入") {
-                mc go picServerSkinScreen
             }
-            button("smp", text = "皮肤站导入") {
-                mc go blessingSkinScreen
-            }*/
             button("mojang", text = "正版导入") {
                 mc go mojangSkinScreen
             }
@@ -105,20 +96,21 @@ class RWardrobeScreen(val account: RAccount, val server: RServer) : RScreen("衣
         ofWidget<RButton>("prev").active = false
         unloadWidgets()
         //$urlPrefix/skinlib/list?filter=skin&keyword=22&sort=likes&page=1
-        httpRequestAsync(
-            false,
-            false,
-            "$urlPrefix/skinlib/list?filter=${if (capeMode) "cape" else "skin"}&sort=likes&page=${page}&keyword=${keyword}"
-        ) { response ->
-            val apiResponse = serdesJson.decodeFromString<ApiResponse>(response.body)
+        background.launch {
+            val resp = httpRequest(
+                false,
+                "$urlPrefix/skinlib/list?filter=${if (capeMode) "cape" else "skin"}&sort=likes&page=${page}&keyword=${keyword}"
+            )
+            val apiResponse = serdesJson.decodeFromString<ApiResponse>(resp.body)
             loadWidgets(apiResponse.data)
             ofWidget<RButton>("next").active = true
             ofWidget<RButton>("prev").active = true
             loading = false
         }
+
     }
 
-    fun loadWidgets(datas: List<SkinData>) = mcMainThread {
+    fun loadWidgets(datas: List<SkinData>) = renderThread {
 
         val size = 50
         var x = 0
@@ -142,7 +134,8 @@ class RWardrobeScreen(val account: RAccount, val server: RServer) : RScreen("衣
     }
 
     private fun updateCloth(model: SkinData) {
-        httpRequestAsync(false, false, "$urlPrefix/texture/${model.tid}") { response ->
+        background.launch {
+            val response = httpRequest(false, "$urlPrefix/texture/${model.tid}")
             val apiResponse = serdesJson.decodeFromString<Skin>(response.body)
             if (model.isCape) {
                 account.cloth.cape = "$urlPrefix/textures/${apiResponse.hash}"
@@ -151,7 +144,6 @@ class RWardrobeScreen(val account: RAccount, val server: RServer) : RScreen("衣
                 account.cloth.skin = "$urlPrefix/textures/${apiResponse.hash}"
             }
             setCloth(account.cloth)
-
         }
     }
 
@@ -180,7 +172,6 @@ class RWardrobeScreen(val account: RAccount, val server: RServer) : RScreen("衣
     }
 
 
-
     //设定服饰
     private fun setCloth(cloth: RAccount.Cloth) {
         val params = arrayListOf<Pair<String, String>>()
@@ -188,9 +179,10 @@ class RWardrobeScreen(val account: RAccount, val server: RServer) : RScreen("衣
         params += "skin" to cloth.skin.toString()
         cloth.cape?.let {
 
-        params += "cape" to it
+            params += "cape" to it
         }
-        server.hqSendAsync(true, true, "skin", params) {
+        background.launch {
+            server.hqSendAsync(true, true, "skin", params)
             account.updateCloth(cloth)
             mc go RProfileScreen()
         }
@@ -295,34 +287,16 @@ class RWardrobeScreen(val account: RAccount, val server: RServer) : RScreen("衣
                     alert("请选择皮肤或披风")
                     return@RFormScreen
                 }
-                mcAsync {
+                background.launch {
 
-                MojangApi.getUuidFromName(name)?.let { uuid ->
-                    MojangApi.getCloth(uuid)?.let { cloth ->
-                        setCloth(cloth)
-                    } ?: alertErr("没有读取到${name}的皮肤")
-                } ?: alertErr("玩家${name}不存在")
+                    MojangApi.getUuidFromName(name)?.let { uuid ->
+                        MojangApi.getCloth(uuid)?.let { cloth ->
+                            setCloth(cloth)
+                        } ?: alertErr("没有读取到${name}的皮肤")
+                    } ?: alertErr("玩家${name}不存在")
                 }
 
             })
 
-    /*  private val blessingSkinScreen
-          get() = formScreen("导入皮肤站皮肤披风") {
-              text("skin", "皮肤链接", 256, nullable = true)
-              text("cape", "披风链接", 256, nullable = true)
-              submit = {
-                  setBlessingServerSkinCape(it)
-
-              }
-          }*/
-    /*   private val picServerSkinScreen
-           get() = formScreen("设定皮肤披风") {
-               text("skin", "皮肤链接", 256, defaultValue = RAccount.now?.cloth?.skin, nullable = true)
-               text("cape", "披风链接", 256, defaultValue = RAccount.now?.cloth?.cape, nullable = true)
-               checkbox("slim", "Alex瘦版皮肤")
-               submit = {
-                   setPicServerCloth(it)
-               }
-           }*/
 
 }

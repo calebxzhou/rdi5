@@ -2,7 +2,7 @@ package calebxzhou.rdi.ui.component.button
 
 import calebxzhou.rdi.common.DARK_GRAY
 import calebxzhou.rdi.common.WHITE
-import calebxzhou.rdi.ui.Font
+import calebxzhou.rdi.ui.FONT
 import calebxzhou.rdi.ui.UiWidth
 import calebxzhou.rdi.ui.general.Icons
 import calebxzhou.rdi.ui.general.Icons.draw
@@ -20,7 +20,7 @@ class RIconButton(
     val onClick: (Button) -> Unit
 ) : RButton(text, onClick) {
     val textWidget
-        get() = text?.let { text -> MultiLineTextWidget(text.mcComp, Font).apply { setMaxWidth(UiWidth) } }
+        get() = text?.let { text -> MultiLineTextWidget(text.mcComp, FONT).apply { setMaxWidth(UiWidth) } }
     //防止图标跟文字粘在一起
     val textOffsetX = Icons.SIZE+4//size /4
     val textOffsetY = 1//(size/4).toInt()

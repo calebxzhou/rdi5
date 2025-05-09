@@ -1,6 +1,6 @@
 package calebxzhou.rdi.ui.component.button
 
-import calebxzhou.rdi.util.mc.*
+import calebxzhou.rdi.ui.*
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.components.Button
 import net.minecraft.network.chat.MutableComponent

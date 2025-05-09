@@ -14,7 +14,9 @@ import io.ktor.client.engine.cio.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import io.netty.buffer.ByteBuf
 import kotlinx.coroutines.runBlocking
+import org.bson.types.ObjectId
 import java.nio.charset.StandardCharsets
 
 typealias RByteBuf = FriendlyByteBuf
@@ -84,3 +86,11 @@ suspend fun httpRequest(
         client.close()
     }
 }
+fun ByteBuf.writeObjectId(objectId: ObjectId): ByteBuf {
+    writeBytes(objectId.toByteArray())
+    return this
+}
+
+fun ByteBuf.readObjectId(): ObjectId = ObjectId(
+    readBytes(12).nioBuffer()
+)

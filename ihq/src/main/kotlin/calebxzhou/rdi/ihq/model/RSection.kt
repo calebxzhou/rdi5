@@ -3,36 +3,35 @@ package calebxzhou.rdi.ihq.model
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import org.bson.types.ObjectId
-import kotlin.math.ceil
-import kotlin.math.log2
 
 /**
  * calebxzhou @ 2025-04-16 23:01
  */
-@Serializable
-data class RBlockState(
-    val name: String,
-    val properties: Map<String, String> = emptyMap()
-)
+
 @Serializable
 data class RSection(
     @Contextual
     val _id: ObjectId = ObjectId(),
     val chunkPos: Int,
     val sectionY: Byte,
-    val palette: List<RBlockState>,
-    val data: List<Long>
+    val blockStates: Map<Short, Int>,
+    val blockEntities: Map<Short, RBlockEntity>
 ) {
-    val chunkX = chunkPos.toShort()
-    val chunkZ = (chunkPos shr 16).toShort()
-
-    val bitsPerBlock: Int
-        get() = when (palette.size) {
-            1 -> 0
-            in 2..16 -> 4
-            else -> ceil(log2(palette.size.toFloat())).toInt()
+    //fun getBlock(sx:Int,sy:Int,sz:Int) = blocks[encodeYZX(sx,sy,sz)]
+    companion object {
+        //本地方块坐标 xyz0~15
+        fun decodeYZX(encoded: Int): RBlockPos {
+            val x = encoded and 0xF
+            val z = (encoded shr 4) and 0xF
+            val y = (encoded shr 8) and 0xF
+            return RBlockPos(x, y, z)
         }
+        fun encodeYZX(x: Int, y: Int, z: Int): Short {
+            if(!(x in 0..15 && y in 0..15 &&  z in 0 .. 15)){
+                throw IllegalArgumentException("xyz坐标在section内只能0~15！")
+            }
+            return (y shl 8 or (z shl 4) or x).toShort()
+        }
+    }
 
-    val expectedDataSize: Int
-        get() = if (palette.size == 1) 0 else 64 * bitsPerBlock
 }

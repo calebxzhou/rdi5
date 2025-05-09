@@ -1,18 +1,16 @@
 package calebxzhou.rdi.ui.component
 
-import calebxzhou.rdi.ui.Font
+import calebxzhou.rdi.ui.FONT
 import calebxzhou.rdi.ui.UiHeight
 import calebxzhou.rdi.ui.UiWidth
 import calebxzhou.rdi.util.EmptyComp
 import calebxzhou.rdi.util.mcComp
-import calebxzhou.rdi.util.rdiAsset
 
 import kotlinx.serialization.json.JsonNull.content
 import net.minecraft.ChatFormatting
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.components.AbstractScrollWidget
 import net.minecraft.client.gui.components.AbstractWidget
-import net.minecraft.client.gui.components.ImageWidget
 import net.minecraft.client.gui.components.MultiLineTextWidget
 import net.minecraft.client.gui.layouts.GridLayout
 import net.minecraft.client.gui.layouts.LayoutSettings
@@ -22,7 +20,6 @@ import net.minecraft.client.gui.narration.NarratedElementType
 import net.minecraft.client.gui.narration.NarrationElementOutput
 import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.MutableComponent
-import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.item.ItemStack
 
 fun docWidget(
@@ -91,7 +88,7 @@ class RDocWidget(pX: Int, pY: Int, pWidth: Int, pHeight: Int, val content: Conte
             helper.addChild(
                 MultiLineTextWidget(
                     str.mcComp.withStyle(ChatFormatting.BOLD).withStyle(ChatFormatting.GREEN),
-                    Font
+                    FONT
                 ).setMaxWidth(this.width - 64).setCentered(true),
                 this.alignHeader.paddingTop(8).paddingBottom(8)
             )
@@ -103,7 +100,7 @@ class RDocWidget(pX: Int, pY: Int, pWidth: Int, pHeight: Int, val content: Conte
             helper.addChild(
                 MultiLineTextWidget(
                     str.mcComp.withStyle(ChatFormatting.AQUA),
-                    Font
+                    FONT
                 ).setMaxWidth(this.width - 64).setCentered(false),
                 helper.newCellSettings().paddingTop(4).paddingBottom(4)
                 // this.alignHeader
@@ -116,7 +113,7 @@ class RDocWidget(pX: Int, pY: Int, pWidth: Int, pHeight: Int, val content: Conte
             helper.addChild(
                 MultiLineTextWidget(
                     str.mcComp,
-                    Font
+                    FONT
                 ).setMaxWidth(this.width - 64).setCentered(true),
                 this.alignHeader.paddingTop(2).paddingBottom(2)
                 // this.alignHeader
@@ -129,7 +126,7 @@ class RDocWidget(pX: Int, pY: Int, pWidth: Int, pHeight: Int, val content: Conte
             helper.addChild(
                 MultiLineTextWidget(
                     (if (first2ch) "　　".mcComp else EmptyComp.append(str.mcComp)),
-                    Font
+                    FONT
                 ).setMaxWidth(this.width),
                 helper.newCellSettings().paddingTop(2).paddingBottom(2)
             )

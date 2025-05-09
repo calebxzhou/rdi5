@@ -3,6 +3,7 @@ package calebxzhou.rdi.ui.screen
 import calebxzhou.rdi.auth.LocalCredentials
 import calebxzhou.rdi.auth.RAccount
 import calebxzhou.rdi.model.RServer
+import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.serdes.serdesJson
 import calebxzhou.rdi.tutorial.PRIMARY
 import calebxzhou.rdi.ui.component.RFormScreen
@@ -16,6 +17,7 @@ import calebxzhou.rdi.util.mc
 import calebxzhou.rdi.util.mc.CenterX
 import calebxzhou.rdi.util.mc.CenterY
 import calebxzhou.rdi.util.mc.drawText
+import calebxzhou.rdi.util.mcTooltip
 import net.minecraft.ChatFormatting
 import net.minecraft.client.gui.GuiGraphics
 import org.bson.types.ObjectId

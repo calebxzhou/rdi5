@@ -1,10 +1,10 @@
-package calebxzhou.rdi.net.protocol.async
+package calebxzhou.rdi.net.protocol
 
 import calebxzhou.rdi.net.RByteBuf
 import calebxzhou.rdi.net.SPacket
 import net.minecraft.network.FriendlyByteBuf
 
-data class SPlayerMovePacket(
+data class SMeMovePacket(
     val x: Float,
     val y: Float,
     val z: Float,
@@ -18,7 +18,7 @@ data class SPlayerMovePacket(
         buf.writeFloat(yr)
         buf.writeFloat(xr)
     }
-    data class Pos(
+    /*data class Pos(
         val x: Float,
         val y: Float,
         val z: Float,
@@ -37,6 +37,6 @@ data class SPlayerMovePacket(
             buf.writeFloat(yr)
             buf.writeFloat(xr)
         }
-    }
+    }*/
 
 }

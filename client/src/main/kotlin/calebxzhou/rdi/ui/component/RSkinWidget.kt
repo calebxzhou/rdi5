@@ -1,11 +1,12 @@
 package calebxzhou.rdi.ui.component
 
 import calebxzhou.rdi.common.WHITE
+import calebxzhou.rdi.ui.FONT
 import calebxzhou.rdi.ui.general.Icons
 import calebxzhou.rdi.ui.general.Icons.draw
+import calebxzhou.rdi.ui.matrixOp
 import calebxzhou.rdi.util.mc
-import calebxzhou.rdi.util.mc.Font
-import calebxzhou.rdi.util.mc.matrixOp
+import calebxzhou.rdi.util.rdiAsset
 import kotlinx.serialization.Serializable
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.components.PlayerFaceRenderer
@@ -32,7 +33,7 @@ class RSkinWidget(
     val data: SkinData, x: Int = 0,
     y: Int = 0, width: Int, height: Int,val click: (RWidget) -> Unit = {}
 ) : RWidget(x, y, width, height, null), AutoCloseable {
-    val RL = ResourceLocation("rdi", "little_skins/${data.tid}")
+    val RL = rdiAsset("little_skins/${data.tid}")
     var loaded = false
     var fontScale = 0.6f
     val displayName = data.name.replace(
@@ -60,10 +61,10 @@ class RSkinWidget(
     //过长截断省略号
     fun truncateStringWithEllipsis(text: String, maxWidth: Int): String {
         var truncatedText = text
-        while (Font.width(truncatedText)*fontScale > maxWidth && truncatedText.isNotEmpty()) {
+        while (FONT.width(truncatedText)*fontScale > maxWidth && truncatedText.isNotEmpty()) {
             truncatedText = truncatedText.dropLast(1)
         }
-        return if (Font.width("$truncatedText...")*fontScale >= maxWidth) {
+        return if (FONT.width("$truncatedText...")*fontScale >= maxWidth) {
             "$truncatedText..."
         } else {
             truncatedText
@@ -88,9 +89,9 @@ class RSkinWidget(
             //缩放
             scale(fontScale, fontScale, 1f)
             translate(x.toDouble() / fontScale, (y.toDouble() + height) / fontScale, 1.0)
-            guiGraphics.drawString(Font, displayName, 0, 0, WHITE)
+            guiGraphics.drawString(FONT, displayName, 0, 0, WHITE)
             Icons["heart"].draw(guiGraphics, 0, 9)
-            guiGraphics.drawString(Font, data.likes.toString(), 12, 9, WHITE)
+            guiGraphics.drawString(FONT, data.likes.toString(), 12, 9, WHITE)
             val atlas = if(data.type=="steve"||data.type=="alex") ResourceLocation.parse("textures/entity/player/slim/${data.type}.png") else Icons["clothes"]
             PlayerFaceRenderer.draw(
                 guiGraphics,
@@ -99,7 +100,7 @@ class RSkinWidget(
                 10,
                 8
             )
-            guiGraphics.drawString(Font, data.type, 45, 10, WHITE)
+            guiGraphics.drawString(FONT, data.type, 45, 10, WHITE)
         }
     }
 

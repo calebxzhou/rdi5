@@ -1,4 +1,6 @@
 package calebxzhou.rdi.net.protocol
 
-class SBlockEntityUpdatePacket {
+data class SBlockEntityUpdatePacket(
+    val packedBlockPos: Long,
+) {
 }

@@ -1,9 +1,11 @@
 package calebxzhou.rdi.ui.screen
 
-import calebxzhou.rdi.model.RServer
+import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.ui.component.RScreen
+import calebxzhou.rdi.ui.drawImage
 import calebxzhou.rdi.ui.layout.linearLayout
-import calebxzhou.rdi.util.mc.drawImage
+import calebxzhou.rdi.util.mcComp
+import calebxzhou.rdi.util.mcTooltip
 import net.minecraft.ChatFormatting
 import net.minecraft.client.gui.GuiGraphics
 import org.bson.types.ObjectId

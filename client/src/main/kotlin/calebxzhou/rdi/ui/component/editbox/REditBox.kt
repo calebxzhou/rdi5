@@ -1,7 +1,6 @@
 package calebxzhou.rdi.ui.component.editbox
 
-import calebxzhou.rdi.mixin.AEditBox
-import calebxzhou.rdi.ui.Font
+import calebxzhou.rdi.ui.FONT
 import calebxzhou.rdi.ui.mcUIScale
 import net.minecraft.client.gui.components.EditBox
 import net.minecraft.network.chat.Component
@@ -13,7 +12,7 @@ open class REditBox(
      val label: String = "",
      x: Int=0,
      y: Int=0
-) : EditBox(Font, x, y, 20, 12, Component.literal(label)){
+) : EditBox(FONT, x, y, 20, 12, Component.literal(label)){
     var nullable = false
     var numberOnly = false
     //验证失败则返回错误原因 成功返回null

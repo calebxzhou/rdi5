@@ -12,6 +12,7 @@ import io.ktor.server.request.*
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.toList
+import org.bson.Document
 import org.bson.types.ObjectId
 
 object RoomService {
@@ -51,7 +52,7 @@ object RoomService {
             throw RequestError("玩家未注册")
         }
         val roomName = player.name + "的房间"
-
+        Document()
         val iid = dbcl.insertOne(
             Room(
                 name = roomName,

@@ -20,7 +20,7 @@ import net.minecraft.world.item.ItemDisplayContext
 import net.minecraft.world.item.ItemStack
 import org.joml.Matrix4f
 
-val Font
+val FONT
     get() = mc.font
 val WindowHandle
     get() = mc.window.window
@@ -39,13 +39,13 @@ val ScreenHeight
 val mcUIScale
     get() = mc.window.guiScale
 val LineHeight
-    get() = Font.lineHeight
+    get() = FONT.lineHeight
 val Component.width
-    get() = Font.width(this)
+    get() = FONT.width(this)
 val String.width
-    get() = Font.width(this)
+    get() = FONT.width(this)
 val CenterY
-    get() = (UiHeight-Font.lineHeight)/2
+    get() = (UiHeight-FONT.lineHeight)/2
 val CenterX
     get() = {text:String? -> (UiWidth-(text?.width?:0))/2}
 val MouseX
@@ -82,7 +82,7 @@ fun GuiGraphics.drawText(
     x: Int = 0,
     y: Int= 0,
     color: Int = WHITE,
-)=drawString(Font,comp,x,y,color,true)
+)=drawString(FONT,comp,x,y,color,true)
 
 
 fun GuiGraphics.renderItemStack(x: Int = 0, y: Int = 0, itemStack: ItemStack, width: Int = 16, height: Int = 16) {

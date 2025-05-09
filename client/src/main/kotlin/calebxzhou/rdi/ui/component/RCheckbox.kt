@@ -1,7 +1,7 @@
 package calebxzhou.rdi.ui.component
 
 import calebxzhou.rdi.common.WHITE
-import calebxzhou.rdi.ui.Font
+import calebxzhou.rdi.ui.FONT
 import calebxzhou.rdi.ui.matrixOp
 import calebxzhou.rdi.util.mcAsset
 import calebxzhou.rdi.util.mcComp
@@ -9,11 +9,23 @@ import com.mojang.blaze3d.systems.RenderSystem
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.components.Checkbox
-import net.minecraft.client.gui.navigation.CommonInputs.selected
-import net.minecraft.resources.ResourceLocation
 
-class RCheckbox(message: String,selected:Boolean=false, x: Int = 0, y: Int = 0) :
-    Checkbox(x, y, Font.width(message) + 50,  message.mcComp, Font,selected,{}) {
+class RCheckbox(
+    message: String,
+    selected: Boolean = false,
+    x: Int = 0,
+    y: Int = 0,
+    onChange: (Checkbox, Boolean) -> Unit = {a,b->}
+) :
+    Checkbox(
+        x,
+        y,
+        FONT.width(message) + 50,
+        message.mcComp,
+        FONT,
+        selected,
+        onChange
+    ) {
     public override fun renderWidget(gg: GuiGraphics, pMouseX: Int, pMouseY: Int, pPartialTick: Float) {
         val minecraft = Minecraft.getInstance()
         RenderSystem.enableDepthTest()

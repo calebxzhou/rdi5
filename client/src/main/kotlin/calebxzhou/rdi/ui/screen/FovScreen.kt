@@ -1,27 +1,27 @@
 package calebxzhou.rdi.ui.screen
 
 import calebxzhou.rdi.common.WHITE
+import calebxzhou.rdi.ui.FONT
 import calebxzhou.rdi.ui.component.RScreen
 import calebxzhou.rdi.ui.general.HAlign
 import calebxzhou.rdi.ui.layout.gridLayout
 import calebxzhou.rdi.util.go
 import calebxzhou.rdi.util.mc
-import calebxzhou.rdi.util.mc.Font
-import calebxzhou.rdi.util.mc.mcComp
+import calebxzhou.rdi.util.mcComp
 import calebxzhou.rdi.util.toFixed
 import net.minecraft.client.gui.GuiGraphics
-import net.minecraftforge.client.gui.widget.ForgeSlider
+import net.neoforged.neoforge.client.gui.widget.ExtendedSlider
 import kotlin.math.tan
 
 class FovScreen  : RScreen("视野") {
     override var showTitle=false
     val fovOption
         get() = mc.options.fov()
-    val fovBtn= ForgeSlider(15,0,300,15, "视野范围".mcComp, "度".mcComp,1.0,175.0,fovOption.get().toDouble(),0.1,0,true )
+    val fovBtn= ExtendedSlider(15,0,300,15, "视野范围".mcComp, "度".mcComp,1.0,175.0,fovOption.get().toDouble(),0.1,0,true )
     val foclen  get() = calculateFocalLength(fovOption.get().toDouble())
-    override fun renderBackground(pGuiGraphics: GuiGraphics) {
-    }
+    override fun renderBackground(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
 
+    }
     fun calculateFocalLength(fovAngle: Double): Double {
         // Convert the FOV angle from degrees to radians
         val fovRadians = Math.toRadians(fovAngle)
@@ -56,6 +56,6 @@ class FovScreen  : RScreen("视野") {
         mc go null
     }
     override fun doRender(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
-        guiGraphics.drawCenteredString(Font, foclen.toFixed(1) +"mm",40,5, WHITE)
+        guiGraphics.drawCenteredString(FONT, foclen.toFixed(1) +"mm",40,5, WHITE)
     }
 }

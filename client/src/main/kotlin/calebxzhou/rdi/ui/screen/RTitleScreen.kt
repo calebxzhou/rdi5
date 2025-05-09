@@ -1,14 +1,14 @@
 package calebxzhou.rdi.ui.screen
 
 import calebxzhou.rdi.Const
-import calebxzhou.rdi.model.RServer
 import calebxzhou.rdi.model.RServer.Companion.OFFICIAL_DEBUG
 import calebxzhou.rdi.model.RServer.Companion.OFFICIAL_NNG
+import calebxzhou.rdi.net.RServer
+import calebxzhou.rdi.ui.UiHeight
+import calebxzhou.rdi.ui.UiWidth
 import calebxzhou.rdi.ui.component.RScreen
 import calebxzhou.rdi.util.go
 import calebxzhou.rdi.util.mc
-import calebxzhou.rdi.util.mc.UiHeight
-import calebxzhou.rdi.util.mc.UiWidth
 import calebxzhou.rdi.util.pressingKey
 import calebxzhou.rdi.util.rdiAsset
 import com.mojang.blaze3d.platform.InputConstants
@@ -17,7 +17,6 @@ import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.screens.worldselection.SelectWorldScreen
 import net.minecraft.core.registries.Registries
 import net.minecraft.resources.ResourceLocation
-import net.minecraft.sounds.SoundSource
 import net.minecraft.world.Difficulty
 import net.minecraft.world.level.GameRules
 import net.minecraft.world.level.GameType
@@ -29,30 +28,19 @@ import net.minecraft.world.level.levelgen.presets.WorldPresets
 class RTitleScreen : RScreen("主页") {
     override var showTitle = false
     override var closeable = false
-    val LOGO: ResourceLocation =
-        ResourceLocation("rdi", "textures/logo.png")
-    override var dimBg = false
+    val LOGO = rdiAsset("textures/logo.png")
     val ENTER_KEY_TEXTURE: ResourceLocation = rdiAsset("textures/gui/enter_key.png")
     var shiftMode = false
     var ctrlMode = false
-
-    companion object {
-
-    }
 
 
     public override fun init() {
         RServer.now=null
         mc.level?.let {
             it.disconnect()
-            mc.clearLevel()
+            mc.disconnect()
         }
 
-        //关闭音乐
-        mc.options.getSoundSourceOptionInstance(SoundSource.MUSIC).set(0.0)
-        mc.options.getSoundSourceOptionInstance(SoundSource.AMBIENT).set(0.0)
-        mc.options.directionalAudio().set(true)
-        mc.options.save()
 
 
 
@@ -134,7 +122,7 @@ class RTitleScreen : RScreen("主页") {
     private fun openFlatLevel() {
         val levelName = "rdi_creative"
         if (mc.levelSource.levelExists(levelName)) {
-            mc.createWorldOpenFlows().loadLevel(this, levelName)
+            mc.createWorldOpenFlows().openWorld(levelName){}
         } else {
             val levelSettings = LevelSettings(
                 levelName,
@@ -152,11 +140,13 @@ class RTitleScreen : RScreen("主页") {
             mc.createWorldOpenFlows().createFreshLevel(
                 levelName,
                 levelSettings,
-                WorldOptions(0, false, false)
-            ) {
-                it.registryOrThrow(Registries.WORLD_PRESET).getHolderOrThrow(WorldPresets.FLAT)
-                    .value().createWorldDimensions();
-            }
+                WorldOptions(0, false, false),
+                {
+                    it.registryOrThrow(Registries.WORLD_PRESET).getHolderOrThrow(WorldPresets.FLAT)
+                        .value().createWorldDimensions();
+                },
+                this
+            )
         }
     }
 

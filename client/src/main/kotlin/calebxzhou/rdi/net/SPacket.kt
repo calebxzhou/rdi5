@@ -5,5 +5,5 @@ import net.minecraft.network.FriendlyByteBuf
 
 interface SPacket {
     //写数据进FriendlyByteBuf
-    fun write(buf: FriendlyByteBuf)
+    fun write(buf: RByteBuf)
 }
