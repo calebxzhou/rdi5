@@ -4,21 +4,8 @@ import calebxzhou.rdi.net.RByteBuf
 import calebxzhou.rdi.net.SPacket
 import net.minecraft.network.FriendlyByteBuf
 
-data class SMeMovePacket(
-    val x: Float,
-    val y: Float,
-    val z: Float,
-    val yr:Float,
-    val xr:Float,
-) : SPacket {
-    override fun write(buf: RByteBuf) {
-        buf.writeFloat(x)
-        buf.writeFloat(y)
-        buf.writeFloat(z)
-        buf.writeFloat(yr)
-        buf.writeFloat(xr)
-    }
-    /*data class Pos(
+class SMeMovePacket()  {
+    data class Pos(
         val x: Float,
         val y: Float,
         val z: Float,
@@ -37,6 +24,6 @@ data class SMeMovePacket(
             buf.writeFloat(yr)
             buf.writeFloat(xr)
         }
-    }*/
+    }
 
 }

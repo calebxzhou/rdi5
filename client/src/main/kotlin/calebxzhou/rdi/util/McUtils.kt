@@ -56,4 +56,4 @@ infix fun Minecraft.pressingKey(keyCode: Int): Boolean {
 val Minecraft.pressingEnter
     get() =  this pressingKey InputConstants.KEY_RETURN || this pressingKey InputConstants.KEY_NUMPADENTER
 val ChunkPos.asInt
-    get() = x.toInt() and 0xFFFF or ((z.toInt() and 0xFFFF) shl 16)
+    get() = x.toShort().toInt() and 0xFFFF or ((z.toShort().toInt() and 0xFFFF) shl 16)

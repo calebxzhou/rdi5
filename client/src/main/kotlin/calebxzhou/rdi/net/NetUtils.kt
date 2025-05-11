@@ -16,6 +16,7 @@ import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.netty.buffer.ByteBuf
 import kotlinx.coroutines.runBlocking
+import net.minecraft.nbt.CompoundTag
 import org.bson.types.ObjectId
 import java.nio.charset.StandardCharsets
 
@@ -25,67 +26,7 @@ typealias RByteBuf = FriendlyByteBuf
 /**
  * calebxzhou @ 2025-04-20 15:46
  */
-val HttpResponse.success
-    get() = this.status.isSuccess()
-val HttpResponse.body
-    get() = runBlocking { body<String>() }
-suspend fun httpRequest(
-    post: Boolean = false,
-    url: String,
-    params: List<Pair<String, Any?>> = emptyList(),
-    headers: List<Pair<String, String>> = emptyList()
-): HttpResponse {
-    // Filter out parameters with null values
-    val filteredParams = params.filter { it.second != null }
 
-    // Debug logging (assuming similar logging setup)
-    if (Const.DEBUG) {
-        lgr.info("http ${if (post) "post" else "get"} $url ${filteredParams.joinToString(",")}")
-    }
-
-    // Create Ktor HTTP client
-    val client = HttpClient(CIO) {
-        install(io.ktor.client.plugins.compression.ContentEncoding) {
-            gzip()
-            deflate()
-        }
-    }
-
-    return try {
-        client.request(url) {
-            // Set method
-            method = if (post) HttpMethod.Post else HttpMethod.Get
-
-            // Add headers
-            headers.forEach { (key, value) ->
-                header(key, value)
-            }
-
-            // Add parameters
-            if (post) {
-                // For POST, set form parameters
-                setBody(
-                    FormDataContent(
-                        Parameters.build {
-                            filteredParams.forEach { (key, value) ->
-                                append(key, value.toString())
-                            }
-                        }
-                    )
-                )
-                contentType(ContentType.Application.FormUrlEncoded.withCharset(StandardCharsets.UTF_8))
-            } else {
-                // For GET, add URL parameters
-                filteredParams.forEach { (key, value) ->
-                    parameter(key, value.toString())
-                }
-            }
-        }
-    } finally {
-        // Ensure client is closed
-        client.close()
-    }
-}
 fun ByteBuf.writeObjectId(objectId: ObjectId): ByteBuf {
     writeBytes(objectId.toByteArray())
     return this
