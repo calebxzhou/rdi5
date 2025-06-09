@@ -3,11 +3,11 @@ package calebxzhou.rdi.ihq.service
 import calebxzhou.rdi.ihq.DB
 import calebxzhou.rdi.ihq.model.RChatMessage
 import calebxzhou.rdi.ihq.service.PlayerService.getById
-import calebxzhou.rdi.ihq.util.e400
-import calebxzhou.rdi.ihq.util.e404
-import calebxzhou.rdi.ihq.util.got
-import calebxzhou.rdi.ihq.util.ok
-import calebxzhou.rdi.ihq.util.uid
+import calebxzhou.rdi.ihq.net.e400
+import calebxzhou.rdi.ihq.net.e404
+import calebxzhou.rdi.ihq.net.got
+import calebxzhou.rdi.ihq.net.ok
+import calebxzhou.rdi.ihq.net.uid
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.request.receiveParameters
 

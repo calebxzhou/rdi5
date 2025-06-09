@@ -57,6 +57,8 @@ val Player.lookingAtEntity: Entity?
 
 //轻量化itemstack 只有物品和数量
 typealias LiteItemStack = Pair<Item,Int>
+val LiteItemStack.full
+    get() = ItemStack(first,second)
 fun Player.bagHas(cond: (ItemStack) -> Boolean): Boolean {
     return inventory.hasAnyMatching(cond)
 }

@@ -34,12 +34,10 @@ object RGameEvents {
                 )
             }
             is ServerboundMovePlayerPacket.PosRot -> {
-                SMeMovePacket(
+                SMeMovePacket.Pos(
                     oldPacket.getX(0.0).toFloat(),
                     oldPacket.getY(0.0).toFloat(),
                     oldPacket.getZ(0.0).toFloat(),
-                    oldPacket.getYRot(0f),
-                    oldPacket.getXRot(0f),
                 )
             }
             else -> {

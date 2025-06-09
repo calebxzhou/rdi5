@@ -2,7 +2,6 @@ package calebxzhou.rdi.ui.screen
 
 import calebxzhou.rdi.common.WHITE
 import calebxzhou.rdi.ui.FONT
-import calebxzhou.rdi.ui.component.RScreen
 import calebxzhou.rdi.ui.general.HAlign
 import calebxzhou.rdi.ui.layout.gridLayout
 import calebxzhou.rdi.util.go

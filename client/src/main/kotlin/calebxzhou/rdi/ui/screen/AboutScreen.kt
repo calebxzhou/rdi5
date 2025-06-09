@@ -5,7 +5,7 @@ import calebxzhou.rdi.hardware.SPECS
 import calebxzhou.rdi.hardware.GPU
 import calebxzhou.rdi.hardware.MEM
 import calebxzhou.rdi.hardware.OS
-import calebxzhou.rdi.ui.component.RScreen
+import calebxzhou.rdi.ui.screen.RScreen
 import calebxzhou.rdi.ui.drawImage
 import calebxzhou.rdi.ui.text.richText
 import net.minecraft.client.gui.GuiGraphics

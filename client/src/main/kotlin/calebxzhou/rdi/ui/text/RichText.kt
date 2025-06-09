@@ -1,10 +1,12 @@
 package calebxzhou.rdi.ui.text
 
 import calebxzhou.rdi.common.WHITE
-import calebxzhou.rdi.tutorial.full
+import calebxzhou.rdi.ui.FONT
+import calebxzhou.rdi.ui.UiWidth
 import calebxzhou.rdi.ui.general.Icons
-import calebxzhou.rdi.util.LiteItemStack
-import calebxzhou.rdi.util.mc.*
+import calebxzhou.rdi.ui.matrixOp
+import calebxzhou.rdi.ui.renderItemStack
+import calebxzhou.rdi.util.*
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.components.MultiLineLabel
 import net.minecraft.client.gui.components.PlayerFaceRenderer
@@ -44,19 +46,19 @@ class RichText(val x: Int, val y: Int, val plainText: MutableComponent,val rende
             ren += {
                 val txt = str.mcComp
                 val width =
-                    MultiLineLabel.create(Font, txt, UiWidth).renderLeftAligned(guiGraphics, nowX, nowY, 10, color)
-                //val width = guiGraphics.drawString(Font, txt, nowX, nowY, color)
-                nowX += Font.width(txt)
+                    MultiLineLabel.create(FONT, txt, UiWidth).renderLeftAligned(guiGraphics, nowX, nowY, 10, color)
+                //val width = guiGraphics.drawString(FONT, txt, nowX, nowY, color)
+                nowX += FONT.width(txt)
             }
         }
 
         fun text(txt: Component) {
             plainText += txt
             ren += {
-                val width = MultiLineLabel.create(Font, txt, UiWidth)
+                val width = MultiLineLabel.create(FONT, txt, UiWidth)
                     .renderLeftAligned(guiGraphics, nowX, nowY, 10, txt.style.color?.value ?: WHITE)
-                //val width = guiGraphics.drawString(Font, txt, nowX, nowY, txt.style.color?.value ?: WHITE)
-                nowX += Font.width(txt)
+                //val width = guiGraphics.drawString(FONT, txt, nowX, nowY, txt.style.color?.value ?: WHITE)
+                nowX += FONT.width(txt)
             }
         }
 
@@ -84,7 +86,7 @@ class RichText(val x: Int, val y: Int, val plainText: MutableComponent,val rende
 
                         pose.scale(0.9f, 0.9f, 1f)
                         pose.translate(2f, 0f, 1f)
-                        guiGraphics.drawString(Font, "${item.second}", 0, 0, WHITE)
+                        guiGraphics.drawString(FONT, "${item.second}", 0, 0, WHITE)
                     }
 
                 }

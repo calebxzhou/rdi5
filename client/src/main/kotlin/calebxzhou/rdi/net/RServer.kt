@@ -1,9 +1,8 @@
 package calebxzhou.rdi.net
 
 import calebxzhou.rdi.auth.RAccount
-import calebxzhou.rdi.ui.screen.LoadingScreen
+import calebxzhou.rdi.ui.screen.RLoginScreen
 import calebxzhou.rdi.util.go
-import calebxzhou.rdi.util.isMcStarted
 import calebxzhou.rdi.util.mc
 import io.ktor.client.statement.HttpResponse
 import io.ktor.util.encodeBase64
@@ -19,9 +18,6 @@ import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.nio.NioServerSocketChannel
 import io.netty.handler.timeout.ReadTimeoutHandler
 import io.netty.util.concurrent.DefaultThreadFactory
-import kotlinx.coroutines.runBlocking
-import net.minecraft.client.gui.ComponentPath.path
-import org.apache.http.client.methods.CloseableHttpResponse
 
 class RServer(
     val ip: String,
@@ -32,6 +28,12 @@ class RServer(
 
     companion object {
         var now: RServer? = null
+        val OFFICIAL_DEBUG = RServer("127.0.0.1"
+        , 28506, 28507)
+        val OFFICIAL_NNG = RServer("rdi.calebxzhou.cn"
+            , 28506, 28507,
+        )
+
     }
 
     fun connect() {
@@ -54,13 +56,14 @@ class RServer(
 
             })
             .connect(ip, gamePort)
+        mc go  RLoginScreen(this)
     }
 
     fun sendGamePacket(pk: SPacket) {
         chafu.channel().writeAndFlush(pk)
     }
 
-    private suspend fun prepareRequest(
+    suspend fun prepareRequest(
         post: Boolean = false,
         path: String,
         params: List<Pair<String, Any>> = listOf(),
@@ -73,23 +76,4 @@ class RServer(
 
     }
 
-    suspend fun hqSendAsync(
-        showLoading: Boolean = false,
-        post: Boolean = false,
-        path: String,
-        params: List<Pair<String, Any>> = listOf(),
-    ): HttpResponse {
-        if(showLoading) LoadingScreen.show()
-        val response = prepareRequest(post, path, params)
-        LoadingScreen.close()
-        return response
-    }
-
-    fun hqSendSync(
-        post: Boolean = false,
-        path: String,
-        params: List<Pair<String, Any>> = listOf(),
-    ) = runBlocking {
-        prepareRequest(post, path, params)
-    }
 }

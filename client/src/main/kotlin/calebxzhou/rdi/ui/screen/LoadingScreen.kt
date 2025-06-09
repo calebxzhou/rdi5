@@ -4,7 +4,6 @@ import calebxzhou.rdi.common.WHITE
 import calebxzhou.rdi.ui.FONT
 import calebxzhou.rdi.ui.UiHeight
 import calebxzhou.rdi.ui.UiWidth
-import calebxzhou.rdi.ui.component.RScreen
 import calebxzhou.rdi.ui.general.Icons
 import calebxzhou.rdi.ui.matrixOp
 import calebxzhou.rdi.util.go
@@ -50,6 +49,7 @@ class LoadingScreen() : RScreen("请求中") {
         fun close(){
             if (isMcStarted) {
                 mc.screen?.let { screen ->
+
                     if (screen is LoadingScreen)
                         screen.onClose()
                 }

@@ -10,6 +10,7 @@
     "mRAuth",
     "mScreenTransition",
     "mTitleScreen",
+    "mWidgetMouseCursor",
     "mWindowTitle"
   ],
   "injectors": {
@@ -18,8 +19,6 @@
   "mixins": [
     "APacketDecoder",
     "ARegionFileVersion",
-    "mCompressNbtFormat",
-    "mMapCompressFormat",
     "mOfflineMode",
     "event.mOnChangeBlockState",
     "event.mOnPacketSent"

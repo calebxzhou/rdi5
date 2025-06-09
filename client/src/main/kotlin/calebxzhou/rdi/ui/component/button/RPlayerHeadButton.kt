@@ -34,7 +34,7 @@ class RPlayerHeadButton(
         mcAsync {
             val info = RAccountService.retrievePlayerInfo(id)
 
-            headSkin =info.cloth.skinLocation
+          //  headSkin =info.cloth.skinLocation
             textComp = info.name.mcComp
             width = ofWidth(info.name)
         }

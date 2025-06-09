@@ -1,45 +1,53 @@
 package calebxzhou.rdi.ihq.net
 
-import calebxzhou.rdi.ihq.net.VarInt.readVarInt
+import calebxzhou.rdi.ihq.lgr
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.ByteToMessageDecoder
-import io.netty.handler.codec.CorruptedFrameException
 
-class RFrameDecoder( ) : ByteToMessageDecoder() {
-    private val helperBuf: ByteBuf = Unpooled.directBuffer(3)
+class RFrameDecoder : ByteToMessageDecoder() {
+    companion object {
+        private fun copyVarint(ln: ByteBuf, out: ByteBuf): Boolean {
+            for (i in 0..2) {
+                if (!ln.isReadable) {
+                    return false
+                }
 
-    override fun handlerRemoved0(context: ChannelHandlerContext) {
-        helperBuf.release()
-    }
-
-    private fun copyVarint(input: ByteBuf, output: ByteBuf): Boolean {
-        for (i in 0 until 3) {
-            if (!input.isReadable) {
-                return false
+                val b0 = ln.readByte()
+                out.writeByte(b0.toInt())
+                if (!hasVarIntContinuationBit(b0)) {
+                    return true
+                }
             }
-            val b0 = input.readByte()
-            output.writeByte(b0.toInt())
-            if (!VarInt.hasContinuationBit(b0)) {
-                return true
-            }
+
+            lgr.warn("length wider than 21-bit")
+            return false
         }
-        throw CorruptedFrameException("length wider than 21-bit")
     }
 
-    override fun decode(context: ChannelHandlerContext, input: ByteBuf, out: MutableList<Any>) {
-        input.markReaderIndex()
-        helperBuf.clear()
-        if (!copyVarint(input, helperBuf)) {
-            input.resetReaderIndex()
+    private val helperBuf: ByteBuf = Unpooled.directBuffer(MAX_VARINT21_BYTES)
+    override fun handlerRemoved0(context: ChannelHandlerContext?) {
+        this.helperBuf.release()
+    }
+
+    override fun decode(
+        ctx: ChannelHandlerContext,
+        ln: ByteBuf,
+        out: MutableList<Any>
+    ) {
+        ln.markReaderIndex()
+        this.helperBuf.clear()
+        if (!copyVarint(ln, this.helperBuf)) {
+            ln.resetReaderIndex()
         } else {
             val i = helperBuf.readVarInt()
-            if (input.readableBytes() < i) {
-                input.resetReaderIndex()
+            if (ln.readableBytes() < i) {
+                ln.resetReaderIndex()
             } else {
-                out.add(input.readBytes(i))
+                out.add(ln.readBytes(i))
             }
         }
     }
+
 }

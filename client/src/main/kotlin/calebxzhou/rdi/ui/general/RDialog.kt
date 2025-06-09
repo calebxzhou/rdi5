@@ -5,7 +5,7 @@ import calebxzhou.rdi.ui.FONT
 import calebxzhou.rdi.ui.RMessageLevel
 import calebxzhou.rdi.ui.UiHeight
 import calebxzhou.rdi.ui.UiWidth
-import calebxzhou.rdi.ui.component.RScreen
+import calebxzhou.rdi.ui.screen.RScreen
 import calebxzhou.rdi.ui.layout.gridLayout
 import calebxzhou.rdi.util.go
 import calebxzhou.rdi.util.mc

@@ -6,6 +6,7 @@ import net.neoforged.fml.common.EventBusSubscriber
 import net.neoforged.fml.common.Mod
 import net.neoforged.neoforge.internal.versions.neoforge.NeoForgeVersion.MOD_ID
 import org.apache.logging.log4j.LogManager
+import java.io.File
 
 val lgr = LogManager.getLogger("rdi")
 var TOTAL_TICK_DELTA = 0f
@@ -16,5 +17,6 @@ object RDI {
         lgr.info("RDI启动中")
         Brotli4jLoader.ensureAvailability()
         LevelService
+        File("rdi").mkdir()
     }
 }

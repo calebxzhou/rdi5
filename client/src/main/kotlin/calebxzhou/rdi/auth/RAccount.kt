@@ -50,16 +50,7 @@ data class RAccount(
                 }
                 return textureMap
             }
-        val skinLocation: ResourceLocation
-            get() = getTextureLocation(MinecraftProfileTexture.Type.SKIN, skinTexture.hashUC)
-        val capeLocation: ResourceLocation?
-            get() = capeTexture?.let { cap -> getTextureLocation(MinecraftProfileTexture.Type.CAPE, cap.hashUC) }
-        fun register() {
-            mc.skinManager.registerTexture(skinTexture, MinecraftProfileTexture.Type.SKIN)
-            capeTexture?.let {
-                mc.skinManager.registerTexture(it, MinecraftProfileTexture.Type.CAPE)
-            }
-        }
+
     }
 
     @Serializable
@@ -129,7 +120,7 @@ data class RAccount(
     }
 
     fun updateCloth(cloth: Cloth) {
-        cloth.register()
+       // cloth.register()
         this.cloth = cloth
     }
 

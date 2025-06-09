@@ -1,7 +1,6 @@
 package calebxzhou.rdi.util
 
 import calebxzhou.rdi.ui.WindowHandle
-import calebxzhou.rdi.ui.screen.RPauseScreen
 import com.mojang.blaze3d.platform.InputConstants
 import io.netty.util.concurrent.DefaultThreadFactory
 import net.minecraft.client.Minecraft
@@ -37,8 +36,8 @@ val ResourceLocation.isTextureReady
 
 //go加入forge gui layer, set不
 infix fun Minecraft.go(screen: Screen?) {
-    if(screen==null)
-        RPauseScreen.unpause()
+  /*  if(screen==null)
+        RPauseScreen.unpause()*/
     execute {
         if (screen != null) {
             mc.pushGuiLayer(screen)

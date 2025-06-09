@@ -2,27 +2,27 @@ package calebxzhou.rdi.ui.screen
 
 import calebxzhou.rdi.auth.LocalCredentials
 import calebxzhou.rdi.auth.RAccount
-import calebxzhou.rdi.model.RServer
 import calebxzhou.rdi.net.RServer
+import calebxzhou.rdi.net.body
 import calebxzhou.rdi.serdes.serdesJson
-import calebxzhou.rdi.tutorial.PRIMARY
+import calebxzhou.rdi.ui.CenterX
+import calebxzhou.rdi.ui.CenterY
 import calebxzhou.rdi.ui.component.RFormScreen
-import calebxzhou.rdi.ui.component.RScreen
+import calebxzhou.rdi.ui.drawText
 import calebxzhou.rdi.ui.general.confirm
 import calebxzhou.rdi.ui.layout.RLinearLayout
 import calebxzhou.rdi.ui.layout.linearLayout
-import calebxzhou.rdi.util.body
 import calebxzhou.rdi.util.go
 import calebxzhou.rdi.util.mc
-import calebxzhou.rdi.util.mc.CenterX
-import calebxzhou.rdi.util.mc.CenterY
-import calebxzhou.rdi.util.mc.drawText
 import calebxzhou.rdi.util.mcTooltip
+import kotlinx.coroutines.launch
 import net.minecraft.ChatFormatting
 import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.screens.worldselection.SelectWorldScreen
 import org.bson.types.ObjectId
 
 class RLoginScreen(val server: RServer) : RScreen("登录") {
+
     val creds = LocalCredentials.read()
     override fun onClose() {
         mc go RTitleScreen()
@@ -86,13 +86,7 @@ class RLoginScreen(val server: RServer) : RScreen("登录") {
                     tooltip = "注册一个新账号".mcTooltip
                 },
                 click = {
-                   /* if (!PRIMARY.isDone) {
-                        confirm("要完成新手教程，才能注册账号\n现在开始吗？") {
-                            PRIMARY.start()
-                        }
-                    } else {*/
-                        mc go regScreen
-                   // }
+                    mc go regScreen
                 }
             )
             icon(
@@ -102,9 +96,13 @@ class RLoginScreen(val server: RServer) : RScreen("登录") {
                     mc go RSettingsScreen(mc.options)
                 }
             )
-            icon(icon = "hand", text = "互动教程") {
-                PRIMARY.start()
-            }
+            icon(
+                icon = "hand",
+                text = "单人游玩",
+                click = {
+                    mc go SelectWorldScreen(this@RLoginScreen)
+                }
+            )
             icon(
                 icon = "partner",
                 text = "关于",
@@ -128,20 +126,20 @@ class RLoginScreen(val server: RServer) : RScreen("登录") {
         headsLayout.removeWidget(id)
     }
 
-    fun playerLogin(usr: String, pwd: String) {
-        server.hqSendAsync(
-            true,
-            true,
-            "login",
+    fun playerLogin(usr: String, pwd: String) = background.launch {
+        server.hqRequest(
+            path = "login",
+            post = true,
             params = listOf("usr" to usr, "pwd" to pwd),
-        ) {
-            val account = serdesJson.decodeFromString<RAccount>(it.body)
-            creds.idPwds += account._id.toHexString() to account.pwd
-            creds.lastLoggedId = account._id.toHexString()
-            creds.write()
-            RAccount.now = account
-            mc go RProfileScreen()
-        }
+            onOk = {
+                val account = serdesJson.decodeFromString<RAccount>(it.body)
+                creds.idPwds += account._id.toHexString() to account.pwd
+                creds.lastLoggedId = account._id.toHexString()
+                creds.write()
+                RAccount.now = account
+                mc go RProfileScreen()
+            }
+        )
     }
 
     val addScreen
@@ -202,17 +200,17 @@ class RLoginScreen(val server: RServer) : RScreen("登录") {
                 val pwd = it["pwd"]
                 val qq = it["qq"]
                 val name = it["name"]
-                server.hqSendAsync(
-                    true,
-                    true,
-                    "register",
-                    params = listOf(
-                        "name" to name,
-                        "pwd" to pwd,
-                        "qq" to qq
+                background.launch {
+                    server.hqRequest(
+                        path = "register",
+                        post = true,
+                        params = listOf(
+                            "name" to name,
+                            "pwd" to pwd,
+                            "qq" to qq
+                        ),
+                        onOk = { playerLogin(qq, pwd) }
                     )
-                ) {
-                    playerLogin(qq, pwd)
                 }
             })
 

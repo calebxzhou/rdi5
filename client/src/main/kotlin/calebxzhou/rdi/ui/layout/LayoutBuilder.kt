@@ -2,7 +2,7 @@ package calebxzhou.rdi.ui.layout
 
 import calebxzhou.rdi.ui.UiHeight
 import calebxzhou.rdi.ui.UiWidth
-import calebxzhou.rdi.ui.component.RScreen
+import calebxzhou.rdi.ui.screen.RScreen
 import calebxzhou.rdi.ui.component.button.RButton
 import calebxzhou.rdi.ui.component.button.RIconButton
 import calebxzhou.rdi.ui.component.button.RItemButton

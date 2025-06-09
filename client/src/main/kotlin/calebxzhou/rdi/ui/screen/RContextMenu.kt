@@ -4,7 +4,6 @@ import calebxzhou.rdi.ui.MouseLeftClicked
 import calebxzhou.rdi.ui.MouseX
 import calebxzhou.rdi.ui.MouseY
 import calebxzhou.rdi.ui.UiHeight
-import calebxzhou.rdi.ui.component.RScreen
 import calebxzhou.rdi.ui.component.RTooltip
 import calebxzhou.rdi.ui.layout.RLinearLayout
 import calebxzhou.rdi.util.go

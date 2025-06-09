@@ -2,34 +2,24 @@ package calebxzhou.rdi.ui.screen
 
 import calebxzhou.rdi.option.RSettings
 import calebxzhou.rdi.ui.component.RCheckbox
-import calebxzhou.rdi.ui.component.RScreen
 import calebxzhou.rdi.ui.general.HAlign
 import calebxzhou.rdi.ui.layout.gridLayout
 import calebxzhou.rdi.ui.layout.linearLayout
 import calebxzhou.rdi.util.*
-import calebxzhou.rdi.util.mc.mcComp
 import com.mojang.blaze3d.platform.InputConstants
-import me.jellysquid.mods.sodium.client.gui.SodiumOptionsGUI
 import net.minecraft.client.Options
 import net.minecraft.client.gui.GuiGraphics
-import net.minecraft.client.gui.screens.*
-import net.minecraft.client.gui.screens.controls.ControlsScreen
+import net.minecraft.client.gui.screens.options.AccessibilityOptionsScreen
+import net.minecraft.client.gui.screens.options.ChatOptionsScreen
+import net.minecraft.client.gui.screens.options.OptionsScreen
+import net.minecraft.client.gui.screens.options.SoundOptionsScreen
+import net.minecraft.client.gui.screens.options.controls.ControlsScreen
 import net.minecraft.client.gui.screens.packs.PackSelectionScreen
-import net.minecraftforge.client.gui.ModListScreen
+import net.neoforged.neoforge.client.gui.ModListScreen
+import org.embeddedt.embeddium.impl.gui.EmbeddiumVideoOptionsScreen
 
 class RSettingsScreen(val options: Options): RScreen("设置") {
     override fun init() {
-        /*Account.now?.let { account ->
-            RPlayerHeadButton(account, UiWidth/2- (Font.width(account.name.mcComp)+14+5)/2,40,){}.also { registerWidget(it) }
-            gridLayout(this,hAlign = HAlign.CENTER,y=80) {
-                iconButton("basic_info",text = "资料"){
-                    mc goScreen ControlsScreen(this@RSettingsScreen,options)
-                }
-                iconButton("clothes",text = "皮肤"){
-                    mc goScreen ControlsScreen(this@RSettingsScreen,options)
-                }
-            }
-        }*/
         linearLayout(this) {
             checkBox("bootResize","启动时自动调整窗口大小",   RSettings.now.autoAdjustWindowSize)
         }
@@ -45,7 +35,7 @@ class RSettingsScreen(val options: Options): RScreen("设置") {
                 },mc.resourcePackDirectory, "选择资源包".mcComp)
             }
             button("video",text = "画质"){
-                mc go SodiumOptionsGUI(this@RSettingsScreen)
+                mc go EmbeddiumVideoOptionsScreen(this@RSettingsScreen,EmbeddiumVideoOptionsScreen.makePages())
             }
             button("camera",text = "视野"){
                 mc set FovScreen()

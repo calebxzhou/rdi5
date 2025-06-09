@@ -12,6 +12,7 @@ import com.google.common.cache.CacheBuilder
 import com.google.common.cache.CacheLoader
 import com.mojang.authlib.GameProfile
 import com.mojang.authlib.minecraft.MinecraftProfileTexture
+import kotlinx.coroutines.runBlocking
 import net.minecraft.resources.ResourceLocation
 import org.bson.types.ObjectId
 import java.util.concurrent.TimeUnit
@@ -36,8 +37,8 @@ object RAccountService {
     }
 
 
-    fun retrievePlayerInfo(uid: ObjectId): RAccount.Dto {
-        return RServer.now?.hqSendSync(false, "playerInfo", listOf("uid" to uid))?.let { resp ->
+    fun retrievePlayerInfo(uid: ObjectId): RAccount.Dto = runBlocking{
+        RServer.now?.prepareRequest(false, "playerInfo", listOf("uid" to uid))?.let { resp ->
             val json = resp.body
             lgr.info("玩家信息:${json}")
             serdesJson.decodeFromString(json)

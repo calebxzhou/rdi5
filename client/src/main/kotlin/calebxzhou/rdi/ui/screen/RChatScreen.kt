@@ -1,9 +1,9 @@
 package calebxzhou.rdi.ui.screen
 
 import calebxzhou.rdi.service.ChatService
+import calebxzhou.rdi.ui.UiHeight
 import calebxzhou.rdi.ui.component.button.RButton
-import calebxzhou.rdi.util.mc.UiHeight
-import calebxzhou.rdi.util.mc.mcComp
+import calebxzhou.rdi.util.mcComp
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.screens.ChatScreen
 

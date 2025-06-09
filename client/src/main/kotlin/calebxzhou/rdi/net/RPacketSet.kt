@@ -1,14 +1,26 @@
 package calebxzhou.rdi.net
 
 import calebxzhou.rdi.lgr
-import calebxzhou.rdi.net.RPacketSet.packCount
+import calebxzhou.rdi.net.protocol.SMeLeavePacket
+import calebxzhou.rdi.net.protocol.SMeLoginPacket
+import calebxzhou.rdi.net.protocol.SMeMovePacket
+import calebxzhou.rdi.net.protocol.SPersistEntityAddPacket
+import calebxzhou.rdi.net.protocol.SPlayerBlockEntityUpdatePacket
+import calebxzhou.rdi.net.protocol.SPlayerBlockStateChangePacket
 import io.netty.buffer.ByteBuf
+import kotlin.jvm.java
 
 typealias PacketReader = (ByteBuf) -> CPacket
 typealias PacketWriter = Class<out SPacket>
 
 object RPacketSet {
     init {
+        this reg SMeLoginPacket::class.java
+        this reg SMeLeavePacket::class.java
+        this reg SMeMovePacket.Pos::class.java
+        this reg SMeMovePacket.Rot::class.java
+        this reg SPlayerBlockEntityUpdatePacket::class.java
+        this reg SPlayerBlockStateChangePacket::class.java
 
     }
     private var packCount = 0.toByte()
@@ -18,11 +30,11 @@ object RPacketSet {
     //c2s
     private val writer2id = linkedMapOf<PacketWriter,Byte>()
 
-    private fun register(reader: PacketReader){
+    private infix fun reg(reader: PacketReader){
         id2Reader += packCount to reader
         packCount++
     }
-    private fun register(writer: PacketWriter){
+    private infix  fun reg(writer: PacketWriter){
         writer2id += writer to packCount
         packCount++
     }

@@ -3,18 +3,16 @@ package calebxzhou.rdi.ihq
 import calebxzhou.rdi.ihq.exception.AuthError
 import calebxzhou.rdi.ihq.exception.ParamError
 import calebxzhou.rdi.ihq.exception.RequestError
+import calebxzhou.rdi.ihq.net.GameNetServer
 import calebxzhou.rdi.ihq.net.RFrameDecoder
-import calebxzhou.rdi.ihq.net.RLengthFieldPrepender
-import calebxzhou.rdi.ihq.net.VarInt.readVarInt
-import calebxzhou.rdi.ihq.net.VarInt.writeVarInt
 import calebxzhou.rdi.ihq.service.ChatService
 import calebxzhou.rdi.ihq.service.PlayerService
 import calebxzhou.rdi.ihq.service.PlayerService.accountCol
 import calebxzhou.rdi.ihq.service.RoomService
-import calebxzhou.rdi.ihq.util.e400
-import calebxzhou.rdi.ihq.util.e401
-import calebxzhou.rdi.ihq.util.e500
-import calebxzhou.rdi.ihq.util.ok
+import calebxzhou.rdi.ihq.net.e400
+import calebxzhou.rdi.ihq.net.e401
+import calebxzhou.rdi.ihq.net.e500
+import calebxzhou.rdi.ihq.net.ok
 import com.mongodb.MongoClientSettings
 import com.mongodb.ServerAddress
 import com.mongodb.client.model.IndexOptions
@@ -22,17 +20,14 @@ import com.mongodb.client.model.Indexes
 import com.mongodb.kotlin.client.coroutine.MongoClient
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.network.selector.*
-import io.ktor.network.sockets.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.routing.*
-import io.ktor.utils.io.*
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.channel.Channel
-import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelInitializer
 import io.netty.channel.ChannelOption
 import io.netty.channel.epoll.Epoll
@@ -44,11 +39,9 @@ import io.netty.handler.flow.FlowControlHandler
 import io.netty.handler.timeout.ReadTimeoutHandler
 import io.netty.util.concurrent.DefaultThreadFactory
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.bson.UuidRepresentation
-import java.util.concurrent.ThreadFactory
 
 val DB_HOST = System.getProperty("rdi.dbHost") ?: "127.0.0.1"
 val DB_PORT = System.getProperty("rdi.dbPort")?.toIntOrNull() ?: 27017
@@ -74,37 +67,9 @@ fun main(): Unit =runBlocking {
 
     // Start the TCP server in a coroutine
     launch(Dispatchers.IO) {
-        startTcp (selectorManager)
+        GameNetServer.start (selectorManager)
     }
     startHttp()
-}
-fun startTcp(selectorManager: SelectorManager){
-    val channel = if(Epoll.isAvailable()) EpollServerSocketChannel::class.java else NioServerSocketChannel::class.java
-    val eventGroup = if(Epoll.isAvailable())
-        EpollEventLoopGroup(0, DefaultThreadFactory("RDI-Epoll"))
-    else
-        NioEventLoopGroup(0, DefaultThreadFactory("RDI-Nio"))
-    ServerBootstrap()
-        .channel(channel)
-        .group(eventGroup)
-        .localAddress("::",GAME_PORT)
-        .handler(object : ChannelInitializer<Channel>() {
-            override fun initChannel(channel: Channel) {
-                channel.config().setOption(ChannelOption.TCP_NODELAY,true)
-                channel.pipeline()
-                    .addLast("timeout", ReadTimeoutHandler(15))
-                    .addLast("splitter", RFrameDecoder())
-                    .addLast(FlowControlHandler())
-                    //.addLast("decoder",)
-                    //.addLast("encoder",)
-                    .addLast("prepender",RLengthFieldPrepender())
-
-            }
-
-        })
-
-
-
 }
 fun startHttp(){
     /*

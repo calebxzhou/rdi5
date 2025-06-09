@@ -1,29 +1,18 @@
 package calebxzhou.rdi.ui.screen
 
-import calebxzhou.rdi.TOTAL_TICK_DELTA
 import calebxzhou.rdi.auth.LocalCredentials
 import calebxzhou.rdi.auth.RAccount
-import calebxzhou.rdi.common.Carrier
-import calebxzhou.rdi.lgr
-import calebxzhou.rdi.model.Island
-import calebxzhou.rdi.model.RServer
-import calebxzhou.rdi.net.RKcpClient
+import calebxzhou.rdi.net.RServer
+import calebxzhou.rdi.net.body
+import calebxzhou.rdi.room.Room
 import calebxzhou.rdi.serdes.serdesJson
-import calebxzhou.rdi.tutorial.Tutorial
-import calebxzhou.rdi.ui.component.RCheckbox
 import calebxzhou.rdi.ui.component.RFormScreen
-import calebxzhou.rdi.ui.component.RGuiEntityRenderer
-import calebxzhou.rdi.ui.component.RScreen
-import calebxzhou.rdi.ui.component.button.RIconButton
 import calebxzhou.rdi.ui.general.alert
 import calebxzhou.rdi.ui.general.alertErr
 import calebxzhou.rdi.ui.layout.linearLayout
-import calebxzhou.rdi.util.*
+import calebxzhou.rdi.util.go
+import calebxzhou.rdi.util.mc
 import net.minecraft.client.gui.GuiGraphics
-import net.minecraft.client.gui.screens.ConnectScreen
-import net.minecraft.client.gui.screens.inventory.InventoryScreen
-import net.minecraft.client.multiplayer.resolver.ServerAddress
-import java.time.LocalTime
 
 class RProfileScreen(
 ) : RScreen("我的信息") {
@@ -61,10 +50,10 @@ class RProfileScreen(
             val pwd = it["pwd"]
             val qq = it["qq"]
             val params = arrayListOf<Pair<String, String>>()
-            if (name != account.name) params += "name" to name
-            if (pwd != account.pwd) params += "pwd" to pwd
-            if (qq != account.qq) params += "qq" to qq
-            server.hqSendAsync(true, true, "profile", params) {
+            if (name != account.name) params + "name" to name
+            if (pwd != account.pwd) params + "pwd" to pwd
+            if (qq != account.qq) params + "qq" to qq
+            server.hqRequest(path = "profile", params = params) {
                 val newAccount = RAccount(account._id, name, pwd, qq, account.score, account.cloth)
                 RAccount.now = newAccount
                 mc go RProfileScreen()
@@ -74,8 +63,8 @@ class RProfileScreen(
 
 
     override fun init() {
-        account.cloth.register()
-        server.hqSendAsync(path = "island/my") {
+        //account.cloth.register()
+        server.hqRequest(path = "island/my") {
             if (it.body != "0") {
                 hasIsland = true
             }
@@ -86,10 +75,6 @@ class RProfileScreen(
             marginX = 0
             head(
                 uid = account._id,
-                init = {
-
-                }
-
             )
         }
         linearLayout(this) {
@@ -102,35 +87,21 @@ class RProfileScreen(
             icon(icon = "basic_info", text = "修改信息") {
                 mc go changeProfileScreen
             }
-                icon(icon = "island", text = "岛屿中心") {
-                    if(!hasIsland){
-                        alertErr("您没有岛屿 请点击开始按钮新建 或者加入")
-                    }else{
-
-                    server.hqSendAsync(true, false, "island/my") { resp ->
-                        val island = serdesJson.decodeFromString<Island>(resp.body)
-                        mc go IslandCenterScreen(account, server, island)
-                    }
+            icon(icon = "island", text = "房间中心") {
+                if (!hasIsland) {
+                    alertErr("您没有房间 请点击开始按钮新建 或者加入")
+                } else {
+                    server.hqRequest(path = "island/my") { resp ->
+                        val island = serdesJson.decodeFromString<Room>(resp.body)
+                        //mc go IslandCenterScreen(account, server, island)
                     }
                 }
-
+            }
+/*
             icon(icon = "clothes", text = "衣柜") {
                 mc go RWardrobeScreen(account, server)
-            }
-            icon(icon = "city", text = creds.carrierEnum.display) {
-                creds.carrier = when (creds.carrier) {
-                    "t" -> "u"
-                    "u" -> "m"
-                    "m" -> "t"
-                    else -> "t"
-                }
-                creds.write()
-                ofWidget<RIconButton>("city").text=creds.carrierEnum.display
-                lgr.info(creds.carrierEnum.display)
-            }
-            checkBox("kcp","双协议加速(实验)",creds.kcp){
-                tooltip = "适用联通移动\n采用TCP+KCP双连接，快速+稳定\n实验功能 可能有bug".mcTooltip
-            }
+            }*/
+             
         }
         super.init()
     }
@@ -140,44 +111,34 @@ class RProfileScreen(
     }
 
     override fun onClose() {
-        RServer.now?.disconnect()
+        RServer.now=null
         RAccount.now?.logout()
 
         mc go RLoginScreen(server)
     }
 
-    private fun connect() {
-        RKcpClient.enabled = ofWidget<RCheckbox>("kcp").selected()
-        creds.kcp = RKcpClient.enabled
-        creds.write()
-        Tutorial.now = null
-        //只有电信支持加速
-        val ip = if(RKcpClient.enabled) server.ip[Carrier.t] else server.ip[creds.carrierEnum]
-        //移动只有18~24能用
-        val isEvening = LocalTime.now().isAfter(LocalTime.of(18, 0)) && LocalTime.now().isBefore(LocalTime.of(23,59))
-        if(!isEvening && creds.carrierEnum== Carrier.m){
-            alertErr("移动节点开放时间18:00~24:00")
-            return
-        }
+    private fun connect() { 
+        creds.write()  
+        val ip =  server.ip  
         if (hasIsland) {
-            mcMainThread {
+            /*mcMainThread {
                 ConnectScreen.startConnecting(
                     this@RProfileScreen, mc,
 
-                    ServerAddress(ip?:"localhost", server.gamePort), server.mcData, false
+                    ServerAddress(ip ?: "localhost", server.gamePort), server.mcData, false
                 )
-            }
+            }*/
         } else {
             contextMenu {
-                icon("plus", "创建新岛屿") {
+                icon("plus", "创建新房间") {
 
-                    server.hqSendAsync(true, true, path = "island/create") {
+                    /*server.hqSendAsync(true, true, path = "island/create") {
                         mc go this@RProfileScreen
                         alert("创建完成，点击开始按钮游玩")
-                    }
+                    }*/
                 }
-                icon("smp", "加入朋友岛屿") {
-                    alert("让对方进行以下操作：\n1.打开岛屿中心\n2.成员-添加-输入你的QQ\n3.再次点击“开始”按钮")
+                icon("smp", "加入朋友房间") {
+                    alert("让对方进行以下操作：\n1.打开房间中心\n2.成员-添加-输入你的QQ\n3.再次点击“开始”按钮")
 
                 }
             }
@@ -191,9 +152,9 @@ class RProfileScreen(
 
     override fun doRender(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
         //if (modelLoaded.any { it }) {
-        RGuiEntityRenderer.drawEntity(
+       /* RGuiEntityRenderer.drawEntity(
             guiGraphics.pose(),
-            width/2 ,
+            width / 2,
             260,
             120,
             TOTAL_TICK_DELTA * 2,
@@ -202,15 +163,15 @@ class RProfileScreen(
             account.cloth.isSlim == true,
             account.cloth.skinLocation,
             account.cloth.capeLocation
-        )
+        )*/
         //}
 
-        mc.player?.let {
+        /*mc.player?.let {
             InventoryScreen.renderEntityInInventoryFollowsMouse(
                 guiGraphics, 200, 200, 30, mouseX.toFloat(), mouseY.toFloat(),
                 it
             )
-        }
+        }*/
     }
 
 
