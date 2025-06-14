@@ -1,14 +1,10 @@
 package calebxzhou.rdi.mixin;
 
-import calebxzhou.rdi.RDI;
 import calebxzhou.rdi.ui.RMouseCursor;
 import calebxzhou.rdi.ui.UiUtilsKt;
-import calebxzhou.rdi.util.McUtils;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.client.gui.components.Renderable;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
 import org.lwjgl.glfw.GLFW;

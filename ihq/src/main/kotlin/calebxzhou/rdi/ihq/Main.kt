@@ -53,8 +53,8 @@ val DB = MongoClient.create(
         }
         .uuidRepresentation(UuidRepresentation.STANDARD)
         .build()).getDatabase("rdi5")
-val GAME_PORT = System.getProperty("rdi.gamePort")?.toIntOrNull() ?: 28520
-val HQ_PORT = System.getProperty("rdi.hqPort")?.toIntOrNull() ?: 28521
+val GAME_PORT = System.getProperty("rdi.gamePort")?.toIntOrNull() ?: 28506
+val HQ_PORT = System.getProperty("rdi.hqPort")?.toIntOrNull() ?: 28507
 fun main(): Unit =runBlocking {
 
         lgr.info { "init db" }

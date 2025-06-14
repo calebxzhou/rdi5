@@ -26,11 +26,11 @@ object PlayerService {
     suspend fun getByQQ(qq: String): RAccount? = accountCol.find(eq("qq", qq)).firstOrNull()
     suspend fun getByName(name: String): RAccount? = accountCol.find(eq("name", name)).firstOrNull()
     suspend fun get(usr: String): RAccount? {
-        var account = getByQQ(usr) ?: getByName(usr)
         if (usr.isValidObjectId()) {
-            account = getById(ObjectId(usr))
+            return getById(ObjectId(usr))
         }
-        return account
+        return getByQQ(usr) ?: getByName(usr)
+
     }
 
     fun equalById(id: ObjectId): Bson {

@@ -10,11 +10,11 @@ import org.bson.types.ObjectId
  * 登录游戏服务器
  */
 class SMeLoginPacket(
-    val uid: ObjectId,
+    val qq: String,
     val pwd: String
 ): SPacket {
     override fun write(buf: RByteBuf) {
-        buf.writeObjectId(uid)
+        buf.writeUtf(qq)
         buf.writeUtf(pwd)
     }
 }

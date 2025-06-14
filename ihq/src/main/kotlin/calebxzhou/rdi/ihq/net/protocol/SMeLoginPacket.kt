@@ -11,10 +11,10 @@ import org.bson.types.ObjectId
  * 登录游戏服务器
  */
 class SMeLoginPacket(
-    val uid: ObjectId,
+    val qq: String,
     val pwd: String
 ): SPacket {
-    constructor(buf: RByteBuf): this(buf.readObjectId(),buf.readString())
+    constructor(buf: RByteBuf): this(buf.readString(),buf.readString())
 
     override fun handle() {
         TODO("Not yet implemented")

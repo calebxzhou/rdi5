@@ -1,6 +1,8 @@
 package calebxzhou.rdi.net
 
+import calebxzhou.rdi.Const
 import calebxzhou.rdi.auth.RAccount
+import calebxzhou.rdi.net.protocol.SMeLoginPacket
 import calebxzhou.rdi.ui.screen.RLoginScreen
 import calebxzhou.rdi.util.go
 import calebxzhou.rdi.util.mc
@@ -28,10 +30,12 @@ class RServer(
 
     companion object {
         var now: RServer? = null
-        val OFFICIAL_DEBUG = RServer("127.0.0.1"
-        , 28506, 28507)
-        val OFFICIAL_NNG = RServer("rdi.calebxzhou.cn"
-            , 28506, 28507,
+        val OFFICIAL_DEBUG = RServer(
+            "127.0.0.1", 28506, 28507
+        )
+        val OFFICIAL_NNG = RServer(
+            "rdi.calebxzhou.cn",
+            28506, 28507,
         )
 
     }
@@ -56,7 +60,12 @@ class RServer(
 
             })
             .connect(ip, gamePort)
-        mc go  RLoginScreen(this)
+        if (Const.DEBUG) {
+
+            val account = RAccount.TESTS[System.getProperty("rdi.testAccount").toInt()]
+            sendGamePacket(SMeLoginPacket(account.qq,account.pwd))
+        }
+        // mc go  RLoginScreen(this)
     }
 
     fun sendGamePacket(pk: SPacket) {

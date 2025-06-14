@@ -78,6 +78,10 @@ data class RAccount(
     }
     companion object {
         val DEFAULT = RAccount(ObjectId(), "未登录", "123456", "12345", 0)
+        val TESTS = listOf(
+            RAccount(ObjectId(), "测试1", "123123", "123123", 0),
+            RAccount(ObjectId(), "测试2", "456456", "456456", 0)
+        )
 
         @JvmStatic
         var now: RAccount? = null

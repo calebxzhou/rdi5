@@ -13,6 +13,8 @@ import calebxzhou.rdi.ui.layout.linearLayout
 import calebxzhou.rdi.util.go
 import calebxzhou.rdi.util.mc
 import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.screens.ConnectScreen
+import net.minecraft.client.multiplayer.resolver.ServerAddress
 
 class RProfileScreen(
 ) : RScreen("我的信息") {
@@ -118,31 +120,32 @@ class RProfileScreen(
     }
 
     private fun connect() { 
-        creds.write()  
-        val ip =  server.ip  
+        creds.write()
+
+       /* val ip =  server.ip
         if (hasIsland) {
-            /*mcMainThread {
+            mcMainThread {
                 ConnectScreen.startConnecting(
                     this@RProfileScreen, mc,
 
                     ServerAddress(ip ?: "localhost", server.gamePort), server.mcData, false
                 )
-            }*/
+            }
         } else {
             contextMenu {
                 icon("plus", "创建新房间") {
 
-                    /*server.hqSendAsync(true, true, path = "island/create") {
+                    server.hqSendAsync(true, true, path = "island/create") {
                         mc go this@RProfileScreen
                         alert("创建完成，点击开始按钮游玩")
-                    }*/
+                    }
                 }
                 icon("smp", "加入朋友房间") {
                     alert("让对方进行以下操作：\n1.打开房间中心\n2.成员-添加-输入你的QQ\n3.再次点击“开始”按钮")
 
                 }
             }
-        }
+        }*/
 
     }
 
