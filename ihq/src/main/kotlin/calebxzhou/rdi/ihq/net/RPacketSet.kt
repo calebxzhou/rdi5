@@ -12,6 +12,16 @@ typealias PacketReader = (ByteBuf) -> SPacket
 typealias PacketWriter = Class<out CPacket>
 
 object RPacketSet {
+
+
+    private var packCount = 0.toByte()
+
+    //c2s
+    private val id2Reader = linkedMapOf<Byte, PacketReader>()
+
+    //s2c
+    private val writer2id = linkedMapOf<PacketWriter, Byte>()
+
     init {
         this reg ::SMeLoginPacket
         this reg ::SMeLeavePacket
@@ -21,13 +31,6 @@ object RPacketSet {
         this reg ::SPlayerBlockStateChangePacket
     }
 
-    private var packCount = 0.toByte()
-
-    //c2s
-    private val id2Reader = linkedMapOf<Byte, PacketReader>()
-
-    //s2c
-    private val writer2id = linkedMapOf<PacketWriter, Byte>()
     private infix fun reg(reader: PacketReader) {
         id2Reader += packCount to reader
         packCount++

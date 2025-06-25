@@ -1,11 +1,9 @@
 package calebxzhou.rdi.ihq.net
 
 import calebxzhou.rdi.ihq.GAME_PORT
-import io.ktor.network.selector.SelectorManager
+import io.ktor.network.selector.*
 import io.netty.bootstrap.ServerBootstrap
-import io.netty.channel.ServerChannel
-import io.netty.channel.ChannelInitializer
-import io.netty.channel.ChannelOption
+import io.netty.channel.*
 import io.netty.channel.epoll.Epoll
 import io.netty.channel.epoll.EpollEventLoopGroup
 import io.netty.channel.epoll.EpollServerSocketChannel
@@ -16,6 +14,7 @@ import io.netty.handler.timeout.ReadTimeoutHandler
 import io.netty.util.concurrent.DefaultThreadFactory
 
 object GameNetServer {
+    lateinit var chafu: ChannelFuture
     val channel: Class<out ServerChannel> = if (Epoll.isAvailable())
         EpollServerSocketChannel::class.java
     else
@@ -25,25 +24,28 @@ object GameNetServer {
     else
         NioEventLoopGroup(0, DefaultThreadFactory("RDI-Nio"))
 
-    fun start(selectorManager: SelectorManager) {
-        ServerBootstrap()
+    fun start(selectorManager: SelectorManager)  {
+        RPacketSet
+        chafu= ServerBootstrap()
             .channel(channel)
             .group(eventGroup)
-            .option(ChannelOption.TCP_NODELAY, true)
-            .localAddress("::", GAME_PORT)
-            .handler(object : ChannelInitializer<ServerChannel>() {
-                override fun initChannel(channel: ServerChannel) {
+            .localAddress("0.0.0.0", GAME_PORT)
+            .childHandler(object : ChannelInitializer<Channel>() {
+                override fun initChannel(channel: Channel) {
+                    channel.config().setOption<Boolean?>(ChannelOption.TCP_NODELAY, true)
+
                     channel.pipeline()
-                        .addLast("timeout", ReadTimeoutHandler(15))
+                       // .addLast("timeout", ReadTimeoutHandler(15))
                         .addLast("splitter", RFrameDecoder())
                         .addLast(FlowControlHandler())
                         .addLast("decoder", RPacketDecoder())
-                        .addLast("packet_handler", RPacketReceiver())
-                        .addLast("encoder", RPacketEncoder())
                         .addLast("prepender", RFrameEncoder())
+                        .addLast("encoder", RPacketEncoder())
+                        .addLast("packet_handler", RPacketReceiver())
 
                 }
 
-            })
+            }).bind()
+            .syncUninterruptibly();
     }
 }

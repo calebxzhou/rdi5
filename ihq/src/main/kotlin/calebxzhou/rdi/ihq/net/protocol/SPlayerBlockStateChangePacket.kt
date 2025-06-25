@@ -2,6 +2,7 @@ package calebxzhou.rdi.ihq.net.protocol
 
 import calebxzhou.rdi.ihq.net.RByteBuf
 import calebxzhou.rdi.ihq.net.SPacket
+import io.netty.channel.ChannelHandlerContext
 
 class SPlayerBlockStateChangePacket(
     val packedChunkPos: Int,// ChunkPos.asInt
@@ -10,7 +11,7 @@ class SPlayerBlockStateChangePacket(
     val stateID: Int,
 ) : SPacket {
     constructor(buf: RByteBuf): this(buf.readInt(),buf.readByte(),buf.readShort(),buf.readInt())
-    override fun handle() {
+    override suspend fun handle(ctx: ChannelHandlerContext) {
         TODO("Not yet implemented")
     }
 

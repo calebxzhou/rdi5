@@ -15,7 +15,6 @@ object RDI {
 
     init {
         lgr.info("RDI启动中")
-        Brotli4jLoader.ensureAvailability()
         LevelService
         File("rdi").mkdir()
     }

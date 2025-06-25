@@ -15,7 +15,7 @@ object RModEvents {
         lgr.info("客户端启动")
         //最大化
         renderThread {
-            GLFW.glfwMaximizeWindow(WindowHandle)
+           // GLFW.glfwMaximizeWindow(WindowHandle)
         }
         HttpClient()
     }

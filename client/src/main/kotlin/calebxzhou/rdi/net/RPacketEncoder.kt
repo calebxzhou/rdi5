@@ -15,7 +15,7 @@ class RPacketEncoder : MessageToByteEncoder<SPacket>() {
             //写包ID
             msg.writeByte(packetId.toInt())
             packet.write(msg)
-
+            lgr.info("${packetId}")
         } ?: lgr.error("找不到包ID" + packet.javaClass)
     }
 }

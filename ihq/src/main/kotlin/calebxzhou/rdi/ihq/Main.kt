@@ -66,9 +66,9 @@ fun main(): Unit =runBlocking {
     val selectorManager = SelectorManager(Dispatchers.IO)
 
     // Start the TCP server in a coroutine
-    launch(Dispatchers.IO) {
+   // launch(Dispatchers.IO) {
+  //  }
         GameNetServer.start (selectorManager)
-    }
     startHttp()
 }
 fun startHttp(){

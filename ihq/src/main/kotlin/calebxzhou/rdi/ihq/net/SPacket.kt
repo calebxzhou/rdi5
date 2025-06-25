@@ -1,5 +1,7 @@
 package calebxzhou.rdi.ihq.net
 
+import io.netty.channel.ChannelHandlerContext
+
 interface SPacket {
-    fun handle()
+    suspend fun handle(ctx: ChannelHandlerContext)
 }

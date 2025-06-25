@@ -2,7 +2,7 @@ package calebxzhou.rdi.ihq.net.protocol
 
 import calebxzhou.rdi.ihq.net.RByteBuf
 import calebxzhou.rdi.ihq.net.SPacket
-import calebxzhou.rdi.ihq.net.protocol.SMeMovePacket.Pos
+import io.netty.channel.ChannelHandlerContext
 
 
 class SMeMovePacket()  {
@@ -13,7 +13,7 @@ class SMeMovePacket()  {
     ): SPacket {
         constructor(buf: RByteBuf) : this(buf.readFloat(),buf.readFloat(),buf.readFloat())
 
-        override fun handle() {
+        override suspend fun handle(ctx: ChannelHandlerContext) {
             TODO("Not yet implemented")
         }
     }
@@ -23,7 +23,7 @@ class SMeMovePacket()  {
     ): SPacket {
         constructor(buf: RByteBuf) : this(buf.readFloat(),buf.readFloat())
 
-        override fun handle() {
+        override suspend fun handle(ctx: ChannelHandlerContext) {
             TODO("Not yet implemented")
         }
     }

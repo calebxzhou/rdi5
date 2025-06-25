@@ -5,6 +5,7 @@ import calebxzhou.rdi.ihq.net.SPacket
 import calebxzhou.rdi.ihq.net.readNbt
 import calebxzhou.rdi.ihq.net.readString
 import calebxzhou.rdi.ihq.net.readUUID
+import io.netty.channel.ChannelHandlerContext
 import net.benwoodworth.knbt.NbtCompound
 import java.util.*
 
@@ -15,7 +16,7 @@ data class SPersistEntityAddPacket(
     val data: NbtCompound
 ) : SPacket{
     constructor(buf: RByteBuf): this(buf.readUUID(), buf.readString(), buf.readNbt())
-    override fun handle() {
+    override suspend fun handle(ctx: ChannelHandlerContext) {
         TODO("Not yet implemented")
     }
 }

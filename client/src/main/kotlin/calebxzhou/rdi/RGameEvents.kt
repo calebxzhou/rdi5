@@ -2,6 +2,7 @@ package calebxzhou.rdi
 
 import calebxzhou.rdi.event.BlockStateChangedEvent
 import calebxzhou.rdi.event.PacketSentEvent
+import calebxzhou.rdi.net.GameNetClient
 import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.net.protocol.SMeMovePacket
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket
@@ -44,7 +45,7 @@ object RGameEvents {
                 TODO()
             }
         }
-        RServer.now?.sendGamePacket(newPacket)
+        GameNetClient.send(newPacket)
 
     }
     @SubscribeEvent
