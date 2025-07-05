@@ -1,6 +1,9 @@
 package calebxzhou.rdi.ihq.model
 
 import calebxzhou.rdi.ihq.lgr
+import calebxzhou.rdi.ihq.net.GameNetServer.sendPacket
+import calebxzhou.rdi.ihq.net.protocol.CPlayerJoinPacket
+import calebxzhou.rdi.ihq.service.PlayerService.sendPacket
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import org.bson.types.ObjectId
@@ -14,13 +17,17 @@ data class Room(
     val name: String,
     val score: Int=0,
     val members: List<Member> = arrayListOf(),
-    //临时id 最大0xff
-    var tempId: Byte=0,
-    //持久子区块：维度ID-section列表
-    val persistDimSections: Map<String,List<RSection>> = hashMapOf(),
+    //持久子区块：维度ID-section id list
+    var persistDimSections: Map<String,List<ObjectId>> = hashMapOf(),
     //方块状态&ID
     val blockStateId: Map<Int, RBlockState> = hashMapOf()
 ) {
+    //临时id 最大0xff
+    @Volatile
+    var tempId: Byte=0
+    @Volatile
+    var onlineMembers = hashMapOf<Byte,RAccount>()
+
     fun hasMember(pid: ObjectId): Boolean {
         return members.find { it.id==pid } != null
     }

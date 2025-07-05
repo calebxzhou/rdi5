@@ -2,15 +2,21 @@ package calebxzhou.rdi.ihq.service
 
 import calebxzhou.rdi.ihq.DB
 import calebxzhou.rdi.ihq.lgr
+import calebxzhou.rdi.ihq.model.GameContext
 import calebxzhou.rdi.ihq.model.RAccount
+import calebxzhou.rdi.ihq.net.CPacket
+import calebxzhou.rdi.ihq.net.GameNetServer.abort
+import calebxzhou.rdi.ihq.net.GameNetServer.sendPacket
 import calebxzhou.rdi.ihq.net.account
 import calebxzhou.rdi.ihq.net.e400
 import calebxzhou.rdi.ihq.net.e401
 import calebxzhou.rdi.ihq.net.got
 import calebxzhou.rdi.ihq.net.initGetParams
 import calebxzhou.rdi.ihq.net.ok
-import calebxzhou.rdi.ihq.net.set
 import calebxzhou.rdi.ihq.net.uid
+import calebxzhou.rdi.ihq.service.RoomService.getById
+import calebxzhou.rdi.ihq.service.RoomService.memberGoOffline
+import calebxzhou.rdi.ihq.service.RoomService.memberGoOnline
 import calebxzhou.rdi.ihq.util.*
 import com.mongodb.client.model.Filters.eq
 import com.mongodb.client.model.Updates
@@ -43,19 +49,41 @@ object PlayerService {
     fun equalById(acc: RAccount): Bson {
         return eq("_id", acc._id)
     }
-    fun RAccount.goOnline(ctx:ChannelHandlerContext){
-        ctx.account = this
-        networkContext=ctx
-        inGamePlayers[_id] = this
-        lgr.info { "${name}上线 ${inGamePlayers.size}" }
+
+    suspend fun RAccount.goOnline(ctx: ChannelHandlerContext) {
+        RoomService.getJoinedRoom(_id)?.let { room ->
+            ctx.account = this
+            gameContext = GameContext(net = ctx, room = room)
+            inGamePlayers[_id] = this
+            //房间在线成员 加
+            room.memberGoOnline(this)
+            lgr.info { "${name}上线 ${inGamePlayers.size}/256" }
+        } ?: let {
+            lgr.warn { "${name}尝试上线但没有加入房间" }
+            ctx.abort("请先加入房间")
+            ctx.close()
+            return
+        }
     }
-    fun RAccount.goOffline() {
-        networkContext?.account = null
-        networkContext?.disconnect()
-        networkContext?.close()
-        networkContext = null
+
+    suspend fun RAccount.goOffline() {
+        RoomService.getJoinedRoom(_id)?.let { room ->
+
+            //房间在线成员 减
+            room.memberGoOffline(this)
+
+        }
+        gameContext?.let {
+            it.net.account = null
+            it.net.disconnect()
+            it.net.close()
+        }
+        gameContext = null
         inGamePlayers.remove(_id)
-        lgr.info { "${name}下线 ${inGamePlayers.size}" }
+        lgr.info { "${name}下线 ${inGamePlayers.size}/256" }
+    }
+    fun RAccount.sendPacket(packet: CPacket){
+        gameContext?.net?.sendPacket(packet)
     }
     //根据rid获取
     suspend fun getById(id: ObjectId): RAccount? = accountCol.find(equalById(id)).firstOrNull()
@@ -160,7 +188,6 @@ object PlayerService {
         }
         call.ok()
     }
-
 
 
     /*suspend fun onJoinGame(call: ApplicationCall) {

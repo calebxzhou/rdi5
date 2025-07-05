@@ -14,8 +14,8 @@ data class RSection(
     val _id: ObjectId = ObjectId(),
     val chunkPos: Int,
     val sectionY: Byte,
-    val blockStates: Map<Short, Int>,
-    val blockEntities: Map<Short, RBlockEntity>
+    val blockStates: MutableMap<Short, Int>,
+    val blockEntities: MutableMap<Short, RBlockEntity>
 ) {
     //fun getBlock(sx:Int,sy:Int,sz:Int) = blocks[encodeYZX(sx,sy,sz)]
     companion object {

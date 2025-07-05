@@ -2,11 +2,16 @@ package calebxzhou.rdi.ihq.service
 
 import calebxzhou.rdi.ihq.DB
 import calebxzhou.rdi.ihq.exception.RequestError
+import calebxzhou.rdi.ihq.lgr
+import calebxzhou.rdi.ihq.model.RAccount
 import calebxzhou.rdi.ihq.model.Room
 import calebxzhou.rdi.ihq.net.e500
 import calebxzhou.rdi.ihq.net.got
 import calebxzhou.rdi.ihq.net.ok
+import calebxzhou.rdi.ihq.net.protocol.CPlayerJoinPacket
+import calebxzhou.rdi.ihq.net.protocol.CPlayerLeavePacket
 import calebxzhou.rdi.ihq.net.uid
+import calebxzhou.rdi.ihq.service.PlayerService.sendPacket
 import calebxzhou.rdi.ihq.util.*
 import com.mongodb.client.model.Filters.*
 import com.mongodb.client.model.UpdateOptions
@@ -21,6 +26,7 @@ import org.bson.types.ObjectId
 
 object RoomService {
     val dbcl = DB.getCollection<Room>("room")
+
     //玩家已创建的岛屿
     suspend fun getOwnRoom(uid: ObjectId): Room? = dbcl.find(
         elemMatch(
@@ -44,6 +50,31 @@ object RoomService {
         getJoinedRoom(call.uid)?.let {
             call.ok(serdesJson.encodeToString(it))
         } ?: call.ok("0")
+    }
+
+    fun Room.memberGoOnline(account: RAccount) {
+        //告诉大家我上线了
+        onlineMembers.forEach { tmpId, acc ->
+            acc.sendPacket(CPlayerJoinPacket(acc._id, tempId, acc.name))
+        }
+
+        val tmpId = onlineMembers.size.toByte()
+        if (tmpId > Byte.MAX_VALUE) {
+            lgr.warn { "房间玩家数超过256" }
+        }
+        account.gameContext?.tmpId = tmpId
+        onlineMembers += tmpId to account
+    }
+
+    fun Room.memberGoOffline(account: RAccount) {
+        //告诉大家我下线了
+        account.gameContext?.let { ctx ->
+            onlineMembers.forEach { _, acc ->
+                acc.sendPacket(CPlayerLeavePacket(ctx.tmpId))
+            }
+            onlineMembers.remove(ctx.tmpId)
+        }
+
     }
 
     //建岛
@@ -152,6 +183,7 @@ object RoomService {
         )
         call.ok()
     }
+
     suspend fun inviteQQ(call: ApplicationCall) {
         val params = call.receiveParameters()
         val uid1 = call.uid
@@ -160,7 +192,7 @@ object RoomService {
         val island = getOwnRoom(uid1) ?: let {
             throw RequestError("你没岛")
         }
-        val uid2 = PlayerService.getByQQ(qq) ?:  throw RequestError("此玩家不存在")
+        val uid2 = PlayerService.getByQQ(qq) ?: throw RequestError("此玩家不存在")
         if (getJoinedRoom(uid2._id) != null) {
             throw RequestError("他有岛")
         }
@@ -168,7 +200,7 @@ object RoomService {
             eq("_id", island._id),
             Updates.push("members", Room.Member(uid2._id, false))
         )
-        call.ok(uid2.name+",QQ"+uid2.qq)
+        call.ok(uid2.name + ",QQ" + uid2.qq)
     }
 
     //踢出
@@ -225,17 +257,18 @@ object RoomService {
 
 
     suspend fun getById(id: ObjectId): Room? = dbcl.find(eq("_id", id)).firstOrNull()
-    suspend fun list(call: ApplicationCall){
+    suspend fun list(call: ApplicationCall) {
         val islands = dbcl.find().map { it._id.toString() to it.name }.toList()
         call.ok(serdesJson.encodeToString(islands))
     }
+
     suspend fun visit(call: ApplicationCall) {
         val params = call.receiveParameters()
         val iid = ObjectId(params got "iid")
         getById(iid)?.let { island ->
-          //  rconPost("spectator ${call.uid}")
-         //   rconPost("tp ${call.uid} posL rdi:i_${island._id},${island.homePos}")
-        call.ok()
-        }?:throw RequestError("没这个岛")
+            //  rconPost("spectator ${call.uid}")
+            //   rconPost("tp ${call.uid} posL rdi:i_${island._id},${island.homePos}")
+            call.ok()
+        } ?: throw RequestError("没这个岛")
     }
 }

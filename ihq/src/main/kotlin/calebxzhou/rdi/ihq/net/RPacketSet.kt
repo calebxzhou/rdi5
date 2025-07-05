@@ -2,7 +2,7 @@ package calebxzhou.rdi.ihq.net
 
 import calebxzhou.rdi.ihq.lgr
 import calebxzhou.rdi.ihq.net.protocol.SMeLeavePacket
-import calebxzhou.rdi.ihq.net.protocol.SMeLoginPacket
+import calebxzhou.rdi.ihq.net.protocol.SMeJoinPacket
 import calebxzhou.rdi.ihq.net.protocol.SMeMovePacket
 import calebxzhou.rdi.ihq.net.protocol.SPlayerBlockEntityUpdatePacket
 import calebxzhou.rdi.ihq.net.protocol.SPlayerBlockStateChangePacket
@@ -23,7 +23,7 @@ object RPacketSet {
     private val writer2id = linkedMapOf<PacketWriter, Byte>()
 
     init {
-        this reg ::SMeLoginPacket
+        this reg ::SMeJoinPacket
         this reg ::SMeLeavePacket
         this reg { SMeMovePacket.Pos(it) }
         this reg { SMeMovePacket.Rot(it) }

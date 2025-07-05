@@ -18,7 +18,7 @@ data class RAccount(
     val cloth: Cloth = Cloth(),
 ) {
     @Transient
-    var networkContext: ChannelHandlerContext? = null
+    var gameContext: GameContext? = null
 
     @Serializable
     data class Cloth(
