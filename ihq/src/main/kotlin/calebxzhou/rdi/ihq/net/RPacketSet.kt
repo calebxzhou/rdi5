@@ -4,8 +4,8 @@ import calebxzhou.rdi.ihq.lgr
 import calebxzhou.rdi.ihq.net.protocol.SMeLeavePacket
 import calebxzhou.rdi.ihq.net.protocol.SMeJoinPacket
 import calebxzhou.rdi.ihq.net.protocol.SMeMovePacket
-import calebxzhou.rdi.ihq.net.protocol.SPlayerBlockEntityUpdatePacket
-import calebxzhou.rdi.ihq.net.protocol.SPlayerBlockStateChangePacket
+import calebxzhou.rdi.ihq.net.protocol.SMeBlockEntityUpdatePacket
+import calebxzhou.rdi.ihq.net.protocol.SMeBlockStateChangePacket
 import io.netty.buffer.ByteBuf
 
 typealias PacketReader = (ByteBuf) -> SPacket
@@ -27,8 +27,8 @@ object RPacketSet {
         this reg ::SMeLeavePacket
         this reg { SMeMovePacket.Pos(it) }
         this reg { SMeMovePacket.Rot(it) }
-        this reg ::SPlayerBlockEntityUpdatePacket
-        this reg ::SPlayerBlockStateChangePacket
+        this reg ::SMeBlockEntityUpdatePacket
+        this reg ::SMeBlockStateChangePacket
     }
 
     private infix fun reg(reader: PacketReader) {

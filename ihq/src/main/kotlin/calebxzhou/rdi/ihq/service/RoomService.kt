@@ -52,30 +52,7 @@ object RoomService {
         } ?: call.ok("0")
     }
 
-    fun Room.memberGoOnline(account: RAccount) {
-        //告诉大家我上线了
-        onlineMembers.forEach { tmpId, acc ->
-            acc.sendPacket(CPlayerJoinPacket(acc._id, tempId, acc.name))
-        }
 
-        val tmpId = onlineMembers.size.toByte()
-        if (tmpId > Byte.MAX_VALUE) {
-            lgr.warn { "房间玩家数超过256" }
-        }
-        account.gameContext?.tmpId = tmpId
-        onlineMembers += tmpId to account
-    }
-
-    fun Room.memberGoOffline(account: RAccount) {
-        //告诉大家我下线了
-        account.gameContext?.let { ctx ->
-            onlineMembers.forEach { _, acc ->
-                acc.sendPacket(CPlayerLeavePacket(ctx.tmpId))
-            }
-            onlineMembers.remove(ctx.tmpId)
-        }
-
-    }
 
     //建岛
     suspend fun create(call: ApplicationCall) {

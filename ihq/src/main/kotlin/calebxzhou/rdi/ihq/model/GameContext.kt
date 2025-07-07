@@ -6,7 +6,9 @@ import calebxzhou.rdi.ihq.service.PlayerService.sendPacket
 import io.netty.channel.ChannelHandlerContext
 
 class GameContext(
-    val dimension: String = "minecraft:overworld",
+    var dimension: String = "minecraft:overworld",
+    // 0=x 1=y 2=z 3=yr(yaw) 4=xr(pitch)
+    val pos: FloatArray = floatArrayOf(0f,0f,0f,0f,0f),
     val room: Room,
     var tmpId: Byte=0,
     val net: ChannelHandlerContext

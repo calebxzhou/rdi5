@@ -1,13 +1,9 @@
 package calebxzhou.rdi.ihq.model
 
 import calebxzhou.rdi.ihq.lgr
-import calebxzhou.rdi.ihq.net.GameNetServer.sendPacket
-import calebxzhou.rdi.ihq.net.protocol.CPlayerJoinPacket
-import calebxzhou.rdi.ihq.service.PlayerService.sendPacket
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import org.bson.types.ObjectId
-import java.lang.reflect.Member
 import kotlin.collections.find
 
 @Serializable

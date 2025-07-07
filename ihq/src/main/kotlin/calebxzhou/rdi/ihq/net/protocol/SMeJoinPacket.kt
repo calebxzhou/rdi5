@@ -18,7 +18,6 @@ class SMeJoinPacket(
     val pwd: String,
 ): SPacket {
     constructor(buf: RByteBuf): this(buf.readString(),buf.readString())
-
     override suspend fun handle(ctx: ChannelHandlerContext) {
         PlayerService.getByQQ(qq)?.let {
             if (it.pwd == pwd) {

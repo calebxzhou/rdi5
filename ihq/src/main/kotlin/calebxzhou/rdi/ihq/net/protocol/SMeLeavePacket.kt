@@ -11,9 +11,8 @@ import io.netty.channel.ChannelHandlerContext
  * 离开服务器
  */
 class SMeLeavePacket(buf: RByteBuf): SPacket {
-    override suspend  fun handle(ctx: ChannelHandlerContext) {
+    override suspend fun handle(ctx: ChannelHandlerContext) {
         ctx.account?.goOffline()
-
     }
 
 }

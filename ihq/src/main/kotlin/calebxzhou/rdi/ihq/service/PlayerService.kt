@@ -4,20 +4,14 @@ import calebxzhou.rdi.ihq.DB
 import calebxzhou.rdi.ihq.lgr
 import calebxzhou.rdi.ihq.model.GameContext
 import calebxzhou.rdi.ihq.model.RAccount
-import calebxzhou.rdi.ihq.net.CPacket
+import calebxzhou.rdi.ihq.net.*
 import calebxzhou.rdi.ihq.net.GameNetServer.abort
 import calebxzhou.rdi.ihq.net.GameNetServer.sendPacket
-import calebxzhou.rdi.ihq.net.account
-import calebxzhou.rdi.ihq.net.e400
-import calebxzhou.rdi.ihq.net.e401
-import calebxzhou.rdi.ihq.net.got
-import calebxzhou.rdi.ihq.net.initGetParams
-import calebxzhou.rdi.ihq.net.ok
-import calebxzhou.rdi.ihq.net.uid
-import calebxzhou.rdi.ihq.service.RoomService.getById
-import calebxzhou.rdi.ihq.service.RoomService.memberGoOffline
-import calebxzhou.rdi.ihq.service.RoomService.memberGoOnline
-import calebxzhou.rdi.ihq.util.*
+import calebxzhou.rdi.ihq.net.protocol.CPlayerJoinPacket
+import calebxzhou.rdi.ihq.net.protocol.CPlayerLeavePacket
+import calebxzhou.rdi.ihq.util.isValidHttpUrl
+import calebxzhou.rdi.ihq.util.isValidObjectId
+import calebxzhou.rdi.ihq.util.serdesJson
 import com.mongodb.client.model.Filters.eq
 import com.mongodb.client.model.Updates
 import io.ktor.server.application.*
@@ -29,7 +23,7 @@ import org.bson.types.ObjectId
 
 object PlayerService {
     val accountCol = DB.getCollection<RAccount>("account")
-    val inGamePlayers = hashMapOf<ObjectId, RAccount>()
+    val inGamePlayers = hashMapOf<Byte, RAccount>()
 
     //根据qq获取
     suspend fun getByQQ(qq: String): RAccount? = accountCol.find(eq("qq", qq)).firstOrNull()
@@ -49,14 +43,23 @@ object PlayerService {
     fun equalById(acc: RAccount): Bson {
         return eq("_id", acc._id)
     }
-
     suspend fun RAccount.goOnline(ctx: ChannelHandlerContext) {
         RoomService.getJoinedRoom(_id)?.let { room ->
             ctx.account = this
             gameContext = GameContext(net = ctx, room = room)
-            inGamePlayers[_id] = this
+            val tmpId = inGamePlayers.size.toByte()
+            if (tmpId > Byte.MAX_VALUE) {
+                ctx.abort("服务器在线玩家数超过256")
+                return
+            }
+            //告诉大家我上线了
+            inGamePlayers.forEach { tmpId, acc ->
+                acc.sendPacket(CPlayerJoinPacket(acc._id, tmpId, acc.name))
+            }
+            inGamePlayers[tmpId] = this
+            gameContext?.tmpId = tmpId
             //房间在线成员 加
-            room.memberGoOnline(this)
+            room.onlineMembers += tmpId to this
             lgr.info { "${name}上线 ${inGamePlayers.size}/256" }
         } ?: let {
             lgr.warn { "${name}尝试上线但没有加入房间" }
@@ -68,18 +71,17 @@ object PlayerService {
 
     suspend fun RAccount.goOffline() {
         RoomService.getJoinedRoom(_id)?.let { room ->
-
-            //房间在线成员 减
-            room.memberGoOffline(this)
-
-        }
-        gameContext?.let {
-            it.net.account = null
-            it.net.disconnect()
-            it.net.close()
+            //告诉大家我下线了
+            gameContext?.let { ctx ->
+                inGamePlayers.forEach { _, acc ->
+                    acc.sendPacket(CPlayerLeavePacket(ctx.tmpId))
+                }
+                inGamePlayers.remove(ctx.tmpId)
+                room.onlineMembers.remove(ctx.tmpId)
+                ctx.net.close()
+            }
         }
         gameContext = null
-        inGamePlayers.remove(_id)
         lgr.info { "${name}下线 ${inGamePlayers.size}/256" }
     }
     fun RAccount.sendPacket(packet: CPacket){

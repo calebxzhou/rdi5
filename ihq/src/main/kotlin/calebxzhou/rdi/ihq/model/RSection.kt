@@ -14,7 +14,9 @@ data class RSection(
     val _id: ObjectId = ObjectId(),
     val chunkPos: Int,
     val sectionY: Byte,
+    //位置（0~4096） to 状态id
     val blockStates: MutableMap<Short, Int>,
+    //位置（0~4096） to 块实体
     val blockEntities: MutableMap<Short, RBlockEntity>
 ) {
     //fun getBlock(sx:Int,sy:Int,sz:Int) = blocks[encodeYZX(sx,sy,sz)]

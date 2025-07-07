@@ -16,11 +16,17 @@ class SMeMovePacket()  {
         constructor(buf: RByteBuf) : this(buf.readFloat(),buf.readFloat(),buf.readFloat())
 
         override suspend fun handle(ctx: ChannelHandlerContext) {
-            //转发给房间内的其他玩家
-            ctx.account?.gameContext?.room?.onlineMembers?.forEach { (tempId, member) ->
-                if(member._id == ctx.account?._id) return@forEach // 不发送给自己
-                member.sendPacket(CPlayerMovePacket.Pos(tempId.toByte(),x, y, z))
+            ctx.account?.gameContext?.let { ctx->
+                //保存状态
+                ctx.pos[0]=x
+                ctx.pos[1]=y
+                ctx.pos[2]=z
+                //转发给房间内的其他玩家
+                ctx.forEachMember { tid,member ->
+                    member.sendPacket(CPlayerMovePacket.Pos(tid,x, y, z))
+                }
             }
+
         }
     }
     data class Rot(
@@ -30,10 +36,14 @@ class SMeMovePacket()  {
         constructor(buf: RByteBuf) : this(buf.readFloat(),buf.readFloat())
 
         override suspend fun handle(ctx: ChannelHandlerContext) {
-            //转发给房间内的其他玩家
-            ctx.account?.gameContext?.room?.onlineMembers?.forEach { (tempId, member) ->
-                if(member._id == ctx.account?._id) return@forEach // 不发送给自己
-                member.sendPacket(CPlayerMovePacket.Rot(tempId.toByte(),yr,xr))
+            ctx.account?.gameContext?.let { ctx->
+                //保存状态
+                ctx.pos[3]=yr
+                ctx.pos[4]=xr
+                //转发给房间内的其他玩家
+                ctx.forEachMember { tid, member ->
+                    member.sendPacket(CPlayerMovePacket.Rot(tid,yr,xr))
+                }
             }
         }
     }

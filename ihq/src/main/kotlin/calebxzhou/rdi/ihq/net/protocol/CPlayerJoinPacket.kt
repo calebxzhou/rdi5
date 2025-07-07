@@ -6,6 +6,7 @@ import calebxzhou.rdi.ihq.net.writeObjectId
 import calebxzhou.rdi.ihq.net.writeString
 import org.bson.types.ObjectId
 
+//其他玩家进入服务器
 data class CPlayerJoinPacket(
     val uid: ObjectId,
     val tempUid: Byte,

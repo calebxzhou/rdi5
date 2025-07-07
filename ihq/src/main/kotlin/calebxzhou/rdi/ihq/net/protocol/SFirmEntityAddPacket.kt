@@ -10,7 +10,7 @@ import net.benwoodworth.knbt.NbtCompound
 import java.util.*
 
 //添加永久生物:PersistenceRequired=1 or 是被动生物
-data class SPersistEntityAddPacket(
+data class SFirmEntityAddPacket(
     val entityId: UUID,
     val dimension: String,
     val data: NbtCompound

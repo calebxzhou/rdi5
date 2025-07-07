@@ -7,7 +7,7 @@ import io.netty.channel.ChannelHandlerContext
 import java.util.UUID
 
 //移除永久生物:PersistenceRequired=1 or 是被动生物
-data class SPersistEntityDelPacket(
+data class SFirmEntityDelPacket(
     val entityId: UUID,
 ): SPacket {
     constructor(buf: RByteBuf) : this(
