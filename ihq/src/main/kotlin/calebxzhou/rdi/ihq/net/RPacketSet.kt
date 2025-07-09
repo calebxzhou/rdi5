@@ -1,11 +1,21 @@
 package calebxzhou.rdi.ihq.net
 
 import calebxzhou.rdi.ihq.lgr
+import calebxzhou.rdi.ihq.net.protocol.CAbortPacket
+import calebxzhou.rdi.ihq.net.protocol.CBlockEntityUpdatePacket
+import calebxzhou.rdi.ihq.net.protocol.CBlockStateChangePacket
+import calebxzhou.rdi.ihq.net.protocol.CChatMessagePacket
+import calebxzhou.rdi.ihq.net.protocol.CPlayerJoinPacket
+import calebxzhou.rdi.ihq.net.protocol.CPlayerLeavePacket
+import calebxzhou.rdi.ihq.net.protocol.CPlayerMovePacket
+import calebxzhou.rdi.ihq.net.protocol.SFirmEntityAddPacket
+import calebxzhou.rdi.ihq.net.protocol.SFirmEntityDelPacket
 import calebxzhou.rdi.ihq.net.protocol.SMeLeavePacket
 import calebxzhou.rdi.ihq.net.protocol.SMeJoinPacket
 import calebxzhou.rdi.ihq.net.protocol.SMeMovePacket
 import calebxzhou.rdi.ihq.net.protocol.SMeBlockEntityUpdatePacket
 import calebxzhou.rdi.ihq.net.protocol.SMeBlockStateChangePacket
+import calebxzhou.rdi.ihq.net.protocol.SMeChangeDimensionPacket
 import io.netty.buffer.ByteBuf
 
 typealias PacketReader = (ByteBuf) -> SPacket
@@ -23,12 +33,23 @@ object RPacketSet {
     private val writer2id = linkedMapOf<PacketWriter, Byte>()
 
     init {
+        this reg CAbortPacket::class.java
+        this reg CBlockEntityUpdatePacket::class.java
+        this reg CBlockStateChangePacket::class.java
+        this reg CChatMessagePacket::class.java
+        this reg CPlayerJoinPacket::class.java
+        this reg CPlayerLeavePacket::class.java
+        this reg CPlayerMovePacket.Pos::class.java
+        this reg CPlayerMovePacket.Rot::class.java
+        this reg ::SFirmEntityAddPacket
+        this reg ::SFirmEntityDelPacket
+        this reg ::SMeChangeDimensionPacket
+        this reg ::SMeBlockEntityUpdatePacket
+        this reg ::SMeBlockStateChangePacket
         this reg ::SMeJoinPacket
         this reg ::SMeLeavePacket
         this reg { SMeMovePacket.Pos(it) }
         this reg { SMeMovePacket.Rot(it) }
-        this reg ::SMeBlockEntityUpdatePacket
-        this reg ::SMeBlockStateChangePacket
     }
 
     private infix fun reg(reader: PacketReader) {
