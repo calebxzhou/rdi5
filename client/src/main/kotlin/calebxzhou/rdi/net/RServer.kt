@@ -2,30 +2,9 @@ package calebxzhou.rdi.net
 
 import calebxzhou.rdi.Const
 import calebxzhou.rdi.auth.RAccount
-import calebxzhou.rdi.lgr
-import calebxzhou.rdi.net.protocol.SMeLoginPacket
-import calebxzhou.rdi.ui.screen.RLoginScreen
-import calebxzhou.rdi.util.go
-import calebxzhou.rdi.util.mc
+import calebxzhou.rdi.net.protocol.SMeJoinPacket
 import io.ktor.client.statement.HttpResponse
 import io.ktor.util.encodeBase64
-import io.netty.bootstrap.Bootstrap
-import io.netty.channel.Channel
-import io.netty.channel.ChannelFuture
-import io.netty.channel.ChannelInitializer
-import io.netty.channel.ChannelOption
-import io.netty.channel.epoll.Epoll
-import io.netty.channel.epoll.EpollEventLoopGroup
-import io.netty.channel.epoll.EpollServerSocketChannel
-import io.netty.channel.epoll.EpollSocketChannel
-import io.netty.channel.nio.NioEventLoopGroup
-import io.netty.channel.socket.nio.NioServerSocketChannel
-import io.netty.channel.socket.nio.NioSocketChannel
-import io.netty.handler.flow.FlowControlHandler
-import io.netty.handler.timeout.ReadTimeoutHandler
-import io.netty.util.concurrent.DefaultThreadFactory
-import kotlin.collections.get
-import kotlin.printStackTrace
 
 class RServer(
     val ip: String,
@@ -48,7 +27,7 @@ class RServer(
           GameNetClient.connect(this)
                       if (Const.DEBUG) {
                           val account = RAccount.TESTS[System.getProperty("rdi.testAccount").toInt()]
-                          GameNetClient.send(SMeLoginPacket(account.qq,account.pwd))
+                          GameNetClient.send(SMeJoinPacket(account.qq,account.pwd))
                       }
         /*chafu = Bootstrap()
             .channel(channel)

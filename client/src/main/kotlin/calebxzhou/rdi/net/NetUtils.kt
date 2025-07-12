@@ -60,3 +60,5 @@ fun ByteBuf.writeVarInt(value : Int) : ByteBuf{
     writeByte(value)
     return this
 }
+fun RByteBuf.readString() = readUtf()
+fun RByteBuf.writeString(str: String) = writeUtf(str)

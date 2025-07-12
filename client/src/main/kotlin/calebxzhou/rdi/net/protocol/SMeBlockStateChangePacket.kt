@@ -9,7 +9,7 @@ import net.minecraft.world.level.ChunkPos
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.state.BlockState
 
-class SPlayerBlockStateChangePacket(
+class SMeBlockStateChangePacket(
     val packedChunkPos: Int,// ChunkPos.asInt
     val sectionY: Byte,
     val sectionRelativeBlockPos: Short,
