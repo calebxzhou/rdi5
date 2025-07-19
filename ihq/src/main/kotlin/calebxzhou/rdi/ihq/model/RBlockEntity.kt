@@ -5,6 +5,7 @@ import net.benwoodworth.knbt.NbtCompound
 
 @Serializable
 data class RBlockEntity(
-    val inPos: Short,
+    //位置（0~4096）
+    val pos: Short,
     val data: NbtCompound
 )

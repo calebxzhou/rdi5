@@ -5,6 +5,7 @@ import calebxzhou.rdi.ihq.net.protocol.CAbortPacket
 import calebxzhou.rdi.ihq.net.protocol.CBlockEntityUpdatePacket
 import calebxzhou.rdi.ihq.net.protocol.CBlockStateChangePacket
 import calebxzhou.rdi.ihq.net.protocol.CChatMessagePacket
+import calebxzhou.rdi.ihq.net.protocol.CLoginOkPacket
 import calebxzhou.rdi.ihq.net.protocol.CPlayerJoinPacket
 import calebxzhou.rdi.ihq.net.protocol.CPlayerLeavePacket
 import calebxzhou.rdi.ihq.net.protocol.CPlayerMovePacket
@@ -37,6 +38,7 @@ object RPacketSet {
         this reg CBlockEntityUpdatePacket::class.java
         this reg CBlockStateChangePacket::class.java
         this reg CChatMessagePacket::class.java
+        this reg CLoginOkPacket::class.java
         this reg CPlayerJoinPacket::class.java
         this reg CPlayerLeavePacket::class.java
         this reg CPlayerMovePacket.Pos::class.java

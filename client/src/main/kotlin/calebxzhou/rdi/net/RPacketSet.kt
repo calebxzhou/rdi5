@@ -5,6 +5,7 @@ import calebxzhou.rdi.net.protocol.CAbortPacket
 import calebxzhou.rdi.net.protocol.CBlockEntityUpdatePacket
 import calebxzhou.rdi.net.protocol.CBlockStateChangePacket
 import calebxzhou.rdi.net.protocol.CChatMessagePacket
+import calebxzhou.rdi.net.protocol.CLoginOkPacket
 import calebxzhou.rdi.net.protocol.CPlayerJoinPacket
 import calebxzhou.rdi.net.protocol.CPlayerLeavePacket
 import calebxzhou.rdi.net.protocol.CPlayerMovePacket
@@ -38,6 +39,7 @@ object RPacketSet {
         this reg ::CBlockEntityUpdatePacket
         this reg ::CBlockStateChangePacket
         this reg ::CChatMessagePacket
+        this reg ::CLoginOkPacket
         this reg ::CPlayerJoinPacket
         this reg ::CPlayerLeavePacket
         this reg {CPlayerMovePacket.Pos(it)}

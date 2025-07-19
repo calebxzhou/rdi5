@@ -1,21 +1,19 @@
-package calebxzhou.rdi.auth
+package calebxzhou.rdi.model
 
-import calebxzhou.rdi.serdes.serdesGson
-import calebxzhou.rdi.util.mc
+import calebxzhou.rdi.util.serdesGson
 import calebxzhou.rdi.util.toUUID
 import com.mojang.authlib.GameProfile
 import com.mojang.authlib.minecraft.MinecraftProfileTexture
 import com.mojang.authlib.properties.Property
 import com.mojang.authlib.yggdrasil.response.MinecraftTexturesPayload
-import io.ktor.util.*
+import io.ktor.util.encodeBase64
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import net.minecraft.client.User
-import net.minecraft.client.renderer.entity.ShulkerRenderer.getTextureLocation
-import net.minecraft.resources.ResourceLocation
 import org.bson.types.ObjectId
-import java.util.*
+import java.util.Optional
+import java.util.UUID
 
 @Serializable
 data class RAccount(
@@ -60,8 +58,8 @@ data class RAccount(
         val name: String,
         val cloth: Cloth
     ) {
-        @Transient
-        val mcProfile = GameProfile(id.toUUID(), name).apply {
+         val mcProfile
+            get() = GameProfile(id.toUUID(), name).apply {
 
             val texturesPayload = MinecraftTexturesPayload(
                 this@Dto.id.timestamp.toLong(),
@@ -79,8 +77,8 @@ data class RAccount(
     companion object {
         val DEFAULT = RAccount(ObjectId(), "未登录", "123456", "12345", 0)
         val TESTS = listOf(
-            RAccount(ObjectId(), "测试1", "123123", "123123", 0),
-            RAccount(ObjectId(), "测试2", "456456", "456456", 0)
+            RAccount(ObjectId("685aa7669acabdc07df8a730"), "测试1", "123123", "123123", 0),
+            RAccount(ObjectId("685aa7669acabdc07df8a731"), "测试2", "456456", "456456", 0)
         )
 
         @JvmStatic

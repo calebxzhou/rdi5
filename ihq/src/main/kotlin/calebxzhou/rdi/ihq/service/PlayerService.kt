@@ -7,6 +7,7 @@ import calebxzhou.rdi.ihq.model.RAccount
 import calebxzhou.rdi.ihq.net.*
 import calebxzhou.rdi.ihq.net.GameNetServer.abort
 import calebxzhou.rdi.ihq.net.GameNetServer.sendPacket
+import calebxzhou.rdi.ihq.net.protocol.CLoginOkPacket
 import calebxzhou.rdi.ihq.net.protocol.CPlayerJoinPacket
 import calebxzhou.rdi.ihq.net.protocol.CPlayerLeavePacket
 import calebxzhou.rdi.ihq.util.isValidHttpUrl
@@ -61,6 +62,7 @@ object PlayerService {
             //房间在线成员 加
             room.onlineMembers += tmpId to this
             lgr.info { "${name}上线 ${inGamePlayers.size}/256" }
+            ctx.sendPacket(CLoginOkPacket())
         } ?: let {
             lgr.warn { "${name}尝试上线但没有加入房间" }
             ctx.abort("请先加入房间")

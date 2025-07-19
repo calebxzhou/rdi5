@@ -1,10 +1,11 @@
 package calebxzhou.rdi.auth
 
 import calebxzhou.rdi.lgr
+import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.net.body
 import calebxzhou.rdi.net.httpRequest
 import calebxzhou.rdi.net.success
-import calebxzhou.rdi.serdes.serdesJson
+import calebxzhou.rdi.util.serdesJson
 import com.google.gson.GsonBuilder
 import com.mojang.authlib.minecraft.MinecraftProfileTexture
 import com.mojang.authlib.yggdrasil.response.MinecraftTexturesPayload

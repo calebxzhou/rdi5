@@ -6,8 +6,14 @@ import io.netty.util.concurrent.DefaultThreadFactory
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite
+import net.minecraft.core.BlockPos
+import net.minecraft.core.Registry
+import net.minecraft.core.SectionPos
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.level.ChunkPos
+import net.minecraft.world.level.block.Block
+import net.minecraft.world.level.block.state.BlockState
+import net.neoforged.neoforge.registries.NeoForgeRegistries
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -52,6 +58,11 @@ infix fun Minecraft.set(screen: Screen?) {
 infix fun Minecraft.pressingKey(keyCode: Int): Boolean {
     return InputConstants.isKeyDown(WindowHandle, keyCode)
 }
+val BlockState.id
+    get() = Block.BLOCK_STATE_REGISTRY.getId(this)
+//y*256 + z*16 + x
+val BlockPos.sectionIndex: Int
+    get() = (y and 0xF shl 4 or (z and 0xF)) shl 4 or (x and 0xF)
 val Minecraft.pressingEnter
     get() =  this pressingKey InputConstants.KEY_RETURN || this pressingKey InputConstants.KEY_NUMPADENTER
 val ChunkPos.asInt

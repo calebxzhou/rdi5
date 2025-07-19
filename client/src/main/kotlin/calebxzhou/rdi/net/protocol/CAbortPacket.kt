@@ -1,6 +1,8 @@
 package calebxzhou.rdi.net.protocol
 
+import calebxzhou.rdi.lgr
 import calebxzhou.rdi.net.CPacket
+import calebxzhou.rdi.net.GameNetClient
 import calebxzhou.rdi.net.RByteBuf
 
 data class CAbortPacket(
@@ -11,6 +13,7 @@ data class CAbortPacket(
     )
 
     override fun handle() {
-        TODO("Not yet implemented")
+        lgr.info("断开连接 原因: $reason")
+        GameNetClient.disconnect()
     }
 }

@@ -1,5 +1,6 @@
 package calebxzhou.rdi.net.protocol
 
+import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.net.RByteBuf
 import calebxzhou.rdi.net.SPacket
 
@@ -11,6 +12,10 @@ class SMeJoinPacket(
     val qq: String,
     val pwd: String
 ): SPacket {
+    constructor(): this(
+        qq = RAccount.now?.qq?:"00000",
+        pwd = RAccount.now?.pwd?:"123456"
+    )
     override fun write(buf: RByteBuf) {
         buf.writeUtf(qq)
         buf.writeUtf(pwd)

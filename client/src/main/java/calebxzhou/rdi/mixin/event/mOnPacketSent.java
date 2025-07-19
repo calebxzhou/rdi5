@@ -8,7 +8,6 @@ import net.minecraft.network.Connection;
 import net.minecraft.network.PacketListener;
 import net.minecraft.network.PacketSendListener;
 import net.minecraft.network.protocol.Packet;
-import net.neoforged.neoforge.common.NeoForge;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -29,6 +28,6 @@ public class mOnPacketSent {
 
     @Inject(method = "doSendPacket",at= @At( "TAIL"),locals = LocalCapture.CAPTURE_FAILEXCEPTION)
     private void RDI$OnPacketSend(Packet<?> p_packet, PacketSendListener sendListener, boolean flush, CallbackInfo ci, ChannelFuture channelfuture){
-        //RGameEvents.e2(new PacketSentEvent(p_packet,sendListener,channel,channelfuture));
+        RGameEvents.onPacketSent(new PacketSentEvent(p_packet,sendListener,channel,channelfuture));
     }
 }

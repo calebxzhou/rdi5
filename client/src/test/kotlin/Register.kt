@@ -1,7 +1,4 @@
-package calebxzhou.rdi.test
-
 import calebxzhou.rdi.net.RServer
-import net.minecraft.client.gui.ComponentPath.path
 
 suspend fun main(){
     RServer.OFFICIAL_DEBUG.prepareRequest( path = "register",

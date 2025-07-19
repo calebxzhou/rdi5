@@ -4,7 +4,6 @@ import calebxzhou.rdi.ihq.lgr
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import org.bson.types.ObjectId
-import kotlin.collections.find
 
 @Serializable
 data class Room(
@@ -13,10 +12,9 @@ data class Room(
     val name: String,
     val score: Int=0,
     val members: List<Member> = arrayListOf(),
-    //持久子区块：维度ID-section id list
-    var persistDimSections: Map<String,List<ObjectId>> = hashMapOf(),
-    //方块状态&ID
-    val blockStateId: Map<Int, RBlockState> = hashMapOf()
+    val blockStates: List<RBlockState> = arrayListOf(),
+    var firmSections: List<FirmSection> = arrayListOf()
+
 ) {
     //临时id 最大0xff
     @Volatile

@@ -1,23 +1,19 @@
 package calebxzhou.rdi.auth
 
 import calebxzhou.rdi.lgr
-import calebxzhou.rdi.serdes.serdesGson
+import calebxzhou.rdi.util.serdesGson
 import calebxzhou.rdi.util.toObjectId
 import com.google.gson.JsonParseException
 import com.mojang.authlib.GameProfile
 import com.mojang.authlib.SignatureState
-import com.mojang.authlib.minecraft.InsecurePublicKeyException
 import com.mojang.authlib.minecraft.MinecraftProfileTexture
 import com.mojang.authlib.minecraft.MinecraftProfileTextures
 import com.mojang.authlib.minecraft.MinecraftSessionService
 import com.mojang.authlib.properties.Property
 import com.mojang.authlib.yggdrasil.ProfileResult
-import com.mojang.authlib.yggdrasil.TextureUrlChecker
-import com.mojang.authlib.yggdrasil.YggdrasilMinecraftSessionService
 import com.mojang.authlib.yggdrasil.response.MinecraftTexturesPayload
 import io.ktor.util.decodeBase64String
 import java.net.InetAddress
-import java.nio.charset.StandardCharsets
 import java.util.*
 
 class RSessionService : MinecraftSessionService {

@@ -1,9 +1,8 @@
 package calebxzhou.rdi.option
 
 import calebxzhou.rdi.lgr
-import calebxzhou.rdi.serdes.serdesJson
+import calebxzhou.rdi.util.serdesJson
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import java.io.File
 
 @Serializable

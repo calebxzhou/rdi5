@@ -1,7 +1,7 @@
 package calebxzhou.rdi.net
 
 import calebxzhou.rdi.Const
-import calebxzhou.rdi.auth.RAccount
+import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.net.protocol.SMeJoinPacket
 import io.ktor.client.statement.HttpResponse
 import io.ktor.util.encodeBase64
@@ -24,11 +24,12 @@ class RServer(
     }
 
     fun connect() {
-          GameNetClient.connect(this)
-                      if (Const.DEBUG) {
-                          val account = RAccount.TESTS[System.getProperty("rdi.testAccount").toInt()]
-                          GameNetClient.send(SMeJoinPacket(account.qq,account.pwd))
-                      }
+        GameNetClient.connect(this)
+        if (Const.DEBUG) {
+            val account = RAccount.TESTS[System.getProperty("rdi.testAccount").toInt()]
+            GameNetClient.send(SMeJoinPacket(account.qq, account.pwd))
+
+        }
         /*chafu = Bootstrap()
             .channel(channel)
             .group(eventGroup)

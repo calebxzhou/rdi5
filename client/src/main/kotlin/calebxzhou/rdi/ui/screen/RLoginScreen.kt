@@ -1,10 +1,10 @@
 package calebxzhou.rdi.ui.screen
 
 import calebxzhou.rdi.auth.LocalCredentials
-import calebxzhou.rdi.auth.RAccount
+import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.net.body
-import calebxzhou.rdi.serdes.serdesJson
+import calebxzhou.rdi.util.serdesJson
 import calebxzhou.rdi.ui.CenterX
 import calebxzhou.rdi.ui.CenterY
 import calebxzhou.rdi.ui.component.RFormScreen

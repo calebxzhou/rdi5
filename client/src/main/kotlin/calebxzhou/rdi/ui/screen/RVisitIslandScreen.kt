@@ -2,7 +2,7 @@ package calebxzhou.rdi.ui.screen
 
 import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.net.body
-import calebxzhou.rdi.serdes.serdesJson
+import calebxzhou.rdi.util.serdesJson
 import calebxzhou.rdi.ui.layout.linearLayout
 import calebxzhou.rdi.util.go
 import calebxzhou.rdi.util.mc

@@ -1,6 +1,6 @@
 package calebxzhou.rdi.auth
 
-import calebxzhou.rdi.serdes.serdesJson
+import calebxzhou.rdi.util.serdesJson
 import kotlinx.serialization.Serializable
 import java.io.File
 

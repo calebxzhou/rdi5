@@ -3,7 +3,9 @@ package calebxzhou.rdi.ihq.service
 import calebxzhou.rdi.ihq.DB
 import calebxzhou.rdi.ihq.exception.RequestError
 import calebxzhou.rdi.ihq.lgr
+import calebxzhou.rdi.ihq.model.FirmSection
 import calebxzhou.rdi.ihq.model.RAccount
+import calebxzhou.rdi.ihq.model.RBlockState
 import calebxzhou.rdi.ihq.model.Room
 import calebxzhou.rdi.ihq.net.e500
 import calebxzhou.rdi.ihq.net.got
@@ -13,7 +15,12 @@ import calebxzhou.rdi.ihq.net.protocol.CPlayerLeavePacket
 import calebxzhou.rdi.ihq.net.uid
 import calebxzhou.rdi.ihq.service.PlayerService.sendPacket
 import calebxzhou.rdi.ihq.util.*
+import com.mongodb.client.model.Aggregates
+import com.mongodb.client.model.Filters
 import com.mongodb.client.model.Filters.*
+import com.mongodb.client.model.IndexOptions
+import com.mongodb.client.model.Indexes
+import com.mongodb.client.model.Projections
 import com.mongodb.client.model.UpdateOptions
 import com.mongodb.client.model.Updates
 import io.ktor.server.application.*
@@ -21,13 +28,29 @@ import io.ktor.server.request.*
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.runBlocking
 import org.bson.Document
 import org.bson.types.ObjectId
 
 object RoomService {
     val dbcl = DB.getCollection<Room>("room")
 
-    //玩家已创建的岛屿
+    init {
+        runBlocking {
+            dbcl.createIndex(
+                Indexes.ascending(
+                    "${Room::firmSections.name}.${FirmSection::dimension.name}",
+                    "${Room::firmSections.name}.${FirmSection::chunkPos.name}",
+                    "${Room::firmSections.name}.${FirmSection::sectionY.name}"
+                )
+            )
+            dbcl.createIndex(
+                Indexes.ascending("${Room::members.name}.${Room.Member::id.name}"),
+            )
+        }
+    }
+
+    //玩家已创建的房间
     suspend fun getOwnRoom(uid: ObjectId): Room? = dbcl.find(
         elemMatch(
             "members", and(
@@ -37,7 +60,7 @@ object RoomService {
         )
     ).firstOrNull()
 
-    //玩家所在的岛屿
+    //玩家所在的房间
     suspend fun getJoinedRoom(uid: ObjectId): Room? = dbcl.find(
         elemMatch(
             "members", and(
@@ -53,18 +76,16 @@ object RoomService {
     }
 
 
-
     //建岛
     suspend fun create(call: ApplicationCall) {
+        val params = call.receiveParameters()
         if (getJoinedRoom(call.uid) != null) {
             throw RequestError("已有房间，必须退出/删除方可创建新的")
         }
-        val player = PlayerService.getById(call.uid)
-        if (player == null) {
-            throw RequestError("玩家未注册")
-        }
+        val player = PlayerService.getById(call.uid) ?: throw RequestError("玩家未注册")
         val roomName = player.name + "的房间"
-        Document()
+        val bstates = serdesJson.decodeFromString<List<RBlockState>>(params got "blockStates")
+
         val iid = dbcl.insertOne(
             Room(
                 name = roomName,
@@ -73,10 +94,11 @@ object RoomService {
                         call.uid,
                         true
                     )
-                )
+                ),
+                blockStates = bstates
             )
         ).insertedId?.asObjectId()?.value?.toString() ?: let {
-            call.e500("创建岛屿失败：iid=null")
+            call.e500("创建房间失败：iid=null")
             return
         }
         //rconPost("createIsland $iid")
@@ -95,7 +117,7 @@ object RoomService {
         call.ok()
     }
 
-    //回到自己拥有/加入的岛屿
+    //回到自己拥有/加入的房间
     suspend fun home(call: ApplicationCall) {
         goHome(call.uid)
         call.ok()
@@ -125,7 +147,7 @@ object RoomService {
         call.ok()
     }
 
-    //退出岛屿
+    //退出房间
     suspend fun quit(call: ApplicationCall) {
         val island = getJoinedRoom(call.uid) ?: let {
             throw RequestError("没岛")
@@ -142,7 +164,7 @@ object RoomService {
         call.ok()
     }
 
-    //邀请玩家加入岛屿
+    //邀请玩家加入房间
     suspend fun invite(call: ApplicationCall) {
         val params = call.receiveParameters()
         val uid1 = call.uid
@@ -247,5 +269,63 @@ object RoomService {
             //   rconPost("tp ${call.uid} posL rdi:i_${island._id},${island.homePos}")
             call.ok()
         } ?: throw RequestError("没这个岛")
+    }
+    suspend fun getFirmSectionsSize(roomId: ObjectId): Int? {
+        return dbcl
+            .find(eq("_id", roomId))
+            .projection(Projections.fields(
+                Projections.computed("firmSectionsSize", mapOf("\$size" to "\$firmSections"))
+            ))
+            //todo get array size
+            .awaitFirstOrNull()
+            ?.get("firmSectionsSize") as? Int
+    }
+    suspend fun findFirmSection(
+        dimension: String,
+        chunkPos: Int,
+        sectionY: Byte
+    ): FirmSection? {
+        val pipeline = listOf(
+            Aggregates.match(
+                Filters.elemMatch(
+                    Room::firmSections.name,
+                    and(
+                        eq(FirmSection::dimension.name, dimension),
+                        eq(FirmSection::chunkPos.name, chunkPos),
+                        eq(FirmSection::sectionY.name, sectionY)
+                    )
+                )
+            ),
+            Aggregates.unwind($$"$$${Room::firmSections.name}"),
+            Aggregates.match(
+                and(
+                    eq("${Room::firmSections.name}.${FirmSection::dimension.name}", dimension),
+                    eq("${Room::firmSections.name}.${FirmSection::chunkPos.name}", chunkPos),
+                    eq("${Room::firmSections.name}.${FirmSection::sectionY.name}", sectionY)
+                )
+            ),
+            Aggregates.project(
+                Projections.fields(
+                    Projections.excludeId(),
+                    Projections.computed(
+                        FirmSection::id.name,
+                        $$"$$${Room::firmSections.name}.$${FirmSection::id.name}"
+                    ),
+                    Projections.computed(
+                        FirmSection::dimension.name,
+                        $$"$$${Room::firmSections.name}.$${FirmSection::dimension.name}"
+                    ),
+                    Projections.computed(
+                        FirmSection::chunkPos.name,
+                        $$"$$${Room::firmSections.name}.$${FirmSection::chunkPos.name}"
+                    ),
+                    Projections.computed(
+                        FirmSection::sectionY.name,
+                        $$"$$${Room::firmSections.name}.$${FirmSection::sectionY.name}"
+                    )
+                )
+            )
+        )
+        return dbcl.aggregate<FirmSection>(pipeline).firstOrNull()
     }
 }

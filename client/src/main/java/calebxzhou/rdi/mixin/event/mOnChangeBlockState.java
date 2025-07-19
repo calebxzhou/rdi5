@@ -1,5 +1,6 @@
 package calebxzhou.rdi.mixin.event;
 
+import calebxzhou.rdi.RGameEvents;
 import calebxzhou.rdi.event.BlockStateChangedEvent;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
@@ -26,6 +27,6 @@ public class mOnChangeBlockState {
     private void RDI$setBLockSTate(BlockPos pos, BlockState state, boolean isMoving, CallbackInfoReturnable<BlockState> cir){
         var chunk = (LevelChunk)(Object)this;
         var event = new BlockStateChangedEvent(level,chunk,pos,state,isMoving);
-        NeoForge.EVENT_BUS.post(event);
+        RGameEvents.onBlockStateChange(event);
     }
 }

@@ -8,9 +8,9 @@ import net.neoforged.fml.common.EventBusSubscriber
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent
 import org.lwjgl.glfw.GLFW
 
-@EventBusSubscriber(modid = "rdi", bus = EventBusSubscriber.Bus.MOD)
-object RModEvents {
-    @SubscribeEvent
+//@EventBusSubscriber(modid = "rdi")
+class RModEvents {
+  /*  @SubscribeEvent
     fun load(event: FMLClientSetupEvent) {
         lgr.info("客户端启动")
         //最大化
@@ -18,6 +18,6 @@ object RModEvents {
            // GLFW.glfwMaximizeWindow(WindowHandle)
         }
         HttpClient()
-    }
+    }*/
 
 }

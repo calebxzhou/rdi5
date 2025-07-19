@@ -1,20 +1,17 @@
 package calebxzhou.rdi.ui.screen
 
 import calebxzhou.rdi.auth.LocalCredentials
-import calebxzhou.rdi.auth.RAccount
+import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.net.body
-import calebxzhou.rdi.room.Room
-import calebxzhou.rdi.serdes.serdesJson
+import calebxzhou.rdi.model.Room
+import calebxzhou.rdi.util.serdesJson
 import calebxzhou.rdi.ui.component.RFormScreen
-import calebxzhou.rdi.ui.general.alert
 import calebxzhou.rdi.ui.general.alertErr
 import calebxzhou.rdi.ui.layout.linearLayout
 import calebxzhou.rdi.util.go
 import calebxzhou.rdi.util.mc
 import net.minecraft.client.gui.GuiGraphics
-import net.minecraft.client.gui.screens.ConnectScreen
-import net.minecraft.client.multiplayer.resolver.ServerAddress
 
 class RProfileScreen(
 ) : RScreen("我的信息") {

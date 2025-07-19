@@ -59,6 +59,11 @@ object GameNetClient {
         return chafu
 
     }
+    fun disconnect() {
+        channelFuture?.channel()?.close()
+       // eventGroup.shutdownGracefully()
+        channelFuture = null
+    }
     fun send(packet: SPacket){
         channelFuture?.channel()?.writeAndFlush(packet)
     }

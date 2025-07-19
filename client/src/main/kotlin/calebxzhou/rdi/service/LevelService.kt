@@ -3,8 +3,6 @@ package calebxzhou.rdi.service
 import calebxzhou.rdi.Const
 import calebxzhou.rdi.mixin.ARegionFileVersion
 import calebxzhou.rdi.util.mc
-import com.aayushatharva.brotli4j.decoder.BrotliInputStream
-import com.aayushatharva.brotli4j.encoder.BrotliOutputStream
 import net.minecraft.client.gui.screens.TitleScreen
 import net.minecraft.util.FastBufferedInputStream
 import net.minecraft.world.Difficulty
@@ -19,13 +17,7 @@ import net.minecraft.world.level.levelgen.presets.WorldPresets.createNormalWorld
 import java.io.BufferedOutputStream
 
 object LevelService {
-    @JvmField
-    val BR_STORAGE_VERSION = ARegionFileVersion.invokeRegister(RegionFileVersion(
-        64,
-        "br",
-        {s -> FastBufferedInputStream(BrotliInputStream(s))},
-        {s -> BufferedOutputStream(BrotliOutputStream(s))},
-    ))
+
     @JvmStatic
     fun start(){
         startLevel()

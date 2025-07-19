@@ -13,6 +13,7 @@ import calebxzhou.rdi.ihq.net.e400
 import calebxzhou.rdi.ihq.net.e401
 import calebxzhou.rdi.ihq.net.e500
 import calebxzhou.rdi.ihq.net.ok
+import calebxzhou.rdi.ihq.util.serdesJson
 import com.mongodb.MongoClientSettings
 import com.mongodb.ServerAddress
 import com.mongodb.client.model.IndexOptions
@@ -24,8 +25,10 @@ import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
+import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.routing.*
+import io.ktor.serialization.kotlinx.json.*
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.channel.Channel
 import io.netty.channel.ChannelInitializer
@@ -58,27 +61,22 @@ val HQ_PORT = System.getProperty("rdi.hqPort")?.toIntOrNull() ?: 28507
 fun main(): Unit =runBlocking {
 
         lgr.info { "init db" }
-        RoomService.dbcl.createIndex(Indexes.ascending("members.pid"), IndexOptions().background(true))
 
         accountCol.createIndex(Indexes.ascending("qq"), IndexOptions().unique(true))
         accountCol.createIndex(Indexes.ascending("name"), IndexOptions().unique(true))
 
     val selectorManager = SelectorManager(Dispatchers.IO)
 
-    // Start the TCP server in a coroutine
-   // launch(Dispatchers.IO) {
-  //  }
-        GameNetServer.start (selectorManager)
-    startHttp()
+    // Launch both servers concurrently in the coroutine scope
+    launch {
+        startHttp()
+    }
+    launch {
+        GameNetServer.start(selectorManager)
+    }
+
 }
 fun startHttp(){
-    /*
-    5分钟自动更新mod信息
-    Timer().scheduleAtFixedRate(object : TimerTask() {
-        override fun run() {
-            UpdateService.reloadModInfo()
-        }
-    },0,60000*5)*/
     embeddedServer(Netty, host = "::", port = HQ_PORT){
         install(StatusPages) {
             //参数不全或者有问题
@@ -98,6 +96,10 @@ fun startHttp(){
                 call.e500(cause.message)
             }
         }
+        install(ContentNegotiation) {
+            json(serdesJson) // Apply the custom Json configuration
+        }
+
         install(Authentication) {
             basic("auth-basic") {
                 realm = "Access to the '/' path"
@@ -141,7 +143,7 @@ fun startHttp(){
                 post("/clearSkin") {
                     PlayerService.clearCloth(call)
                 }
-                route("/island") {
+                route("/room") {
                     get("/my"){
                         RoomService.my(call)
                     }
@@ -160,9 +162,9 @@ fun startHttp(){
                     post("/quit") {
                         RoomService.quit(call)
                     }
-                    post("/invite") {
+                    /*post("/invite") {
                         RoomService.invite(call)
-                    }
+                    }*/
                     post("/invite_qq") {
                         RoomService.inviteQQ(call)
                     }
@@ -182,5 +184,5 @@ fun startHttp(){
                 }
             }
         }
-    }.start(wait = true)
+    }.start(wait = false)
 }

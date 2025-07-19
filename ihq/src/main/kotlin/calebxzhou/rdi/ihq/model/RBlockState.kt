@@ -7,6 +7,7 @@ import org.bson.BSONObject
 
 @Serializable
 data class RBlockState(
+    //res loca
     val name: String,
     val props: Map<String, String> = emptyMap()
 ){
