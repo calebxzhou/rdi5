@@ -7,6 +7,7 @@ import calebxzhou.rdi.ui.layout.gridLayout
 import calebxzhou.rdi.ui.layout.linearLayout
 import calebxzhou.rdi.util.*
 import com.mojang.blaze3d.platform.InputConstants
+import icyllis.modernui.mc.neoforge.CenterFragment2
 import net.minecraft.client.Options
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.screens.options.AccessibilityOptionsScreen
@@ -67,6 +68,9 @@ class RSettingsScreen(val options: Options): RScreen("设置") {
         }
         if(mc pressingKey InputConstants.KEY_O){
             mc go  OptionsScreen(this@RSettingsScreen,options)
+        }
+        if(mc pressingKey InputConstants.KEY_K){
+            mc.goFrag(CenterFragment2(),this@RSettingsScreen)
         }
 
         RSettings.now.autoAdjustWindowSize=ofWidget<RCheckbox>("bootResize").selected()

@@ -12,6 +12,7 @@ import org.bson.types.ObjectId
 data class FirmSectionData(
     @Contextual
     val _id: ObjectId = ObjectId(),
+    @Contextual
     val roomId: ObjectId,
     val blockStates: List<RBlockState> = List(4096) { RBlockState("minecraft:air") },
     val blockEntities: List<NbtCompound?> = List(4096) { null },

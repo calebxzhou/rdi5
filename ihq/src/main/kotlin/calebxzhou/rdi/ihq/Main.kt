@@ -29,6 +29,7 @@ import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.routing.*
 import io.ktor.serialization.kotlinx.json.*
+import io.ktor.server.plugins.compression.Compression
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.channel.Channel
 import io.netty.channel.ChannelInitializer
@@ -38,6 +39,8 @@ import io.netty.channel.epoll.EpollEventLoopGroup
 import io.netty.channel.epoll.EpollServerSocketChannel
 import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.nio.NioServerSocketChannel
+import io.netty.handler.codec.compression.StandardCompressionOptions.deflate
+import io.netty.handler.codec.compression.StandardCompressionOptions.gzip
 import io.netty.handler.flow.FlowControlHandler
 import io.netty.handler.timeout.ReadTimeoutHandler
 import io.netty.util.concurrent.DefaultThreadFactory
@@ -45,6 +48,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.bson.UuidRepresentation
+import javax.print.attribute.standard.Compression
 
 val DB_HOST = System.getProperty("rdi.dbHost") ?: "127.0.0.1"
 val DB_PORT = System.getProperty("rdi.dbPort")?.toIntOrNull() ?: 27017
@@ -109,6 +113,10 @@ fun startHttp(){
                     }
                 }
             }
+        }
+        install(Compression) {
+            gzip()
+            deflate()
         }
         routing {
             get("/playerInfo") {
@@ -179,6 +187,15 @@ fun startHttp(){
                     }
                     post("/visit") {
                         RoomService.visit(call)
+                    }
+                    post("/section/add"){
+                        RoomService.addFirmSection(call)
+                    }
+                    post("/section/remove"){
+                        RoomService.removeFirmSection(call)
+                    }
+                    get("/section"){
+                        RoomService.getFirmSectionData(call)
                     }
 
                 }

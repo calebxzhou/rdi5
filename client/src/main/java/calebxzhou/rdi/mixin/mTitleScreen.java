@@ -1,8 +1,8 @@
 package calebxzhou.rdi.mixin;
 
 import calebxzhou.rdi.service.LevelService;
-import calebxzhou.rdi.ui.frag.RTitleFrag;
 import calebxzhou.rdi.ui.screen.RTitleScreen;
+import calebxzhou.rdi.ui2.frag.TitleFragment;
 import icyllis.modernui.mc.neoforge.MuiForgeApi;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
@@ -20,8 +20,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class mTitleScreen {
     @Inject(method = "init",at=@At("HEAD"), cancellable = true)
     private void RDI$TitleScreen(CallbackInfo ci){
-        Minecraft.getInstance().setScreen(new RTitleScreen());
-        //MuiForgeApi.openScreen(new RTitleFrag());
+        //Minecraft.getInstance().setScreen(new RTitleScreen());
+        MuiForgeApi.openScreen(new TitleFragment());
         ci.cancel();
     }
     @Redirect(method = "lambda$createNormalMenuOptions$8",at= @At(value = "INVOKE", target = "Lnet/minecraft/client/Minecraft;setScreen(Lnet/minecraft/client/gui/screens/Screen;)V"))

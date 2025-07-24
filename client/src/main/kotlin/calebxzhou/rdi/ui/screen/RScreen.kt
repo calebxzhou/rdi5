@@ -65,7 +65,9 @@ abstract class RScreen(open var title: MutableComponent) : Screen(title) {
     }
 
     override fun renderPanorama(guiGraphics: GuiGraphics, partialTick: Float)   {
-        guiGraphics.blit(SCREEN_BG, 0, 0, 0f, 0f, UiWidth, UiHeight, UiWidth, UiHeight)
+        //super.renderPanorama(guiGraphics, partialTick)
+
+       guiGraphics.blit(SCREEN_BG, 0, 0, 0f, 0f, UiWidth, UiHeight, UiWidth, UiHeight)
     }
 
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {

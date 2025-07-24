@@ -1,10 +1,16 @@
 package calebxzhou.rdi.net
 
-import calebxzhou.rdi.Const
 import calebxzhou.rdi.model.RAccount
-import calebxzhou.rdi.net.protocol.SMeJoinPacket
+import calebxzhou.rdi.ui.screen.LoadingScreen
+import calebxzhou.rdi.ui2.frag.alertErr
+import calebxzhou.rdi.ui.screen.RLoginScreen
+import calebxzhou.rdi.util.go
+import calebxzhou.rdi.util.ioScope
+import calebxzhou.rdi.util.mc
+import icyllis.modernui.R.id.background
 import io.ktor.client.statement.HttpResponse
 import io.ktor.util.encodeBase64
+import kotlinx.coroutines.launch
 
 class RServer(
     val ip: String,
@@ -24,12 +30,18 @@ class RServer(
     }
 
     fun connect() {
-        GameNetClient.connect(this)
-        if (Const.DEBUG) {
+        try {
+            GameNetClient.connect(this)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            alertErr("连接服务器失败: ${e.message ?: "未知错误"}")
+            return
+        }
+        /*if (Const.DEBUG) {
             val account = RAccount.TESTS[System.getProperty("rdi.testAccount").toInt()]
             GameNetClient.send(SMeJoinPacket(account.qq, account.pwd))
 
-        }
+        }*/
         /*chafu = Bootstrap()
             .channel(channel)
             .group(eventGroup)
@@ -51,7 +63,7 @@ class RServer(
             })
             .connect(ip, gamePort)*/
         // Add listener to check connection status
-        // mc go  RLoginScreen(this)
+        mc go RLoginScreen(this)
     }
 
     suspend fun prepareRequest(
@@ -66,5 +78,20 @@ class RServer(
         return httpRequest(post, fullUrl, params, headers)
 
     }
-
+    fun hqRequest(
+        path: String,
+        post: Boolean = false,
+        showLoading: Boolean = true,
+        params: List<Pair<String, Any>> = listOf(),
+        onOk: (HttpResponse) -> Unit
+    ) {
+        if (showLoading) LoadingScreen.show()
+        ioScope.launch {
+            val req = prepareRequest(post, path, params)
+            if (req.success) {
+                onOk(req)
+            }
+            LoadingScreen.close()
+        }
+    }
 }

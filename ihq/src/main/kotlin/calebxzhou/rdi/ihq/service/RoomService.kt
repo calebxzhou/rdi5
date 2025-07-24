@@ -2,29 +2,20 @@ package calebxzhou.rdi.ihq.service
 
 import calebxzhou.rdi.ihq.DB
 import calebxzhou.rdi.ihq.exception.RequestError
-import calebxzhou.rdi.ihq.lgr
 import calebxzhou.rdi.ihq.model.FirmSection
-import calebxzhou.rdi.ihq.model.RAccount
+import calebxzhou.rdi.ihq.model.FirmSectionData
 import calebxzhou.rdi.ihq.model.RBlockState
 import calebxzhou.rdi.ihq.model.Room
 import calebxzhou.rdi.ihq.net.e500
 import calebxzhou.rdi.ihq.net.got
 import calebxzhou.rdi.ihq.net.ok
-import calebxzhou.rdi.ihq.net.protocol.CPlayerJoinPacket
-import calebxzhou.rdi.ihq.net.protocol.CPlayerLeavePacket
 import calebxzhou.rdi.ihq.net.uid
-import calebxzhou.rdi.ihq.service.PlayerService.sendPacket
-import calebxzhou.rdi.ihq.util.*
-import com.mongodb.client.model.Aggregates
-import com.mongodb.client.model.Filters
+import calebxzhou.rdi.ihq.util.serdesJson
+import com.mongodb.client.model.*
 import com.mongodb.client.model.Filters.*
-import com.mongodb.client.model.IndexOptions
-import com.mongodb.client.model.Indexes
-import com.mongodb.client.model.Projections
-import com.mongodb.client.model.UpdateOptions
-import com.mongodb.client.model.Updates
 import io.ktor.server.application.*
 import io.ktor.server.request.*
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.toList
@@ -84,7 +75,7 @@ object RoomService {
         }
         val player = PlayerService.getById(call.uid) ?: throw RequestError("玩家未注册")
         val roomName = player.name + "的房间"
-        val bstates = serdesJson.decodeFromString<List<RBlockState>>(params got "blockStates")
+        val bstates = serdesJson.decodeFromString<List<RBlockState>>(params got "bstates")
 
         val iid = dbcl.insertOne(
             Room(
@@ -270,15 +261,113 @@ object RoomService {
             call.ok()
         } ?: throw RequestError("没这个岛")
     }
-    suspend fun getFirmSectionsSize(roomId: ObjectId): Int? {
-        return dbcl
-            .find(eq("_id", roomId))
-            .projection(Projections.fields(
-                Projections.computed("firmSectionsSize", mapOf("\$size" to "\$firmSections"))
+
+    suspend fun addFirmSection(call: ApplicationCall) {
+        val room = getJoinedRoom(call.uid) ?: let {
+            throw RequestError("没房")
+        }
+        val params = call.receiveParameters()
+        val roomId = room._id
+        val dimension = params got "dimension"
+        val chunkPos = (params got "chunkPos").toInt()
+        val sectionY = (params got "sectionY").toByte()
+        if(getFirmSectionsSize(roomId)>32){
+            throw RequestError("持久子区块数量已达上限")
+        }
+        findFirmSection(dimension, chunkPos, sectionY)?.let {
+            throw RequestError("持久子区块已存在: $it" )
+        }
+        val sectionId = ObjectId()
+        val section = FirmSection(
+            id = sectionId,
+            dimension = dimension,
+            chunkPos = chunkPos,
+            sectionY = sectionY
+        )
+        val data = FirmSectionData(
+            _id = sectionId,
+            roomId = roomId,
+        )
+        LevelService.sectionDataCol.insertOne(data).let { insertResult ->
+            if (insertResult.wasAcknowledged().not()) {
+                throw RequestError("添加持久子区块数据失败")
+            }
+        }
+        val updateResult = dbcl.updateOne(
+            eq("_id", roomId),
+            Updates.push(Room::firmSections.name, section),
+            UpdateOptions().upsert(true)
+        )
+        if (updateResult.modifiedCount == 0L && updateResult.upsertedId == null) {
+            throw RequestError("添加持久子区块失败")
+        }
+        call.ok("$sectionId")
+    }
+    suspend fun removeFirmSection(call: ApplicationCall) {
+        val params = call.receiveParameters()
+        val room = getJoinedRoom(call.uid) ?: let {
+            throw RequestError("没房")
+        }
+        val roomId = room._id
+        val sectionId = ObjectId(params got "sectionId")
+        val section = findFirmSection(
+            params got "dimension",
+            (params got "chunkPos").toInt(),
+            (params got "sectionY").toByte()
+        ) ?: let {
+            throw RequestError("持久子区块不存在")
+        }
+        if (section.id != sectionId) {
+            throw RequestError("持久子区块id不匹配")
+        }
+        dbcl.updateOne(
+            eq("_id", roomId),
+            Updates.pull(Room::firmSections.name, eq(FirmSection::id.name, sectionId))
+        ).let { updateResult ->
+            if (updateResult.modifiedCount == 0L) {
+                throw RequestError("删除持久子区块失败")
+            }
+        }
+        LevelService.sectionDataCol.deleteOne(eq("_id", sectionId)).let { deleteResult ->
+            if (deleteResult.deletedCount == 0L) {
+                throw RequestError("删除持久子区块数据失败")
+            }
+        }
+        call.ok()
+    }
+    suspend fun getFirmSectionsSize(roomId: ObjectId): Int {
+        val pipeline = listOf(
+            Aggregates.match(eq("_id", roomId)),
+            Aggregates.project(Projections.fields(
+                Projections.excludeId(),
+                Projections.computed("firmSectionsSize", Document($$"$size", $$"$firmSections"))
             ))
-            //todo get array size
-            .awaitFirstOrNull()
-            ?.get("firmSectionsSize") as? Int
+        )
+        val flow = dbcl.aggregate<Document>(pipeline)
+        val result = flow.first()
+        return result.getInteger("firmSectionsSize")
+
+    }
+    suspend fun getFirmSectionData(call: ApplicationCall){
+        val params = call.receiveParameters()
+        val room = getJoinedRoom(call.uid) ?: let {
+            throw RequestError("没房")
+        }
+        val roomId = room._id
+        val sectionId = ObjectId(params got "sectionId")
+        val section = findFirmSection(
+            params got "dimension",
+            (params got "chunkPos").toInt(),
+            (params got "sectionY").toByte()
+        ) ?: let {
+            throw RequestError("持久子区块不存在")
+        }
+        LevelService.sectionDataCol.find(
+            eq("_id", sectionId)
+        ).firstOrNull()?.let { sectionData ->
+            call.ok(serdesJson.encodeToString(sectionData))
+        } ?: throw RequestError("持久子区块数据不存在")
+
     }
     suspend fun findFirmSection(
         dimension: String,

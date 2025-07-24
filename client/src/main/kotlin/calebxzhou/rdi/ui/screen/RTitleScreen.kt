@@ -6,7 +6,9 @@ import calebxzhou.rdi.net.RServer.Companion.OFFICIAL_DEBUG
 import calebxzhou.rdi.net.RServer.Companion.OFFICIAL_NNG
 import calebxzhou.rdi.ui.UiHeight
 import calebxzhou.rdi.ui.UiWidth
+import calebxzhou.rdi.ui2.frag.TitleFragment
 import calebxzhou.rdi.util.go
+import calebxzhou.rdi.util.goFrag
 import calebxzhou.rdi.util.mc
 import calebxzhou.rdi.util.pressingKey
 import calebxzhou.rdi.util.rdiAsset
@@ -26,33 +28,18 @@ import net.minecraft.world.level.levelgen.presets.WorldPresets
 class RTitleScreen : RScreen("主页") {
     override var showTitle = false
     override var closeable = false
-    val LOGO = rdiAsset("textures/logo.png")
     var shiftMode = false
     var ctrlMode = false
 
 
     public override fun init() {
-        RServer.now=null
-        mc.level?.let {
-            it.disconnect()
-            mc.disconnect()
-        }
-
-
 
 
 
         super.init()
     }
 
-    fun startMulti() {
 
-        if (Const.DEBUG) {
-            OFFICIAL_DEBUG.connect()
-        } else {
-            OFFICIAL_NNG.connect()
-        }
-    }
 
 
     override fun shouldCloseOnEsc(): Boolean {
@@ -63,7 +50,6 @@ class RTitleScreen : RScreen("主页") {
         RenderSystem.enableBlend()
         gg.setColor(1.0f, 1.0f, 1.0f, 1.0f)
         gg.fill(0,UiHeight/4,UiWidth,UiHeight/4+64,0xaa000000.toInt())
-        gg.blit(LOGO, UiWidth / 2 - 60, UiHeight / 4, -0.0625f, 0.0f, 128, 64, 128, 64)
          gg.setColor(1.0f, 1.0f, 1.0f, 1.0f)
 
 
@@ -86,7 +72,8 @@ class RTitleScreen : RScreen("主页") {
     }
 
     override fun onPressEnterKey() {
-        startMulti()
+        //startMulti()
+        mc.goFrag(TitleFragment())
     }
     private fun openFlatLevel() {
         val levelName = "rdi_creative"

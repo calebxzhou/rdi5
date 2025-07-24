@@ -222,7 +222,7 @@ object PlayerService {
         val uid = ObjectId(params got "uid")
         getById(uid)?.let {
             call.ok(it.name)
-        } ?: call.ok("***")
+        } ?: call.ok("【玩家不存在】")
     }
 
     suspend fun getInfo(call: ApplicationCall) {

@@ -1,6 +1,8 @@
 package calebxzhou.rdi.net
 
 import io.netty.buffer.ByteBuf
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import net.minecraft.network.FriendlyByteBuf
 import org.bson.types.ObjectId
 
@@ -15,6 +17,7 @@ const val MAX_VARINT_SIZE = 5
 const val DATA_BITS_MASK = 127
 const val CONTINUATION_BIT_MASK = 128
 const val DATA_BITS_PER_BYTE = 7
+val NetScope: CoroutineScope = CoroutineScope(Dispatchers.IO)
 fun getVarIntByteSize(data: Int): Int {
     for (i in 1..4) {
         if ((data and (-1 shl i * 7)) == 0) {
