@@ -6,33 +6,35 @@ import calebxzhou.rdi.net.RServer.Companion.OFFICIAL_DEBUG
 import calebxzhou.rdi.net.RServer.Companion.OFFICIAL_NNG
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.util.mc
-import icyllis.modernui.animation.AnticipateOvershootInterpolator
 import icyllis.modernui.animation.ObjectAnimator
 import icyllis.modernui.animation.PropertyValuesHolder
 import icyllis.modernui.animation.TimeInterpolator
 import icyllis.modernui.graphics.drawable.ColorDrawable
 import icyllis.modernui.util.DataSet
 import icyllis.modernui.view.*
+import icyllis.modernui.widget.FrameLayout
 import icyllis.modernui.widget.LinearLayout
 
 class TitleFragment : RFragment() {
     override var closable = false
     override var showTitle = false
     override fun initContent() {}
+
     init {
-        RServer.now=null
+        RServer.now = null
         mc.level?.let {
             it.disconnect()
             mc.disconnect()
         }
 
     }
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: DataSet?): View {
-        return frameLayout(fctx) {
+
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: DataSet?): View =
+        FrameLayout(fctx).apply {
             background = rdiDrawable("bg/1")
 
             // Add semi-transparent gray strip with text children
-            this += linearLayout(context) {
+            linearLayout() {
                 orientation = LinearLayout.HORIZONTAL
                 background = ColorDrawable(0xaa000000.toInt())
                 layoutParams = linearLayoutParam() {
@@ -40,11 +42,11 @@ class TitleFragment : RFragment() {
                     height = dp(100f)
                     gravity = Gravity.BOTTOM
 
-                    topMargin = (container?.measuredHeight?:0) *2/3
+                    topMargin = (container?.measuredHeight ?: 0) * 2 / 3
                 }
 
                 // Add "rdi" text as child of strip, vertically centered
-                this += textView(context) {
+                textView() {
                     text = "RDi"
                     setTextColor(0xFFFFFFFF.toInt())
                     textSize = 64f
@@ -57,7 +59,7 @@ class TitleFragment : RFragment() {
                 }
 
                 // Add "5" text directly below the "i"
-                this += textView(context) {
+                textView() {
                     text = "5"
                     setTextColor(0xFFFFFFFF.toInt())
                     textSize = 28f
@@ -69,7 +71,7 @@ class TitleFragment : RFragment() {
                 }
 
                 // Add spacer to push Enter tip to the end
-                this += View(context).apply {
+                this +=View(context).apply {
                     layoutParams = linearLayoutParam {
                         width = 0
                         height = SELF
@@ -78,7 +80,7 @@ class TitleFragment : RFragment() {
                 }
 
                 // Add "Press Enter" tip at the right end
-                this += textView(context) {
+                textView() {
                     text = "按 Enter ➡️"
                     setTextColor(0xFFFFFFFF.toInt())
                     textSize = 24f
@@ -111,7 +113,7 @@ class TitleFragment : RFragment() {
             isFocusableInTouchMode = true
             requestFocus()
             setOnKeyListener { _, keyCode, event ->
-                if (keyCode == KeyEvent.KEY_ENTER && event.action == KeyEvent.ACTION_UP) {
+                if ((keyCode == KeyEvent.KEY_ENTER || keyCode == KeyEvent.KEY_KP_ENTER) && event.action == KeyEvent.ACTION_UP) {
                     startMulti()
                     true
                 } else {
@@ -119,10 +121,8 @@ class TitleFragment : RFragment() {
                 }
             }
         }
-    }
 
     fun startMulti() {
-
         if (Const.DEBUG) {
             OFFICIAL_DEBUG.connect()
         } else {

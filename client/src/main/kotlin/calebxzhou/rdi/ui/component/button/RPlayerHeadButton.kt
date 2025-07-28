@@ -5,6 +5,7 @@ import calebxzhou.rdi.ui.FONT
 import calebxzhou.rdi.util.isTextureReady
 import calebxzhou.rdi.util.mcAsync
 import calebxzhou.rdi.util.mcComp
+import kotlinx.coroutines.launch
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.components.Button
 import net.minecraft.client.gui.components.PlayerFaceRenderer
@@ -31,7 +32,7 @@ class RPlayerHeadButton(
     override var textComp = DEFAULT_NAME.mcComp
     var headSkin = DefaultPlayerSkin.getDefaultTexture()
     init {
-        mcAsync {
+        _root_ide_package_.calebxzhou.rdi.util.ioScope.launch {
             val info = RAccountService.retrievePlayerInfo(id)
 
           //  headSkin =info.cloth.skinLocation

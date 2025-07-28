@@ -19,7 +19,7 @@ import net.minecraft.client.gui.screens.packs.PackSelectionScreen
 import net.neoforged.neoforge.client.gui.ModListScreen
 import org.embeddedt.embeddium.impl.gui.EmbeddiumVideoOptionsScreen
 
-class RSettingsScreen(val options: Options): RScreen("设置") {
+class   RSettingsScreen(val options: Options): RScreen("设置") {
     override fun init() {
         linearLayout(this) {
             checkBox("bootResize","启动时自动调整窗口大小",   RSettings.now.autoAdjustWindowSize)
@@ -70,7 +70,7 @@ class RSettingsScreen(val options: Options): RScreen("设置") {
             mc go  OptionsScreen(this@RSettingsScreen,options)
         }
         if(mc pressingKey InputConstants.KEY_K){
-            mc.goFrag(CenterFragment2(),this@RSettingsScreen)
+            mc.go(CenterFragment2(),this@RSettingsScreen)
         }
 
         RSettings.now.autoAdjustWindowSize=ofWidget<RCheckbox>("bootResize").selected()

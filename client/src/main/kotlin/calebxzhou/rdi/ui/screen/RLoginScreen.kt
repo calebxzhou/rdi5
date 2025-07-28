@@ -14,7 +14,6 @@ import calebxzhou.rdi.ui.general.confirm
 import calebxzhou.rdi.ui.layout.RLinearLayout
 import calebxzhou.rdi.ui.layout.linearLayout
 import calebxzhou.rdi.util.go
-import calebxzhou.rdi.util.goFrag
 import calebxzhou.rdi.util.mc
 import calebxzhou.rdi.util.mcTooltip
 import kotlinx.coroutines.launch
@@ -88,7 +87,7 @@ class RLoginScreen(val server: RServer) : RScreen("登录") {
                     tooltip = "注册一个新账号".mcTooltip
                 },
                 click = {
-                    mc.goFrag(RegisterFragment(),this@RLoginScreen)
+                    mc.go(RegisterFragment(),this@RLoginScreen)
                 }
             )
             icon(

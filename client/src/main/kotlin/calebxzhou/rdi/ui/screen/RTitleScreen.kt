@@ -1,17 +1,11 @@
 package calebxzhou.rdi.ui.screen
 
-import calebxzhou.rdi.Const
-import calebxzhou.rdi.net.RServer
-import calebxzhou.rdi.net.RServer.Companion.OFFICIAL_DEBUG
-import calebxzhou.rdi.net.RServer.Companion.OFFICIAL_NNG
 import calebxzhou.rdi.ui.UiHeight
 import calebxzhou.rdi.ui.UiWidth
 import calebxzhou.rdi.ui2.frag.TitleFragment
 import calebxzhou.rdi.util.go
-import calebxzhou.rdi.util.goFrag
 import calebxzhou.rdi.util.mc
 import calebxzhou.rdi.util.pressingKey
-import calebxzhou.rdi.util.rdiAsset
 import com.mojang.blaze3d.platform.InputConstants
 import com.mojang.blaze3d.systems.RenderSystem
 import net.minecraft.client.gui.GuiGraphics
@@ -73,7 +67,7 @@ class RTitleScreen : RScreen("主页") {
 
     override fun onPressEnterKey() {
         //startMulti()
-        mc.goFrag(TitleFragment())
+        mc.go(TitleFragment())
     }
     private fun openFlatLevel() {
         val levelName = "rdi_creative"

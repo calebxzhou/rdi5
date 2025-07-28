@@ -1,9 +1,9 @@
 package calebxzhou.rdi.auth
 
-import calebxzhou.rdi.model.RAccount.Cloth
-import calebxzhou.rdi.model.RAccount.Dto
 import calebxzhou.rdi.lgr
 import calebxzhou.rdi.model.RAccount
+import calebxzhou.rdi.model.RAccount.Cloth
+import calebxzhou.rdi.model.RAccount.Dto
 import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.net.body
 import calebxzhou.rdi.util.serdesJson
@@ -21,7 +21,7 @@ object RAccountService {
     val profileCache = CacheBuilder.newBuilder().expireAfterWrite(30L, TimeUnit.MINUTES).build(object :
         CacheLoader<ObjectId, GameProfile>() {
         override fun load(key: ObjectId): GameProfile {
-            return retrievePlayerInfo(key).mcProfile
+            return runBlocking {  retrievePlayerInfo(key)}.mcProfile
         }
     })
     fun createMcProfile(uid: ObjectId) = GameProfile(uid.toUUID(), uid.toHexString())
@@ -37,8 +37,8 @@ object RAccountService {
     }
 
 
-    fun retrievePlayerInfo(uid: ObjectId): RAccount.Dto = runBlocking{
-        RServer.now?.prepareRequest(false, "playerInfo", listOf("uid" to uid))?.let { resp ->
+    suspend fun retrievePlayerInfo(uid: ObjectId): RAccount.Dto{
+        return RServer.now?.prepareRequest(false, "playerInfo", listOf("uid" to uid))?.let { resp ->
             val json = resp.body
             lgr.info("玩家信息:${json}")
             serdesJson.decodeFromString(json)

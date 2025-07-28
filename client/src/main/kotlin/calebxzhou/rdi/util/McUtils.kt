@@ -3,20 +3,17 @@ package calebxzhou.rdi.util
 import calebxzhou.rdi.ui.WindowHandle
 import com.mojang.blaze3d.platform.InputConstants
 import icyllis.modernui.fragment.Fragment
-import icyllis.modernui.mc.MuiScreen
+import icyllis.modernui.mc.MuiModApi
 import icyllis.modernui.mc.neoforge.MuiForgeApi
 import io.netty.util.concurrent.DefaultThreadFactory
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite
 import net.minecraft.core.BlockPos
-import net.minecraft.core.Registry
-import net.minecraft.core.SectionPos
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.level.ChunkPos
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.state.BlockState
-import net.neoforged.neoforge.registries.NeoForgeRegistries
 import java.util.Stack
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -38,6 +35,9 @@ val mc: Minecraft
 fun renderThread(run: () -> Unit) {
     mc.execute(run)
 }
+fun uiThread(run: () -> Unit) {
+    MuiModApi.postToUiThread(run)
+}
 fun rdiAsset(path: String) = ResourceLocation.fromNamespaceAndPath("rdi",path)
 fun mcAsset(path: String) = ResourceLocation.withDefaultNamespace(path)
 val ResourceLocation.isTextureReady
@@ -53,13 +53,16 @@ infix fun Minecraft.go(screen: Screen?) {
             mc.pushGuiLayer(screen)
         }else setScreen(screen)
     }
-}
-val Fragment.mcScreen : Screen
-    get() = MuiForgeApi.get().createScreen(this,null,mc.screen)
-//前screen=null时，默认使用当前screen
-fun Minecraft. goFrag(fragment: Fragment,prevScreen: Screen?=null){
+} //前screen=null时，默认使用当前screen
+fun Minecraft. go(fragment: Fragment, prevScreen: Screen?=null){
     execute {
         val screen: Screen = MuiForgeApi.get().createScreen(fragment,null,prevScreen?:mc.screen)
+        mc set screen
+    }
+}
+infix fun Minecraft. go(fragment: Fragment){
+    execute {
+        val screen: Screen = MuiForgeApi.get().createScreen(fragment,null,mc.screen)
         mc set screen
     }
 }

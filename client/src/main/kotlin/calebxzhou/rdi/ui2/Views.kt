@@ -1,12 +1,12 @@
 package calebxzhou.rdi.ui2
 
-import calebxzhou.rdi.ui2.component.REditText
-import calebxzhou.rdi.ui2.component.RTextButton
-import icyllis.modernui.core.Context
-import icyllis.modernui.widget.Button
+import calebxzhou.rdi.ui2.component.*
+import icyllis.modernui.view.ViewGroup
 import icyllis.modernui.widget.FrameLayout
+import icyllis.modernui.widget.GridLayout
 import icyllis.modernui.widget.LinearLayout
 import icyllis.modernui.widget.TextView
+import org.bson.types.ObjectId
 
 /**
  * calebxzhou @ 2025-07-22 21:28
@@ -21,6 +21,7 @@ fun linearLayoutParam(
 
     return LinearLayout.LayoutParams(width, height).apply(init)
 }
+
 fun frameLayoutParam(
     width: Int = PARENT,
     height: Int = SELF,
@@ -29,56 +30,49 @@ fun frameLayoutParam(
     return FrameLayout.LayoutParams(width, height).apply(init)
 }
 
-fun linearLayout(
-    context: Context,
+fun ViewGroup.linearLayout(
     init: LinearLayout.() -> Unit = {}
-): LinearLayout {
-    val layout = LinearLayout(context)
-    layout.apply(init)
-    return layout
-}
-fun frameLayout(
-    context: Context,
-    init: FrameLayout.() -> Unit = {}
-): FrameLayout {
-    val layout = FrameLayout(context)
-    layout.apply(init)
-    return layout
-}
+) = LinearLayout(this.context).apply(init).also { this += it }
 
-fun textView(
-    context: Context,
+fun ViewGroup.frameLayout(
+    init: FrameLayout.() -> Unit = {}
+) = FrameLayout(this.context).apply(init).also { this += it }
+
+fun ViewGroup.gridLayout(
+    init: GridLayout.() -> Unit = {}
+) = GridLayout(this.context).apply(init).also { this += it }
+
+fun ViewGroup.textView(
     init: TextView.() -> Unit = {}
-): TextView {
-    val textView = TextView(context)
-    textView.apply(init)
-    return textView
-}
-fun button(
-    context: Context,
-    init: Button.() -> Unit = {}
-): Button {
-    val button = Button(context)
-    button.apply(init)
-    return button
-}
-fun textButton(
-    context: Context,
+) = TextView(this.context).apply(init).also { this += it }
+
+fun ViewGroup.textButton(
     msg: String,
+    init: RTextButton.() -> Unit = {},
     onClick: () -> Unit = {},
-    init: RTextButton.() -> Unit = {}
-): TextView {
-    val button = RTextButton(context,msg,onClick)
-    button.apply(init)
-    return button
-}
-fun editText(
-    context: Context,
+) = RTextButton(this.context, msg, onClick).apply(init).also { this += it }
+
+fun ViewGroup.editText(
     msg: String = "",
     width: Float = 200f,
     init: REditText.() -> Unit = {}
-): REditText {
-    val editText = REditText(context, msg, width)
-    editText.apply(init)
-    return editText
-}
+) = REditText(this.context, msg, width).apply(init).also { this += it }
+fun ViewGroup.editPwd(
+    msg: String = "",
+    width: Float = 200f,
+    init: REditPassword.() -> Unit = {}
+) = REditPassword(this.context, msg, width).apply(init).also { this += it }
+
+fun ViewGroup.headButton(
+    id: ObjectId,
+    init: RPlayerHeadButton.() -> Unit = {},
+    onClick: () -> Unit = {},
+) = RPlayerHeadButton(context, id, onClick).apply(init).also { this += it }
+
+
+fun ViewGroup.iconButton(
+    icon: String,
+    text: String,
+    init: RIconButton.() -> Unit = {},
+    onClick: () -> Unit = {},
+) = RIconButton(this.context, icon, text, onClick).apply(init).also { this += it }

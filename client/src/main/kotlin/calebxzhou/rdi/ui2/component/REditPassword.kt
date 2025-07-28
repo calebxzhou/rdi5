@@ -1,15 +1,10 @@
 package calebxzhou.rdi.ui2.component
 
-import calebxzhou.rdi.ui2.PARENT
-import calebxzhou.rdi.ui2.SELF
-import calebxzhou.rdi.ui2.button
-import calebxzhou.rdi.ui2.editText
-import calebxzhou.rdi.ui2.frameLayoutParam
-import calebxzhou.rdi.ui2.linearLayoutParam
-import calebxzhou.rdi.ui2.paddingDp
+import calebxzhou.rdi.ui2.*
 import icyllis.modernui.core.Context
 import icyllis.modernui.text.method.PasswordTransformationMethod
 import icyllis.modernui.view.Gravity
+import icyllis.modernui.widget.Button
 import icyllis.modernui.widget.FrameLayout
 
 class REditPassword(
@@ -17,17 +12,20 @@ class REditPassword(
     val msg: String = "",
     val width_: Float = 200f,
 ) : FrameLayout(context) {
-    private val editText = editText(context, msg, width_) {
+    private val editText = editText(msg, width_) {
         layoutParams = frameLayoutParam(
             dp(width_),
             SELF  // Fixed height instead of SELF
         ) {
             gravity = Gravity.CENTER
+            setTransformationMethod(PasswordTransformationMethod.getInstance())
         }
+        paddingDp(8, 8, 40, 8)
     }
     private var isPasswordVisible = false
 
     init {
+        // Add right padding to editText to prevent text behind the button
         layoutParams = linearLayoutParam(
             dp(width_),
             SELF  // Fixed height instead of SELF
@@ -36,11 +34,9 @@ class REditPassword(
             gravity = Gravity.CENTER_HORIZONTAL
         }
 
-        addView(editText)
-        editText.setTransformationMethod(PasswordTransformationMethod.getInstance())
 
         // Add eye toggle button
-        button(context) {
+        Button(context).apply {
             text = "👁"
             background = null
             layoutParams = frameLayoutParam(dp(32f), PARENT) {  // Fixed height instead of PARENT
@@ -55,8 +51,7 @@ class REditPassword(
             }
         }.also { addView(it) }
 
-        // Add right padding to editText to prevent text behind the button
-        editText.paddingDp(8, 8, 40, 8)
+
     }
 
     var text

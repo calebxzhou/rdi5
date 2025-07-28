@@ -1,13 +1,12 @@
 package calebxzhou.rdi.net
 
 import calebxzhou.rdi.model.RAccount
-import calebxzhou.rdi.ui.screen.LoadingScreen
 import calebxzhou.rdi.ui2.frag.alertErr
-import calebxzhou.rdi.ui.screen.RLoginScreen
+import calebxzhou.rdi.ui2.frag.LoadingFragment
+import calebxzhou.rdi.ui2.frag.SelectAccountFragment
 import calebxzhou.rdi.util.go
 import calebxzhou.rdi.util.ioScope
 import calebxzhou.rdi.util.mc
-import icyllis.modernui.R.id.background
 import io.ktor.client.statement.HttpResponse
 import io.ktor.util.encodeBase64
 import kotlinx.coroutines.launch
@@ -63,7 +62,7 @@ class RServer(
             })
             .connect(ip, gamePort)*/
         // Add listener to check connection status
-        mc go RLoginScreen(this)
+        mc go  SelectAccountFragment(this)
     }
 
     suspend fun prepareRequest(
@@ -79,19 +78,19 @@ class RServer(
 
     }
     fun hqRequest(
-        path: String,
         post: Boolean = false,
+        path: String,
         showLoading: Boolean = true,
         params: List<Pair<String, Any>> = listOf(),
         onOk: (HttpResponse) -> Unit
     ) {
-        if (showLoading) LoadingScreen.show()
+        if (showLoading) LoadingFragment.show()
         ioScope.launch {
             val req = prepareRequest(post, path, params)
             if (req.success) {
                 onOk(req)
             }
-            LoadingScreen.close()
+            LoadingFragment.close()
         }
     }
 }

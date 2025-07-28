@@ -1,7 +1,5 @@
 package calebxzhou.rdi.ui.screen
 
-import calebxzhou.rdi.net.RServer
-import calebxzhou.rdi.net.success
 import calebxzhou.rdi.ui.CenterX
 import calebxzhou.rdi.ui.UiHeight
 import calebxzhou.rdi.ui.UiWidth
@@ -9,17 +7,13 @@ import calebxzhou.rdi.ui.component.RightClickable
 import calebxzhou.rdi.ui.component.button.RIconButton
 import calebxzhou.rdi.ui.drawText
 import calebxzhou.rdi.util.*
-import io.ktor.client.statement.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.components.AbstractWidget
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.network.chat.MutableComponent
-import net.minecraft.resources.ResourceLocation
 import org.bson.types.ObjectId
-import sun.awt.geom.Curve.prev
 import java.util.concurrent.ConcurrentHashMap
 
 abstract class RScreen(open var title: MutableComponent) : Screen(title) {
@@ -45,23 +39,6 @@ abstract class RScreen(open var title: MutableComponent) : Screen(title) {
 
     fun holdButton(btn: Int, ticks: Int, onFinish: () -> Unit) {
         buttonHoldTime += btn to HoldButton(btn, 0, ticks, onFinish)
-    }
-
-    fun RServer.hqRequest(
-        path: String,
-        post: Boolean = false,
-        showLoading: Boolean = true,
-        params: List<Pair<String, Any>> = listOf(),
-        onOk: (HttpResponse) -> Unit
-    ) {
-        if (showLoading) LoadingScreen.show()
-        background.launch {
-            val req = prepareRequest(post, path, params)
-            if (req.success) {
-                onOk(req)
-            }
-            LoadingScreen.close()
-        }
     }
 
     override fun renderPanorama(guiGraphics: GuiGraphics, partialTick: Float)   {
