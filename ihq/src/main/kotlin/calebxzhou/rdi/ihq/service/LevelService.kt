@@ -11,14 +11,24 @@ import calebxzhou.rdi.ihq.net.protocol.SMeBlockStateChangePacket
 import calebxzhou.rdi.ihq.service.PlayerService.sendPacket
 import com.mongodb.client.model.Filters.and
 import com.mongodb.client.model.Filters.eq
+import com.mongodb.client.model.UpdateOneModel
 import com.mongodb.client.model.Updates
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.runBlocking
 
 object LevelService {
     val sectionDataCol = DB.getCollection<FirmSectionData>("section")
+    private const val BATCH_SIZE = 500 // Process 500 blocks at a time
+    private const val BATCH_DELAY_MS = 100L // 100ms delay between batches
 
     init {
+        runBlocking {
 
+            // Create indices for better query performance
+            sectionDataCol.createIndex(org.bson.Document("roomId", 1))
+            // Sparse index for blockStates since not all documents will have all positions
+            sectionDataCol.createIndex(org.bson.Document("blockStates", 1).append("sparse", true))
+        }
     }
 
     //  同步blockstate更新到全房间.
@@ -69,30 +79,51 @@ object LevelService {
         if (dimSections != null) {
             //保存
             val section = sectionDataCol.find(eq("_id", dimSections.id)).firstOrNull() ?: let {
-                //没找到 新建子区块
                 FirmSectionData(
                     dimSections.id,
                     ctx.room._id,
                 ).also {
+                    //没找到 新建子区块
                     sectionDataCol.insertOne(it)
                 }
             }
             //从room读取状态id的具体信息
             val bstate = ctx.room.blockStates[packet.stateID]
-            //更新状态
-            sectionDataCol.updateOne(
-                eq("_id", section._id),
-                Updates.set(
-                    "${FirmSectionData::blockStates.name}.${packet.sectionRelativeBlockPos}",
-                    bstate
+
+            // Process in batches
+            val updates = mutableListOf<UpdateOneModel<FirmSectionData>>()
+
+            // Create batch update
+            updates.add(
+                UpdateOneModel(
+                    eq("_id", section._id),
+                    Updates.set(
+                        "${FirmSectionData::blockStates.name}.${packet.sectionRelativeBlockPos}",
+                        bstate
+                    )
                 )
             )
+
+            // If we have a full batch or this is the last update
+            if (updates.size >= BATCH_SIZE) {
+                sectionDataCol.bulkWrite(updates)
+                updates.clear()
+                kotlinx.coroutines.delay(BATCH_DELAY_MS)
+            }
         }
 
-
-        // 同步
-        syncBlockState(packet, ctx)
+        // Send updates to clients in batches
+        ctx.forEachMember { _, player ->
+            val updatePacket = CBlockStateChangePacket(
+                packedChunkPos = packet.packedChunkPos,
+                sectionY = packet.sectionY,
+                sectionRelativeBlockPos = packet.sectionRelativeBlockPos,
+                stateID = packet.stateID
+            )
+            player.sendPacket(updatePacket)
+        }
     }
+
     //todo 没写完
     suspend fun changeBlockEntity(
         packet: SMeBlockEntityUpdatePacket,

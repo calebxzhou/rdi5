@@ -5,8 +5,10 @@
   "compatibilityLevel": "JAVA_21",
   "client": [
     "AEditBox",
+    "mNoUpdateScreenOnSave",
     "mOfflineMode2",
     "mOfflineMode3",
+    "mPauseScreen",
     "mRAuth",
     "mScreenBg",
     "mScreenTransition",

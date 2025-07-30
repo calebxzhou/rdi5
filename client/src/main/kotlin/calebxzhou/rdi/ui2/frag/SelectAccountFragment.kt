@@ -24,11 +24,11 @@ class SelectAccountFragment(val server: RServer) : RFragment("选择账号") {
     override fun initContent() {
         // Replace LinearLayout with FrameLayout
         contentLayout.apply {
-            frameLayout() {
+            frameLayout {
                 layoutParams = frameLayoutParam(PARENT, PARENT)
 
                 // Account list container
-                linearLayout() {
+                linearLayout {
                     gravity = Gravity.CENTER_HORIZONTAL
                     orientation = LinearLayout.VERTICAL
                     layoutParams = frameLayoutParam(PARENT, PARENT)
@@ -53,13 +53,7 @@ class SelectAccountFragment(val server: RServer) : RFragment("选择账号") {
                 }
 
                 // Bottom buttons container
-                linearLayout() {
-                    orientation = LinearLayout.HORIZONTAL
-                    gravity = Gravity.CENTER_HORIZONTAL
-                    layoutParams = frameLayoutParam(PARENT, SELF).apply {
-                        gravity = Gravity.BOTTOM
-                    }
-
+                bottomOptions {
                     iconButton(icon = "plus", text = "添加", onClick = {
                         mc go LoginFragment()
                     })

@@ -1,6 +1,6 @@
 package calebxzhou.rdi.mixin;
 
-import calebxzhou.rdi.ui2.StyleAndUtilsKt;
+import calebxzhou.rdi.ui2.Ui2UtilsKt;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import org.spongepowered.asm.mixin.Mixin;
@@ -18,7 +18,7 @@ public class mScreenBg {
 
     @Overwrite
     public void renderPanorama(GuiGraphics guiGraphics, float partialTick) {
-        guiGraphics.blit(StyleAndUtilsKt.getBG_IMAGE_MC(), 0, 0, 0f, 0f, width,height,width,height);
+        guiGraphics.blit(Ui2UtilsKt.getBG_IMAGE_MC(), 0, 0, 0f, 0f, width,height,width,height);
 
     }
 }

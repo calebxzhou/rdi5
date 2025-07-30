@@ -1,31 +1,27 @@
 package calebxzhou.rdi.service
 
 import calebxzhou.rdi.Const
-import calebxzhou.rdi.mixin.ARegionFileVersion
+import calebxzhou.rdi.ui2.frag.ProfileFragment
+import calebxzhou.rdi.ui2.frag.TitleFragment
+import calebxzhou.rdi.ui2.mcScreen
+import calebxzhou.rdi.util.go
 import calebxzhou.rdi.util.mc
-import net.minecraft.client.gui.screens.TitleScreen
-import net.minecraft.util.FastBufferedInputStream
 import net.minecraft.world.Difficulty
 import net.minecraft.world.level.GameRules
 import net.minecraft.world.level.GameType
 import net.minecraft.world.level.LevelSettings
 import net.minecraft.world.level.WorldDataConfiguration
-import net.minecraft.world.level.chunk.storage.RegionFileVersion
 import net.minecraft.world.level.levelgen.WorldOptions
 import net.minecraft.world.level.levelgen.presets.WorldPresets
-import net.minecraft.world.level.levelgen.presets.WorldPresets.createNormalWorldDimensions
-import java.io.BufferedOutputStream
 
 object LevelService {
 
-    @JvmStatic
-    fun start(){
-        startLevel()
-    }
-    private fun startLevel() {
+    fun startLevel() {
         val levelName = "rdi"
         if (mc.levelSource.levelExists(levelName)) {
-            mc.createWorldOpenFlows().openWorld(levelName){}
+            mc.createWorldOpenFlows().openWorld(levelName){
+                mc go TitleFragment()
+            }
         } else {
             val levelSettings = LevelSettings(
                 levelName,
@@ -41,7 +37,7 @@ object LevelService {
             mc.createWorldOpenFlows().createFreshLevel(
                 levelName,
                 levelSettings,
-                WorldOptions(Const.SEED, true, true),WorldPresets::createNormalWorldDimensions, TitleScreen()
+                WorldOptions(Const.SEED, true, true),WorldPresets::createNormalWorldDimensions, ProfileFragment().mcScreen
             )
         }
     }

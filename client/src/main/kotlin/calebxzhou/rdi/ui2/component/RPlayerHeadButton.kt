@@ -98,8 +98,9 @@ class RPlayerHeadButton(
 
         setCompoundDrawablePadding(dp(8f))
         setCompoundDrawables(drawable, null, null, null)
-        gravity = Gravity.START or Gravity.CENTER_VERTICAL
+        gravity = Gravity.CENTER
         minWidth = dp(120f)
+        minimumWidth = minWidth
     }
 
     init {

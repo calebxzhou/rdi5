@@ -1,15 +1,19 @@
 package calebxzhou.rdi.util
 
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import org.bson.types.ObjectId
 import java.nio.ByteBuffer
-import java.util.UUID
+import java.util.*
 
 /**
  * calebxzhou @ 2025-04-16 12:23
  */
-val ioScope: CoroutineScope = CoroutineScope(Dispatchers.IO)
+val ioScope: CoroutineScope = CoroutineScope(Dispatchers.IO + CoroutineExceptionHandler { _, throwable ->
+    throwable.printStackTrace()
+}
+)
 //保留小数点后x位
 fun Float.toFixed(decPlaces: Int): String{
     return String.format("%.${decPlaces}f",this)

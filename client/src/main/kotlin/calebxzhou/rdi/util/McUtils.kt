@@ -6,6 +6,7 @@ import icyllis.modernui.fragment.Fragment
 import icyllis.modernui.mc.MuiModApi
 import icyllis.modernui.mc.neoforge.MuiForgeApi
 import io.netty.util.concurrent.DefaultThreadFactory
+import net.minecraft.Util
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite
@@ -14,7 +15,7 @@ import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.level.ChunkPos
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.state.BlockState
-import java.util.Stack
+import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -48,26 +49,26 @@ val screenLayer = Stack<Screen>()
 infix fun Minecraft.go(screen: Screen?) {
   /*  if(screen==null)
         RPauseScreen.unpause()*/
-    execute {
+    renderThread {
         if (screen != null) {
             mc.pushGuiLayer(screen)
         }else setScreen(screen)
     }
 } //前screen=null时，默认使用当前screen
 fun Minecraft. go(fragment: Fragment, prevScreen: Screen?=null){
-    execute {
+    renderThread {
         val screen: Screen = MuiForgeApi.get().createScreen(fragment,null,prevScreen?:mc.screen)
         mc set screen
     }
 }
 infix fun Minecraft. go(fragment: Fragment){
-    execute {
+    renderThread {
         val screen: Screen = MuiForgeApi.get().createScreen(fragment,null,mc.screen)
         mc set screen
     }
 }
 infix fun Minecraft.set(screen: Screen?) {
-    execute {
+    renderThread {
         setScreen(screen)
     }
 }
@@ -83,3 +84,6 @@ val Minecraft.pressingEnter
     get() =  this pressingKey InputConstants.KEY_RETURN || this pressingKey InputConstants.KEY_NUMPADENTER
 val ChunkPos.asInt
     get() = x.toShort().toInt() and 0xFFFF or ((z.toShort().toInt() and 0xFFFF) shl 16)
+fun String.openAsUri(){
+    Util.getPlatform().openUri(this)
+}

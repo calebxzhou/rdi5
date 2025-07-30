@@ -77,7 +77,7 @@ abstract class RFragment(var title: String = "") : Fragment() {
             }
         }
     }
-    fun close(){
+    open fun close(){
         //UIManager.getInstance().onBackPressedDispatcher.onBackPressed()
 
         val screen = mc.screen

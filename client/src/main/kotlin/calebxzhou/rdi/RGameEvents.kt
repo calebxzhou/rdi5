@@ -4,19 +4,17 @@ import calebxzhou.rdi.cmd.DebugCommand
 import calebxzhou.rdi.event.BlockStateChangedEvent
 import calebxzhou.rdi.event.PacketSentEvent
 import calebxzhou.rdi.net.GameNetClient
-import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.net.protocol.SMeBlockStateChangePacket
-import calebxzhou.rdi.net.protocol.SMeChangeDimensionPacket
 import calebxzhou.rdi.net.protocol.SMeMovePacket
 import calebxzhou.rdi.util.asInt
 import calebxzhou.rdi.util.id
 import calebxzhou.rdi.util.sectionIndex
-import kotlinx.serialization.Serializable
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket
 import net.neoforged.bus.api.SubscribeEvent
 import net.neoforged.fml.common.EventBusSubscriber
 import net.neoforged.neoforge.client.event.RenderFrameEvent
 import net.neoforged.neoforge.event.RegisterCommandsEvent
+import net.neoforged.neoforge.event.level.LevelEvent
 
 @EventBusSubscriber(modid = "rdi",)
 class RGameEvents {
@@ -81,6 +79,10 @@ class RGameEvents {
                 lgr.info("注册调试命令")
                 e.dispatcher.register(DebugCommand.cmd)
             }
+        }
+        @SubscribeEvent
+        @JvmStatic
+        fun onLevelUnload(e: LevelEvent.Unload){
         }
     }
 

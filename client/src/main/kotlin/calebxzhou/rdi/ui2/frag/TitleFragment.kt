@@ -1,11 +1,11 @@
 package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.Const
+import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.net.RServer.Companion.OFFICIAL_DEBUG
 import calebxzhou.rdi.net.RServer.Companion.OFFICIAL_NNG
 import calebxzhou.rdi.ui2.*
-import calebxzhou.rdi.util.mc
 import icyllis.modernui.animation.ObjectAnimator
 import icyllis.modernui.animation.PropertyValuesHolder
 import icyllis.modernui.animation.TimeInterpolator
@@ -22,10 +22,7 @@ class TitleFragment : RFragment() {
 
     init {
         RServer.now = null
-        mc.level?.let {
-            it.disconnect()
-            mc.disconnect()
-        }
+        RAccount.now=null
 
     }
 

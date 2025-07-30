@@ -3,23 +3,21 @@ package calebxzhou.rdi.ui2.frag
 import calebxzhou.rdi.ui.RMessageLevel
 import calebxzhou.rdi.ui.general.RDialogType
 import calebxzhou.rdi.ui2.*
-import calebxzhou.rdi.util.mc
-import calebxzhou.rdi.util.renderThread
-import calebxzhou.rdi.util.set
+import calebxzhou.rdi.util.*
 import icyllis.modernui.graphics.Canvas
 import icyllis.modernui.graphics.Paint
 import icyllis.modernui.graphics.drawable.Drawable
 import icyllis.modernui.view.Gravity
 
 fun alertErr(msg: String) {
-    renderThread {
-        mc set DialogFragment(msg, lvl = RMessageLevel.ERR).mcScreen
+    uiThread {
+        mc go DialogFragment(msg, lvl = RMessageLevel.ERR)
     }
 }
 
 fun alertOk(msg: String) {
-    renderThread {
-        mc set DialogFragment(msg, lvl = RMessageLevel.OK).mcScreen
+    uiThread {
+        mc go DialogFragment(msg, lvl = RMessageLevel.OK)
     }
 }
 

@@ -1,14 +1,16 @@
 package calebxzhou.rdi.net
 
 import calebxzhou.rdi.model.RAccount
-import calebxzhou.rdi.ui2.frag.alertErr
 import calebxzhou.rdi.ui2.frag.LoadingFragment
 import calebxzhou.rdi.ui2.frag.SelectAccountFragment
+import calebxzhou.rdi.ui2.frag.alertErr
 import calebxzhou.rdi.util.go
 import calebxzhou.rdi.util.ioScope
 import calebxzhou.rdi.util.mc
-import io.ktor.client.statement.HttpResponse
-import io.ktor.util.encodeBase64
+import calebxzhou.rdi.util.uiThread
+import io.ktor.client.statement.*
+import io.ktor.util.*
+import io.netty.channel.ChannelFuture
 import kotlinx.coroutines.launch
 
 class RServer(
@@ -27,7 +29,7 @@ class RServer(
         )
 
     }
-
+    var chafu: ChannelFuture? = null
     fun connect() {
         try {
             GameNetClient.connect(this)
@@ -41,26 +43,7 @@ class RServer(
             GameNetClient.send(SMeJoinPacket(account.qq, account.pwd))
 
         }*/
-        /*chafu = Bootstrap()
-            .channel(channel)
-            .group(eventGroup)
-            .handler(object : ChannelInitializer<Channel>() {
-                override fun initChannel(channel: Channel) {
-                    channel.config().setOption(ChannelOption.TCP_NODELAY, true)
-                    channel.pipeline()
-                        .addLast("timeout", ReadTimeoutHandler(15))
-                        .addLast("splitter", RFrameDecoder())
-                        .addLast(FlowControlHandler())
-                        .addLast("decoder", RPacketDecoder())
-                        .addLast("packet_handler", RPacketReceiver())
-                        .addLast("encoder", RPacketEncoder())
-                        .addLast("prepender", RFrameEncoder())
-
-                    //.....
-                }
-
-            })
-            .connect(ip, gamePort)*/
+        /**/
         // Add listener to check connection status
         mc go  SelectAccountFragment(this)
     }
@@ -84,13 +67,24 @@ class RServer(
         params: List<Pair<String, Any>> = listOf(),
         onOk: (HttpResponse) -> Unit
     ) {
-        if (showLoading) LoadingFragment.show()
+        var frag: LoadingFragment? = null
+        if (showLoading){
+            frag=LoadingFragment()
+            uiThread {
+                mc go frag
+            }
+        }
         ioScope.launch {
             val req = prepareRequest(post, path, params)
             if (req.success) {
                 onOk(req)
             }
-            LoadingFragment.close()
+            if(showLoading && frag != null) {
+                uiThread {
+                    frag.close()
+                }
+            }
+
         }
     }
 }
