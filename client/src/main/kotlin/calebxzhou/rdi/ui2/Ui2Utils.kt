@@ -129,6 +129,10 @@ fun ViewGroup.textView(
     init: TextView.() -> Unit = {}
 ) = TextView(this.context).apply(init).also { this += it }
 
+fun ViewGroup.imageView(
+    init: ImageView.() -> Unit = {}
+) = ImageView(this.context).apply(init).also { this += it }
+
 fun ViewGroup.textButton(
     msg: String,
     init: RTextButton.() -> Unit = {},

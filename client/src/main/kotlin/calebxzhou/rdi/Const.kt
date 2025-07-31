@@ -1,7 +1,5 @@
 package calebxzhou.rdi
 
-import kotlin.text.toBoolean
-
 object Const {
 
     const val MODID = "rdi"
@@ -12,7 +10,7 @@ object Const {
     //版本号与协议号
     const val VERSION = 0x500
     const val IHQ_VERSION = 0x500
-    val SEED = 11451400L
+    val SEED = 1145141919810L
     //显示版本
     const val VERSION_NUMBER = "5.0"
     @JvmStatic

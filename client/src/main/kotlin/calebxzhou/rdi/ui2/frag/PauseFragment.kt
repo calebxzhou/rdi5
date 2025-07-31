@@ -3,13 +3,10 @@ package calebxzhou.rdi.ui2.frag
 import calebxzhou.rdi.net.GameNetClient
 import calebxzhou.rdi.service.RKeyBinds
 import calebxzhou.rdi.ui2.*
-import calebxzhou.rdi.util.go
-import calebxzhou.rdi.util.lookingAtBlock
-import calebxzhou.rdi.util.mc
-import calebxzhou.rdi.util.openAsUri
+import calebxzhou.rdi.util.*
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.widget.LinearLayout
-import net.minecraft.util.MemoryReserve
+import net.minecraft.client.gui.screens.GenericMessageScreen
 
 class PauseFragment : RFragment("暂停") {
     val lookingBlockState = mc.player?.lookingAtBlock
@@ -30,7 +27,7 @@ class PauseFragment : RFragment("暂停") {
                         "https://play.mcmod.cn/sv20188037.html".openAsUri()
                     }
                     iconButton("heart", "赞助") {
-
+                        mc go SponsorFragment()
 
                     }
                     iconButton("mcmod", "MC百科") {
@@ -48,38 +45,13 @@ class PauseFragment : RFragment("暂停") {
                         mc go SettingsFragment()
                     }
                     iconButton("exit","退出"){
-                         GameNetClient.disconnect()
-                        try {
-                            MemoryReserve.release()
-                            mc.levelRenderer.clear()
-                            mc.gameRenderer.resetData()
-                        } catch (throwable1: Throwable) {
-                        }
-                        mc.singleplayerServer?.let {
-                            it.executeBlocking {
-                                it.saveEverything(false, true, true)
-                                it.halt(false)
-                            }
+                        renderThread {
+
+                            GameNetClient.disconnect()
                             mc.level?.disconnect()
-                            mc.gui.onDisconnected()
-                            mc.level=null
-                            mc.player=null
-                            mc.gameMode=null
+                            mc.disconnect(GenericMessageScreen("存档中，请稍候".mcComp))
+                            mc go ProfileFragment()
                         }
-                        System.gc()
-
-                        mc go ProfileFragment()
-
-
-                            //mc.singleplayerServer?.saveEverything(false,true,true)
-
-                            //mc.disconnect(GenericMessageScreen("存档中，请稍候".mcComp))
-
-
-
-                        //if (mc.isLocalServer) {
-                        // mc.clearLevel(GenericDirtMessageScreen("".mcComp))
-                        //}
                     }
 0                }
             }

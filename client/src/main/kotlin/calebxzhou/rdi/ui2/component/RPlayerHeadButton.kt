@@ -9,17 +9,15 @@ import calebxzhou.rdi.util.uiThread
 import icyllis.modernui.core.Context
 import icyllis.modernui.graphics.Bitmap
 import icyllis.modernui.graphics.BitmapFactory
-import icyllis.modernui.graphics.Canvas
 import icyllis.modernui.graphics.Image
 import icyllis.modernui.graphics.Paint
 import icyllis.modernui.graphics.drawable.ImageDrawable
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.widget.Button
-import io.ktor.client.call.body
+import io.ktor.client.call.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.bson.types.ObjectId
-import kotlin.times
 
 class RPlayerHeadButton(
     context: Context,
@@ -98,9 +96,8 @@ class RPlayerHeadButton(
 
         setCompoundDrawablePadding(dp(8f))
         setCompoundDrawables(drawable, null, null, null)
-        gravity = Gravity.CENTER
+        gravity = Gravity.START or Gravity.CENTER_VERTICAL
         minWidth = dp(120f)
-        minimumWidth = minWidth
     }
 
     init {

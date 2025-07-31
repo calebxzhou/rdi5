@@ -28,7 +28,7 @@ object LevelService {
                 GameType.SURVIVAL,
                 false,
                 Difficulty.HARD,
-                true,
+                Const.DEBUG,
                 GameRules().apply {
                     getRule(GameRules.RULE_KEEPINVENTORY).set(true, null)
                 },

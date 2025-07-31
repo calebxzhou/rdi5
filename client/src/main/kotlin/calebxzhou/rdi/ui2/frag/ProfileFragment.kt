@@ -28,7 +28,7 @@ class ProfileFragment : RFragment("我的信息") {
                 gravity = Gravity.CENTER
 
                 headButton(account._id) {
-                    layoutParams = linearLayoutParam(SELF, SELF)
+                  //  layoutParams = linearLayoutParam(SELF, SELF)
                 }
             }
 

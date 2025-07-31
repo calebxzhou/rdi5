@@ -5,11 +5,7 @@
   "compatibilityLevel": "JAVA_21",
   "client": [
     "AEditBox",
-    "mNoUpdateScreenOnSave",
-    "mOfflineMode2",
-    "mOfflineMode3",
     "mPauseScreen",
-    "mRAuth",
     "mScreenBg",
     "mScreenTransition",
     "mTitleScreen",
@@ -22,7 +18,6 @@
   "mixins": [
     "APacketDecoder",
     "ARegionFileVersion",
-    "mOfflineMode",
     "event.mOnChangeBlockState",
     "event.mOnPacketSent"
   ]
