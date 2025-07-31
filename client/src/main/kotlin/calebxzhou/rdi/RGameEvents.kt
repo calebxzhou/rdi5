@@ -6,17 +6,16 @@ import calebxzhou.rdi.event.PacketSentEvent
 import calebxzhou.rdi.net.GameNetClient
 import calebxzhou.rdi.net.protocol.SMeBlockStateChangePacket
 import calebxzhou.rdi.net.protocol.SMeMovePacket
-import calebxzhou.rdi.util.asInt
-import calebxzhou.rdi.util.id
-import calebxzhou.rdi.util.ioScope
-import calebxzhou.rdi.util.sectionIndex
+import calebxzhou.rdi.util.*
 import kotlinx.coroutines.launch
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket
+import net.minecraft.util.HttpUtil
+import net.minecraft.world.level.GameType
 import net.neoforged.bus.api.SubscribeEvent
 import net.neoforged.fml.common.EventBusSubscriber
+import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent
 import net.neoforged.neoforge.client.event.RenderFrameEvent
 import net.neoforged.neoforge.event.RegisterCommandsEvent
-import net.neoforged.neoforge.event.level.LevelEvent
 
 @EventBusSubscriber(modid = "rdi")
 class RGameEvents {
@@ -88,7 +87,10 @@ class RGameEvents {
 
         @SubscribeEvent
         @JvmStatic
-        fun onLevelUnload(e: LevelEvent.Unload) {
+        fun onLocalServerStart(e: ClientPlayerNetworkEvent.LoggingIn) {
+            //启动局域网
+
+            mc.singleplayerServer?.publishServer(GameType.SURVIVAL, Const.DEBUG, HttpUtil.getAvailablePort())
         }
     }
 

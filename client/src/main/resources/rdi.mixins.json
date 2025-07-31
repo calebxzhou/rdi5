@@ -5,6 +5,8 @@
   "compatibilityLevel": "JAVA_21",
   "client": [
     "AEditBox",
+    "AMinecraft",
+    "mGui",
     "mPauseScreen",
     "mScreenBg",
     "mScreenTransition",

@@ -1,24 +1,16 @@
 package calebxzhou.rdi.ui2.frag
 
-import calebxzhou.rdi.auth.LocalCredentials
-import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.net.RServer
-import calebxzhou.rdi.net.body
 import calebxzhou.rdi.service.PlayerService.playerLogin
-import calebxzhou.rdi.ui.screen.RLoginScreen
-import calebxzhou.rdi.ui.screen.RProfileScreen
 import calebxzhou.rdi.ui2.component.REditPassword
 import calebxzhou.rdi.ui2.component.REditText
 import calebxzhou.rdi.ui2.component.RTextButton
 import calebxzhou.rdi.ui2.fctx
 import calebxzhou.rdi.ui2.plusAssign
-import calebxzhou.rdi.ui2.textButton
 import calebxzhou.rdi.util.go
 import calebxzhou.rdi.util.ioScope
 import calebxzhou.rdi.util.mc
-import calebxzhou.rdi.util.serdesJson
 import kotlinx.coroutines.launch
-import kotlin.collections.plusAssign
 
 class LoginFragment : RFragment("登录") {
     private lateinit var qqInput: REditText
@@ -35,6 +27,7 @@ class LoginFragment : RFragment("登录") {
         val pwd = passwordInput.text.toString()
         ioScope.launch {
             RServer.now?.playerLogin(qq,pwd)?.let {
+
                 mc go ProfileFragment()
             }
         }
