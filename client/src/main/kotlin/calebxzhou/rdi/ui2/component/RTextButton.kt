@@ -6,13 +6,12 @@ import calebxzhou.rdi.ui2.linearLayoutParam
 import calebxzhou.rdi.ui2.paddingDp
 import icyllis.modernui.core.Context
 import icyllis.modernui.view.Gravity
-import icyllis.modernui.widget.Button
 
 class RTextButton(
     context: Context,
     val msg: String,
-    val onClick: () -> Unit = {},
-) : Button(context) {
+      onClick: () -> Unit = {},
+) : RButton(context,onClick) {
     init {
         text = msg
         background = BG_GRAY_BORDER
@@ -20,8 +19,6 @@ class RTextButton(
         layoutParams = linearLayoutParam(SELF,SELF) {
             gravity = Gravity.CENTER_HORIZONTAL
         }
-        setOnClickListener {
-            onClick()
-        }
+
     }
 }

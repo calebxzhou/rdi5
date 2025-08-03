@@ -2,7 +2,7 @@ package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.auth.LocalCredentials
 import calebxzhou.rdi.common.GREEN
-import calebxzhou.rdi.net.RServer
+import calebxzhou.rdi.model.RServer
 import calebxzhou.rdi.service.PlayerService.playerLogin
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.util.go
@@ -22,20 +22,17 @@ class SelectAccountFragment(val server: RServer) : RFragment("选择账号") {
     }
 
     override fun initContent() {
-        // Replace LinearLayout with FrameLayout
         contentLayout.apply {
             frameLayout {
                 layoutParams = frameLayoutParam(PARENT, PARENT)
 
-                // Account list container
                 linearLayout {
                     gravity = Gravity.CENTER_HORIZONTAL
                     orientation = LinearLayout.VERTICAL
                     layoutParams = frameLayoutParam(PARENT, PARENT)
 
-                    // Add account buttons
                     creds.idPwds.forEach { id, pwd ->
-                        headButton( ObjectId(id), onClick = {
+                        headButton(ObjectId(id), onClick = {
                             RServer.now = server
                             ioScope.launch {
                                 RServer.now?.playerLogin(id, pwd)?.let {
@@ -43,11 +40,14 @@ class SelectAccountFragment(val server: RServer) : RFragment("选择账号") {
                                 }
                             }
                         }, init = {
-                            layoutParams = linearLayoutParam(SELF,SELF)
+                            layoutParams = linearLayoutParam(SELF, SELF)
                             gravity = Gravity.CENTER_HORIZONTAL
                             if (creds.lastLoggedId == id) {
                                 setTextColor(GREEN)
                             }
+                            contextMenu(listOf(
+                                "删除账号" to { deleteAccount(id) }
+                            ))
                         })
                     }
                 }
@@ -68,5 +68,12 @@ class SelectAccountFragment(val server: RServer) : RFragment("选择账号") {
         }
 
     }
-
+    fun deleteAccount(id: String) {
+        creds.idPwds.remove(id)
+        creds.write()
+        contentLayout.apply {
+            removeAllViews()
+            initContent()
+        }
+    }
 }

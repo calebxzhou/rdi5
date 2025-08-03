@@ -1,6 +1,6 @@
 package calebxzhou.rdi.ui.screen
 
-import calebxzhou.rdi.net.RServer
+import calebxzhou.rdi.model.RServer
 import calebxzhou.rdi.ui.screen.RScreen
 import calebxzhou.rdi.ui.drawImage
 import calebxzhou.rdi.ui.layout.linearLayout

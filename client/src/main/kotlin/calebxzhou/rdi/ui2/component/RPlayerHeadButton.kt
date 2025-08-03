@@ -13,7 +13,6 @@ import icyllis.modernui.graphics.Image
 import icyllis.modernui.graphics.Paint
 import icyllis.modernui.graphics.drawable.ImageDrawable
 import icyllis.modernui.view.Gravity
-import icyllis.modernui.widget.Button
 import io.ktor.client.call.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -22,8 +21,8 @@ import org.bson.types.ObjectId
 class RPlayerHeadButton(
     context: Context,
     val id: ObjectId,
-    val onClick: () -> Unit = {},
-) : Button(context) {
+    onClick: () -> Unit = {},
+) : RButton(context,onClick) {
     var avatar: Image = createDefaultAvatar()
         set(value) {
             field = value
@@ -100,11 +99,8 @@ class RPlayerHeadButton(
         minWidth = dp(120f)
     }
 
-    init {
-        text = "载入中..."
-        paddingDp(16,8,16,8)
-        updateAvatarDrawable()  // Set initial avatar
 
+    private fun loadData() {
         ioScope.launch {
             try {
                 val data = RAccountService.retrievePlayerInfo(id)
@@ -114,7 +110,6 @@ class RPlayerHeadButton(
                 uiThread {
                     text = data.name
                     if (skinResp.success) {
-                        // Get response bytes and convert to bitmap
                         runBlocking {
                             val responseBytes = skinResp.body<ByteArray>()
                             val bitmap = BitmapFactory.decodeByteArray(responseBytes, 0, responseBytes.size)
@@ -124,7 +119,6 @@ class RPlayerHeadButton(
                             bitmap.recycle()
                         }
                     }
-
                 }
             } catch (e: Exception) {
                 uiThread {
@@ -132,10 +126,14 @@ class RPlayerHeadButton(
                 }
             }
         }
-
-        setOnClickListener {
-            onClick()
-        }
     }
+
+    init {
+        text = "载入中..."
+        paddingDp(16,8,16,8)
+        updateAvatarDrawable()
+        loadData()
+    }
+
 
 }

@@ -6,14 +6,13 @@ import com.mojang.authlib.GameProfile
 import com.mojang.authlib.minecraft.MinecraftProfileTexture
 import com.mojang.authlib.properties.Property
 import com.mojang.authlib.yggdrasil.response.MinecraftTexturesPayload
-import io.ktor.util.encodeBase64
+import io.ktor.util.*
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.Transient
 import net.minecraft.client.User
+import net.minecraft.client.multiplayer.PlayerInfo
 import org.bson.types.ObjectId
-import java.util.Optional
-import java.util.UUID
+import java.util.*
 
 @Serializable
 data class RAccount(
@@ -72,6 +71,8 @@ data class RAccount(
             properties.put("textures", Property("textures", serdesGson.toJson(texturesPayload).encodeBase64()))
 
         }
+        val mcPlayerInfo
+            get() = PlayerInfo(mcProfile,false)
 
     }
     companion object {

@@ -1,5 +1,5 @@
 import calebxzhou.rdi.model.RAccount
-import calebxzhou.rdi.net.RServer
+import calebxzhou.rdi.model.RServer
 import calebxzhou.rdi.net.body
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test

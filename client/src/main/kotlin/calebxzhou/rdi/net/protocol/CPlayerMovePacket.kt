@@ -1,8 +1,9 @@
 package calebxzhou.rdi.net.protocol
 
+import calebxzhou.rdi.model.Room
 import calebxzhou.rdi.net.CPacket
 import calebxzhou.rdi.net.RByteBuf
-import io.netty.buffer.ByteBuf
+import calebxzhou.rdi.util.mcs
 
 class CPlayerMovePacket {
     data class Pos(
@@ -13,7 +14,15 @@ class CPlayerMovePacket {
     ): CPacket{
         constructor(buf: RByteBuf): this(buf.readByte(),buf.readFloat(),buf.readFloat(),buf.readFloat())
         override fun handle() {
-            TODO("Not yet implemented")
+            Room.now?.let { room ->
+                mcs?.execute {
+                    mcs?.allLevels?.forEach { level ->
+                        room.onlineMembers[tempUid]?.mcProfile?.let { level.getEntity(it.id) }?.setPos(x.toDouble(), y.toDouble(),
+                            z.toDouble()
+                        )
+                    }
+                }
+            }
         }
 
     }
@@ -24,7 +33,18 @@ class CPlayerMovePacket {
     ): CPacket{
         constructor(buf: RByteBuf): this(buf.readByte(),buf.readFloat(),buf.readFloat())
         override fun handle() {
-            TODO("Not yet implemented")
+            Room.now?.let { room ->
+                mcs?.execute {
+                    mcs?.allLevels?.forEach { level ->
+                        room.onlineMembers[tempUid]?.mcProfile?.let { level.getEntity(it.id) }?.let { ent->
+                            ent.yRot = yr
+                            ent.xRot = xr
+                        }
+
+
+                    }
+                }
+            }
         }
 
     }

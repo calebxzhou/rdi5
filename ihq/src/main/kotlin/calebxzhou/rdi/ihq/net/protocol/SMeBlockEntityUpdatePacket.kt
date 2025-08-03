@@ -14,7 +14,7 @@ import net.benwoodworth.knbt.NbtCompound
 data class SMeBlockEntityUpdatePacket(
     val packedChunkPos: Int,// ChunkPos.asInt
     val sectionY: Byte,
-    val sectionRelativeBlockPos: Short,
+    val sectionRelativeBlockPos: Short,//yzx
     val data: NbtCompound
 ): SPacket {
     constructor(buf: RByteBuf): this(buf.readInt(),buf.readByte(),buf.readShort(),buf.readNbt())

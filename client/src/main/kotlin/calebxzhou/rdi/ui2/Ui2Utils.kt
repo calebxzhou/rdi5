@@ -164,3 +164,19 @@ fun ViewGroup.iconButton(
     init: RIconButton.() -> Unit = {},
     onClick: () -> Unit = {},
 ) = RIconButton(this.context, icon, text, onClick).apply(init).also { this += it }
+/*
+
+fun Context.showContextMenu(anchor: View, items: List<Pair<String, () -> Unit>>, x: Float = Float.NaN, y: Float = Float.NaN) {
+    val popup = PopupMenu(this, anchor)
+    if (!x.isNaN() && !y.isNaN()) {
+        popup.gravity = Gravity.TOP or Gravity.START
+    }
+    items.forEachIndexed { index, (text, action) ->
+        popup.menu.add(0, index, 0, text).setOnMenuItemClickListener {
+            action()
+            true
+        }
+    }
+    popup.show()
+}
+*/

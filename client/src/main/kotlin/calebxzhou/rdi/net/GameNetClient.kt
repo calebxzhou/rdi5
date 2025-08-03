@@ -1,6 +1,7 @@
 package calebxzhou.rdi.net
 
 import calebxzhou.rdi.lgr
+import calebxzhou.rdi.model.RServer
 import io.netty.bootstrap.Bootstrap
 import io.netty.channel.Channel
 import io.netty.channel.ChannelFuture

@@ -2,9 +2,10 @@ package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.Const
 import calebxzhou.rdi.model.RAccount
-import calebxzhou.rdi.net.RServer
-import calebxzhou.rdi.net.RServer.Companion.OFFICIAL_DEBUG
-import calebxzhou.rdi.net.RServer.Companion.OFFICIAL_NNG
+import calebxzhou.rdi.model.RServer
+import calebxzhou.rdi.model.RServer.Companion.OFFICIAL_DEBUG
+import calebxzhou.rdi.model.RServer.Companion.OFFICIAL_NNG
+import calebxzhou.rdi.model.Room
 import calebxzhou.rdi.ui2.*
 import icyllis.modernui.animation.ObjectAnimator
 import icyllis.modernui.animation.PropertyValuesHolder
@@ -21,9 +22,9 @@ class TitleFragment : RFragment() {
     override fun initContent() {}
 
     init {
-        RServer.now = null
+        RServer.now=null
         RAccount.now=null
-
+        Room.now=null
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: DataSet?): View =

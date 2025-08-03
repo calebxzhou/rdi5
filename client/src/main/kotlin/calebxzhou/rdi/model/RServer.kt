@@ -1,6 +1,8 @@
-package calebxzhou.rdi.net
+package calebxzhou.rdi.model
 
-import calebxzhou.rdi.model.RAccount
+import calebxzhou.rdi.net.GameNetClient
+import calebxzhou.rdi.net.httpRequest
+import calebxzhou.rdi.net.success
 import calebxzhou.rdi.ui2.frag.LoadingFragment
 import calebxzhou.rdi.ui2.frag.SelectAccountFragment
 import calebxzhou.rdi.ui2.frag.alertErr
@@ -45,7 +47,7 @@ class RServer(
         }*/
         /**/
         // Add listener to check connection status
-        mc go  SelectAccountFragment(this)
+        mc go SelectAccountFragment(this)
     }
 
     suspend fun prepareRequest(
@@ -69,7 +71,7 @@ class RServer(
     ) {
         var frag: LoadingFragment? = null
         if (showLoading){
-            frag=LoadingFragment()
+            frag= LoadingFragment()
             uiThread {
                 mc go frag
             }

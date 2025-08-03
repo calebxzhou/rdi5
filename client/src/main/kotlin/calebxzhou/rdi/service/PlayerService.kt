@@ -3,7 +3,7 @@ package calebxzhou.rdi.service
 import calebxzhou.rdi.auth.LocalCredentials
 import calebxzhou.rdi.mixin.AMinecraft
 import calebxzhou.rdi.model.RAccount
-import calebxzhou.rdi.net.RServer
+import calebxzhou.rdi.model.RServer
 import calebxzhou.rdi.net.body
 import calebxzhou.rdi.net.success
 import calebxzhou.rdi.ui2.frag.alertErr

@@ -3,8 +3,9 @@ package calebxzhou.rdi.ui2.frag
 import calebxzhou.rdi.lgr
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.model.RBlockState
+import calebxzhou.rdi.model.RServer
+import calebxzhou.rdi.model.Room
 import calebxzhou.rdi.net.GameNetClient
-import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.net.body
 import calebxzhou.rdi.net.protocol.SMeJoinPacket
 import calebxzhou.rdi.ui2.*
@@ -39,9 +40,17 @@ class ProfileFragment : RFragment("我的信息") {
         }
     }
     fun start(){
-        GameNetClient.connect(server)?.let {
-            GameNetClient.send(SMeJoinPacket(account.qq,account.pwd))
+        server.hqRequest(path = "room/my") {
+            if (it.body != "0") {
+                Room.now = serdesJson.decodeFromString<Room>(it.body)
+                GameNetClient.connect(server)?.let {
+                    GameNetClient.send(SMeJoinPacket(account.qq,account.pwd))
+                }
+            }else{
+                alertErr("你还没有加入房间，请先创建或加入房间。")
+            }
         }
+
 
     }
     fun fetchRoomInfo(){
@@ -58,7 +67,7 @@ class ProfileFragment : RFragment("我的信息") {
             }else{
                 uiThread {
                     contentLayout.apply {
-                    textButton("开始", onClick = ::start)
+                        textButton("开始", onClick = ::start)
                     }
                 }
 
@@ -89,6 +98,7 @@ class ProfileFragment : RFragment("我的信息") {
     override fun close(){
         RServer.now=null
         RAccount.now=null
+        Room.now=null
         mc go TitleFragment()
     }
 }

@@ -12,7 +12,7 @@ class CLoginOkPacket(): CPacket {
         lgr.info("登录成功")
         renderThread {
 
-        LevelService.startLevel()
+            LevelService.startLevel()
         }
     }
 }

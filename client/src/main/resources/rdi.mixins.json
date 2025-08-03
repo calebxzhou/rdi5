@@ -4,6 +4,7 @@
   "package": "calebxzhou.rdi.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
+    "AClientPacketListener",
     "AEditBox",
     "AMinecraft",
     "mGui",

@@ -10,8 +10,12 @@ import net.minecraft.Util
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite
+import net.minecraft.client.server.IntegratedServer
 import net.minecraft.core.BlockPos
+import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
+import net.minecraft.server.MinecraftServer
+import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.level.ChunkPos
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.state.BlockState
@@ -33,6 +37,8 @@ val mc: Minecraft
     get() = Minecraft.getInstance() ?: run {
         throw IllegalStateException("Minecraft Not Start !")
     }
+val mcs: IntegratedServer?
+    get() = mc.singleplayerServer
 fun renderThread(run: () -> Unit) {
     mc.execute(run)
 }
@@ -84,6 +90,26 @@ val Minecraft.pressingEnter
     get() =  this pressingKey InputConstants.KEY_RETURN || this pressingKey InputConstants.KEY_NUMPADENTER
 val ChunkPos.asInt
     get() = x.toShort().toInt() and 0xFFFF or ((z.toShort().toInt() and 0xFFFF) shl 16)
+
+val Int.asChunkPos: ChunkPos
+    get() {
+        val x = this and 0xFFFF
+        val z = (this shr 16) and 0xFFFF
+        return ChunkPos(x.toShort().toInt(), z.toShort().toInt())
+    }
+
+
 fun String.openAsUri(){
     Util.getPlatform().openUri(this)
 }
+fun Minecraft.addChatMessage(msg: String) {
+    msg.split("\n").forEach {
+        gui.chat.addMessage(it.mcComp)
+    }
+}
+
+fun Minecraft.addChatMessage(msg: Component) {
+    gui.chat.addMessage(msg)
+}
+val MinecraftServer.playingLevel: ServerLevel?
+    get() = mc.level?.let { getLevel(it.dimension()) }

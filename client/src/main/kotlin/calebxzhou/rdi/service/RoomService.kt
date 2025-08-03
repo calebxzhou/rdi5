@@ -1,7 +1,7 @@
 package calebxzhou.rdi.service
 
 import calebxzhou.rdi.model.RBlockState
-import calebxzhou.rdi.net.RServer
+import calebxzhou.rdi.model.RServer
 import io.ktor.client.statement.*
 import net.minecraft.world.level.block.Block
 

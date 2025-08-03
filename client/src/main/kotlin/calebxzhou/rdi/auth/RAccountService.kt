@@ -4,7 +4,7 @@ import calebxzhou.rdi.lgr
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.model.RAccount.Cloth
 import calebxzhou.rdi.model.RAccount.Dto
-import calebxzhou.rdi.net.RServer
+import calebxzhou.rdi.model.RServer
 import calebxzhou.rdi.net.body
 import calebxzhou.rdi.util.serdesJson
 import calebxzhou.rdi.util.toUUID

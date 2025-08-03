@@ -1,4 +1,4 @@
-import calebxzhou.rdi.net.RServer
+import calebxzhou.rdi.model.RServer
 
 suspend fun main(){
     RServer.OFFICIAL_DEBUG.prepareRequest( path = "register",

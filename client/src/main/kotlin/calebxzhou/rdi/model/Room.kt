@@ -1,6 +1,6 @@
 package calebxzhou.rdi.model
 
-import calebxzhou.rdi.model.RAccount
+import calebxzhou.rdi.ihq.model.FirmSection
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import org.bson.types.ObjectId
@@ -12,18 +12,23 @@ data class Room(
     val name: String,
     val score: Int=0,
     val members: List<Member> = arrayListOf(),
-
-    ){
+    val blockStates: List<RBlockState> = arrayListOf(),
+    var firmSections: List<FirmSection> = arrayListOf()
+){
     @Volatile
     //临时id 最大0xff
     var tempId: Byte=0
     @Volatile
-    var onlineMembers = hashMapOf<Byte, RAccount>()
+    var onlineMembers = hashMapOf<Byte, RAccount.Dto>()
     @Serializable
     data class Member(
         @Contextual
         val id: ObjectId,
         val isOwner: Boolean
     )
+    companion object{
 
+        @JvmStatic
+        var now: Room? = null
+    }
 }

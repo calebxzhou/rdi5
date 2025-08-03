@@ -1,7 +1,7 @@
 package calebxzhou.rdi.cmd
 
 import calebxzhou.rdi.model.RBlockState
-import calebxzhou.rdi.net.RServer
+import calebxzhou.rdi.model.RServer
 import calebxzhou.rdi.util.*
 import com.mojang.brigadier.Command
 import kotlinx.coroutines.launch
