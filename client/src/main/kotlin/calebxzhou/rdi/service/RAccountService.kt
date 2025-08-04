@@ -1,10 +1,9 @@
-package calebxzhou.rdi.auth
+package calebxzhou.rdi.service
 
 import calebxzhou.rdi.lgr
 import calebxzhou.rdi.model.RAccount
-import calebxzhou.rdi.model.RAccount.Cloth
-import calebxzhou.rdi.model.RAccount.Dto
 import calebxzhou.rdi.model.RServer
+import calebxzhou.rdi.model.Room
 import calebxzhou.rdi.net.body
 import calebxzhou.rdi.util.serdesJson
 import calebxzhou.rdi.util.toUUID
@@ -21,7 +20,7 @@ object RAccountService {
     val profileCache = CacheBuilder.newBuilder().expireAfterWrite(30L, TimeUnit.MINUTES).build(object :
         CacheLoader<ObjectId, GameProfile>() {
         override fun load(key: ObjectId): GameProfile {
-            return runBlocking {  retrievePlayerInfo(key)}.mcProfile
+            return runBlocking { retrievePlayerInfo(key) }.mcProfile
         }
     })
     fun createMcProfile(uid: ObjectId) = GameProfile(uid.toUUID(), uid.toHexString())
@@ -38,13 +37,27 @@ object RAccountService {
 
 
     suspend fun retrievePlayerInfo(uid: ObjectId): RAccount.Dto{
-        return RServer.now?.prepareRequest(false, "playerInfo", listOf("uid" to uid))?.let { resp ->
+        return RServer.Companion.now?.prepareRequest(false, "playerInfo", listOf("uid" to uid))?.let { resp ->
             val json = resp.body
             lgr.info("玩家信息:${json}")
             serdesJson.decodeFromString(json)
         } ?: let {
             lgr.warn("服务器未连接!!")
-            Dto(ObjectId(), "未知", Cloth())
+            RAccount.Dto(ObjectId(), "未知", RAccount.Cloth())
         }
+    }
+    suspend fun RAccount.getMyRoom(): Room? {
+        RServer.now?.prepareRequest(path = "room/my")?.let { resp ->
+            return if (resp.body != "0") {
+                serdesJson.decodeFromString<Room>(resp.body)
+
+            } else {
+                null
+            }
+        }
+
+        return null
+
+
     }
 }

@@ -8,6 +8,7 @@ import calebxzhou.rdi.model.Room
 import calebxzhou.rdi.net.GameNetClient
 import calebxzhou.rdi.net.body
 import calebxzhou.rdi.net.protocol.SMeJoinPacket
+import calebxzhou.rdi.service.RAccountService.getMyRoom
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.util.*
 import icyllis.modernui.view.Gravity
@@ -34,43 +35,37 @@ class ProfileFragment : RFragment("我的信息") {
             }
 
             textButton("修改信息", onClick = { mc go (ChangeProfileFragment()) })
+            textButton("房间中心", onClick = {  ioScope.launch {
+                account.getMyRoom()?.let { mc go (RoomCenterFragment(account,server, it)) }
+            }} )
             fetchRoomInfo()
-
-
         }
     }
     fun start(){
-        server.hqRequest(path = "room/my") {
-            if (it.body != "0") {
-                Room.now = serdesJson.decodeFromString<Room>(it.body)
+        ioScope.launch {
+            account.getMyRoom()?.let { room ->
+                Room.now = room
                 GameNetClient.connect(server)?.let {
                     GameNetClient.send(SMeJoinPacket(account.qq,account.pwd))
                 }
-            }else{
-                alertErr("你还没有加入房间，请先创建或加入房间。")
-            }
+            }?:alertErr("你还没有加入房间，请先创建或加入房间。")
         }
-
-
     }
     fun fetchRoomInfo(){
-        server.hqRequest(path = "room/my") {
-            if (it.body == "0") {
-                uiThread {
-                    contentLayout.apply {
-                        textButton("创建新房间", onClick = ::createNewRoom)
-                        textButton("加入朋友房间", onClick = {
-                            alertOk("让对方进行以下操作：\n1.打开房间中心\n2.添加成员-输入你的QQ\n3.你重新登录\n即可加入对方房间。")
-                        })
-                    }
-                }
-            }else{
+        ioScope.launch {
+            account.getMyRoom()?.let { room->
                 uiThread {
                     contentLayout.apply {
                         textButton("开始", onClick = ::start)
                     }
                 }
-
+            }?: uiThread {
+                contentLayout.apply {
+                    textButton("创建新房间", onClick = ::createNewRoom)
+                    textButton("加入朋友房间", onClick = {
+                        alertOk("让对方进行以下操作：\n1.打开房间中心\n2.添加成员-输入你的QQ\n3.你重新登录\n即可加入对方房间。")
+                    })
+                }
             }
         }
     }

@@ -22,6 +22,7 @@ import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.routing.*
 import io.netty.handler.codec.compression.StandardCompressionOptions.deflate
 import io.netty.handler.codec.compression.StandardCompressionOptions.gzip
+import net.minecraft.util.HttpUtil
 import net.minecraft.world.level.block.Block
 import net.neoforged.fml.common.Mod
 import org.apache.logging.log4j.LogManager
@@ -36,7 +37,9 @@ class RDI {
         lgr.info("RDI启动中")
         LevelService
         File("rdi").mkdir()
-        embeddedServer(CIO,host="::",port=16769){
+        val port = HttpUtil.getAvailablePort()
+        lgr.info("local port started at $port")
+        embeddedServer(CIO,host="::",port=port){
             install(StatusPages) {
                 //参数不全或者有问题
                 //参数不全或者有问题

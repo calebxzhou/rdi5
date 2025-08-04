@@ -27,7 +27,7 @@ object LevelService {
             // Create indices for better query performance
             sectionDataCol.createIndex(org.bson.Document("roomId", 1))
             // Sparse index for blockStates since not all documents will have all positions
-            sectionDataCol.createIndex(org.bson.Document("blockStates", 1).append("sparse", true))
+        //    sectionDataCol.createIndex(org.bson.Document("blockStates", 1).append("sparse", true))
         }
     }
 

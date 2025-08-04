@@ -1,6 +1,7 @@
 package calebxzhou.rdi.service
 
 import calebxzhou.rdi.Const
+import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.ui2.frag.ProfileFragment
 import calebxzhou.rdi.ui2.frag.TitleFragment
 import calebxzhou.rdi.ui2.mcScreen
@@ -17,7 +18,7 @@ import net.minecraft.world.level.levelgen.presets.WorldPresets
 object LevelService {
 
     fun startLevel() {
-        val levelName = "rdi"
+        val levelName = "rdi"+ RAccount.now?.name
         if (mc.levelSource.levelExists(levelName)) {
             mc.createWorldOpenFlows().openWorld(levelName){
                 mc go TitleFragment()

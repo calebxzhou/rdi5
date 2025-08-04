@@ -25,8 +25,7 @@ open class RButton(
                 return true
             }
             event.action if event.isButtonPressed(MotionEvent.BUTTON_PRIMARY) -> {
-                //onClick()
-                showContextMenu(event.x,event.y)
+                onClick()
                 return true
             }
         }

@@ -21,6 +21,7 @@
   "mixins": [
     "APacketDecoder",
     "ARegionFileVersion",
+    "mTextureUrlChecker",
     "event.mOnChangeBlockState",
     "event.mOnPacketSent"
   ]

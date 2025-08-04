@@ -55,7 +55,7 @@ object PlayerService {
             }
             //告诉大家我上线了
             inGamePlayers.forEach { tmpId, acc ->
-                acc.sendPacket(CPlayerJoinPacket(acc._id, tmpId, acc.name))
+                acc.sendPacket(CPlayerJoinPacket(_id, tmpId, name))
             }
             inGamePlayers[tmpId] = this
             gameContext?.tmpId = tmpId

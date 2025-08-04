@@ -20,6 +20,8 @@ class RServer(
     val gamePort: Int,
     val hqPort: Int
 ) {
+    var unicomIp = ip
+    var cmccIp = ip
     companion object {
         var now: RServer? = null
         val OFFICIAL_DEBUG = RServer(

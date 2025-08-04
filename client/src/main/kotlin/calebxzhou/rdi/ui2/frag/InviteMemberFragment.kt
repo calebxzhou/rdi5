@@ -6,8 +6,7 @@ import calebxzhou.rdi.ui2.component.REditText
 import calebxzhou.rdi.ui2.component.RTextButton
 import calebxzhou.rdi.ui2.fctx
 import calebxzhou.rdi.ui2.plusAssign
-import calebxzhou.rdi.util.ioScope
-import kotlinx.coroutines.launch
+import calebxzhou.rdi.util.uiThread
 
 class InviteMemberFragment : RFragment("邀请成员") {
 
@@ -18,12 +17,14 @@ class InviteMemberFragment : RFragment("邀请成员") {
     }
     private fun onClicked() {
         val qq = qqInput.text.toString()
-        ioScope.launch {
             RServer.now?.hqRequest(true,"room/invite_qq", params = listOf("qq" to qq)) {
-                close()
-                alertOk("成功邀请${it.body}加入了你的房间。")
+                uiThread {
+
+                    close()
+                    alertOk("成功邀请${it.body}加入了你的房间。")
+                }
             }
-        }
+
 
     }
 }

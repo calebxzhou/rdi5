@@ -1,6 +1,6 @@
 package calebxzhou.rdi.ui.component.button
 
-import calebxzhou.rdi.auth.RAccountService
+import calebxzhou.rdi.service.RAccountService
 import calebxzhou.rdi.ui.FONT
 import calebxzhou.rdi.util.isTextureReady
 import calebxzhou.rdi.util.mcAsync

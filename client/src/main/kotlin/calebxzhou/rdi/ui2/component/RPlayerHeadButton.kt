@@ -1,6 +1,6 @@
 package calebxzhou.rdi.ui2.component
 
-import calebxzhou.rdi.auth.RAccountService
+import calebxzhou.rdi.service.RAccountService
 import calebxzhou.rdi.net.httpRequest
 import calebxzhou.rdi.net.success
 import calebxzhou.rdi.ui2.paddingDp

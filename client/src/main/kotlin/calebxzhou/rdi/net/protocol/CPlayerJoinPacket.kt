@@ -1,6 +1,5 @@
 package calebxzhou.rdi.net.protocol
 
-import calebxzhou.rdi.auth.RAccountService
 import calebxzhou.rdi.lgr
 import calebxzhou.rdi.mixin.AClientPacketListener
 import calebxzhou.rdi.model.Room
@@ -8,6 +7,7 @@ import calebxzhou.rdi.net.CPacket
 import calebxzhou.rdi.net.RByteBuf
 import calebxzhou.rdi.net.readObjectId
 import calebxzhou.rdi.net.readString
+import calebxzhou.rdi.service.RAccountService
 import calebxzhou.rdi.util.addChatMessage
 import calebxzhou.rdi.util.ioScope
 import calebxzhou.rdi.util.mc
