@@ -3,9 +3,6 @@ package calebxzhou.rdi.ihq
 import calebxzhou.rdi.ihq.exception.AuthError
 import calebxzhou.rdi.ihq.exception.ParamError
 import calebxzhou.rdi.ihq.exception.RequestError
-import calebxzhou.rdi.ihq.net.GameNetServer
-import calebxzhou.rdi.ihq.net.RFrameDecoder
-import calebxzhou.rdi.ihq.service.ChatService
 import calebxzhou.rdi.ihq.service.PlayerService
 import calebxzhou.rdi.ihq.service.PlayerService.accountCol
 import calebxzhou.rdi.ihq.service.RoomService
@@ -60,8 +57,7 @@ val DB = MongoClient.create(
         }
         .uuidRepresentation(UuidRepresentation.STANDARD)
         .build()).getDatabase("rdi5")
-val GAME_PORT = System.getProperty("rdi.gamePort")?.toIntOrNull() ?: 28506
-val HQ_PORT = System.getProperty("rdi.hqPort")?.toIntOrNull() ?: 28507
+val HQ_PORT = System.getProperty("rdi.hqPort")?.toIntOrNull() ?: 28511
 fun main(): Unit =runBlocking {
 
         lgr.info { "init db" }
@@ -69,15 +65,12 @@ fun main(): Unit =runBlocking {
         accountCol.createIndex(Indexes.ascending("qq"), IndexOptions().unique(true))
         accountCol.createIndex(Indexes.ascending("name"), IndexOptions().unique(true))
 
-    val selectorManager = SelectorManager(Dispatchers.IO)
 
     // Launch both servers concurrently in the coroutine scope
     launch {
         startHttp()
     }
-    launch {
-        GameNetServer.start(selectorManager)
-    }
+
 
 }
 fun startHttp(){
@@ -144,9 +137,6 @@ fun startHttp(){
 
                 post("/profile") {
                     PlayerService.changeProfile(call)
-                }
-                post("/chat"){
-                    ChatService.chat(call)
                 }
                 post("/clearSkin") {
                     PlayerService.clearCloth(call)

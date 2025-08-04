@@ -2,18 +2,6 @@ package calebxzhou.rdi.ihq.service
 
 import calebxzhou.rdi.ihq.DB
 import calebxzhou.rdi.ihq.model.FirmSectionData
-import calebxzhou.rdi.ihq.model.GameContext
-import calebxzhou.rdi.ihq.net.GameNetServer.abort
-import calebxzhou.rdi.ihq.net.protocol.CBlockEntityUpdatePacket
-import calebxzhou.rdi.ihq.net.protocol.CBlockStateChangePacket
-import calebxzhou.rdi.ihq.net.protocol.SMeBlockEntityUpdatePacket
-import calebxzhou.rdi.ihq.net.protocol.SMeBlockStateChangePacket
-import calebxzhou.rdi.ihq.service.PlayerService.sendPacket
-import com.mongodb.client.model.Filters.and
-import com.mongodb.client.model.Filters.eq
-import com.mongodb.client.model.UpdateOneModel
-import com.mongodb.client.model.Updates
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.runBlocking
 
 object LevelService {
@@ -27,11 +15,11 @@ object LevelService {
             // Create indices for better query performance
             sectionDataCol.createIndex(org.bson.Document("roomId", 1))
             // Sparse index for blockStates since not all documents will have all positions
-        //    sectionDataCol.createIndex(org.bson.Document("blockStates", 1).append("sparse", true))
+            sectionDataCol.createIndex(org.bson.Document("blockStates", 1).append("sparse", true))
         }
     }
 
-    //  同步blockstate更新到全房间.
+   /* //  同步blockstate更新到全房间.
     suspend fun syncBlockState(
         packet: SMeBlockStateChangePacket,
         ctx: GameContext
@@ -162,5 +150,5 @@ object LevelService {
 
         // 同步
         //syncBlockState(packet, ctx)
-    }
+    }*/
 }
