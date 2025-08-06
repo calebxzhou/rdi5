@@ -1,8 +1,6 @@
 package calebxzhou.rdi.net
 
 import calebxzhou.rdi.Const
-import calebxzhou.rdi.exception.AuthError
-import calebxzhou.rdi.exception.ParamError
 import calebxzhou.rdi.lgr
 import io.ktor.client.*
 import io.ktor.client.call.*
@@ -11,12 +9,7 @@ import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
-import io.ktor.server.application.*
-import io.ktor.server.auth.*
-import io.ktor.server.request.*
-import io.ktor.server.response.*
 import kotlinx.coroutines.runBlocking
-import org.bson.types.ObjectId
 import java.nio.charset.StandardCharsets
 
 /**
@@ -84,47 +77,3 @@ suspend fun httpRequest(
     }
 }
 
-
-suspend fun ApplicationCall.e400(msg: String? = null) {
-    err(HttpStatusCode.BadRequest, msg)
-}
-
-suspend fun ApplicationCall.e401(msg: String? = null) {
-    err(HttpStatusCode.Unauthorized, msg)
-}
-
-suspend fun ApplicationCall.e404(msg: String? = null) {
-    err(HttpStatusCode.NotFound, msg)
-}
-
-suspend fun ApplicationCall.e500(msg: String? = null) {
-    err(HttpStatusCode.InternalServerError, msg)
-}
-
-suspend fun ApplicationCall.err(status: HttpStatusCode, msg: String? = null) {
-    msg?.run {
-        respondText(this, status = status)
-    } ?: run {
-        respond(status)
-    }
-}
-
-suspend fun ApplicationCall.ok(msg: String? = null,contentType: ContentType? =null) {
-    msg?.run {
-        respondText(this, status = HttpStatusCode.OK, contentType = contentType)
-    } ?: run {
-        respond(HttpStatusCode.OK)
-    }
-}
-
-infix fun Parameters.got(param: String): String {
-    return this[param] ?: throw ParamError("参数不全")
-}
-
-val ApplicationCall.uid
-    get() =
-
-        ObjectId(this.principal<UserIdPrincipal>()?.name ?: throw AuthError("无效会话"))
-
-suspend fun ApplicationCall.initPostParams() = receiveParameters()
-suspend fun ApplicationCall.initGetParams() = request.queryParameters

@@ -6,7 +6,6 @@ import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.util.*
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.widget.LinearLayout
-import net.minecraft.client.gui.screens.GenericMessageScreen
 
 class PauseFragment : RFragment("暂停") {
     val lookingBlockState = mc.player?.lookingAtBlock
@@ -31,7 +30,7 @@ class PauseFragment : RFragment("暂停") {
 
                     }
                     iconButton("mcmod", "MC百科") {
-                        alertOk("鼠标放在你想搜索的物品上\n按下${RKeyBinds.MCMOD.translatedKeyMessage.string}")
+                        alertOk("瞄准/光标放置/手持你想搜索的物品\n按下${RKeyBinds.MCMOD.translatedKeyMessage.string}")
                     }
                     iconButton("home", "回家")
                 }
@@ -49,7 +48,7 @@ class PauseFragment : RFragment("暂停") {
 
                             GameNetClient.disconnect()
                             mc.level?.disconnect()
-                            mc.disconnect(GenericMessageScreen("存档中，请稍候".mcComp))
+                            mc.disconnect( )
                             mc go ProfileFragment()
                         }
                     }

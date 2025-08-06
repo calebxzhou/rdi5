@@ -12,6 +12,7 @@ import icyllis.modernui.graphics.Image
 import icyllis.modernui.graphics.Paint
 import icyllis.modernui.graphics.drawable.Drawable
 import icyllis.modernui.graphics.drawable.ImageDrawable
+import icyllis.modernui.material.MaterialRadioButton
 import icyllis.modernui.mc.neoforge.MuiForgeApi
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.view.View
@@ -105,6 +106,10 @@ fun frameLayoutParam(
 fun ViewGroup.linearLayout(
     init: LinearLayout.() -> Unit = {}
 ) = LinearLayout(this.context).apply(init).also { this += it }
+
+fun ViewGroup.radioGroup(
+    init: RadioGroup.() -> Unit = {}
+) = RadioGroup(this.context).apply(init).also { this += it }
 //底部一堆按钮
 fun ViewGroup.bottomOptions(
     init: LinearLayout.() -> Unit = {}
@@ -156,6 +161,15 @@ fun ViewGroup.headButton(
     init: RPlayerHeadButton.() -> Unit = {},
     onClick: () -> Unit = {},
 ) = RPlayerHeadButton(context, id, onClick).apply(init).also { this += it }
+
+
+fun ViewGroup.radioButton(
+    msg:String,
+    init: MaterialRadioButton.() -> Unit = {},
+) = MaterialRadioButton(context,).apply{
+    init()
+    text=msg
+}.also { this += it }
 
 
 fun ViewGroup.iconButton(

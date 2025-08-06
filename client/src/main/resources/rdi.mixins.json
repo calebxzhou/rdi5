@@ -7,8 +7,12 @@
     "AClientPacketListener",
     "AEditBox",
     "AMinecraft",
+    "mChat",
+    "mFastCreateMojangService",
+    "mFastCreateMojangService2",
     "mGui",
     "mPauseScreen",
+    "mPlayerTabOverlay",
     "mScreenBg",
     "mScreenTransition",
     "mTitleScreen",
@@ -21,8 +25,11 @@
   "mixins": [
     "APacketDecoder",
     "ARegionFileVersion",
+    "mAllowChineseArgument",
+    "mAlwaysOfflineMode",
     "mTextureUrlChecker",
     "event.mOnChangeBlockState",
-    "event.mOnPacketSent"
+    "event.mOnPacketSent",
+    "jade.mNoDisplayModName"
   ]
 }

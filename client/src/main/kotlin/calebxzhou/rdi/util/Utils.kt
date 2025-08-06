@@ -3,17 +3,27 @@ package calebxzhou.rdi.util
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import org.bson.types.ObjectId
+import org.lwjgl.util.tinyfd.TinyFileDialogs
+import java.net.URLEncoder
 import java.nio.ByteBuffer
 import java.util.*
 
 /**
  * calebxzhou @ 2025-04-16 12:23
  */
-val ioScope: CoroutineScope = CoroutineScope(Dispatchers.IO + CoroutineExceptionHandler { _, throwable ->
-    throwable.printStackTrace()
+
+fun notifyOs(msg: String){
+    TinyFileDialogs.tinyfd_notifyPopup("RDI提示", msg,"info" )
 }
-)
+val ioScope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob() + CoroutineExceptionHandler { context, throwable ->
+    println("[RDI] Error in IO scope: ${throwable.message}")
+    throwable.printStackTrace()
+    // Log the coroutine context information
+    println("[RDI] Coroutine context: $context")
+})
+
 //保留小数点后x位
 fun Float.toFixed(decPlaces: Int): String{
     return String.format("%.${decPlaces}f",this)
@@ -37,3 +47,5 @@ fun ObjectId.toUUID() : UUID{
     bb.put(objectIdBytes)
     return UUID(bb.getLong(0), bb.getLong(8))
 }
+val String.urlEncoded
+    get() = URLEncoder.encode(this, Charsets.UTF_8)

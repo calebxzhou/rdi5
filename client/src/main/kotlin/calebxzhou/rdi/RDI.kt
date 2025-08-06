@@ -1,43 +1,53 @@
 package calebxzhou.rdi
 
-import calebxzhou.rdi.exception.AuthError
-import calebxzhou.rdi.exception.ParamError
-import calebxzhou.rdi.exception.RequestError
-import calebxzhou.rdi.model.RBlockState
-import calebxzhou.rdi.net.e400
-import calebxzhou.rdi.net.e401
-import calebxzhou.rdi.net.e500
-import calebxzhou.rdi.net.ok
 import calebxzhou.rdi.service.LevelService
-import calebxzhou.rdi.util.json
-import calebxzhou.rdi.util.serdesJson
-import io.ktor.http.*
-import io.ktor.serialization.kotlinx.json.*
-import io.ktor.server.application.*
-import io.ktor.server.cio.*
-import io.ktor.server.engine.*
-import io.ktor.server.plugins.compression.Compression
-import io.ktor.server.plugins.contentnegotiation.*
-import io.ktor.server.plugins.statuspages.*
-import io.ktor.server.routing.*
-import io.netty.handler.codec.compression.StandardCompressionOptions.deflate
-import io.netty.handler.codec.compression.StandardCompressionOptions.gzip
-import net.minecraft.util.HttpUtil
-import net.minecraft.world.level.block.Block
+import calebxzhou.rdi.service.Mcmod
+import calebxzhou.rdi.service.UpdateService
+import calebxzhou.rdi.util.notifyOs
+import kotlinx.coroutines.runBlocking
 import net.neoforged.fml.common.Mod
 import org.apache.logging.log4j.LogManager
 import java.io.File
 
 val lgr = LogManager.getLogger("rdi")
 var TOTAL_TICK_DELTA = 0f
+
 @Mod("rdi")
 class RDI {
+    companion object {
+        //mod id与中文名称map，高亮显示等用
+        @JvmField
+        val modIdChineseName = hashMapOf<String, String>()
+    }
+
 
     init {
         lgr.info("RDI启动中")
         LevelService
         File("rdi").mkdir()
-        val port = HttpUtil.getAvailablePort()
+
+        //检查更新
+        if (!(Const.DEBUG)) {
+            try {
+                runBlocking {
+
+
+                    val modsToUpdate = UpdateService.checkUpdate(File("mods"))
+                    if (modsToUpdate.isNotEmpty()) {
+
+                        notifyOs("更新完成${modsToUpdate}")
+
+
+                        UpdateService.restart()
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                notifyOs("检测更新失败\n请检查网络连接")
+            }
+        }
+        Mcmod.getServerInfo()
+        /*val port = HttpUtil.getAvailablePort()
         lgr.info("local port started at $port")
         embeddedServer(CIO,host="::",port=port){
             install(StatusPages) {
@@ -83,6 +93,6 @@ class RDI {
                     }
                 }
             }
-        }.start(wait = false)
+        }.start(wait = false)*/
     }
 }

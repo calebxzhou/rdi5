@@ -28,6 +28,11 @@ repositories {
         url = 'https://thedarkcolour.github.io/KotlinForForge/'
         content { includeGroup "thedarkcolour" }
     }
+    maven {
+        // location of the maven that hosts JEI files since January 2023
+        name = "Jared's maven"
+        url = "https://maven.blamejared.com/"
+    }
     exclusiveContent {
         forRepository {
             maven {
@@ -178,22 +183,30 @@ def mcLibs = [
 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1',
 "io.ktor:ktor-client-core-jvm:$ktor_version",
 "io.ktor:ktor-client-cio-jvm:$ktor_version",
+// https://mvnrepository.com/artifact/io.ktor/ktor-utils-jvm
+
 "io.ktor:ktor-client-content-negotiation:$ktor_version",
 "io.ktor:ktor-client-encoding:$ktor_version",
- "io.ktor:ktor-server-core:$ktor_version",
- "io.ktor:ktor-server-cio:$ktor_version",
-"io.ktor:ktor-server-compression:$ktor_version",
-("io.ktor:ktor-server-status-pages:$ktor_version"),
-("io.ktor:ktor-server-auth:$ktor_version"),
-("io.ktor:ktor-server-content-negotiation:$ktor_version"),
 "io.ktor:ktor-serialization-kotlinx-json:$ktor_version",
 'org.jsoup:jsoup:1.19.1',
 'org.mongodb:bson:5.1.0',
 'org.hotswapagent:hotswap-agent-core:2.0.1',
 ]
 def mcLibExportOnly = [
-        ]
+        "io.ktor:ktor-utils-jvm:$ktor_version",
+        "io.ktor:ktor-network-jvm:$ktor_version",
+        "io.ktor:ktor-network-tls-jvm:$ktor_version",
+        "io.ktor:ktor-events-jvm:$ktor_version",
+        "io.ktor:ktor-http-jvm:$ktor_version",
+        "io.ktor:ktor-http-cio-jvm:$ktor_version",
+        "io.ktor:ktor-io-jvm:$ktor_version",
+        "io.ktor:ktor-sse-jvm:$ktor_version",
+        "org.jetbrains.kotlinx:kotlinx-io-bytestring-jvm:0.7.0",
+        "org.jetbrains.kotlinx:kotlinx-io-core-jvm:0.7.0"
+        //todo more ktor deps
+]
 def modrinthMods = [
+
         "jade:15.10.0+neoforge",
         "justenoughcharacters:4.5.15",
         "notenoughcrashes:4.4.8+1.21.1-neoforge",
@@ -243,6 +256,10 @@ dependencies {
     implementation "icyllis.modernui:ModernUI-Markdown:3.11.1"
     additionalRuntimeClasspath "icyllis.modernui:ModernUI-Markdown:3.11.1"
     testImplementation "icyllis.modernui:ModernUI-Markdown:3.11.1"
+    // compile against the JEI API but do not include it at runtime
+    compileOnly("mezz.jei:jei-${minecraft_version}-neoforge-api:${jei_version}")
+    // at runtime, use the full JEI jar for NeoForge
+    runtimeOnly("mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}")
     mcLibs.each { lib ->
         libraries(lib)
         jarJar(lib)
@@ -252,7 +269,7 @@ dependencies {
         jarJar(lib)
     }
     modrinthMods.each { dep ->
-        implementation ("maven.modrinth:$dep")
+        implementation("maven.modrinth:$dep")
 
     }
 }
@@ -310,4 +327,9 @@ idea {
         downloadSources = true
         downloadJavadoc = true
     }
+}
+tasks.register('出core', Copy) {
+    dependsOn(tasks.named('build'))
+    from(layout.buildDirectory.file("libs/rdi-${version}.jar"))
+    into("C:\\Users\\liberatorch\\Documents\\RDI5sea-Ref\\.minecraft\\versions\\RDI5sea\\mods")
 }

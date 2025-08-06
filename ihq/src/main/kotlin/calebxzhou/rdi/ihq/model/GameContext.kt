@@ -1,8 +1,6 @@
 package calebxzhou.rdi.ihq.model
 
 import calebxzhou.rdi.ihq.net.account
-import calebxzhou.rdi.ihq.net.protocol.CPlayerMovePacket
-import calebxzhou.rdi.ihq.service.PlayerService.sendPacket
 import io.netty.channel.ChannelHandlerContext
 
 class GameContext(

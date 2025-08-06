@@ -6,15 +6,21 @@ import calebxzhou.rdi.event.PacketSentEvent
 import calebxzhou.rdi.net.GameNetClient
 import calebxzhou.rdi.net.protocol.SMeBlockStateChangePacket
 import calebxzhou.rdi.net.protocol.SMeMovePacket
+import calebxzhou.rdi.service.EnglishStorage
+import calebxzhou.rdi.service.Mcmod
+import calebxzhou.rdi.service.RGuiHud
+import calebxzhou.rdi.service.RKeyBinds
 import calebxzhou.rdi.util.*
+import com.mojang.blaze3d.platform.InputConstants
 import kotlinx.coroutines.launch
+import net.minecraft.client.resources.language.ClientLanguage
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket
 import net.minecraft.util.HttpUtil
 import net.minecraft.world.level.GameType
 import net.neoforged.bus.api.SubscribeEvent
 import net.neoforged.fml.common.EventBusSubscriber
-import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent
-import net.neoforged.neoforge.client.event.RenderFrameEvent
+import net.neoforged.fml.event.lifecycle.FMLLoadCompleteEvent
+import net.neoforged.neoforge.client.event.*
 import net.neoforged.neoforge.event.RegisterCommandsEvent
 
 @EventBusSubscriber(modid = "rdi")
@@ -91,6 +97,54 @@ class RGameEvents {
             //启动局域网
 
             mc.singleplayerServer?.publishServer(GameType.SURVIVAL, Const.DEBUG, HttpUtil.getAvailablePort())
+        }     @SubscribeEvent
+        @JvmStatic
+        fun loadComplete(e: FMLLoadCompleteEvent) {
+
+            RDI.Companion.modIdChineseName += "tfc" to "群峦传说"
+            RDI.Companion.modIdChineseName += "firmalife" to "群峦人生"
+            RDI.Companion.modIdChineseName += "ae2" to "应用能源2"
+            RDI.Companion.modIdChineseName += "create" to "机械动力"
+            RDI.Companion.modIdChineseName += "create_connected" to "机械动力·创意传动"
+            RDI.Companion.modIdChineseName += "vinery" to "葡园酒香"
+            RDI.Companion.modIdChineseName += "aether" to "天境"
+            RDI.Companion.modIdChineseName += "farmersdelight" to "农夫乐事"
+            RDI.Companion.modIdChineseName += "chefsdelight" to "厨师乐事"
+            RDI.Companion.modIdChineseName += "aethersdelight" to "天境乐事"
+            RDI.Companion.modIdChineseName += "oceansdelight" to "海洋乐事"
+            RDI.Companion.modIdChineseName += "cuisinedelight" to "料理乐事"
+            RDI.Companion.modIdChineseName += "computercraft" to "电脑"
+            RDI.Companion.modIdChineseName += "minecraft" to "原版"
+
+            EnglishStorage.lang = ClientLanguage.loadFrom(mc.resourceManager, listOf("en_us"), false)
+
+        }
+        @SubscribeEvent
+        @JvmStatic
+        fun onRenderGuiPre(e: RenderGuiEvent.Pre) {
+            RGuiHud.onRender(e.guiGraphics)
+        }
+        @SubscribeEvent
+        @JvmStatic
+        fun onScreenKeyPressed(e: ScreenEvent.KeyPressed.Pre) {
+            if (RKeyBinds.MCMOD.isActiveAndMatches(InputConstants.getKey(e.keyCode, e.scanCode))) {
+                Mcmod.onKeyPressGui()
+            }
+        }
+        @SubscribeEvent
+        @JvmStatic
+        fun onKeyBind(e: RegisterKeyMappingsEvent) {
+            e.register(RKeyBinds.HOME)
+            e.register(RKeyBinds.MCMOD)
+        }
+        @SubscribeEvent
+        @JvmStatic
+        fun onClientTick(e: ClientTickEvent.Post) {
+            if (RKeyBinds.HOME.consumeClick()) {
+                //RPauseScreen.goHome()
+            }else if(RKeyBinds.MCMOD.consumeClick()){
+                Mcmod. onKeyPressIngame()
+            }
         }
     }
 

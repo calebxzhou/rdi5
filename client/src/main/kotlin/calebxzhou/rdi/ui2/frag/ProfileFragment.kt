@@ -1,25 +1,24 @@
 package calebxzhou.rdi.ui2.frag
 
-import calebxzhou.rdi.lgr
+import calebxzhou.rdi.auth.LocalCredentials
 import calebxzhou.rdi.model.RAccount
-import calebxzhou.rdi.model.RBlockState
 import calebxzhou.rdi.model.RServer
 import calebxzhou.rdi.model.Room
-import calebxzhou.rdi.net.GameNetClient
-import calebxzhou.rdi.net.body
-import calebxzhou.rdi.net.protocol.SMeJoinPacket
-import calebxzhou.rdi.service.RAccountService.getMyRoom
 import calebxzhou.rdi.ui2.*
-import calebxzhou.rdi.util.*
+import calebxzhou.rdi.util.go
+import calebxzhou.rdi.util.mc
+import calebxzhou.rdi.util.renderThread
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.widget.LinearLayout
-import icyllis.modernui.widget.Toast
-import kotlinx.coroutines.launch
-import net.minecraft.world.level.block.Block
+import net.minecraft.client.gui.screens.ConnectScreen
+import net.minecraft.client.multiplayer.resolver.ServerAddress
+import java.time.LocalTime
 
 class ProfileFragment : RFragment("我的信息") {
     val account = RAccount.now ?: RAccount.DEFAULT
-    val server = RServer.now?: RServer.OFFICIAL_DEBUG
+    val server = RServer.now ?: RServer.OFFICIAL_DEBUG
+    val cred = LocalCredentials.read()
+    var carrier = cred.carrier
     override fun initContent() {
         contentLayout.apply {
             orientation = LinearLayout.VERTICAL
@@ -29,71 +28,66 @@ class ProfileFragment : RFragment("我的信息") {
                 layoutParams = linearLayoutParam(PARENT, SELF)
                 gravity = Gravity.CENTER
 
-                headButton(account._id) {
-                  //  layoutParams = linearLayoutParam(SELF, SELF)
-                }
+                headButton(account._id)
             }
-
             textButton("修改信息", onClick = { mc go (ChangeProfileFragment()) })
-            textButton("房间中心", onClick = {  ioScope.launch {
-                account.getMyRoom()?.let { mc go (RoomCenterFragment(account,server, it)) }
-            }} )
-            fetchRoomInfo()
-        }
-    }
-    fun start(){
-        ioScope.launch {
-            account.getMyRoom()?.let { room ->
-                Room.now = room
-                GameNetClient.connect(server)?.let {
-                    GameNetClient.send(SMeJoinPacket(account.qq,account.pwd))
-                }
-            }?:alertErr("你还没有加入房间，请先创建或加入房间。")
-        }
-    }
-    fun fetchRoomInfo(){
-        ioScope.launch {
-            account.getMyRoom()?.let { room->
-                uiThread {
-                    contentLayout.apply {
-                        textButton("开始", onClick = ::start)
-                    }
-                }
-            }?: uiThread {
-                contentLayout.apply {
-                    textButton("创建新房间", onClick = ::createNewRoom)
-                    textButton("加入朋友房间", onClick = {
-                        alertOk("让对方进行以下操作：\n1.打开房间中心\n2.添加成员-输入你的QQ\n3.你重新登录\n即可加入对方房间。")
-                    })
+            radioGroup {
+                layoutParams = linearLayoutParam(PARENT, SELF)
+                gravity = Gravity.CENTER
+
+            radioButton("电信") {
+                isChecked = carrier == 0
+                setOnCheckedChangeListener { a, b ->
+                    changeCarrier(0)
                 }
             }
-        }
-    }
-    fun createNewRoom(){
-        ioScope.launch {
-            val bstates = Block.BLOCK_STATE_REGISTRY.mapIndexed { id, bs ->
-                val name = bs.blockHolder.registeredName
-                val props = bs.values.map { (prop, value) ->
-                    prop.name to value.toString()
-                }.toMap()
-                RBlockState(
-                    name = name,
-                    props = props
-                )
-            }
-            server.hqRequest(true, "room/create", params=listOf("bstates" to _root_ide_package_.calebxzhou.rdi.util.serdesJson.encodeToString(bstates))){
-                 lgr.info("创建房间响应: ${it.body}")
-                uiThread {
-                    Toast.makeText(context, "创建完成，重新登录开始游玩",2000)
-                    close()
+            radioButton("联通") {
+                isChecked = carrier == 1
+                setOnCheckedChangeListener { a, b ->
+                    changeCarrier(1)
                 }
             }
+            radioButton("移动") {
+                isChecked = carrier == 2
+                setOnCheckedChangeListener { a, b ->
+                    changeCarrier(2)
+                }
+            }  }
+            textButton("开始", onClick = ::start)
+
+
         }
     }
-    override fun close(){
-        RServer.now=null
-        RAccount.now=null
-        Room.now=null
+
+    fun start() {
+        var realCarrier = 0
+        //移动只有18~24能用
+        val isEvening = LocalTime.now().isAfter(LocalTime.of(18, 0)) && LocalTime.now().isBefore(LocalTime.of(23, 59))
+        if (!isEvening && cred.carrier == 2) {
+            //其他时间连联通的
+            realCarrier = 1
+        }
+        renderThread {
+
+            ConnectScreen.startConnecting(
+                mc.screen, mc,
+
+                ServerAddress(server.gameCarrierIp[realCarrier], server.gamePort), server.mcData, false, null
+            )
+        }
+
+    }
+
+    fun changeCarrier(id: Int) {
+        carrier = id
+        cred.carrier = id
+        cred.write()
+    }
+
+    override fun close() {
+        RServer.now = null
+        RAccount.now = null
+        Room.now = null
         mc go TitleFragment()
     }
 }

@@ -6,7 +6,9 @@ import calebxzhou.rdi.model.RServer
 import calebxzhou.rdi.model.RServer.Companion.OFFICIAL_DEBUG
 import calebxzhou.rdi.model.RServer.Companion.OFFICIAL_NNG
 import calebxzhou.rdi.model.Room
+import calebxzhou.rdi.service.LevelService
 import calebxzhou.rdi.ui2.*
+import calebxzhou.rdi.util.renderThread
 import icyllis.modernui.animation.ObjectAnimator
 import icyllis.modernui.animation.PropertyValuesHolder
 import icyllis.modernui.animation.TimeInterpolator
@@ -114,7 +116,14 @@ class TitleFragment : RFragment() {
                 if ((keyCode == KeyEvent.KEY_ENTER || keyCode == KeyEvent.KEY_KP_ENTER) && event.action == KeyEvent.ACTION_UP) {
                     startMulti()
                     true
-                } else {
+                } else if(keyCode== KeyEvent.KEY_KP_0 && event.action == KeyEvent.ACTION_UP) {
+                    renderThread {
+
+                        LevelService.openFlatLevel()
+                    }
+                    true
+                }
+                else {
                     false
                 }
             }
@@ -127,4 +136,5 @@ class TitleFragment : RFragment() {
             OFFICIAL_NNG.connect()
         }
     }
+
 }

@@ -14,23 +14,27 @@ import io.ktor.client.statement.*
 import io.ktor.util.*
 import io.netty.channel.ChannelFuture
 import kotlinx.coroutines.launch
+import net.minecraft.client.multiplayer.ServerData
 
 class RServer(
     val ip: String,
     val gamePort: Int,
     val hqPort: Int
 ) {
-    var unicomIp = ip
-    var cmccIp = ip
+    val mcData
+        get()= ServerData("RDI", "${ip}:$gamePort", ServerData.Type.OTHER)
+
+    //电信 联通 移动
+    var gameCarrierIp = arrayOf(ip,ip,ip)
     companion object {
         var now: RServer? = null
         val OFFICIAL_DEBUG = RServer(
-            "127.0.0.1", 28506, 28507
+            "127.0.0.1", 28510, 28511
         )
         val OFFICIAL_NNG = RServer(
             "rdi.calebxzhou.cn",
-            28506, 28507,
-        )
+            28510, 28511,
+        ).apply { gameCarrierIp = arrayOf(ip,"u5rdi.calebxzhou.cn","m5rdi.calebxzhou.cn") }
 
     }
     var chafu: ChannelFuture? = null

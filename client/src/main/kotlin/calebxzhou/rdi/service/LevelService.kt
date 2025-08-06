@@ -42,4 +42,31 @@ object LevelService {
             )
         }
     }
+      fun openFlatLevel() {
+        val levelName = "rdi_creative"
+        if (mc.levelSource.levelExists(levelName)) {
+            mc.createWorldOpenFlows().openWorld( levelName){
+                mc go TitleFragment()
+            }
+        } else {
+            val levelSettings = LevelSettings(
+                levelName,
+                GameType.CREATIVE,
+                false,
+                Difficulty.PEACEFUL,
+                true,
+                GameRules().apply {
+                    getRule(GameRules.RULE_DAYLIGHT).set(false, null)
+                    getRule(GameRules.RULE_WEATHER_CYCLE).set(false, null)
+                    getRule(GameRules.RULE_DOMOBSPAWNING).set(false, null)
+                },
+                WorldDataConfiguration.DEFAULT
+            )
+            mc.createWorldOpenFlows().createFreshLevel(
+                levelName,
+                levelSettings,
+                WorldOptions(Const.SEED, true, true),WorldPresets::createNormalWorldDimensions, ProfileFragment().mcScreen
+            )
+        }
+    }
 }

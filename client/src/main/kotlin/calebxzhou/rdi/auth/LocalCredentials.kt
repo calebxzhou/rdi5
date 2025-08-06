@@ -7,7 +7,8 @@ import java.io.File
 @Serializable
 data class LocalCredentials(
     var lastLoggedId: String = "",
-    var idPwds: MutableMap<String, String> = hashMapOf()
+    var idPwds: MutableMap<String, String> = hashMapOf(),
+    var carrier: Int=0 // 012电信联通移动
 ) {
     companion object {
         val file = File("rdi", "local_credentials.json")

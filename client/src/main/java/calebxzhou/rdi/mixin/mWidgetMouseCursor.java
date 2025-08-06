@@ -1,7 +1,7 @@
 package calebxzhou.rdi.mixin;
 
-import calebxzhou.rdi.ui.RMouseCursor;
-import calebxzhou.rdi.ui.UiUtilsKt;
+import calebxzhou.rdi.ui2.RMouseCursor;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -32,7 +32,7 @@ public abstract class mWidgetMouseCursor {
 
     @Inject(method = "render", at = @At(value = "TAIL", target = "Lnet/minecraft/client/gui/components/Renderable;render(Lnet/minecraft/client/gui/GuiGraphics;IIF)V"))
     private void RDI_onWidgetRender(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
-        var mcHwnd = UiUtilsKt.getWindowHandle();
+        var mcHwnd = Minecraft.getInstance().getWindow().getWindow();
         for (GuiEventListener widget : children) {
             if (widget.isMouseOver(mouseX, mouseY)) {
                 if (widget instanceof Button) {

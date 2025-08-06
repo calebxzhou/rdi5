@@ -1,8 +1,10 @@
 package calebxzhou.rdi.ui2.frag
 
-import calebxzhou.rdi.ui.screen.FovScreen
 import calebxzhou.rdi.ui2.*
-import calebxzhou.rdi.util.*
+import calebxzhou.rdi.util.go
+import calebxzhou.rdi.util.mc
+import calebxzhou.rdi.util.mcComp
+import calebxzhou.rdi.util.renderThread
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.widget.LinearLayout
 import net.minecraft.client.gui.screens.options.AccessibilityOptionsScreen
@@ -48,7 +50,7 @@ class SettingsFragment: RFragment("设置") {
                     gravity = Gravity.CENTER
                     // Second row - 4 buttons
                     iconButton("camera","视野") {
-                        mc set FovScreen()
+                        mc go FovFragment()
                     }
                     iconButton("sound",text = "音频"){
                         mc go SoundOptionsScreen(mc.screen,options)

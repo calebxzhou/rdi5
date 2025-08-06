@@ -1,7 +1,5 @@
 package calebxzhou.rdi.util
 
-import calebxzhou.rdi.ui.WindowHandle
-import com.mojang.blaze3d.platform.InputConstants
 import icyllis.modernui.fragment.Fragment
 import icyllis.modernui.mc.MuiModApi
 import icyllis.modernui.mc.neoforge.MuiForgeApi
@@ -78,17 +76,12 @@ infix fun Minecraft.set(screen: Screen?) {
         setScreen(screen)
     }
 }
-infix fun Minecraft.pressingKey(keyCode: Int): Boolean {
-    return InputConstants.isKeyDown(WindowHandle, keyCode)
-}
 val BlockState.id
     get() = Block.BLOCK_STATE_REGISTRY.getId(this)
 //y*256 + z*16 + x
 val BlockPos.sectionIndex: Int
     get() = (y and 0xF shl 4 or (z and 0xF)) shl 4 or (x and 0xF)
-val Minecraft.pressingEnter
-    get() =  this pressingKey InputConstants.KEY_RETURN || this pressingKey InputConstants.KEY_NUMPADENTER
-val ChunkPos.asInt
+ val ChunkPos.asInt
     get() = x.toShort().toInt() and 0xFFFF or ((z.toShort().toInt() and 0xFFFF) shl 16)
 
 val Int.asChunkPos: ChunkPos

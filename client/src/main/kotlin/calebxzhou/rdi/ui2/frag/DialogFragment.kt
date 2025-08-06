@@ -1,7 +1,5 @@
 package calebxzhou.rdi.ui2.frag
 
-import calebxzhou.rdi.ui.RMessageLevel
-import calebxzhou.rdi.ui.general.RDialogType
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.util.*
 import icyllis.modernui.graphics.Canvas
@@ -20,7 +18,9 @@ fun alertOk(msg: String) {
         mc go DialogFragment(msg, lvl = RMessageLevel.OK)
     }
 }
-
+enum class RDialogType {
+    CONFIRM, ALERT
+}
 class DialogFragment(
     val msg: String,
     val type: RDialogType = RDialogType.ALERT,

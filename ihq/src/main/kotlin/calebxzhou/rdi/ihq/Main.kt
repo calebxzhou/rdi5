@@ -10,6 +10,7 @@ import calebxzhou.rdi.ihq.net.e400
 import calebxzhou.rdi.ihq.net.e401
 import calebxzhou.rdi.ihq.net.e500
 import calebxzhou.rdi.ihq.net.ok
+import calebxzhou.rdi.ihq.service.UpdateService
 import calebxzhou.rdi.ihq.util.serdesJson
 import com.mongodb.MongoClientSettings
 import com.mongodb.ServerAddress
@@ -45,6 +46,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.bson.UuidRepresentation
+import java.util.Timer
+import java.util.TimerTask
 import javax.print.attribute.standard.Compression
 
 val DB_HOST = System.getProperty("rdi.dbHost") ?: "127.0.0.1"
@@ -64,8 +67,12 @@ fun main(): Unit =runBlocking {
 
         accountCol.createIndex(Indexes.ascending("qq"), IndexOptions().unique(true))
         accountCol.createIndex(Indexes.ascending("name"), IndexOptions().unique(true))
-
-
+    //5分钟重载mod
+    Timer().scheduleAtFixedRate(object : TimerTask() {
+        override fun run() {
+            UpdateService.reloadModInfo()
+        }
+    },0,60000*5)
     // Launch both servers concurrently in the coroutine scope
     launch {
         startHttp()
@@ -130,6 +137,14 @@ fun startHttp(){
             post("/login") {
                 PlayerService.login(call)
             }
+            route("/update"){
+                get("/mod-list"){
+                    UpdateService.getModList(call)
+                }
+                get("/mod-file") {
+                    UpdateService.getModFile(call)
+                }
+            }
             authenticate("auth-basic") {
                 post("/skin") {
                     PlayerService.changeCloth(call)
@@ -191,5 +206,5 @@ fun startHttp(){
                 }
             }
         }
-    }.start(wait = false)
+    }.start(wait = true)
 }
