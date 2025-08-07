@@ -9,9 +9,6 @@ import calebxzhou.rdi.util.serdesJson
 import com.electronwill.nightconfig.core.Config
 import com.electronwill.nightconfig.toml.TomlFormat
 import io.ktor.client.statement.*
-import io.ktor.util.cio.*
-import io.ktor.utils.io.*
-import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.util.jar.JarFile
 import kotlin.system.exitProcess
@@ -22,7 +19,7 @@ object UpdateService {
         val idFile = hashMapOf<String, File>()
         modsDir.listFiles { it.extension == "jar" }.forEach { jarFile ->
             JarFile(jarFile).use { jar ->
-                jar.getJarEntry("META-INF/mods.toml")?.let { modsTomlEntry ->
+                jar.getJarEntry("META-INF/neoforge.mods.toml")?.let { modsTomlEntry ->
                     jar.getInputStream(modsTomlEntry).bufferedReader().use { reader ->
                         val modId = TomlFormat.instance()
                             .createParser()
@@ -49,7 +46,7 @@ object UpdateService {
         val server = if (Const.DEBUG) RServer.OFFICIAL_DEBUG else RServer.OFFICIAL_NNG
         //客户端
         val clientIdFile = UpdateService.gatherModIdFile(modsDir)
-        val modlist = server.prepareRequest(false, "mod-list").body
+        val modlist = server.prepareRequest(false, "update/mod-list").body
         val modsUpdate = hashMapOf<String, File>()
         //服务端
         val serverIdSize: Map<String, Long> = serdesJson.decodeFromString(modlist)
@@ -70,17 +67,37 @@ object UpdateService {
             "以下mod需要更新:${modsStrDisp}.正在更新。"
         )
         modsUpdate.forEach { (id, file) ->
-            println("update ${id} -> ${file}")
-            runBlocking {
-                val resp = server.prepareRequest(false, "mod-file", listOf("modid" to id))
-                resp.bodyAsChannel().copyTo(file.writeChannel())
+            println("Downloading update for ${id} -> ${file.absolutePath}")
+            try {
+                val response = server.prepareRequest(
+                    false,
+                    "update/mod-file",
+                    listOf("modid" to id)
+                )
+                val bytes = response.readBytes()
+                if (bytes.isNotEmpty()) {
+                    if (file.exists()) {
+                        file.delete()
+                    }
+                    file.writeBytes(bytes)
+                    println("Successfully written ${bytes.size} bytes to ${file.absolutePath}")
+                } else {
+                    println("Error: Received empty response for $id")
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                println("Failed to download $id: ${e.message}")
             }
         }
         return modsStr
 
     }
     fun restart(){
-        ProcessBuilder("../../../PCL/LatestLaunch.bat").start()
+        try {
+            ProcessBuilder("../../../PCL/LatestLaunch.bat").start()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
         exitProcess(0)
     }
 }

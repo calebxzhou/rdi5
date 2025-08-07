@@ -29,7 +29,7 @@ class RServer(
     companion object {
         var now: RServer? = null
         val OFFICIAL_DEBUG = RServer(
-            "127.0.0.1", 28510, 28511
+            "127.0.0.1", 38510, 38511
         )
         val OFFICIAL_NNG = RServer(
             "rdi.calebxzhou.cn",

@@ -12,7 +12,6 @@ import icyllis.modernui.view.Gravity
 import icyllis.modernui.widget.LinearLayout
 import net.minecraft.client.gui.screens.ConnectScreen
 import net.minecraft.client.multiplayer.resolver.ServerAddress
-import java.time.LocalTime
 
 class ProfileFragment : RFragment("我的信息") {
     val account = RAccount.now ?: RAccount.DEFAULT
@@ -60,19 +59,19 @@ class ProfileFragment : RFragment("我的信息") {
     }
 
     fun start() {
-        var realCarrier = 0
+       /* var realCarrier = 0
         //移动只有18~24能用
         val isEvening = LocalTime.now().isAfter(LocalTime.of(18, 0)) && LocalTime.now().isBefore(LocalTime.of(23, 59))
         if (!isEvening && cred.carrier == 2) {
             //其他时间连联通的
             realCarrier = 1
-        }
+        }*/
         renderThread {
 
             ConnectScreen.startConnecting(
                 mc.screen, mc,
 
-                ServerAddress(server.gameCarrierIp[realCarrier], server.gamePort), server.mcData, false, null
+                ServerAddress(server.gameCarrierIp[carrier], server.gamePort), server.mcData, false, null
             )
         }
 

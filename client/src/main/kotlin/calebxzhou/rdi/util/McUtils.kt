@@ -1,5 +1,6 @@
 package calebxzhou.rdi.util
 
+import calebxzhou.rdi.lgr
 import icyllis.modernui.fragment.Fragment
 import icyllis.modernui.mc.MuiModApi
 import icyllis.modernui.mc.neoforge.MuiForgeApi
@@ -106,3 +107,8 @@ fun Minecraft.addChatMessage(msg: Component) {
 }
 val MinecraftServer.playingLevel: ServerLevel?
     get() = mc.level?.let { getLevel(it.dimension()) }
+fun Minecraft.sendCommand(cmd: String){
+    mc.player?.connection?.sendCommand(cmd)?:let {
+        lgr.warn("no connection fail send command")
+    }
+}

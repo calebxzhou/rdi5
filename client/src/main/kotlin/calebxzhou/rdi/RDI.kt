@@ -27,7 +27,7 @@ class RDI {
         File("rdi").mkdir()
 
         //检查更新
-        if (!(Const.DEBUG)) {
+        //if (!(Const.DEBUG)) {
             try {
                 runBlocking {
 
@@ -45,8 +45,9 @@ class RDI {
                 e.printStackTrace()
                 notifyOs("检测更新失败\n请检查网络连接")
             }
-        }
+        //}
         Mcmod.getServerInfo()
+
         /*val port = HttpUtil.getAvailablePort()
         lgr.info("local port started at $port")
         embeddedServer(CIO,host="::",port=port){

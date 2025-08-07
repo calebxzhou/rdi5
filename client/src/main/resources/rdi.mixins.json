@@ -11,6 +11,7 @@
     "mFastCreateMojangService",
     "mFastCreateMojangService2",
     "mGui",
+    "mOptions",
     "mPauseScreen",
     "mPlayerTabOverlay",
     "mScreenBg",
@@ -27,9 +28,12 @@
     "ARegionFileVersion",
     "mAllowChineseArgument",
     "mAlwaysOfflineMode",
+    "mNetMetrics",
+    "mNetMetrics2",
     "mTextureUrlChecker",
     "event.mOnChangeBlockState",
     "event.mOnPacketSent",
-    "jade.mNoDisplayModName"
+    "jade.mNoDisplayModName",
+    "mui.mNoBlur"
   ]
 }

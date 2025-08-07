@@ -37,7 +37,9 @@ class PauseFragment : RFragment("暂停") {
                 linearLayout {
                     gravity = Gravity.CENTER
                     paddingDp(16)
-                    iconButton("partner","参观")
+                    iconButton("partner","参观"){
+                        mc.sendCommand("spec")
+                    }
                     iconButton("island","房间中心")
                     iconButton("camera","摄影")
                     iconButton("settings","设置"){

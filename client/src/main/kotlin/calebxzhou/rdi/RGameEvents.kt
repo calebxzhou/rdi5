@@ -12,6 +12,7 @@ import calebxzhou.rdi.service.RGuiHud
 import calebxzhou.rdi.service.RKeyBinds
 import calebxzhou.rdi.util.*
 import com.mojang.blaze3d.platform.InputConstants
+import icyllis.modernui.mc.BlurHandler
 import kotlinx.coroutines.launch
 import net.minecraft.client.resources.language.ClientLanguage
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket
@@ -117,7 +118,8 @@ class RGameEvents {
             RDI.Companion.modIdChineseName += "minecraft" to "原版"
 
             EnglishStorage.lang = ClientLanguage.loadFrom(mc.resourceManager, listOf("en_us"), false)
-
+            //强制关闭模糊
+            BlurHandler.sBlurEffect=false
         }
         @SubscribeEvent
         @JvmStatic
@@ -141,7 +143,7 @@ class RGameEvents {
         @JvmStatic
         fun onClientTick(e: ClientTickEvent.Post) {
             if (RKeyBinds.HOME.consumeClick()) {
-                //RPauseScreen.goHome()
+                mc.sendCommand("ftbteambases home")
             }else if(RKeyBinds.MCMOD.consumeClick()){
                 Mcmod. onKeyPressIngame()
             }

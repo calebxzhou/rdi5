@@ -328,8 +328,14 @@ idea {
         downloadJavadoc = true
     }
 }
-tasks.register('出core', Copy) {
+
+tasks.register('出core1', Copy) {
     dependsOn(tasks.named('build'))
     from(layout.buildDirectory.file("libs/rdi-${version}.jar"))
     into("C:\\Users\\liberatorch\\Documents\\RDI5sea-Ref\\.minecraft\\versions\\RDI5sea\\mods")
+}
+tasks.register('出core1+2', Copy) {
+    dependsOn(tasks.named('出core1'))
+    from(layout.buildDirectory.file("libs/rdi-${version}.jar"))
+    into("C:\\Users\\liberatorch\\Documents\\RDI5sea-hq\\mods")
 }

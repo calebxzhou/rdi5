@@ -23,7 +23,7 @@ object UpdateService {
         modIdFile.clear()
         MODS_DIR.listFiles { it.extension == "jar" }?.forEach { jarFile ->
             JarFile(jarFile).use { jar ->
-                jar.getJarEntry("META-INF/mods.toml")?.let { modsTomlEntry ->
+                jar.getJarEntry("META-INF/neoforge.mods.toml")?.let { modsTomlEntry ->
 
 
                     jar.getInputStream(modsTomlEntry).bufferedReader().use { reader ->

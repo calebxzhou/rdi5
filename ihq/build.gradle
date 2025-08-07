@@ -44,3 +44,8 @@ test {
 kotlin {
     jvmToolchain(21)
 }
+tasks.register('出core', Copy) {
+    dependsOn(tasks.named('shadowJar'))
+    from(layout.buildDirectory.file("libs/ihq.jar"))
+    into("C:\\Users\\liberatorch\\Documents\\RDI5sea-hq")
+}

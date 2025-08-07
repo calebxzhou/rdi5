@@ -30,9 +30,9 @@ public abstract class mArrow {
     private void inject(EntityHitResult entityHitResult, CallbackInfo ci) {
         Entity entity = entityHitResult.getEntity();
         if (entity instanceof Player player) {
-            player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 15 * 20, 3));
-            player.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, 15 * 20, 3));
-            player.addEffect(new MobEffectInstance(MobEffects.BLINDNESS, 15 * 20, 3));
+            player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 10, 3));
+           /* player.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, 20, 3));
+            player.addEffect(new MobEffectInstance(MobEffects.BLINDNESS, 20, 3));*/
             //setKnockback(16);
         }
     }

@@ -52,6 +52,7 @@ import javax.print.attribute.standard.Compression
 
 val DB_HOST = System.getProperty("rdi.dbHost") ?: "127.0.0.1"
 val DB_PORT = System.getProperty("rdi.dbPort")?.toIntOrNull() ?: 27017
+val DB_NAME = System.getProperty("rdi.dbName") ?: "rdi5"
 val lgr = KotlinLogging.logger {  }
 val DB = MongoClient.create(
     MongoClientSettings.builder()
@@ -59,7 +60,7 @@ val DB = MongoClient.create(
             builder.hosts(listOf(ServerAddress(DB_HOST, DB_PORT)))
         }
         .uuidRepresentation(UuidRepresentation.STANDARD)
-        .build()).getDatabase("rdi5")
+        .build()).getDatabase(DB_NAME)
 val HQ_PORT = System.getProperty("rdi.hqPort")?.toIntOrNull() ?: 28511
 fun main(): Unit =runBlocking {
 
