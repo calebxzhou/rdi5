@@ -32,7 +32,7 @@ data class CPlayerJoinPacket(
         mc.addChatMessage("${name}进入了房间")
         lgr.info("${name}进入了房间 ${tempUid}=${uid}")
         ioScope.launch {
-            val playerInfo = RAccountService.retrievePlayerInfo(uid)
+            val playerInfo = RAccountService.getPlayerInfo(uid)
             val pInfo = PlayerInfo(playerInfo.mcProfile,false)
             mc.connection?.let {
                 it.listedOnlinePlayers+= pInfo

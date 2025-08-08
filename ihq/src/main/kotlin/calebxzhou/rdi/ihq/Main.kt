@@ -123,6 +123,12 @@ fun startHttp(){
             get("/playerInfo") {
                 PlayerService.getInfo(call)
             }
+            get("/player-info") {
+                PlayerService.getInfo(call)
+            }
+            get("/player-info-by-names") {
+                PlayerService.getInfoByNames(call)
+            }
             get("/sponsors") {
                 call.ok("""2025-04-11,ChenQu,100""")
             }

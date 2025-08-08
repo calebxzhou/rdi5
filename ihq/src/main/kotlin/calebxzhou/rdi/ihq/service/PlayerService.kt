@@ -177,8 +177,14 @@ object PlayerService {
     suspend fun getInfo(call: ApplicationCall) {
         val params = call.initGetParams()
         val uid = ObjectId(params got "uid")
-        val account = getById(uid)?.dto ?: RAccount.Dto(ObjectId(), "***", RAccount.Cloth())
+        val account = getById(uid)?.dto ?: RAccount.Dto()
         call.ok(serdesJson.encodeToString(account))
+    }
+    suspend fun getInfoByNames(call: ApplicationCall) {
+        val params = call.initGetParams()
+        val names = (params got "names").split("\n")
+        val infos = names.map { getByName(it)?.dto ?: RAccount.Dto() }
+        call.ok(serdesJson.encodeToString(infos))
     }
 
 

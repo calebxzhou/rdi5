@@ -11,6 +11,7 @@ import com.google.common.cache.CacheBuilder
 import com.google.common.cache.CacheLoader
 import com.mojang.authlib.GameProfile
 import com.mojang.authlib.minecraft.MinecraftProfileTexture
+import io.ktor.client.statement.*
 import kotlinx.coroutines.runBlocking
 import net.minecraft.resources.ResourceLocation
 import org.bson.types.ObjectId
@@ -20,7 +21,7 @@ object RAccountService {
     val profileCache = CacheBuilder.newBuilder().expireAfterWrite(30L, TimeUnit.MINUTES).build(object :
         CacheLoader<ObjectId, GameProfile>() {
         override fun load(key: ObjectId): GameProfile {
-            return runBlocking { retrievePlayerInfo(key) }.mcProfile
+            return runBlocking { getPlayerInfo(key) }.mcProfile
         }
     })
     fun createMcProfile(uid: ObjectId) = GameProfile(uid.toUUID(), uid.toHexString())
@@ -34,10 +35,11 @@ object RAccountService {
         }
         return ResourceLocation.parse("$prefix/$hashUC")
     }
-
-
-    suspend fun retrievePlayerInfo(uid: ObjectId): RAccount.Dto{
-        return RServer.Companion.now?.prepareRequest(false, "playerInfo", listOf("uid" to uid))?.let { resp ->
+    suspend fun queryPlayerInfo(uid: ObjectId): HttpResponse? {
+        return RServer.now?.prepareRequest(false, "player-info", listOf("uid" to uid))
+    }
+    suspend fun getPlayerInfo(uid: ObjectId): RAccount.Dto{
+        return queryPlayerInfo(uid)?.let { resp ->
             val json = resp.body
             lgr.info("玩家信息:${json}")
             serdesJson.decodeFromString(json)

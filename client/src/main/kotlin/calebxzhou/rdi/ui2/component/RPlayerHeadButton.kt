@@ -1,8 +1,8 @@
 package calebxzhou.rdi.ui2.component
 
-import calebxzhou.rdi.service.RAccountService
 import calebxzhou.rdi.net.httpRequest
 import calebxzhou.rdi.net.success
+import calebxzhou.rdi.service.RAccountService
 import calebxzhou.rdi.ui2.paddingDp
 import calebxzhou.rdi.util.ioScope
 import calebxzhou.rdi.util.uiThread
@@ -103,7 +103,7 @@ class RPlayerHeadButton(
     private fun loadData() {
         ioScope.launch {
             try {
-                val data = RAccountService.retrievePlayerInfo(id)
+                val data = RAccountService.getPlayerInfo(id)
                 val skinUrl = data.cloth.skin
                 val skinResp = httpRequest(false, skinUrl)
 

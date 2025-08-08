@@ -30,9 +30,9 @@ data class RAccount(
     @Serializable
     data class Dto(
         @Contextual
-        val id: ObjectId,
-        val name: String,
-        val cloth: Cloth
+        val id: ObjectId = ObjectId(),
+        val name: String = "未知",
+        val cloth: Cloth = Cloth()
     )
 
     val dto

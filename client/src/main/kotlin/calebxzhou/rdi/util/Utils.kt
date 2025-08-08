@@ -3,7 +3,6 @@ package calebxzhou.rdi.util
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import org.bson.types.ObjectId
 import org.lwjgl.util.tinyfd.TinyFileDialogs
 import java.net.URLEncoder
@@ -17,13 +16,11 @@ import java.util.*
 fun notifyOs(msg: String){
     TinyFileDialogs.tinyfd_notifyPopup("RDI提示", msg,"info" )
 }
-val ioScope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob() + CoroutineExceptionHandler { context, throwable ->
-    println("[RDI] Error in IO scope: ${throwable.message}")
+val ioScope: CoroutineScope
+    get() = CoroutineScope(Dispatchers.IO + CoroutineExceptionHandler { _, throwable ->
     throwable.printStackTrace()
-    // Log the coroutine context information
-    println("[RDI] Coroutine context: $context")
-})
-
+}
+)
 //保留小数点后x位
 fun Float.toFixed(decPlaces: Int): String{
     return String.format("%.${decPlaces}f",this)
@@ -36,11 +33,14 @@ fun UUID.toBytes(): ByteArray {
     bb.putLong(this.mostSignificantBits)
     bb.putLong(this.leastSignificantBits)
     return bb.array()
-}fun UUID.toObjectId() : ObjectId {
+}
+fun UUID.toObjectId() : ObjectId {
     val uuidBytes = this.toBytes()
     val objectIdBytes = uuidBytes.sliceArray(0..11)
     return ObjectId(objectIdBytes)
 }
+val UUID.objectId
+    get() = this.toObjectId()
 fun ObjectId.toUUID() : UUID{
     val objectIdBytes = this.toByteArray()
     val bb = ByteBuffer.wrap(ByteArray(16))

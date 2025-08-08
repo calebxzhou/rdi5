@@ -1,6 +1,5 @@
 package calebxzhou.rdi.ui2.frag
 
-import calebxzhou.rdi.net.GameNetClient
 import calebxzhou.rdi.service.RKeyBinds
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.util.*
@@ -48,7 +47,6 @@ class PauseFragment : RFragment("暂停") {
                     iconButton("exit","退出"){
                         renderThread {
 
-                            GameNetClient.disconnect()
                             mc.level?.disconnect()
                             mc.disconnect( )
                             mc go ProfileFragment()
