@@ -10,7 +10,7 @@ import icyllis.modernui.view.Gravity
 class RTextButton(
     context: Context,
     val msg: String,
-      onClick: () -> Unit = {},
+      onClick: (RButton) -> Unit = {},
 ) : RButton(context,onClick) {
     init {
         text = msg

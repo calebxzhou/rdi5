@@ -13,11 +13,13 @@ import icyllis.modernui.view.View
 import icyllis.modernui.view.ViewGroup
 import icyllis.modernui.widget.Button
 import icyllis.modernui.widget.LinearLayout
+import net.minecraft.client.Minecraft
 
 abstract class RFragment(var title: String = "") : Fragment() {
     open var showTitle = true
     open var closable = true
     open var showCloseButton = closable
+
     //true则缓存content view布局，fragment切换时，保存状态不重新计算，false反之
     open var contentViewCache = true
     protected lateinit var contentLayout: LinearLayout
@@ -37,13 +39,13 @@ abstract class RFragment(var title: String = "") : Fragment() {
             paddingDp(16)
             // Create frame layout for back button and title
             if (showTitle || showCloseButton) {
-                 frameLayout() {
+                frameLayout() {
                     layoutParams = linearLayoutParam {
                         bottomMargin = dp(32f)
                     }
                     // Title (add first to be in the background)
                     if (showTitle) {
-                         textView() {
+                        textView() {
                             text = title
                             textSize = 24f
                             layoutParams = linearLayoutParam {
@@ -55,14 +57,14 @@ abstract class RFragment(var title: String = "") : Fragment() {
                     // Back button (add last to be on top)
                     if (showCloseButton) {
 
-                         this+=Button(fctx).apply {
+                        this += Button(fctx).apply {
                             background = iconDrawable("back")
                             layoutParams = linearLayoutParam(dp(32f), dp(32f)) {
                                 gravity = Gravity.START or Gravity.CENTER_VERTICAL
                             }
                             setOnClickListener {
                                 close()
-                            //parentFragmentManager.popBackStack()
+                                //parentFragmentManager.popBackStack()
                             }
                         }
                     }
@@ -77,17 +79,17 @@ abstract class RFragment(var title: String = "") : Fragment() {
             }
         }
     }
-    open fun close(){
+
+    open fun close() {
         //UIManager.getInstance().onBackPressedDispatcher.onBackPressed()
-
-        val screen = mc.screen
-
-        if(screen is MuiScreen){
-            mc set screen.previousScreen
-        }else{
+        if (Minecraft.getInstance() == null) {
             UIManager.getInstance().onBackPressedDispatcher.onBackPressed()
+            return
         }
+        (mc.screen as? MuiScreen)?.let { mc set it.previousScreen }
+            ?: UIManager.getInstance().onBackPressedDispatcher.onBackPressed()
     }
+
     //载入标题+返回按钮 和自定义header 二选一
     open fun initHeader() {
 

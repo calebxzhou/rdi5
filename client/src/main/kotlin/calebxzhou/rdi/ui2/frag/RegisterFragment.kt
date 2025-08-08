@@ -23,7 +23,7 @@ class RegisterFragment : RFragment("注册新账号") {
             qqInput = editText("QQ号")
             passwordInput = editPwd("密码")
             passwordInput2 = editPwd("确认密码")
-            textButton("注册", onClick = ::onRegisterClicked)
+            textButton("注册"){onRegisterClicked()}
         }
 
     }

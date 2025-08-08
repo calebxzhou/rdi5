@@ -8,7 +8,7 @@ import icyllis.modernui.widget.Button
 
 open class RButton(
     context: Context,
-    val onClick: () -> Unit = {},
+    val onClick: (RButton) -> Unit = {},
 ): Button(context) {
     private var menuItems = listOf<Pair<String, () -> Unit>>()
     private var   mContextMenuAnchorX = 0f;
@@ -25,7 +25,7 @@ open class RButton(
                 return true
             }
             event.action if event.isButtonPressed(MotionEvent.BUTTON_PRIMARY) -> {
-                onClick()
+                onClick(this)
                 return true
             }
         }

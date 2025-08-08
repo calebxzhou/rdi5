@@ -19,7 +19,7 @@ class LoginFragment : RFragment("登录") {
     override fun initContent() {
         qqInput = REditText(fctx, "QQ号").also { contentLayout += it }
         passwordInput = REditPassword(fctx, "密码").also { contentLayout += it }
-        contentLayout += RTextButton(fctx, "登录", ::onClicked)
+        contentLayout += RTextButton(fctx, "登录"){onClicked()}
 
     }
     private fun onClicked() {

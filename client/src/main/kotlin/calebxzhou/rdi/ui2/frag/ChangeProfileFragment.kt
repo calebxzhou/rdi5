@@ -22,7 +22,7 @@ class ChangeProfileFragment: RFragment("修改信息") {
             /*qqEdit = editText("QQ号") {
                 setText(account.qq)
             }*/
-            textButton("修改", onClick = ::onChangeClicked)
+            textButton("修改"){onChangeClicked()}
         }
     }
     //不允许修改qq

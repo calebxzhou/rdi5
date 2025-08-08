@@ -1,5 +1,6 @@
 package calebxzhou.rdi.model
 
+import calebxzhou.rdi.util.encodeBase64
 import calebxzhou.rdi.util.serdesGson
 import calebxzhou.rdi.util.toUUID
 import com.google.common.hash.Hashing
@@ -7,7 +8,7 @@ import com.mojang.authlib.GameProfile
 import com.mojang.authlib.minecraft.MinecraftProfileTexture
 import com.mojang.authlib.properties.Property
 import com.mojang.authlib.yggdrasil.response.MinecraftTexturesPayload
-import io.ktor.util.*
+
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import net.minecraft.client.User
@@ -75,7 +76,7 @@ data class RAccount(
                 cloth.mcTextures
             )
 
-            properties.put("textures", Property("textures", serdesGson.toJson(texturesPayload).encodeBase64()))
+            properties.put("textures", Property("textures", serdesGson.toJson(texturesPayload).encodeBase64))
 
         }
         val mcPlayerInfo

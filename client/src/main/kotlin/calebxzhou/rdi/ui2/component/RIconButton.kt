@@ -8,7 +8,7 @@ class RIconButton(
     context: Context,
     val icon: String,
     val msg: String="",
-    onClick: () -> Unit = {},
+    onClick: (RButton) -> Unit = {},
 ) : RButton(context,onClick){
     init {
         text = msg

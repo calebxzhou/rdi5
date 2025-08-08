@@ -13,7 +13,7 @@ import icyllis.modernui.graphics.Image
 import icyllis.modernui.graphics.Paint
 import icyllis.modernui.graphics.drawable.ImageDrawable
 import icyllis.modernui.view.Gravity
-import io.ktor.client.call.*
+
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.bson.types.ObjectId
@@ -21,7 +21,7 @@ import org.bson.types.ObjectId
 class RPlayerHeadButton(
     context: Context,
     val id: ObjectId,
-    onClick: () -> Unit = {},
+    onClick: (RButton) -> Unit = {},
 ) : RButton(context,onClick) {
     var avatar: Image = createDefaultAvatar()
         set(value) {
@@ -105,13 +105,13 @@ class RPlayerHeadButton(
             try {
                 val data = RAccountService.getPlayerInfo(id)
                 val skinUrl = data.cloth.skin
-                val skinResp = httpRequest(false, skinUrl)
+                val skinResp = httpRequest<ByteArray>(false, skinUrl)
 
                 uiThread {
                     text = data.name
                     if (skinResp.success) {
                         runBlocking {
-                            val responseBytes = skinResp.body<ByteArray>()
+                            val responseBytes = skinResp.body()
                             val bitmap = BitmapFactory.decodeByteArray(responseBytes, 0, responseBytes.size)
                             if (bitmap != null && bitmap.width == 64 && bitmap.height == 64) {
                                 avatar = getHeadFromSkin(bitmap)

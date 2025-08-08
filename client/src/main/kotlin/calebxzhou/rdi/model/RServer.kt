@@ -1,31 +1,29 @@
 package calebxzhou.rdi.model
 
-import calebxzhou.rdi.net.GameNetClient
-import calebxzhou.rdi.net.httpRequest
+import calebxzhou.rdi.net.httpStringRequest
 import calebxzhou.rdi.net.success
 import calebxzhou.rdi.ui2.frag.LoadingFragment
 import calebxzhou.rdi.ui2.frag.SelectAccountFragment
-import calebxzhou.rdi.ui2.frag.alertErr
-import calebxzhou.rdi.util.go
-import calebxzhou.rdi.util.ioScope
-import calebxzhou.rdi.util.mc
-import calebxzhou.rdi.util.uiThread
-import io.ktor.client.statement.*
-import io.ktor.util.*
+import calebxzhou.rdi.ui2.frag.UpdateFragment
+import calebxzhou.rdi.util.*
 import io.netty.channel.ChannelFuture
 import kotlinx.coroutines.launch
 import net.minecraft.client.multiplayer.ServerData
+import java.net.http.HttpResponse
 
 class RServer(
     val ip: String,
     val gamePort: Int,
     val hqPort: Int
 ) {
+    val noUpdate = System.getProperty("rdi.noUpdate").toBoolean()
     val mcData
-        get()= ServerData("RDI", "${ip}:$gamePort", ServerData.Type.OTHER)
+        get() = ServerData("RDI", "${ip}:$gamePort", ServerData.Type.OTHER)
+    val hqUrl = "http://${ip}:${hqPort}/"
 
     //电信 联通 移动
-    var gameCarrierIp = arrayOf(ip,ip,ip)
+    var gameCarrierIp = arrayOf(ip, ip, ip)
+
     companion object {
         var now: RServer? = null
         val OFFICIAL_DEBUG = RServer(
@@ -34,50 +32,46 @@ class RServer(
         val OFFICIAL_NNG = RServer(
             "rdi.calebxzhou.cn",
             28510, 28511,
-        ).apply { gameCarrierIp = arrayOf(ip,"u5rdi.calebxzhou.cn","m5rdi.calebxzhou.cn") }
+        ).apply { gameCarrierIp = arrayOf(ip, "u5rdi.calebxzhou.cn", "m5rdi.calebxzhou.cn") }
 
     }
+
     var chafu: ChannelFuture? = null
-    fun connect() {
-        try {
-            GameNetClient.connect(this)
-        } catch (e: Exception) {
-            e.printStackTrace()
-            alertErr("连接服务器失败: ${e.message ?: "未知错误"}")
-            return
-        }
-        /*if (Const.DEBUG) {
-            val account = RAccount.TESTS[System.getProperty("rdi.testAccount").toInt()]
-            GameNetClient.send(SMeJoinPacket(account.qq, account.pwd))
 
-        }*/
-        /**/
-        // Add listener to check connection status
-        mc go SelectAccountFragment(this)
+
+    fun connect() {
+        if (!noUpdate) {
+            mc go UpdateFragment(this)
+        } else {
+            mc go SelectAccountFragment(this)
+        }
     }
+
+
 
     suspend fun prepareRequest(
         post: Boolean = false,
         path: String,
         params: List<Pair<String, Any>> = listOf(),
-    ): HttpResponse {
+    ): HttpResponse<String> {
         val fullUrl = "http://${ip}:${hqPort}/${path}"
         val headers = RAccount.now?.let {
-            listOf("Authorization" to "Basic ${"${it._id}:${it.pwd}".encodeBase64()}")
+            listOf("Authorization" to "Basic ${"${it._id}:${it.pwd}".encodeBase64}")
         } ?: listOf()
-        return httpRequest(post, fullUrl, params, headers)
+        return httpStringRequest(post, fullUrl, params, headers)
 
     }
+
     fun hqRequest(
         post: Boolean = false,
         path: String,
         showLoading: Boolean = true,
         params: List<Pair<String, Any>> = listOf(),
-        onOk: (HttpResponse) -> Unit
+        onOk: (HttpResponse<String>) -> Unit
     ) {
         var frag: LoadingFragment? = null
-        if (showLoading){
-            frag= LoadingFragment()
+        if (showLoading) {
+            frag = LoadingFragment()
             uiThread {
                 mc go frag
             }
@@ -87,7 +81,7 @@ class RServer(
             if (req.success) {
                 onOk(req)
             }
-            if(showLoading && frag != null) {
+            if (showLoading && frag != null) {
                 uiThread {
                     frag.close()
                 }

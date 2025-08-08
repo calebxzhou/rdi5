@@ -2,78 +2,174 @@ package calebxzhou.rdi.net
 
 import calebxzhou.rdi.Const
 import calebxzhou.rdi.lgr
-import io.ktor.client.*
-import io.ktor.client.call.*
-import io.ktor.client.engine.cio.*
-import io.ktor.client.request.*
-import io.ktor.client.request.forms.*
-import io.ktor.client.statement.*
-import io.ktor.http.*
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.net.URI
+import java.net.URLEncoder
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
 import java.nio.charset.StandardCharsets
+import java.nio.file.Path
+import java.nio.file.StandardOpenOption
+import java.time.Duration
 
 /**
  * calebxzhou @ 2025-05-10 23:20
  */
-val HttpResponse.success
-    get() = this.status.isSuccess()
-val HttpResponse.body
-    get() = runBlocking { body<String>() }
-suspend fun httpRequest(
+
+
+// Helper function to force restricted headers using reflection
+private fun HttpRequest.Builder.forceHeader(name: String, value: String): HttpRequest.Builder {
+    return try {
+        // First try normal way
+        this.header(name, value)
+    } catch (e: IllegalArgumentException) {
+        try {
+            // If that fails, use reflection to bypass restriction
+            val builderClass = this.javaClass
+            val headersField = builderClass.getDeclaredField("systemHeadersBuilder")
+            headersField.isAccessible = true
+            val headersBuilder = headersField.get(this)
+            
+            val addHeaderMethod = headersBuilder.javaClass.getDeclaredMethod("addHeader", String::class.java, String::class.java)
+            addHeaderMethod.isAccessible = true
+            addHeaderMethod.invoke(headersBuilder, name, value)
+            
+            if (Const.DEBUG) {
+                lgr.info("Forced restricted header: $name = $value")
+            }
+            this
+        } catch (reflectionException: Exception) {
+            if (Const.DEBUG) {
+                lgr.warn("Failed to force header $name = $value: ${reflectionException.message}")
+            }
+            this
+        }
+    }
+}
+val <T> HttpResponse<T>.success
+    get() = this.statusCode() in 200..299
+val HttpResponse<String>.body
+    get() = this.body()
+typealias StringHttpResponse = HttpResponse<String>
+// Convenience function for String responses (most common case)
+suspend fun httpStringRequest(
     post: Boolean = false,
     url: String,
     params: List<Pair<String, Any?>> = emptyList(),
     headers: List<Pair<String, String>> = emptyList()
-): HttpResponse {
+): HttpResponse<String> = httpRequest<String>(post, url, params, headers)
+
+// Generic function that chooses appropriate body handler based on type T
+// Note: For file downloads, consider using downloadFile() function instead
+suspend inline fun <reified T> httpRequest(
+    post: Boolean = false,
+    url: String,
+    params: List<Pair<String, Any?>> = emptyList(),
+    headers: List<Pair<String, String>> = emptyList()
+): HttpResponse<T> = withContext(Dispatchers.IO) {
     // Filter out parameters with null values
     val filteredParams = params.filter { it.second != null }
 
-    // Debug logging (assuming similar logging setup)
+    // Debug logging
     if (Const.DEBUG) {
         lgr.info("http ${if (post) "post" else "get"} $url ${filteredParams.joinToString(",")}")
     }
 
-    // Create Ktor HTTP client
-    val client = HttpClient(CIO) {
-        install(io.ktor.client.plugins.compression.ContentEncoding) {
-            gzip()
-            deflate()
+    // Create JDK HTTP client
+    val client = HttpClient.newBuilder()
+        .connectTimeout(Duration.ofSeconds(30))
+        .build()
+
+    val requestBuilder = if (post) {
+        // For POST, create form data body
+        val formData = filteredParams.joinToString("&") { (key, value) ->
+            "${URLEncoder.encode(key, StandardCharsets.UTF_8)}=${URLEncoder.encode(value.toString(), StandardCharsets.UTF_8)}"
         }
+        
+        HttpRequest.newBuilder()
+            .uri(URI.create(url))
+            .header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
+            .POST(HttpRequest.BodyPublishers.ofString(formData, StandardCharsets.UTF_8))
+    } else {
+        // For GET, add URL parameters
+        val urlWithParams = if (filteredParams.isNotEmpty()) {
+            val queryString = filteredParams.joinToString("&") { (key, value) ->
+                "${URLEncoder.encode(key, StandardCharsets.UTF_8)}=${URLEncoder.encode(value.toString(), StandardCharsets.UTF_8)}"
+            }
+            "$url?$queryString"
+        } else {
+            url
+        }
+        
+        HttpRequest.newBuilder()
+            .uri(URI.create(urlWithParams))
+            .GET()
     }
 
-    return try {
-        client.request(url) {
-            // Set method
-            method = if (post) HttpMethod.Post else HttpMethod.Get
-
-            // Add headers
-            headers.forEach { (key, value) ->
-                header(key, value)
-            }
-
-            // Add parameters
-            if (post) {
-                // For POST, set form parameters
-                setBody(
-                    FormDataContent(
-                        Parameters.build {
-                            filteredParams.forEach { (key, value) ->
-                                append(key, value.toString())
-                            }
-                        }
-                    )
-                )
-                contentType(ContentType.Application.FormUrlEncoded.withCharset(StandardCharsets.UTF_8))
-            } else {
-                // For GET, add URL parameters
-                filteredParams.forEach { (key, value) ->
-                    parameter(key, value.toString())
-                }
-            }
-        }
-    } finally {
-        // Ensure client is closed
-        client.close()
+    // Add custom headers
+    headers.forEach { (key, value) ->
+        requestBuilder.header(key, value)
     }
+
+    // Set timeout and build request
+    val request = requestBuilder
+        .timeout(Duration.ofSeconds(60))
+        .build()
+
+    // Choose appropriate body handler based on type T
+    val bodyHandler = when (T::class) {
+        String::class -> HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8)
+        ByteArray::class -> HttpResponse.BodyHandlers.ofByteArray()
+        java.io.InputStream::class -> HttpResponse.BodyHandlers.ofInputStream()
+        java.nio.file.Path::class -> HttpResponse.BodyHandlers.discarding() // For HEAD requests or when you don't need body
+        else -> HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8) // Default to String
+    } as HttpResponse.BodyHandler<T>
+
+    // Send request and return response
+    client.send(request, bodyHandler)
+}
+
+// Specialized function for downloading files directly to disk
+suspend fun downloadFile(
+    url: String,
+    targetPath: Path,
+    headers: List<Pair<String, String>> = emptyList(),
+    overwrite: Boolean = true
+): HttpResponse<Path> = withContext(Dispatchers.IO) {
+    // Debug logging
+    if (Const.DEBUG) {
+        lgr.info("downloading file from $url to $targetPath")
+    }
+
+    // Create JDK HTTP client
+    val client = HttpClient.newBuilder()
+        .connectTimeout(Duration.ofSeconds(30))
+        .build()
+
+    val requestBuilder = HttpRequest.newBuilder()
+        .uri(URI.create(url))
+        .GET()
+
+    // Add custom headers
+    headers.forEach { (key, value) ->
+        requestBuilder.header(key, value)
+    }
+
+    // Set timeout and build request
+    val request = requestBuilder
+        .timeout(Duration.ofSeconds(300)) // Longer timeout for file downloads
+        .build()
+
+    // Use ofFile body handler for efficient file download
+    val bodyHandler = if (overwrite) {
+        HttpResponse.BodyHandlers.ofFile(targetPath)
+    } else {
+        HttpResponse.BodyHandlers.ofFile(targetPath, StandardOpenOption.CREATE_NEW)
+    }
+
+    // Send request and return response
+    client.send(request, bodyHandler)
 }
 

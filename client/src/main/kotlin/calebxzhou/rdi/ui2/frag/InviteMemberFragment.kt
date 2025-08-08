@@ -13,7 +13,7 @@ class InviteMemberFragment : RFragment("邀请成员") {
     private lateinit var qqInput: REditText
     override fun initContent() {
         qqInput = REditText(fctx, "QQ号").also { contentLayout += it }
-        contentLayout += RTextButton(fctx, "ok", ::onClicked)
+        contentLayout += RTextButton(fctx, "ok"){onClicked()}
     }
     private fun onClicked() {
         val qq = qqInput.text.toString()

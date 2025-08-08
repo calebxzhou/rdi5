@@ -1,0 +1,252 @@
+package calebxzhou.rdi.ui2.component
+
+import calebxzhou.rdi.lgr
+import calebxzhou.rdi.ui2.iconDrawable
+import calebxzhou.rdi.ui2.rdiDrawable
+import calebxzhou.rdi.util.ioScope
+import calebxzhou.rdi.util.mc
+import calebxzhou.rdi.util.uiThread
+import com.mojang.blaze3d.platform.NativeImage
+import icyllis.modernui.core.Context
+import icyllis.modernui.graphics.Bitmap
+import icyllis.modernui.graphics.drawable.BitmapDrawable
+import icyllis.modernui.graphics.drawable.ImageDrawable
+import icyllis.modernui.widget.ImageView
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.engine.cio.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import io.ktor.http.*
+import kotlinx.coroutines.launch
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.security.MessageDigest
+import java.util.concurrent.ConcurrentHashMap
+
+/**
+ * ImageView that loads images from HTTP URLs with caching support
+ */
+class HttpImageView(context: Context,val url: String) : ImageView(context) {
+    private val placeholderDrawable: ImageDrawable = iconDrawable("loading")
+    private val errorDrawable = iconDrawable("")
+    
+    companion object {
+
+        
+        // Cache directory
+        private val cacheDir: File by lazy {
+            File(mc.gameDirectory, "rdi_image_cache").apply {
+                if (!exists()) {
+                    mkdirs()
+                }
+            }
+        }
+
+        
+        private fun getCacheKey(url: String): String {
+            val digest = MessageDigest.getInstance("MD5")
+            val hash = digest.digest(url.toByteArray())
+            return hash.joinToString("") { "%02x".format(it) }
+        }
+        
+        private fun getCacheFile(url: String): File {
+            val key = getCacheKey(url)
+            return File(cacheDir, "$key.png")
+        }
+
+    }
+    
+    /**
+     * Set placeholder image to show while loading
+     */
+    fun setPlaceholder(drawable: BitmapDrawable?) {
+        this.placeholderDrawable = drawable
+    }
+    
+    /**
+     * Set error image to show when loading fails
+     */
+    fun setErrorDrawable(drawable: BitmapDrawable?) {
+        this.errorDrawable = drawable
+    }
+    
+    /**
+     * Load image from URL with caching
+     */
+    fun loadUrl(url: String?) {
+        if (url.isNullOrBlank()) {
+            showError()
+            return
+        }
+        
+        // If same URL, don't reload
+        if (currentUrl == url) return
+        currentUrl = url
+        
+        // Show placeholder while loading
+        showPlaceholder()
+        
+        // Check memory cache first
+        memoryCache[url]?.let { cachedBitmap ->
+            uiThread {
+                if (currentUrl == url) { // Check if URL hasn't changed
+                    setImageBitmap(cachedBitmap)
+                }
+            }
+            return
+        }
+        
+        // Check disk cache
+        val cacheFile = getCacheFile(url)
+        if (cacheFile.exists()) {
+            ioScope.launch {
+                try {
+                    val bitmap = loadBitmapFromFile(cacheFile)
+                    if (bitmap != null) {
+                        // Add to memory cache
+                        clearMemoryCacheIfNeeded()
+                        memoryCache[url] = bitmap
+                        
+                        uiThread {
+                            if (currentUrl == url) { // Check if URL hasn't changed
+                                setImageBitmap(bitmap)
+                            }
+                        }
+                        return@launch
+                    }
+                } catch (e: Exception) {
+                    lgr.warn("Failed to load cached image: ${e.message}")
+                }
+                
+                // If cache loading failed, download from network
+                downloadAndCache(url)
+            }
+        } else {
+            // Download from network
+            ioScope.launch {
+                downloadAndCache(url)
+            }
+        }
+    }
+    
+    private suspend fun downloadAndCache(url: String) {
+        try {
+            val response: HttpResponse = httpClient.get(url)
+            
+            if (response.status.isSuccess()) {
+                val bytes = response.body<ByteArray>()
+                
+                // Save to disk cache
+                val cacheFile = getCacheFile(url)
+                try {
+                    FileOutputStream(cacheFile).use { fos ->
+                        fos.write(bytes)
+                    }
+                } catch (e: Exception) {
+                    lgr.warn("Failed to save image to cache: ${e.message}")
+                }
+                
+                // Convert to bitmap
+                val bitmap = createBitmapFromBytes(bytes)
+                if (bitmap != null) {
+                    // Add to memory cache
+                    clearMemoryCacheIfNeeded()
+                    memoryCache[url] = bitmap
+                    
+                    uiThread {
+                        if (currentUrl == url) { // Check if URL hasn't changed
+                            setImageBitmap(bitmap)
+                        }
+                    }
+                } else {
+                    uiThread {
+                        if (currentUrl == url) {
+                            showError()
+                        }
+                    }
+                }
+            } else {
+                lgr.warn("HTTP error ${response.status.value} when loading image: $url")
+                uiThread {
+                    if (currentUrl == url) {
+                        showError()
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            lgr.error("Failed to download image from $url: ${e.message}")
+            uiThread {
+                if (currentUrl == url) {
+                    showError()
+                }
+            }
+        }
+    }
+    
+    private fun loadBitmapFromFile(file: File): Bitmap? {
+        return try {
+            FileInputStream(file).use { fis ->
+                val nativeImage = NativeImage.read(fis)
+                val bitmap = Bitmap.createBitmap(nativeImage.width, nativeImage.height, Bitmap.Format.RGBA_8888)
+                bitmap.setPixels(nativeImage.pixelsRGBA, 0, nativeImage.width, 0, 0, nativeImage.width, nativeImage.height)
+                nativeImage.close()
+                bitmap
+            }
+        } catch (e: Exception) {
+            lgr.warn("Failed to load bitmap from file: ${e.message}")
+            null
+        }
+    }
+    
+    private fun createBitmapFromBytes(bytes: ByteArray): Bitmap? {
+        return try {
+            val nativeImage = NativeImage.read(bytes.inputStream())
+            val bitmap = Bitmap.createBitmap(nativeImage.width, nativeImage.height, Bitmap.Format.RGBA_8888)
+            bitmap.setPixels(nativeImage.pixelsRGBA, 0, nativeImage.width, 0, 0, nativeImage.width, nativeImage.height)
+            nativeImage.close()
+            bitmap
+        } catch (e: Exception) {
+            lgr.warn("Failed to create bitmap from bytes: ${e.message}")
+            null
+        }
+    }
+    
+    private fun showPlaceholder() {
+        placeholderDrawable?.let {
+            setImageDrawable(it)
+        } ?: run {
+            // Clear current image if no placeholder
+            setImageDrawable(null)
+        }
+    }
+    
+    private fun showError() {
+        errorDrawable?.let {
+            setImageDrawable(it)
+        } ?: run {
+            // Clear current image if no error drawable
+            setImageDrawable(null)
+        }
+    }
+    
+    /**
+     * Clear all caches
+     */
+    fun clearCache() {
+        memoryCache.clear()
+        cacheDir.listFiles()?.forEach { file ->
+            if (file.isFile && file.name.endsWith(".png")) {
+                file.delete()
+            }
+        }
+    }
+    
+    /**
+     * Get cache size in bytes
+     */
+    fun getCacheSize(): Long {
+        return cacheDir.listFiles()?.sumOf { it.length() } ?: 0L
+    }
+}

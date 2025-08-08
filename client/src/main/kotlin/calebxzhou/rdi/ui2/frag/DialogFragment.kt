@@ -18,6 +18,11 @@ fun alertOk(msg: String) {
         mc go DialogFragment(msg, lvl = RMessageLevel.OK)
     }
 }
+fun confirm(msg: String, onNo: () -> Unit = {}, onYes: () -> Unit={}) {
+    uiThread {
+        mc go DialogFragment(msg, RDialogType.CONFIRM, onYes = onYes, onNo = onNo)
+    }
+}
 enum class RDialogType {
     CONFIRM, ALERT
 }

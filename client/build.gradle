@@ -176,34 +176,11 @@ allprojects {
 def mcLibs = [
 // https://mvnrepository.com/artifact/org.jsoup/jsoup
 //添加三方库别忘了jar jarJar reobfJarJar genIntellijRuns 不然找不到class
-"org.jetbrains.kotlin:kotlin-stdlib:${kotlin_version}",
-"org.jetbrains.kotlin:kotlin-reflect:${kotlin_version}",
-'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2',
-'org.jetbrains.kotlinx:kotlinx-serialization-core:1.8.1',
-'org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1',
-"io.ktor:ktor-client-core-jvm:$ktor_version",
-"io.ktor:ktor-client-cio-jvm:$ktor_version",
-// https://mvnrepository.com/artifact/io.ktor/ktor-utils-jvm
-
-"io.ktor:ktor-client-content-negotiation:$ktor_version",
-"io.ktor:ktor-client-encoding:$ktor_version",
-"io.ktor:ktor-serialization-kotlinx-json:$ktor_version",
 'org.jsoup:jsoup:1.19.1',
 'org.mongodb:bson:5.1.0',
 'org.hotswapagent:hotswap-agent-core:2.0.1',
 ]
 def mcLibExportOnly = [
-        "io.ktor:ktor-utils-jvm:$ktor_version",
-        "io.ktor:ktor-network-jvm:$ktor_version",
-        "io.ktor:ktor-network-tls-jvm:$ktor_version",
-        "io.ktor:ktor-events-jvm:$ktor_version",
-        "io.ktor:ktor-http-jvm:$ktor_version",
-        "io.ktor:ktor-http-cio-jvm:$ktor_version",
-        "io.ktor:ktor-io-jvm:$ktor_version",
-        "io.ktor:ktor-sse-jvm:$ktor_version",
-        "org.jetbrains.kotlinx:kotlinx-io-bytestring-jvm:0.7.0",
-        "org.jetbrains.kotlinx:kotlinx-io-core-jvm:0.7.0"
-        //todo more ktor deps
 ]
 def modrinthMods = [
 
@@ -248,7 +225,8 @@ dependencies {
         testImplementation "org.lwjgl:lwjgl${component ? "-$component" : ''}:$lwjglVersion:natives-windows"
     }
 
-    implementation 'thedarkcolour:kotlinforforge-neoforge:5.7.0:slim'
+    //implementation 'thedarkcolour:kotlinforforge-neoforge:5.7.0:slim'
+    implementation 'thedarkcolour:kotlinforforge-neoforge:5.7.0'
     libraries 'icyllis.modernui:ModernUI-Core:3.11.1'
     testImplementation 'icyllis.modernui:ModernUI-Core:3.11.1'
     additionalRuntimeClasspath 'icyllis.modernui:ModernUI-Core:3.11.1'

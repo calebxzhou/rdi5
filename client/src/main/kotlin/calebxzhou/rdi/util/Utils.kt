@@ -3,6 +3,7 @@ package calebxzhou.rdi.util
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.bson.types.ObjectId
 import org.lwjgl.util.tinyfd.TinyFileDialogs
 import java.net.URLEncoder
@@ -21,6 +22,7 @@ val ioScope: CoroutineScope
     throwable.printStackTrace()
 }
 )
+fun ioTask(handler: suspend  ()->Unit ) = ioScope.launch { handler() }
 //保留小数点后x位
 fun Float.toFixed(decPlaces: Int): String{
     return String.format("%.${decPlaces}f",this)
@@ -49,3 +51,9 @@ fun ObjectId.toUUID() : UUID{
 }
 val String.urlEncoded
     get() = URLEncoder.encode(this, Charsets.UTF_8)
+val String.urlDecoded
+    get() = java.net.URLDecoder.decode(this, Charsets.UTF_8)
+val String.decodeBase64
+    get() = String(Base64.getDecoder().decode(this), Charsets.UTF_8)
+val String.encodeBase64
+    get() = Base64.getEncoder().encodeToString(this.toByteArray(Charsets.UTF_8))

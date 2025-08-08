@@ -131,17 +131,23 @@ fun ViewGroup.gridLayout(
 ) = GridLayout(this.context).apply(init).also { this += it }
 
 fun ViewGroup.textView(
+    msg: String = "",
     init: TextView.() -> Unit = {}
-) = TextView(this.context).apply(init).also { this += it }
+) = TextView(this.context).apply{
+    text = msg
+    init()
+
+}.also { this += it }
 
 fun ViewGroup.imageView(
     init: ImageView.() -> Unit = {}
 ) = ImageView(this.context).apply(init).also { this += it }
 
+
 fun ViewGroup.textButton(
     msg: String,
     init: RTextButton.() -> Unit = {},
-    onClick: () -> Unit = {},
+    onClick: (RButton) -> Unit = {},
 ) = RTextButton(this.context, msg, onClick).apply(init).also { this += it }
 
 fun ViewGroup.editText(
@@ -159,7 +165,7 @@ fun ViewGroup.editPwd(
 fun ViewGroup.headButton(
     id: ObjectId,
     init: RPlayerHeadButton.() -> Unit = {},
-    onClick: () -> Unit = {},
+    onClick: (RButton) -> Unit = {},
 ) = RPlayerHeadButton(context, id, onClick).apply(init).also { this += it }
 
 
@@ -176,8 +182,11 @@ fun ViewGroup.iconButton(
     icon: String,
     text: String,
     init: RIconButton.() -> Unit = {},
-    onClick: () -> Unit = {},
+    onClick: (RButton) -> Unit = {},
 ) = RIconButton(this.context, icon, text, onClick).apply(init).also { this += it }
+fun ViewGroup.scrollView(
+    init: ScrollView.() -> Unit = {}
+) = ScrollView(this.context).apply(init).also { this += it }
 /*
 
 fun Context.showContextMenu(anchor: View, items: List<Pair<String, () -> Unit>>, x: Float = Float.NaN, y: Float = Float.NaN) {

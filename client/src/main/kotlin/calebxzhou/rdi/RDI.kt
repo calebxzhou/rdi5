@@ -2,9 +2,6 @@ package calebxzhou.rdi
 
 import calebxzhou.rdi.service.LevelService
 import calebxzhou.rdi.service.Mcmod
-import calebxzhou.rdi.service.UpdateService
-import calebxzhou.rdi.util.notifyOs
-import kotlinx.coroutines.runBlocking
 import net.neoforged.fml.common.Mod
 import org.apache.logging.log4j.LogManager
 import java.io.File
@@ -23,29 +20,10 @@ class RDI {
 
     init {
         lgr.info("RDI启动中")
+        System.setProperty("jdk.httpclient.allowRestrictedHeaders", "host,connection,content-length,expect,upgrade,via")
         LevelService
         File("rdi").mkdir()
 
-        //检查更新
-        //if (!(Const.DEBUG)) {
-            try {
-                runBlocking {
-
-
-                    val modsToUpdate = UpdateService.checkUpdate(File("mods"))
-                    if (modsToUpdate.isNotEmpty()) {
-
-                        notifyOs("更新完成${modsToUpdate}")
-
-
-                        UpdateService.restart()
-                    }
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                notifyOs("检测更新失败\n请检查网络连接")
-            }
-        //}
         Mcmod.getServerInfo()
 
         /*val port = HttpUtil.getAvailablePort()

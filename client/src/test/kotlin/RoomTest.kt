@@ -15,8 +15,7 @@ class RoomTest {
         RAccount.now = p1
         runBlocking {
             val resp = RServer.OFFICIAL_DEBUG.prepareRequest(false,"room/my")
-            println( resp.status)
-            println( resp.body)
+             println( resp.body)
         }
         println("RTest is running")
         // 这里可以添加更多测试逻辑

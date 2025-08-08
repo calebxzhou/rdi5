@@ -2,12 +2,12 @@ package calebxzhou.rdi.service
 
 import calebxzhou.rdi.model.RBlockState
 import calebxzhou.rdi.model.RServer
-import io.ktor.client.statement.*
+import java.net.http.HttpResponse
 import net.minecraft.world.level.block.Block
 
 object RoomService {
 
-    suspend fun create(): HttpResponse? {
+    suspend fun create(): HttpResponse<String>? {
         //准备所有的方块状态
         val bstates = Block.BLOCK_STATE_REGISTRY.mapIndexed { id, bs ->
             val name = bs.blockHolder.registeredName

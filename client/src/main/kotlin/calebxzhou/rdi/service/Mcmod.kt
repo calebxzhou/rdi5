@@ -3,7 +3,7 @@ package calebxzhou.rdi.service
 import calebxzhou.rdi.integrate.jei.RJeiPlugin
 import calebxzhou.rdi.lgr
 import calebxzhou.rdi.net.body
-import calebxzhou.rdi.net.httpRequest
+import calebxzhou.rdi.net.httpStringRequest
 import calebxzhou.rdi.ui2.frag.alertOk
 import calebxzhou.rdi.util.*
 import kotlinx.coroutines.launch
@@ -45,7 +45,7 @@ Priority: u=0, i
 
     suspend fun search(id: ResourceLocation, name: String): String? {
         val resp =
-            httpRequest(url = searchUrl + "${id.namespace} $name".urlEncoded, headers = headers).body
+            httpStringRequest(url = searchUrl + "${id.namespace} $name".urlEncoded, headers = headers).body
         val resultItems = Jsoup.parse(resp).select(".result-item")
         lgr.info("搜到了${resultItems.size}个")
         // Variable to store the first href
@@ -68,7 +68,7 @@ Priority: u=0, i
     }
 
     fun getServerInfo() = ioScope.launch{
-        httpRequest(false, SERVER_PAGE, headers = headers)
+        httpStringRequest(false, SERVER_PAGE, headers = headers)
     }
     fun searchItemOpen(item: Item){
         ioScope.launch {

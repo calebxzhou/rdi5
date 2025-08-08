@@ -4,6 +4,7 @@ import calebxzhou.rdi.lgr
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.model.RServer
 import calebxzhou.rdi.model.Room
+import calebxzhou.rdi.net.StringHttpResponse
 import calebxzhou.rdi.net.body
 import calebxzhou.rdi.util.serdesJson
 import calebxzhou.rdi.util.toUUID
@@ -11,7 +12,6 @@ import com.google.common.cache.CacheBuilder
 import com.google.common.cache.CacheLoader
 import com.mojang.authlib.GameProfile
 import com.mojang.authlib.minecraft.MinecraftProfileTexture
-import io.ktor.client.statement.*
 import kotlinx.coroutines.runBlocking
 import net.minecraft.resources.ResourceLocation
 import org.bson.types.ObjectId
@@ -35,7 +35,7 @@ object RAccountService {
         }
         return ResourceLocation.parse("$prefix/$hashUC")
     }
-    suspend fun queryPlayerInfo(uid: ObjectId): HttpResponse? {
+    suspend fun queryPlayerInfo(uid: ObjectId): StringHttpResponse? {
         return RServer.now?.prepareRequest(false, "player-info", listOf("uid" to uid))
     }
     suspend fun getPlayerInfo(uid: ObjectId): RAccount.Dto{
