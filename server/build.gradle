@@ -187,7 +187,6 @@ def mcLibs = [
 
 'org.jsoup:jsoup:1.19.1',
 'org.mongodb:bson:5.1.0',
-'org.hotswapagent:hotswap-agent-core:2.0.1',
 ]
 def mcLibExportOnly = [
         "io.ktor:ktor-utils-jvm:$ktor_version",
@@ -202,7 +201,7 @@ def mcLibExportOnly = [
         "org.jetbrains.kotlinx:kotlinx-io-core-jvm:0.7.0"
         ]
 def modrinthMods = [
-
+"lithium:mc1.21.1-0.15.0-neoforge",
         "jade:15.10.0+neoforge",
 ]
 dependencies {

@@ -178,7 +178,7 @@ def mcLibs = [
 //添加三方库别忘了jar jarJar reobfJarJar genIntellijRuns 不然找不到class
 'org.jsoup:jsoup:1.19.1',
 'org.mongodb:bson:5.1.0',
-'org.hotswapagent:hotswap-agent-core:2.0.1',
+
 ]
 def mcLibExportOnly = [
 ]
@@ -224,7 +224,7 @@ dependencies {
         testImplementation "org.lwjgl:lwjgl${component ? "-$component" : ''}:$lwjglVersion"
         testImplementation "org.lwjgl:lwjgl${component ? "-$component" : ''}:$lwjglVersion:natives-windows"
     }
-
+    implementation('org.hotswapagent:hotswap-agent-core:2.0.1')
     //implementation 'thedarkcolour:kotlinforforge-neoforge:5.7.0:slim'
     implementation 'thedarkcolour:kotlinforforge-neoforge:5.7.0'
     libraries 'icyllis.modernui:ModernUI-Core:3.11.1'

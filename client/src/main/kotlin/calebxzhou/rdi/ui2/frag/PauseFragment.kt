@@ -46,9 +46,10 @@ class PauseFragment : RFragment("暂停") {
                     }
                     iconButton("exit","退出"){
                         renderThread {
+                            mc set null
 
                             mc.level?.disconnect()
-                            mc.disconnect( )
+                            mc.disconnect(ProfileFragment().mcScreen)
                             mc go ProfileFragment()
                         }
                     }

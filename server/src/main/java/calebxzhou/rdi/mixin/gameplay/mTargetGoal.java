@@ -9,8 +9,8 @@ import org.spongepowered.asm.mixin.Overwrite;
  */
 @Mixin(TargetGoal.class)
 public class mTargetGoal {
-    @Overwrite
+    /*@Overwrite
     public double getFollowDistance() {
         return 128;
-    }
+    }*/
 }

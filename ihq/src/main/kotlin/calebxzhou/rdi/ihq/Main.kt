@@ -46,6 +46,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.bson.UuidRepresentation
+import java.io.File
 import java.util.Timer
 import java.util.TimerTask
 import javax.print.attribute.standard.Compression
@@ -62,8 +63,9 @@ val DB = MongoClient.create(
         .uuidRepresentation(UuidRepresentation.STANDARD)
         .build()).getDatabase(DB_NAME)
 val HQ_PORT = System.getProperty("rdi.hqPort")?.toIntOrNull() ?: 28511
+val CRASH_REPORT_DIR = File("crash-report")
 fun main(): Unit =runBlocking {
-
+    CRASH_REPORT_DIR.mkdir()
         lgr.info { "init db" }
 
         accountCol.createIndex(Indexes.ascending("qq"), IndexOptions().unique(true))
@@ -151,6 +153,9 @@ fun startHttp(){
                 get("/mod-file") {
                     UpdateService.getModFile(call)
                 }
+            }
+            post("/crash-report"){
+                PlayerService.crashReport(call)
             }
             authenticate("auth-basic") {
                 post("/skin") {

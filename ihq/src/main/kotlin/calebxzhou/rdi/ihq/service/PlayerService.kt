@@ -1,9 +1,11 @@
 package calebxzhou.rdi.ihq.service
 
+import calebxzhou.rdi.ihq.CRASH_REPORT_DIR
 import calebxzhou.rdi.ihq.DB
 import calebxzhou.rdi.ihq.lgr
 import calebxzhou.rdi.ihq.model.RAccount
 import calebxzhou.rdi.ihq.net.*
+import calebxzhou.rdi.ihq.util.datetime
 import calebxzhou.rdi.ihq.util.isValidHttpUrl
 import calebxzhou.rdi.ihq.util.isValidObjectId
 import calebxzhou.rdi.ihq.util.serdesJson
@@ -11,9 +13,12 @@ import com.mongodb.client.model.Filters.eq
 import com.mongodb.client.model.Updates
 import io.ktor.server.application.*
 import io.ktor.server.request.*
+import io.ktor.server.routing.RoutingCall
 import kotlinx.coroutines.flow.firstOrNull
 import org.bson.conversions.Bson
 import org.bson.types.ObjectId
+import java.io.File
+import java.util.Date
 
 object PlayerService {
     val accountCol = DB.getCollection<RAccount>("account")
@@ -185,6 +190,15 @@ object PlayerService {
         val names = (params got "names").split("\n")
         val infos = names.map { getByName(it)?.dto ?: RAccount.Dto() }
         call.ok(serdesJson.encodeToString(infos))
+    }
+
+    suspend fun crashReport(call: ApplicationCall) {
+        val params = call.initPostParams()
+        val report = (params got "report")
+        val account = getById(ObjectId(params got "uid"))
+        val fileName = "${account?.name ?: "未知"}-${account?.qq ?: "0"}-${datetime}.txt"
+        File(CRASH_REPORT_DIR,fileName).writeText(report)
+        call.ok()
     }
 
 

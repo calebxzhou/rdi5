@@ -1,8 +1,10 @@
 package calebxzhou.rdi.util
 
 import calebxzhou.rdi.lgr
+import calebxzhou.rdi.ui2.frag.RFragment
 import icyllis.modernui.fragment.Fragment
 import icyllis.modernui.mc.MuiModApi
+import icyllis.modernui.mc.ScreenCallback
 import icyllis.modernui.mc.neoforge.MuiForgeApi
 import io.netty.util.concurrent.DefaultThreadFactory
 import net.minecraft.Util
@@ -66,9 +68,13 @@ fun Minecraft. go(fragment: Fragment, prevScreen: Screen?=null){
         mc set screen
     }
 }
-infix fun Minecraft. go(fragment: Fragment){
+infix fun Minecraft. go(fragment: RFragment){
     renderThread {
-        val screen: Screen = MuiForgeApi.get().createScreen(fragment,null,mc.screen)
+        val screen: Screen = MuiForgeApi.get().createScreen(fragment, object:ScreenCallback {
+            override fun shouldClose(): Boolean {
+                return fragment.closable
+            }
+        },mc.screen)
         mc set screen
     }
 }

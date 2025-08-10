@@ -1,5 +1,6 @@
 package calebxzhou.rdi.model
 
+import calebxzhou.rdi.Const
 import calebxzhou.rdi.net.httpStringRequest
 import calebxzhou.rdi.net.success
 import calebxzhou.rdi.ui2.frag.LoadingFragment
@@ -34,6 +35,8 @@ class RServer(
             28510, 28511,
         ).apply { gameCarrierIp = arrayOf(ip, "u5rdi.calebxzhou.cn", "m5rdi.calebxzhou.cn") }
 
+        val default: RServer
+            get() = now ?: if(Const.DEBUG) OFFICIAL_DEBUG else OFFICIAL_NNG
     }
 
     var chafu: ChannelFuture? = null

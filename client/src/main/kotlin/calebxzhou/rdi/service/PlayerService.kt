@@ -23,6 +23,7 @@ object PlayerService  {
             creds.write()
             RAccount.now = account
             (mc as AMinecraft).setUser(account.mcUser)
+
             return account
         }else{
             alertErr(resp.body)

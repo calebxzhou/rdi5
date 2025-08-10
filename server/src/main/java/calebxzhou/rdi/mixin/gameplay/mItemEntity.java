@@ -17,9 +17,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  */
 @Mixin(ItemEntity.class)
 public class mItemEntity {
-    //一分钟掉落物消失
+    //2分钟掉落物消失
     @Shadow @Final @Mutable
-    private static final int LIFETIME = 20*60;
+    private static final int LIFETIME = 20*60*2;
     @Shadow public int lifespan;
 
     @Inject(method = "<init>(Lnet/minecraft/world/entity/EntityType;Lnet/minecraft/world/level/Level;)V",at=@At("TAIL"))
