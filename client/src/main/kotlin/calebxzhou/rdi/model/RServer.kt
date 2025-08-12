@@ -23,7 +23,7 @@ class RServer(
     val hqUrl = "http://${ip}:${hqPort}/"
 
     //电信 联通 移动
-    var gameCarrierIp = arrayOf(ip, ip, ip)
+    var gameCarrierIp = arrayOf(ip, ip, ip,ip)
 
     companion object {
         var now: RServer? = null
@@ -33,7 +33,7 @@ class RServer(
         val OFFICIAL_NNG = RServer(
             "rdi.calebxzhou.cn",
             28510, 28511,
-        ).apply { gameCarrierIp = arrayOf(ip, "u5rdi.calebxzhou.cn", "m5rdi.calebxzhou.cn") }
+        ).apply { gameCarrierIp = arrayOf(ip, "u5rdi.calebxzhou.cn", "m5rdi.calebxzhou.cn","b5rdi.calebxzhou.cn") }
 
         val default: RServer
             get() = now ?: if(Const.DEBUG) OFFICIAL_DEBUG else OFFICIAL_NNG

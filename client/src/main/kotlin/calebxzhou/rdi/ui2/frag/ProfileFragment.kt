@@ -33,6 +33,7 @@ class ProfileFragment : RFragment("我的信息") {
             textButton("开始-电信", onClick = { start(0) })
             textButton("开始-联通", onClick = { start(1) })
             textButton("开始-移动", onClick = { start(2) })
+            textButton("开始-三线", onClick = { start(3) })
             textButton("退出登录", onClick = { close() })
 
 

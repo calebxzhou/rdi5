@@ -7,6 +7,7 @@ import io.ktor.http.Parameters
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.auth.UserIdPrincipal
 import io.ktor.server.auth.principal
+import io.ktor.server.plugins.origin
 import io.ktor.server.request.receiveParameters
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
@@ -59,3 +60,5 @@ val ApplicationCall.uid
 
 suspend fun ApplicationCall.initPostParams() = receiveParameters()
 suspend fun ApplicationCall.initGetParams() = request.queryParameters
+val ApplicationCall.clientIp
+    get() = this.request.origin.remoteAddress

@@ -70,12 +70,13 @@ fun main(): Unit =runBlocking {
 
         accountCol.createIndex(Indexes.ascending("qq"), IndexOptions().unique(true))
         accountCol.createIndex(Indexes.ascending("name"), IndexOptions().unique(true))
-    //5分钟重载mod
-    Timer().scheduleAtFixedRate(object : TimerTask() {
+    UpdateService.reloadModInfo()
+    //5分钟重载mod  没什么用 手动重载了
+   /* Timer().scheduleAtFixedRate(object : TimerTask() {
         override fun run() {
             UpdateService.reloadModInfo()
         }
-    },0,60000*5)
+    },0,60000*5)*/
     // Launch both servers concurrently in the coroutine scope
     launch {
         startHttp()

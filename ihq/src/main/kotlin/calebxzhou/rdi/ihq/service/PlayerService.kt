@@ -3,6 +3,8 @@ package calebxzhou.rdi.ihq.service
 import calebxzhou.rdi.ihq.CRASH_REPORT_DIR
 import calebxzhou.rdi.ihq.DB
 import calebxzhou.rdi.ihq.lgr
+import calebxzhou.rdi.ihq.model.AuthLog
+import calebxzhou.rdi.ihq.model.HwSpec
 import calebxzhou.rdi.ihq.model.RAccount
 import calebxzhou.rdi.ihq.net.*
 import calebxzhou.rdi.ihq.util.datetime
@@ -12,6 +14,7 @@ import calebxzhou.rdi.ihq.util.serdesJson
 import com.mongodb.client.model.Filters.eq
 import com.mongodb.client.model.Updates
 import io.ktor.server.application.*
+import io.ktor.server.plugins.origin
 import io.ktor.server.request.*
 import io.ktor.server.routing.RoutingCall
 import kotlinx.coroutines.flow.firstOrNull
@@ -22,6 +25,7 @@ import java.util.Date
 
 object PlayerService {
     val accountCol = DB.getCollection<RAccount>("account")
+    val authLogCol = DB.getCollection<AuthLog>("auth_log")
     val inGamePlayers = hashMapOf<Byte, RAccount>()
 
     //根据qq获取
@@ -116,9 +120,19 @@ object PlayerService {
         val usr = params got "usr"
         val pwd = params got "pwd"
         validate(usr, pwd)?.let { account ->
-            lgr.info { "${usr}登录成功" }
-
+            lgr.info { "${account.name} ${account.qq}登录成功" }
             call.ok(serdesJson.encodeToString(account))
+            params["spec"]?.let { specS->
+                val spec = serdesJson.decodeFromString<HwSpec>(specS)
+                authLogCol.insertOne(
+                    AuthLog(
+                        uid = account._id,
+                        login=true,
+                        ip = call.clientIp,
+                        spec = spec,
+                    )
+                )
+            }
         } ?: let {
             lgr.info { "${usr}登录失败" }
             call.e401("密码错误")

@@ -18,7 +18,7 @@ import java.security.MessageDigest
 import java.util.jar.JarFile
 import kotlin.system.exitProcess
 
-class UpdateFragment(val server: RServer) : RFragment("检查更新") {
+class UpdateFragment(val server: RServer) : RFragment("正在检查更新") {
     init {
 
     }
@@ -106,9 +106,10 @@ class UpdateFragment(val server: RServer) : RFragment("检查更新") {
                             server.downloadMods(modsToUpdate, serverIdSha1, this@UpdateFragment)
                         }
                     })
-                    iconButton("error", "先不更新，一会再说") {
+                    iconButton("error", "先不更新，一会再说",{
                         layoutParams = linearLayoutParam(PARENT, SELF)
-                        close()
+                    }) {
+
                         mc go SelectAccountFragment(server)
                     }
                 }
