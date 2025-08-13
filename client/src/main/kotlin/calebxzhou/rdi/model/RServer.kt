@@ -74,21 +74,22 @@ class RServer(
     ) {
         var frag: LoadingFragment? = null
         if (showLoading) {
-            frag = LoadingFragment()
             uiThread {
+                frag = LoadingFragment()
                 mc go frag
             }
         }
         ioScope.launch {
             val req = prepareRequest(post, path, params)
-            if (req.success) {
-                onOk(req)
-            }
             if (showLoading && frag != null) {
                 uiThread {
                     frag.close()
                 }
             }
+            if (req.success) {
+                onOk(req)
+            }
+
 
         }
     }

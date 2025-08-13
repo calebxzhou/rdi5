@@ -53,7 +53,7 @@ fun View.paddingDp(all: Int) {
     paddingDp(all, all, all, all)
 }
 //frag的上下文
-val Fragment.fctx
+val Fragment.fctx: Context
     get() = requireContext()
 
 operator fun ViewGroup.plusAssign(view: View) {

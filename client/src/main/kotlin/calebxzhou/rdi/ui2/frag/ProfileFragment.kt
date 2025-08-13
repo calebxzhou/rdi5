@@ -1,5 +1,6 @@
 package calebxzhou.rdi.ui2.frag
 
+import calebxzhou.rdi.Const
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.model.RServer
 import calebxzhou.rdi.model.Room
@@ -28,12 +29,20 @@ class ProfileFragment : RFragment("我的信息") {
                 headButton(account._id)
             }
             textButton("修改信息", onClick = { mc go (ChangeProfileFragment()) })
-            //textButton("衣柜", onClick = { mc go (WardrobeFragment()) })
+            textButton("导入正版皮肤", onClick = { mc go (MojangSkinFragment()) })
+            textButton("衣柜", onClick = {
+                if(Const.DEBUG)
+                mc go WardrobeFragment()
+                else
+                    alertErr("没开发完")
+            }
+            )
 
             textButton("开始-电信", onClick = { start(0) })
             textButton("开始-联通", onClick = { start(1) })
             textButton("开始-移动", onClick = { start(2) })
-            textButton("开始-三线", onClick = { start(3) })
+            textButton("开始-广电", onClick = { start(3) })
+            textButton("开始-教育网", onClick = { start(3) })
             textButton("退出登录", onClick = { close() })
 
 

@@ -15,6 +15,8 @@ class RDI {
         //mod id与中文名称map，高亮显示等用
         @JvmField
         val modIdChineseName = hashMapOf<String, String>()
+
+        val DIR = File("rdi")
     }
 
 
@@ -22,7 +24,7 @@ class RDI {
         lgr.info("RDI启动中")
         System.setProperty("jdk.httpclient.allowRestrictedHeaders", "host,connection,content-length,expect,upgrade,via")
         LevelService
-        File("rdi").mkdir()
+        DIR.mkdir()
 
         Mcmod.getServerInfo()
 

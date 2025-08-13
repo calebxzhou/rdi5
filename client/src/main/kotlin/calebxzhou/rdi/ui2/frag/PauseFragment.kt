@@ -5,6 +5,7 @@ import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.util.*
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.widget.LinearLayout
+import net.minecraft.client.gui.screens.GenericMessageScreen
 
 class PauseFragment : RFragment("暂停") {
     val lookingBlockState = mc.player?.lookingAtBlock
@@ -47,10 +48,14 @@ class PauseFragment : RFragment("暂停") {
                     iconButton("exit","退出"){
                         renderThread {
                             mc set null
-
                             mc.level?.disconnect()
-                            mc.disconnect(ProfileFragment().mcScreen)
-                            mc go ProfileFragment()
+                            if(mc.isLocalServer){
+                                mc.disconnect(GenericMessageScreen("存档中。。。".mcComp))
+                                mc go TitleFragment()
+                            }else{
+                                mc.disconnect()
+                                mc go ProfileFragment()
+                            }
                         }
                     }
 0                }

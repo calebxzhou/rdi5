@@ -1,6 +1,5 @@
 package calebxzhou.rdi.ui2.frag
 
-import calebxzhou.rdi.auth.MojangApi
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.model.RServer
 import calebxzhou.rdi.net.body
@@ -194,6 +193,7 @@ class WardrobeFragment : RFragment("衣柜") {
             }
 
             currentRow?.let { row ->
+               // HttpImageView(row.context,skin)
                 row.textButton(
                     skin.name, init = {
                         layoutParams = linearLayoutParam(SELF, SELF) {
@@ -272,123 +272,5 @@ class WardrobeFragment : RFragment("衣柜") {
 
     private fun showMojangSkinDialog() {
         mc go MojangSkinFragment()
-    }
-}
-
-class MojangSkinFragment : RFragment("导入正版皮肤") {
-    private lateinit var nameInput: REditText
-    private lateinit var skinCheckBox: CheckBox
-    private lateinit var capeCheckBox: CheckBox
-
-    override fun initContent() {
-        contentLayout.apply {
-            orientation = LinearLayout.VERTICAL
-
-            textView {
-                text = "正版玩家名"
-                layoutParams = linearLayoutParam(PARENT, SELF) {
-                    bottomMargin = dp(8f)
-                }
-            }
-
-            nameInput = editText("输入正版玩家名", 200f) {
-                layoutParams = linearLayoutParam(PARENT, SELF) {
-                    bottomMargin = dp(16f)
-                }
-            }
-
-            skinCheckBox = CheckBox(fctx).apply {
-                text = "导入皮肤"
-                isChecked = true
-                layoutParams = linearLayoutParam(PARENT, SELF) {
-                    bottomMargin = dp(8f)
-                }
-            }
-            this += skinCheckBox
-
-            capeCheckBox = CheckBox(fctx).apply {
-                text = "导入披风"
-                layoutParams = linearLayoutParam(PARENT, SELF) {
-                    bottomMargin = dp(16f)
-                }
-            }
-            this += capeCheckBox
-
-            textButton("导入") {
-                importMojangSkin()
-            }
-        }
-    }
-
-    private fun importMojangSkin() {
-        val name = nameInput.text.toString().trim()
-        val importSkin = skinCheckBox.isChecked
-        val importCape = capeCheckBox.isChecked
-
-        if (name.isEmpty()) {
-            toast("请输入玩家名")
-            return
-        }
-
-        if (!importSkin && !importCape) {
-            toast("请选择皮肤或披风")
-            return
-        }
-
-        ioScope.launch {
-            try {
-                val uuid = MojangApi.getUuidFromName(name)
-                if (uuid != null) {
-                    val cloth = MojangApi.getCloth(uuid)
-                    if (cloth != null) {
-                        val account = RAccount.now ?: return@launch
-                        val server = RServer.now ?: return@launch
-
-                        val newCloth = account.cloth.copy()
-                        if (importSkin) {
-                            newCloth.skin = cloth.skin
-                            newCloth.isSlim = cloth.isSlim
-                        }
-                        if (importCape) {
-                            newCloth.cape = cloth.cape
-                        }
-
-                        val params = mutableListOf<Pair<String, Any>>()
-                        params += "isSlim" to newCloth.isSlim.toString()
-                        params += "skin" to newCloth.skin
-                        newCloth.cape?.let {
-                            params += "cape" to it
-                        }
-
-                        server.hqRequest(true, "skin", params = params) { response ->
-                            if (response.success) {
-                                account.updateCloth(newCloth)
-                                uiThread {
-                                    toast("正版皮肤导入成功")
-                                    close()
-                                }
-                            } else {
-                                uiThread {
-                                    toast("皮肤设置失败")
-                                }
-                            }
-                        }
-                    } else {
-                        uiThread {
-                            toast("没有读取到${name}的皮肤")
-                        }
-                    }
-                } else {
-                    uiThread {
-                        toast("玩家${name}不存在")
-                    }
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                uiThread {
-                    toast("导入失败: ${e.message}")
-                }
-            }
-        }
     }
 }

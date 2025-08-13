@@ -3,11 +3,13 @@ package calebxzhou.rdi.ui2.frag
 import calebxzhou.rdi.auth.LocalCredentials
 import calebxzhou.rdi.common.GREEN
 import calebxzhou.rdi.model.RServer
+import calebxzhou.rdi.service.LevelService
 import calebxzhou.rdi.service.PlayerService.playerLogin
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.util.go
 import calebxzhou.rdi.util.ioScope
 import calebxzhou.rdi.util.mc
+import calebxzhou.rdi.util.renderThread
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.widget.LinearLayout
 import kotlinx.coroutines.launch
@@ -65,6 +67,11 @@ class SelectAccountFragment(val server: RServer) : RFragment("选择账号") {
                     })
                     iconButton(icon = "settings", text = "设置", onClick = {
                         mc go SettingsFragment()
+                    })
+                    iconButton(icon = "island", text = "自由创造", onClick = {
+                        renderThread {
+                            LevelService.openFlatLevel()
+                        }
                     })
                 }
             }
