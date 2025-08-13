@@ -6,12 +6,14 @@ import calebxzhou.rdi.model.RServer
 import calebxzhou.rdi.model.Room
 import calebxzhou.rdi.net.StringHttpResponse
 import calebxzhou.rdi.net.body
+import calebxzhou.rdi.util.objectId
 import calebxzhou.rdi.util.serdesJson
 import calebxzhou.rdi.util.toUUID
 import com.google.common.cache.CacheBuilder
 import com.google.common.cache.CacheLoader
 import com.mojang.authlib.GameProfile
 import com.mojang.authlib.minecraft.MinecraftProfileTexture
+import com.mojang.authlib.properties.Property
 import kotlinx.coroutines.runBlocking
 import net.minecraft.resources.ResourceLocation
 import org.bson.types.ObjectId
@@ -34,6 +36,10 @@ object RAccountService {
             else -> throw IncompatibleClassChangeError()
         }
         return ResourceLocation.parse("$prefix/$hashUC")
+    }
+    @JvmStatic
+    fun getPackedTextures(profile: GameProfile): Property? {
+        return getMcProfile(profile.id.objectId).properties.get("textures").firstOrNull()?.also { profile.properties.put("textures",it) }
     }
     suspend fun queryPlayerInfo(uid: ObjectId): StringHttpResponse? {
         return RServer.now?.prepareRequest(false, "player-info", listOf("uid" to uid))

@@ -22,7 +22,7 @@ class UpdateFragment(val server: RServer) : RFragment("正在检查更新") {
     init {
 
     }
-
+    val modDir = System.getProperty("rdi.updateModDir")?.let { File(it) } ?: File("mods")
     lateinit var view: ScrollView
     lateinit var scrollContent: LinearLayout
     override var closable = false
@@ -55,6 +55,11 @@ class UpdateFragment(val server: RServer) : RFragment("正在检查更新") {
     
     override fun initContent() {
         contentLayout.apply {
+            iconButton("next", "跳过更新，一会再说",{
+                layoutParams = linearLayoutParam(SELF, SELF)
+            }) {
+                mc go SelectAccountFragment(server)
+            }
             view = scrollView {
                 layoutParams = frameLayoutParam(PARENT, PARENT)
                 // Create a LinearLayout as the scrollable content container
@@ -66,7 +71,7 @@ class UpdateFragment(val server: RServer) : RFragment("正在检查更新") {
             }
         }
         ioTask {
-            val modsToUpdate = server.checkUpdate(File("mods"))
+            val modsToUpdate = server.checkUpdate(modDir)
             if (modsToUpdate.isEmpty()) {
                 lgr.info("没有需要更新的mod")
                 close()
@@ -81,7 +86,7 @@ class UpdateFragment(val server: RServer) : RFragment("正在检查更新") {
                         }
                     }
                     iconButton("success", "立刻更新", init = {
-                        layoutParams = linearLayoutParam(PARENT, SELF).apply {
+                        layoutParams = linearLayoutParam(SELF, SELF).apply {
                             setMargins(0, 0, 0, dp(8f))
                         }
                     }, onClick = { button ->
@@ -106,12 +111,7 @@ class UpdateFragment(val server: RServer) : RFragment("正在检查更新") {
                             server.downloadMods(modsToUpdate, serverIdSha1, this@UpdateFragment)
                         }
                     })
-                    iconButton("error", "先不更新，一会再说",{
-                        layoutParams = linearLayoutParam(PARENT, SELF)
-                    }) {
 
-                        mc go SelectAccountFragment(server)
-                    }
                 }
             }
         }
@@ -220,6 +220,20 @@ class UpdateFragment(val server: RServer) : RFragment("正在检查更新") {
         var updateFailed = false
         var failedMods = mutableListOf<String>()
         
+        // Clean up any leftover temporary files from previous failed attempts
+        try {
+            mods.values.forEach { file ->
+                file.parentFile?.listFiles { _, name -> 
+                    name.startsWith("${file.name}.tmp.") || name.startsWith("${file.name}.backup.")
+                }?.forEach { 
+                    lgr.debug("Cleaning up leftover file: ${it.name}")
+                    it.delete() 
+                }
+            }
+        } catch (e: Exception) {
+            lgr.warn("Failed to clean up leftover temporary files", e)
+        }
+        
         // Download each mod with progress updates and SHA-1 verification
         val totalMods = mods.size
         var currentMod = 0
@@ -240,9 +254,12 @@ class UpdateFragment(val server: RServer) : RFragment("正在检查更新") {
             }
             
             try {
+                // Create temporary file for safe download
+                val tempFile = File(file.parent, "${file.name}.tmp.${System.currentTimeMillis()}")
+                
                 val downloadSuccess = downloadFileWithProgress(
                     hqUrl + "update/mod-file?modid=${id}",
-                    file.toPath()
+                    tempFile.toPath()
                 ) { bytesDownloaded, totalBytes, speed ->
                     // Update progress in UI thread
                     uiThread {
@@ -273,19 +290,52 @@ class UpdateFragment(val server: RServer) : RFragment("正在检查更新") {
                         fragment.scrollToBottom()
                     }
                     
-                    // Verify SHA-1 checksum
-                    val downloadedSha1 = fragment.calculateSha1(file)
+                    // Verify SHA-1 checksum of temporary file
+                    val downloadedSha1 = fragment.calculateSha1(tempFile)
                     val expectedSha1 = serverIdSha1[id]
                     
                     if (expectedSha1 != null && downloadedSha1 == expectedSha1) {
-                        uiThread {
-                            progressTextView?.let { textView ->
-                                textView.text = "$progressText ✓ ${id}验证成功！"
-                                textView.setTextColor(0xFF4CAF50.toInt()) // Green color
+                        // Validation successful - atomically replace original file
+                        try {
+                            // Backup original file if it exists
+                            var backupFile: File? = null
+                            if (file.exists()) {
+                                backupFile = File(file.parent, "${file.name}.backup.${System.currentTimeMillis()}")
+                                file.renameTo(backupFile)
                             }
-                            fragment.scrollToBottom()
+                            
+                            // Move temp file to final location
+                            if (tempFile.renameTo(file)) {
+                                // Success - delete backup if it exists
+                                backupFile?.delete()
+                                
+                                uiThread {
+                                    progressTextView?.let { textView ->
+                                        textView.text = "$progressText ✓ ${id}验证成功！"
+                                        textView.setTextColor(0xFF4CAF50.toInt()) // Green color
+                                    }
+                                    fragment.scrollToBottom()
+                                }
+                            } else {
+                                // File move failed - restore backup
+                                backupFile?.renameTo(file)
+                                throw Exception("Failed to move temporary file to final location")
+                            }
+                        } catch (e: Exception) {
+                            updateFailed = true
+                            failedMods.add(id)
+                            lgr.error("Failed to replace file for $id", e)
+                            uiThread {
+                                progressTextView?.let { textView ->
+                                    textView.text = "$progressText ✗ ${id}文件替换失败！可能是文件被其他程序占用了，请退出后重试"
+                                    textView.setTextColor(0xFFE53E3E.toInt()) // Red color
+                                }
+                                fragment.scrollToBottom()
+                            }
                         }
                     } else {
+                        // Validation failed - clean up temp file
+                        tempFile.delete()
                         updateFailed = true
                         failedMods.add(id)
                         uiThread {
@@ -298,6 +348,8 @@ class UpdateFragment(val server: RServer) : RFragment("正在检查更新") {
                         lgr.warn("SHA-1 verification failed for $id. Expected: $expectedSha1, Got: $downloadedSha1")
                     }
                 } else {
+                    // Download failed - clean up temp file
+                    tempFile.delete()
                     updateFailed = true
                     failedMods.add(id)
                     uiThread {
@@ -312,6 +364,21 @@ class UpdateFragment(val server: RServer) : RFragment("正在检查更新") {
                 e.printStackTrace()
                 updateFailed = true
                 failedMods.add(id)
+                
+                // Clean up any temporary files that might exist
+                try {
+                    val tempFile = File(file.parent, "${file.name}.tmp.${System.currentTimeMillis()}")
+                    if (tempFile.exists()) {
+                        tempFile.delete()
+                    }
+                    // Also clean up any temp files with similar patterns (in case of timing issues)
+                    file.parentFile?.listFiles { _, name -> 
+                        name.startsWith("${file.name}.tmp.") 
+                    }?.forEach { it.delete() }
+                } catch (cleanupException: Exception) {
+                    lgr.warn("Failed to clean up temporary files for $id", cleanupException)
+                }
+                
                 uiThread {
                     progressTextView?.let { textView ->
                         textView.text = "$progressText ✗ ${id}下载失败，详见日志！"

@@ -21,6 +21,9 @@ class SelectAccountFragment(val server: RServer) : RFragment("选择账号") {
         RServer.now = server
     }
 
+    override fun close() {
+        mc go TitleFragment()
+    }
     override fun initContent() {
         contentLayout.apply {
             frameLayout {

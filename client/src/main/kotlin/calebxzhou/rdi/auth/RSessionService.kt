@@ -1,9 +1,7 @@
 package calebxzhou.rdi.auth
 
 import calebxzhou.rdi.model.RAccount
-import calebxzhou.rdi.net.body
 import calebxzhou.rdi.service.RAccountService
-import calebxzhou.rdi.util.objectId
 import calebxzhou.rdi.util.serdesJson
 import calebxzhou.rdi.util.toObjectId
 import com.mojang.authlib.GameProfile
@@ -12,7 +10,6 @@ import com.mojang.authlib.minecraft.MinecraftProfileTextures
 import com.mojang.authlib.minecraft.MinecraftSessionService
 import com.mojang.authlib.properties.Property
 import com.mojang.authlib.yggdrasil.ProfileResult
-import kotlinx.coroutines.runBlocking
 import java.net.InetAddress
 import java.util.*
 
@@ -25,21 +22,19 @@ class RSessionService : MinecraftSessionService {
         address: InetAddress?
     ) = null
 
-    override fun getPackedTextures(profile: GameProfile): Property {
-        runBlocking {
-            RAccountService.queryPlayerInfo(profile.id.objectId)?.body
-        } .let { return Property("dto",it?:"{}") }
+    override fun getPackedTextures(profile: GameProfile): Property? {
+        return profile.properties.get("textures").firstOrNull()
     }
 
     override fun unpackTextures(packedTextures: Property): MinecraftProfileTextures {
         val value = packedTextures.value()
         try {
-            val dto = serdesJson.decodeFromString<RAccount.Dto>(value)
+            val dto = serdesJson.decodeFromString<RAccount.Cloth>(value)
             return MinecraftProfileTextures(
-                dto.cloth.skinTexture,
-                dto.cloth.capeTexture,
+                dto.skinTexture,
+                dto.capeTexture,
                 null,
-                SignatureState.UNSIGNED
+                SignatureState.SIGNED
             )
         } catch (e: Exception) {
             e.printStackTrace()

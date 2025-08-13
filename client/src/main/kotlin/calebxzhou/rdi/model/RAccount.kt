@@ -1,14 +1,11 @@
 package calebxzhou.rdi.model
 
-import calebxzhou.rdi.util.encodeBase64
 import calebxzhou.rdi.util.serdesGson
 import calebxzhou.rdi.util.toUUID
 import com.google.common.hash.Hashing
 import com.mojang.authlib.GameProfile
 import com.mojang.authlib.minecraft.MinecraftProfileTexture
 import com.mojang.authlib.properties.Property
-import com.mojang.authlib.yggdrasil.response.MinecraftTexturesPayload
-
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import net.minecraft.client.User
@@ -45,6 +42,7 @@ data class RAccount(
             )
         val capeTexture
             get() = cape?.let { MinecraftProfileTexture(it, mapOf()) }
+
         val mcTextures: Map<MinecraftProfileTexture.Type, MinecraftProfileTexture>
             get() {
                 val textureMap = mutableMapOf(
@@ -65,24 +63,17 @@ data class RAccount(
         val name: String,
         val cloth: Cloth
     ) {
-         val mcProfile
+        val mcProfile
             get() = GameProfile(id.toUUID(), name).apply {
 
-            val texturesPayload = MinecraftTexturesPayload(
-                this@Dto.id.timestamp.toLong(),
-                id,
-                name,
-                true,
-                cloth.mcTextures
-            )
+                properties.put("textures", Property("textures", serdesGson.toJson(cloth)))
 
-            properties.put("textures", Property("textures", serdesGson.toJson(texturesPayload).encodeBase64))
-
-        }
+            }
         val mcPlayerInfo
-            get() = PlayerInfo(mcProfile,false)
+            get() = PlayerInfo(mcProfile, false)
 
     }
+
     companion object {
         val DEFAULT = RAccount(ObjectId(), "未登录", "123456", "12345", 0)
         val TESTS = listOf(
@@ -114,6 +105,7 @@ data class RAccount(
             }
             return ResourceLocation.parse("$prefix/$hashUC")
         }
+
         val MinecraftProfileTexture.hashUC
             //mc就是这么做的
             get() = Hashing.sha1().hashUnencodedChars(hash).toString()
@@ -141,7 +133,7 @@ data class RAccount(
     }
 
     fun updateCloth(cloth: Cloth) {
-       // cloth.register()
+        // cloth.register()
         this.cloth = cloth
     }
 

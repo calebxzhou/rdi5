@@ -19,6 +19,7 @@
     "mRAuth",
     "mScreenBg",
     "mScreenTransition",
+    "mSkin",
     "mTitleScreen",
     "mWidgetMouseCursor",
     "mWindowTitle"
@@ -30,6 +31,7 @@
     "APacketDecoder",
     "ARegionFileVersion",
     "mAllowChineseArgument",
+    "mAllowChineseName",
     "mAlwaysOfflineMode",
     "mNetMetrics",
     "mNetMetrics2",
