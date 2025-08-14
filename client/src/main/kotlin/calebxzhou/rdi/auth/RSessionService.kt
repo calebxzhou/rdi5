@@ -1,7 +1,7 @@
 package calebxzhou.rdi.auth
 
 import calebxzhou.rdi.model.RAccount
-import calebxzhou.rdi.service.RAccountService
+import calebxzhou.rdi.service.PlayerInfoCache
 import calebxzhou.rdi.util.serdesJson
 import calebxzhou.rdi.util.toObjectId
 import com.mojang.authlib.GameProfile
@@ -48,7 +48,7 @@ class RSessionService : MinecraftSessionService {
         requireSecure: Boolean
     ): ProfileResult {
         val rdid = profileId.toObjectId()
-        val mcp = RAccountService.getMcProfile(rdid)
+        val mcp = PlayerInfoCache[rdid].mcProfile
         return ProfileResult(mcp)
     }
 

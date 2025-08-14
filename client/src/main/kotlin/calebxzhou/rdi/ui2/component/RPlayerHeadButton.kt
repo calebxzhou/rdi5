@@ -2,7 +2,7 @@ package calebxzhou.rdi.ui2.component
 
 import calebxzhou.rdi.net.httpRequest
 import calebxzhou.rdi.net.success
-import calebxzhou.rdi.service.RAccountService
+import calebxzhou.rdi.service.PlayerInfoCache
 import calebxzhou.rdi.ui2.paddingDp
 import calebxzhou.rdi.util.ioScope
 import calebxzhou.rdi.util.uiThread
@@ -13,7 +13,6 @@ import icyllis.modernui.graphics.Image
 import icyllis.modernui.graphics.Paint
 import icyllis.modernui.graphics.drawable.ImageDrawable
 import icyllis.modernui.view.Gravity
-
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.bson.types.ObjectId
@@ -103,7 +102,7 @@ class RPlayerHeadButton(
     private fun loadData() {
         ioScope.launch {
             try {
-                val data = RAccountService.getPlayerInfo(id)
+                val data = PlayerInfoCache[id]
                 val skinUrl = data.cloth.skin
                 val skinResp = httpRequest<ByteArray>(false, skinUrl)
 

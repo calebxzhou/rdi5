@@ -12,7 +12,7 @@ object Const {
     const val IHQ_VERSION = 0x500
     val SEED = 1145141919810L
     //显示版本
-    const val VERSION_NUMBER = "5.0.8"
+    const val VERSION_NUMBER = "5.0.11"
     @JvmStatic
     val VERSION_DISP = "RDI5sea ${if(DEBUG)"DEBUG" else ""} $VERSION_NUMBER"
     const val VERSION_STR = "5.0"

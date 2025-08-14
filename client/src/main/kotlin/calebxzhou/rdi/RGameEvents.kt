@@ -43,7 +43,8 @@ class RGameEvents {
             //启动局域网
 
             mc.singleplayerServer?.publishServer(GameType.SURVIVAL, Const.DEBUG, HttpUtil.getAvailablePort())
-        }     @SubscribeEvent
+        }
+        @SubscribeEvent
         @JvmStatic
         fun loadComplete(e: FMLLoadCompleteEvent) {
 

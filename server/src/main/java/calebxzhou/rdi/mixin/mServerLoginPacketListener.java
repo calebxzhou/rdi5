@@ -24,7 +24,7 @@ public class mServerLoginPacketListener {
     //允许用户名中文
 
 
-    //注入uuid
+    //注入rdid到mc本体的uuid
     @Inject(method = "handleHello",at= @At(value = "TAIL"))
     private void injectUUID(ServerboundHelloPacket pPacket, CallbackInfo ci){
         authenticatedProfile = new GameProfile(pPacket.profileId(),pPacket.name());

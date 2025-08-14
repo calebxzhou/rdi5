@@ -5,7 +5,6 @@ import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.util.*
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.widget.LinearLayout
-import net.minecraft.client.gui.screens.GenericMessageScreen
 
 class PauseFragment : RFragment("暂停") {
     val lookingBlockState = mc.player?.lookingAtBlock
@@ -37,9 +36,9 @@ class PauseFragment : RFragment("暂停") {
                 linearLayout {
                     gravity = Gravity.CENTER
                     paddingDp(16)
-                    iconButton("partner","参观"){
+                    /*iconButton("partner","参观"){
                         mc.sendCommand("spec")
-                    }
+                    }*/
                     iconButton("island","房间中心")
                     iconButton("camera","摄影")
                     iconButton("settings","设置"){
@@ -50,8 +49,12 @@ class PauseFragment : RFragment("暂停") {
                             mc set null
                             mc.level?.disconnect()
                             if(mc.isLocalServer){
-                                mc.disconnect(GenericMessageScreen("存档中。。。".mcComp))
                                 mc go TitleFragment()
+                                mc.singleplayerServer?.let {
+                                    it.saveEverything(true,true,true)
+                                    it.runningThread.stop()
+                                }
+
                             }else{
                                 mc.disconnect()
                                 mc go ProfileFragment()

@@ -17,8 +17,8 @@ data class HwSpec(
     val videoMode: List<String>
 ) {
     companion object {
-        val now: HwSpec
-            get() {
+        var now = update()
+        fun update(): HwSpec{
                 val systemInfo = SystemInfo()
                 val hal = systemInfo.hardware
                 val model = "${hal.computerSystem.manufacturer} ${hal.computerSystem.model}"
