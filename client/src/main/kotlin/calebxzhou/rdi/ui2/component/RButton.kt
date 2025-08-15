@@ -36,7 +36,7 @@ open class RButton(
         menu.setHeaderView(this)
         menu.setHeaderTitle("test")
         menu.add("testtest")
-        menu.add(Menu.NONE, 123543687, 0, "1231320").setEnabled(true)
+        menu.add(Menu.NONE, 123543687, 0, "1231320").isEnabled = true
             /*.setOnMenuItemClickListener(mOnContextMenuItemClickListener)
             .setEnabled(mTextView.canUndo())*/
         menu.setQwertyMode(true)

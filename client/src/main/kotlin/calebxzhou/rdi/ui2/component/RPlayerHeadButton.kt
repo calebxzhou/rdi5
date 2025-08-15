@@ -71,6 +71,34 @@ class RPlayerHeadButton(
 
             return Image.createTextureFromBitmap(headBitmap) ?: throw IllegalStateException("Failed to create head texture")
         }
+
+        /**
+         * Processes legacy 64x32 skins to 64x64 format using ModernUI Bitmap
+         */
+        fun processLegacySkin(skinBitmap: Bitmap): Bitmap {
+            if (skinBitmap.width == 64 && skinBitmap.height == 32) {
+                // Create a new 64x64 bitmap
+                val processedBitmap = Bitmap.createBitmap(64, 64, Bitmap.Format.RGBA_8888)
+                
+                // Copy the top 32x64 pixels (head and body)
+                val topPixels = IntArray(64 * 32)
+                skinBitmap.getPixels(topPixels, 0, 64, 0, 0, 64, 32)
+                processedBitmap.setPixels(topPixels, 0, 64, 0, 0, 64, 32)
+                
+                // Fill the bottom 32x64 pixels with transparent/empty space
+                val bottomPixels = IntArray(64 * 32) { 0 } // Transparent
+                processedBitmap.setPixels(bottomPixels, 0, 64, 0, 32, 64, 32)
+                
+                // For legacy skins, we only need to copy the visible parts
+                // The head extraction will work with just the top 32x64 portion
+                // No need to copy arms/legs since they're not visible in the head
+                
+                return processedBitmap
+            }
+            
+            // Return original bitmap if not legacy format
+            return skinBitmap
+        }
     }
     private fun createDefaultAvatar(): Image {
         // Create a new bitmap with proper format
@@ -112,10 +140,17 @@ class RPlayerHeadButton(
                         runBlocking {
                             val responseBytes = skinResp.body()
                             val bitmap = BitmapFactory.decodeByteArray(responseBytes, 0, responseBytes.size)
-                            if (bitmap != null && bitmap.width == 64 && bitmap.height == 64) {
-                                avatar = getHeadFromSkin(bitmap)
+                            if (bitmap != null) {
+                                // Process legacy skin if needed
+                                val processedBitmap = processLegacySkin(bitmap)
+                                avatar = getHeadFromSkin(processedBitmap)
+                                
+                                // Clean up original bitmap if it was replaced
+                                if (processedBitmap != bitmap) {
+                                    processedBitmap.recycle()
+                                }
+                                bitmap.recycle()
                             }
-                            bitmap.recycle()
                         }
                     }
                 }

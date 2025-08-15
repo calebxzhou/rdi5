@@ -38,18 +38,17 @@ class ProfileFragment : RFragment("我的信息") {
             }
             )
 
-            textButton("开始-电信", onClick = { start(0) })
-            textButton("开始-联通", onClick = { start(1) })
-            textButton("开始-移动", onClick = { start(2) })
-            textButton("开始-广电", onClick = { start(3) })
-            textButton("开始-教育网", onClick = { start(3) })
+            textButton("开始-1区电信", onClick = { start(0,0) })
+            textButton("开始-1区电信以外", onClick = { start(1, 0) })
+            textButton("开始-2区电信", onClick = { start(0, 1) })
+            textButton("开始-2区电信以外", onClick = { start(1, 1) })
             textButton("退出登录", onClick = { close() })
 
 
         }
     }
 
-    fun start(carrier: Int) {
+    fun start(carrier: Int, area: Int) {
         /* var realCarrier = 0
          //移动只有18~24能用
          val isEvening = LocalTime.now().isAfter(LocalTime.of(18, 0)) && LocalTime.now().isBefore(LocalTime.of(23, 59))
@@ -62,7 +61,7 @@ class ProfileFragment : RFragment("我的信息") {
             ConnectScreen.startConnecting(
                 mc.screen, mc,
 
-                ServerAddress(server.gameCarrierIp[carrier], server.gamePort), server.mcData, false, null
+                ServerAddress(server.gameCarrierIp[carrier], server.gamePorts[area]), server.mcData, false, null
             )
         }
 

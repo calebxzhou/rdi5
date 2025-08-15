@@ -12,9 +12,6 @@ var TOTAL_TICK_DELTA = 0f
 @Mod("rdi")
 class RDI {
     companion object {
-        //mod id与中文名称map，高亮显示等用
-        @JvmField
-        val modIdChineseName = hashMapOf<String, String>()
 
         val DIR = File("rdi")
     }

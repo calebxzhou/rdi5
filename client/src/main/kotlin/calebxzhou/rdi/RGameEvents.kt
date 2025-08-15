@@ -48,21 +48,6 @@ class RGameEvents {
         @JvmStatic
         fun loadComplete(e: FMLLoadCompleteEvent) {
 
-            RDI.Companion.modIdChineseName += "tfc" to "群峦传说"
-            RDI.Companion.modIdChineseName += "firmalife" to "群峦人生"
-            RDI.Companion.modIdChineseName += "ae2" to "应用能源2"
-            RDI.Companion.modIdChineseName += "create" to "机械动力"
-            RDI.Companion.modIdChineseName += "create_connected" to "机械动力·创意传动"
-            RDI.Companion.modIdChineseName += "vinery" to "葡园酒香"
-            RDI.Companion.modIdChineseName += "aether" to "天境"
-            RDI.Companion.modIdChineseName += "farmersdelight" to "农夫乐事"
-            RDI.Companion.modIdChineseName += "chefsdelight" to "厨师乐事"
-            RDI.Companion.modIdChineseName += "aethersdelight" to "天境乐事"
-            RDI.Companion.modIdChineseName += "oceansdelight" to "海洋乐事"
-            RDI.Companion.modIdChineseName += "cuisinedelight" to "料理乐事"
-            RDI.Companion.modIdChineseName += "computercraft" to "电脑"
-            RDI.Companion.modIdChineseName += "minecraft" to "原版"
-
             EnglishStorage.lang = ClientLanguage.loadFrom(mc.resourceManager, listOf("en_us"), false)
             //强制关闭模糊
             BlurHandler.sBlurEffect=false

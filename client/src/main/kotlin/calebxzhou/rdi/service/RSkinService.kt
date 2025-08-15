@@ -11,8 +11,8 @@ object RSkinService {
         val width = pImage.width
         lgr.info("处理皮肤中:${width}x${height}")
         if (width == 64 && (height == 32 || height == 64)) {
-            val flag = height == 32
-            if (flag) {
+            val legacySkin = height == 32
+            if (legacySkin) {
                 val nativeimage = NativeImage(64, 64, true)
                 nativeimage.copyFrom(pImage)
                 pImage.close()
@@ -33,7 +33,7 @@ object RSkinService {
             }
 
             setNoAlpha(pImage, 0, 0, 32, 16)
-            if (flag) {
+            if (legacySkin) {
                 doNotchTransparencyHack(pImage, 32, 0, 64, 32)
             }
 

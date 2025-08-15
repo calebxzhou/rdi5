@@ -8,7 +8,14 @@ val lgr = LogManager.getLogger("rdi")
 var TOTAL_TICK_DELTA = 0f
 @Mod("rdi")
 class RDI {
-
+    companion object{
+        var tickTime1 = 0L
+        var tickTime2 = 0L
+        var tickDelta = 0L
+        @JvmStatic
+        val isLagging
+            get() = tickDelta>50
+    }
     init {
         lgr.info("RDI启动中")
 

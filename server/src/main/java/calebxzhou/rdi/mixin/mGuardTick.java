@@ -1,5 +1,6 @@
 package calebxzhou.rdi.mixin;
 
+import calebxzhou.rdi.RDI;
 import calebxzhou.rdi.service.EntityTicker;
 import calebxzhou.rdi.service.RMobSpawner;
 import net.minecraft.core.BlockPos;
@@ -11,6 +12,7 @@ import net.minecraft.server.level.*;
 import net.minecraft.util.RandomSource;
 import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.NaturalSpawner;
 import net.minecraft.world.level.block.Blocks;
@@ -24,7 +26,9 @@ import net.minecraft.world.ticks.SavedTick;
 import net.minecraft.world.ticks.ScheduledTick;
 import org.spongepowered.asm.mixin.*;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.List;
 import java.util.Queue;
@@ -135,15 +139,18 @@ class mGuardServerLevelTick extends Level{
     private void RDI$tickBlockEntties(ServerLevel level){
         if(players.isEmpty())
             return;
-        try {this.tickBlockEntities();
+        try {
+            if(tick$<1){
+                tick$++;
+            }else{
+                this.tickBlockEntities();
+                this.tickBlockEntities();
+                tick$=0;
+            }
+
             /*boolean hasActivePlayers = PlayerService.atLeast1NoAfk(players);
             if (hasActivePlayers) {*/
-               /*if(tick$>3){
-
-                    tick$=0;
-                }else{
-                    tick$++;
-                }*/
+               /**/
            /* } else {
                 if(tick$>=20){
                     this.tickBlockEntities();
@@ -256,4 +263,13 @@ class mGuardLevelTick2 {
             pendingTicks = new ArrayList<>();
         }
     }*/
+}
+@Mixin(Animal.class)
+class mAnimalAi{
+    //卡顿时停止动物ai
+    @Inject(method = "aiStep", at = @At(value = "HEAD"), cancellable = true)
+    public void RDI$StopAiStep(CallbackInfo ci) {
+        if(RDI.isLagging())
+            ci.cancel();
+    }
 }

@@ -14,9 +14,10 @@ import java.net.http.HttpResponse
 
 class RServer(
     val ip: String,
-    val gamePort: Int,
     val hqPort: Int
 ) {
+    var gamePorts = listOf(38510,38510)
+    val gamePort = gamePorts[0]
     val noUpdate = System.getProperty("rdi.noUpdate").toBoolean()
     val mcData
         get() = ServerData("RDI", "${ip}:$gamePort", ServerData.Type.OTHER)
@@ -28,12 +29,15 @@ class RServer(
     companion object {
         var now: RServer? = null
         val OFFICIAL_DEBUG = RServer(
-            "127.0.0.1", 38510, 38511
+            "127.0.0.1", 38511
         )
         val OFFICIAL_NNG = RServer(
             "rdi.calebxzhou.cn",
-            28510, 28511,
-        ).apply { gameCarrierIp = arrayOf(ip, "u5rdi.calebxzhou.cn", "m5rdi.calebxzhou.cn","b5rdi.calebxzhou.cn") }
+            28511,
+        ).apply {
+            gameCarrierIp = arrayOf(ip, "b5rdi.calebxzhou.cn")
+            gamePorts = listOf(28510,58210)
+        }
 
         val default: RServer
             get() = now ?: if(Const.DEBUG) OFFICIAL_DEBUG else OFFICIAL_NNG

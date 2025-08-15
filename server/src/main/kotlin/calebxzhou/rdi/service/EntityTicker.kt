@@ -1,5 +1,6 @@
 package calebxzhou.rdi.service
 
+import calebxzhou.rdi.RDI
 import calebxzhou.rdi.lgr
 import calebxzhou.rdi.mixin.AEntitySection
 import calebxzhou.rdi.mixin.APersistentEntityManager
@@ -8,6 +9,7 @@ import calebxzhou.rdi.util.mcs
 import net.minecraft.core.SectionPos
 import net.minecraft.core.component.DataComponentMap
 import net.minecraft.world.entity.Entity
+import net.minecraft.world.entity.animal.Animal
 import net.minecraft.world.entity.item.ItemEntity
 import net.minecraft.world.entity.monster.Monster
 import net.minecraft.world.level.Level
@@ -20,9 +22,10 @@ object EntityTicker {
         try {
             //if (!TickInverter.isLagging)
             //没玩家不tick
-            if (!entity.level().players().isEmpty() || entity.level() == mcs.getLevel(Level.END)) {
+            /*if (!entity.level().players().isEmpty() || entity.level() == mcs.getLevel(Level.END)) {
                 consumerEntity.accept(entity)
-            }
+            }*/
+            consumerEntity.accept(entity)
         } catch (e: Exception) {
             lgr.error("在${entity}tick entity错误！${e}原因：${e.message},${e.cause}。已经强制删除！")
             e.printStackTrace()

@@ -12,9 +12,11 @@ import icyllis.modernui.graphics.Image
 import icyllis.modernui.graphics.Paint
 import icyllis.modernui.graphics.drawable.Drawable
 import icyllis.modernui.graphics.drawable.ImageDrawable
+import icyllis.modernui.material.MaterialCheckBox
 import icyllis.modernui.material.MaterialRadioButton
 import icyllis.modernui.mc.neoforge.MuiForgeApi
 import icyllis.modernui.view.Gravity
+import icyllis.modernui.view.KeyEvent
 import icyllis.modernui.view.View
 import icyllis.modernui.view.ViewGroup
 import icyllis.modernui.widget.*
@@ -41,12 +43,18 @@ val BG_GRAY_BORDER
     }
 
 val BG_IMAGE_MC = rdiAsset("textures/bg/1.png")
+
+/**
+ * Converts density-independent pixels (dp) to actual pixels
+ */
+fun Context.dp(dp: Float): Int = (dp * resources.displayMetrics.density).toInt()
+
 fun View.padding8dp() {
-    setPadding(dp(8f), dp(8f), dp(8f), dp(8f))
+    setPadding(context.dp(8f), context.dp(8f), context.dp(8f), context.dp(8f))
 }
 
 fun View.paddingDp(left: Int, top: Int, right: Int, bottom: Int) {
-    setPadding(dp(left.toFloat()), dp(top.toFloat()), dp(right.toFloat()), dp(bottom.toFloat()))
+    setPadding(context.dp(left.toFloat()), context.dp(top.toFloat()), context.dp(right.toFloat()), context.dp(bottom.toFloat()))
 }
 
 fun View.paddingDp(all: Int) {
@@ -83,6 +91,16 @@ fun Fragment.toast(msg: String, duration: Int = 2000) {
 }
 fun toast(context: Context, msg: String, duration: Int = 2000) {
     Toast.makeText(context,msg, duration).show()
+}
+fun View.onPressEnterKey(handler: () -> Unit) {
+    setOnKeyListener { _, keyCode, event ->
+        if ((keyCode == KeyEvent.KEY_ENTER || keyCode == KeyEvent.KEY_KP_ENTER) && event.action == KeyEvent.ACTION_UP) {
+            handler()
+            true
+        } else {
+            false
+        }
+    }
 }
 val Fragment.mcScreen: Screen
     get() = MuiForgeApi.get().createScreen(this,null,mc.screen)
@@ -155,6 +173,17 @@ fun ViewGroup.editText(
     width: Float = 200f,
     init: REditText.() -> Unit = {}
 ) = REditText(this.context, msg, width).apply(init).also { this += it }
+fun ViewGroup.checkBox(
+    msg: String = "",
+    init: MaterialCheckBox.() -> Unit = {},
+    onClick: (MaterialCheckBox, Boolean) -> Unit = {_,_->}
+) = MaterialCheckBox(this.context).apply{
+    text=msg
+    setOnCheckedChangeListener { v,chk->
+        onClick(v as MaterialCheckBox, chk)
+    }
+    init()
+}.also { this += it }
 
 fun ViewGroup.editPwd(
     msg: String = "",

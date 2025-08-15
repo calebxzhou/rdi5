@@ -9,6 +9,8 @@ import net.neoforged.fml.common.EventBusSubscriber
 import net.neoforged.neoforge.event.RegisterCommandsEvent
 import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent
 import net.neoforged.neoforge.event.server.ServerStartingEvent
+import net.neoforged.neoforge.event.tick.ServerTickEvent
+import kotlin.math.abs
 
 @EventBusSubscriber(modid = "rdi")
 class RGameEvents {
@@ -23,7 +25,7 @@ class RGameEvents {
                 e.dispatcher.register(DebugCommand.cmd)
             }
             e.dispatcher.register(SpeakCommand.cmd)
-            e.dispatcher.register(SpecCommand.cmd)
+            //e.dispatcher.register(SpecCommand.cmd)
         }
 
         @SubscribeEvent
@@ -35,6 +37,17 @@ class RGameEvents {
         @JvmStatic
         fun onEntityJoinLevel(e: EntityJoinLevelEvent){
             calebxzhou.rdi.service.EntityTicker.onCreate(e)
+        }
+        @SubscribeEvent
+        @JvmStatic
+        fun tickStart(e: ServerTickEvent.Pre){
+            RDI.tickTime1 = System.currentTimeMillis()
+        }
+        @SubscribeEvent
+        @JvmStatic
+        fun tickEnd(e: ServerTickEvent.Post){
+            RDI.tickTime2 = System.currentTimeMillis()
+            RDI.tickDelta = RDI.tickTime2 - RDI.tickTime1
         }
     }
 

@@ -17,46 +17,49 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.security.MessageDigest
 
-class HttpImageView(context: Context,val imgUrl: String) : ImageView(context) {
+class HttpImageView(context: Context, val imgUrl: String) : ImageView(context) {
     companion object {
         private val loadingImg = iconDrawable("loading")
         private val failLoadImg = iconDrawable("question")
-        private val cacheDir = File(File(RDI.DIR, "cache"),"img")
+        private val cacheDir = File(File(RDI.DIR, "cache"), "img")
     }
 
-    
+
     init {
         if (!cacheDir.exists()) cacheDir.mkdirs()
         setImageDrawable(loadingImg)
         loadOrFetch(imgUrl)
     }
-    
+
     private fun loadOrFetch(url: String) {
         val cacheFile = getCacheFile(url)
         if (cacheFile.exists()) {
-            ioScope.launch {
+            uiThread {
                 loadFromDisk(cacheFile)?.let { bitmap ->
                     uiThread { setImageDrawable(bitmap) }
                 } ?: run {
-                    fetchAndCache(url, cacheFile)
+                    ioScope.launch {
+                        fetchAndCache(url, cacheFile)
+                    }
                 }
             }
+
         } else {
             ioScope.launch { fetchAndCache(url, cacheFile) }
         }
     }
-    
+
     private fun getCacheFile(url: String): File {
         val key = md5(url)
         return File(cacheDir, "$key.png")
     }
-    
+
     private fun md5(text: String): String {
         val md = MessageDigest.getInstance("MD5")
         val bytes = md.digest(text.toByteArray())
         return bytes.joinToString("") { "%02x".format(it) }
     }
-    
+
     private fun loadFromDisk(file: File): ImageDrawable? {
         return try {
             FileInputStream(file).use { fis ->
@@ -67,10 +70,10 @@ class HttpImageView(context: Context,val imgUrl: String) : ImageView(context) {
             null
         }
     }
-    
+
     private suspend fun fetchAndCache(url: String, cacheFile: File) {
         try {
-            val response = httpRequest<ByteArray>(false,url)
+            val response = httpRequest<ByteArray>(false, url)
             if (response.success) {
                 val bytes = response.body()
                 // Save to disk
@@ -80,11 +83,15 @@ class HttpImageView(context: Context,val imgUrl: String) : ImageView(context) {
                     lgr.warn("Failed to write image cache: ${e.message}")
                 }
                 // Decode and display
-                val bitmap = decodeBitmap(ByteArrayInputStream(bytes))
-                if (bitmap != null) {
-                    uiThread { setImageDrawable(bitmap) }
-                } else {
-                    uiThread { setImageDrawable(failLoadImg) }
+                uiThread {
+                    val bitmap = decodeBitmap(ByteArrayInputStream(bytes))
+                    if (bitmap != null) {
+                        setImageDrawable(bitmap)
+                        // Force the view to maintain its intended size
+                        requestLayout()
+                    } else {
+                        setImageDrawable(failLoadImg)
+                    }
                 }
             } else {
                 lgr.warn("HTTP ${response.statusCode()} loading image: $url")
@@ -95,7 +102,7 @@ class HttpImageView(context: Context,val imgUrl: String) : ImageView(context) {
             uiThread { setImageDrawable(failLoadImg) }
         }
     }
-    
+
     private fun decodeBitmap(data: ByteArrayInputStream): ImageDrawable? {
         return try {
             ImageDrawable(data)
@@ -104,5 +111,6 @@ class HttpImageView(context: Context,val imgUrl: String) : ImageView(context) {
             null
         }
     }
+
 
 }
