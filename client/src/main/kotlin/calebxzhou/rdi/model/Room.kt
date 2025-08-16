@@ -1,6 +1,5 @@
 package calebxzhou.rdi.model
 
-import calebxzhou.rdi.ihq.model.FirmSection
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import org.bson.types.ObjectId

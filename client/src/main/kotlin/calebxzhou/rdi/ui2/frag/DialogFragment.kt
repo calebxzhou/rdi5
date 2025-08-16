@@ -33,7 +33,7 @@ class DialogFragment(
     val yesText: String = if (type == RDialogType.ALERT) "明白" else "是",
     val noText: String = "否",
     val onYes: () -> Unit = { },
-    val onNo: () -> Unit = {}
+    val onNo: () -> Unit = { }
 ) : RFragment() {
     val prevScreen = mc.screen
     override var showTitle = false
@@ -137,7 +137,9 @@ class DialogFragment(
                                 marginStart = dp(16f)
                                 bottomMargin = dp(16f)
                             }
-                            setOnClickListener { onNo() }
+                            setOnClickListener {
+                                close()
+                                onNo() }
                         })
                     }
 

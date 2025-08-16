@@ -20,7 +20,7 @@ class RServer(
     val gamePort = gamePorts[0]
     val noUpdate = System.getProperty("rdi.noUpdate").toBoolean()
     val mcData
-        get() = ServerData("RDI", "${ip}:$gamePort", ServerData.Type.OTHER)
+        get() = {carrier: Int -> ServerData("RDI", "${ip}:${gamePorts[carrier]}", ServerData.Type.OTHER)}
     val hqUrl = "http://${ip}:${hqPort}/"
 
     //电信 联通 移动

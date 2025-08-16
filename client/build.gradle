@@ -91,9 +91,15 @@ neoForge {
     runs {
         client {
             client()
-
+            programArgument '--width'
+            programArgument '2560'
+            programArgument '--height'
+            programArgument '1440'
             // Comma-separated list of namespaces to load gametests from. Empty = all namespaces.
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            systemProperty 'rdi.debug',"true"
+            systemProperty 'rdi.noUpdate',"true"
+
         }
 
         server {
@@ -310,10 +316,10 @@ idea {
 tasks.register('出core1', Copy) {
     dependsOn(tasks.named('build'))
     from(layout.buildDirectory.file("libs/rdi-${version}.jar"))
-    into("C:\\Users\\liberatorch\\Documents\\RDI5sea-Ref\\.minecraft\\versions\\RDI5sea\\mods")
+    into("${System.getProperty('user.home')}\\Documents\\RDI5sea-Ref\\.minecraft\\versions\\RDI5sea\\mods")
 }
 tasks.register('出core1+2', Copy) {
     dependsOn(tasks.named('出core1'))
     from(layout.buildDirectory.file("libs/rdi-${version}.jar"))
-    into("C:\\Users\\liberatorch\\Documents\\RDI5sea-hq\\mods")
+    into("\\\\caleb\\Users\\liberatorch\\Documents\\RDI5sea-hq\\mods")
 }

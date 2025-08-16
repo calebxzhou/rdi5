@@ -43,13 +43,19 @@ object EntityTicker {
             sectionStorage.getOrCreateSection(SectionPos.asLong(entity.blockPosition())).let { sect ->
                 if (sect.size() > 768) {
                     //清所有的怪
-                    (sect as AEntitySection<*>).storage.find(Monster::class.java).forEach { it.discard() }
+                    (sect as AEntitySection<*>).storage.find(Monster::class.java).forEach {
+                        mcs.execute {
+                        it.discard()
+                        }
+                    }
                     //清没有nbt的物品
                     (sect as AEntitySection<*>).storage.find(ItemEntity::class.java)
                         .filter { it.item.components== DataComponentMap.EMPTY }
                         //.maxBy { it.age }
                         .forEach {
-                            it.discard()
+                            mcs.execute {
+                                it.discard()
+                            }
                         }
                 }
             }

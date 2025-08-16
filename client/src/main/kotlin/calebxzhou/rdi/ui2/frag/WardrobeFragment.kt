@@ -12,6 +12,7 @@ import calebxzhou.rdi.util.*
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.widget.CheckBox
 import icyllis.modernui.widget.LinearLayout
+import icyllis.modernui.widget.ScrollView
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -59,10 +60,12 @@ class WardrobeFragment : RFragment("衣柜") {
     private var page = 1
     private var loading = false
     private var capeMode = false
+    private var hasMoreData = true
 
     private lateinit var searchBox: REditText
     private lateinit var capeBox: CheckBox
     private lateinit var skinContainer: LinearLayout
+    private lateinit var scrollView: ScrollView
 
     override fun initContent() {
         contentLayout.apply {
@@ -137,18 +140,57 @@ class WardrobeFragment : RFragment("衣柜") {
             }*/
 
             // Skin container wrapped in ScrollView for scrolling
-            scrollView {
+            scrollView = scrollView {
                 skinContainer = linearLayout {
                     orientation = LinearLayout.VERTICAL
                     layoutParams = linearLayoutParam(PARENT, SELF)
+                }
+
+                // Add scroll listener for auto-loading
+                setOnScrollChangeListener { _, _, scrollY, _, _ ->
+                    if (!loading && hasMoreData) {
+                        val view = getChildAt(childCount - 1) as LinearLayout
+                        val diff = (view.bottom - (scrollY + height))
+
+                        // Load more when within 200px of bottom
+                        if (diff <= 200) {
+                            loadMoreSkins()
+                        }
+                    }
                 }
             }
         }
 
         refreshSkins()
     }
+
+    private fun loadMoreSkins() {
+        if (loading || !hasMoreData) return
+
+        loading = true
+        page++
+
+        ioScope.launch {
+            val newSkins = querySkins(page, searchBox.text.toString(), capeMode)
+            if (newSkins.isNotEmpty()) {
+                uiThread {
+                    appendSkinWidgets(newSkins)
+                    loading = false
+                }
+            } else {
+                hasMoreData = false
+                loading = false
+                uiThread {
+                    toast("没有更多皮肤了")
+                }
+            }
+        }
+    }
+
     fun refreshSkins(){
         loading = true
+        page = 1
+        hasMoreData = true
         skinContainer.removeAllViews()
         ioScope.launch {
             querySkins(page, searchBox.text.toString(),capeMode).let { skins ->
@@ -160,20 +202,22 @@ class WardrobeFragment : RFragment("衣柜") {
                 } else {
                     uiThread {
                         toast("没有找到相关皮肤")
+                        loading = false
+                        hasMoreData = false
                     }
                 }
             }
         }
     }
     private suspend fun querySkins(page: Int, keyword: String, cape: Boolean): List<SkinData> = coroutineScope {
-        val datas = mutableMapOf<Int, List<SkinData>>()
-        // Calculate the starting page number for this batch
-        val startPage = (page - 1) * 5 + 1
-        
-        // Use coroutineScope to wait for all requests to complete
-        val responses = (0..4).map { subpage ->
+        val datas = mutableListOf<SkinData>()
+        // Calculate the starting page number for this batch - reduce from 5 to 2 concurrent requests
+        val startPage = (page - 1) * 2 + 1
+
+        // Sequential requests with delay to avoid 429 errors
+        for (subpage in 0..1) {
             val currentPage = startPage + subpage
-            async<Pair<Int, List<SkinData>>> {
+            try {
                 val response = httpStringRequest(
                     false,
                     "$urlPrefix/skinlib/list?filter=${if (cape) "cape" else "skin"}&sort=likes&page=$currentPage&keyword=${keyword}"
@@ -182,39 +226,46 @@ class WardrobeFragment : RFragment("衣柜") {
                 if (response.success) {
                     val body = response.body
                     val skinData = serdesJson.decodeFromString<ApiResponse>(body).data
-                    subpage to skinData
-                } else {
-                    subpage to emptyList<SkinData>()
+                    datas.addAll(skinData)
                 }
+
+                // Add delay between requests to avoid rate limiting
+                if (subpage < 1) {
+                    kotlinx.coroutines.delay(300) // 300ms delay between requests
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                // Continue to next request even if one fails
             }
-        }.awaitAll()
-        
-        // Add all responses to the map
-        responses.forEach { (subpage, skinData) ->
-            datas[subpage] = skinData
         }
         
-        // Return sorted list by subpage key
-        datas.entries
-            .sortedBy { it.key }
-            .flatMap { it.value }
+        datas
     }
 
-    private fun loadSkinWidgets(skins: List<SkinData>) {
-        skinContainer.removeAllViews()
+    private fun createSkinItemView(parent: LinearLayout, skin: SkinData, itemsInCurrentRow: Int, itemsPerRow: Int, marginBetweenItems: Int): SkinItemView {
+        return SkinItemView(parent.context, skin).apply {
+            layoutParams = linearLayoutParam(SELF, SELF).apply {
+                leftMargin = if (itemsInCurrentRow == 0) 0 else marginBetweenItems / 2
+                rightMargin = if (itemsInCurrentRow == itemsPerRow - 1) 0 else marginBetweenItems / 2
+            }
+            setOnClickListener {
+                showSkinConfirmDialog(skin)
+            }
+        }
+    }
 
+    private fun addSkinsToGrid(skins: List<SkinData>, startingRow: LinearLayout? = null, startingItemCount: Int = 0) {
         // Calculate items per row based on screen width
         val screenWidth = context.resources.displayMetrics.widthPixels
-        val skinItemWidth = context.dp(150f) // SkinItemView width
-        val marginBetweenItems = context.dp(8f) // Margin between skin items
+        val skinItemWidth = context.dp(150f)
+        val marginBetweenItems = context.dp(8f)
         val itemsPerRow = maxOf(1, (screenWidth - marginBetweenItems) / (skinItemWidth + marginBetweenItems))
 
-        // Create grid layout for skins with multiple items per row
-        var currentRow: LinearLayout? = null
-        var itemsInCurrentRow = 0
+        var currentRow = startingRow
+        var itemsInCurrentRow = startingItemCount
 
         skins.forEach { skin ->
-            if (itemsInCurrentRow == 0) {
+            if (currentRow == null || itemsInCurrentRow >= itemsPerRow) {
                 currentRow = skinContainer.linearLayout {
                     orientation = LinearLayout.HORIZONTAL
                     gravity = Gravity.CENTER_HORIZONTAL
@@ -226,20 +277,41 @@ class WardrobeFragment : RFragment("衣柜") {
             }
 
             currentRow?.let { row ->
-                val skinItem = SkinItemView(row.context, skin).apply {
-                    layoutParams = linearLayoutParam(SELF, SELF).apply {
-                        leftMargin = if (itemsInCurrentRow == 0) 0 else marginBetweenItems / 2
-                        rightMargin = if (itemsInCurrentRow == itemsPerRow - 1) 0 else marginBetweenItems / 2
-                    }
-                }
+                val skinItem = createSkinItemView(row, skin, itemsInCurrentRow, itemsPerRow, marginBetweenItems)
                 row.addView(skinItem)
-                
                 itemsInCurrentRow++
-                if (itemsInCurrentRow >= itemsPerRow) {
-                    itemsInCurrentRow = 0
+            }
+        }
+    }
+
+    private fun loadSkinWidgets(skins: List<SkinData>) {
+        skinContainer.removeAllViews()
+        addSkinsToGrid(skins)
+    }
+
+    private fun appendSkinWidgets(skins: List<SkinData>) {
+        // Calculate items per row based on screen width
+        val screenWidth = context.resources.displayMetrics.widthPixels
+        val skinItemWidth = context.dp(150f)
+        val marginBetweenItems = context.dp(8f)
+        val itemsPerRow = maxOf(1, (screenWidth - marginBetweenItems) / (skinItemWidth + marginBetweenItems))
+
+        // Get the last row if it exists and has space
+        var startingRow: LinearLayout? = null
+        var startingItemCount = 0
+
+        if (skinContainer.childCount > 0) {
+            val lastChild = skinContainer.getChildAt(skinContainer.childCount - 1)
+            if (lastChild is LinearLayout) {
+                val childCount = lastChild.childCount
+                if (childCount < itemsPerRow) {
+                    startingRow = lastChild
+                    startingItemCount = childCount
                 }
             }
         }
+
+        addSkinsToGrid(skins, startingRow, startingItemCount)
     }
 
     private fun showSkinConfirmDialog(skin: SkinData) {
@@ -287,12 +359,12 @@ class WardrobeFragment : RFragment("衣柜") {
             if (response.success) {
                 account.updateCloth(cloth)
                 uiThread {
-                    toast("皮肤设置成功")
                     mc go ProfileFragment()
+                    alertOk("皮肤设置成功 （半小时或重启后可见）")
                 }
             } else {
                 uiThread {
-                    toast("皮肤设置失败")
+                    alertErr("皮肤设置失败,${response.body} ")
                 }
             }
         }

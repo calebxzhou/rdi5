@@ -140,13 +140,8 @@ class mGuardServerLevelTick extends Level{
         if(players.isEmpty())
             return;
         try {
-            if(tick$<1){
-                tick$++;
-            }else{
                 this.tickBlockEntities();
-                this.tickBlockEntities();
-                tick$=0;
-            }
+
 
             /*boolean hasActivePlayers = PlayerService.atLeast1NoAfk(players);
             if (hasActivePlayers) {*/

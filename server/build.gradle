@@ -94,6 +94,8 @@ neoForge {
         server {
             server()
             programArgument '--nogui'
+            systemProperty 'rdi.debug','true'
+            systemProperty 'rdi.port','38510'
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
 
@@ -176,27 +178,12 @@ def mcLibs = [
 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2',
 'org.jetbrains.kotlinx:kotlinx-serialization-core:1.8.1',
 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1',
-"io.ktor:ktor-client-core-jvm:$ktor_version",
-"io.ktor:ktor-client-cio-jvm:$ktor_version",
-// https://mvnrepository.com/artifact/io.ktor/ktor-utils-jvm
-
-"io.ktor:ktor-client-content-negotiation:$ktor_version",
-"io.ktor:ktor-client-encoding:$ktor_version",
-"io.ktor:ktor-serialization-kotlinx-json:$ktor_version",
 // https://mvnrepository.com/artifact/io.ktor/ktor-network-tls-jvm
 
 'org.jsoup:jsoup:1.19.1',
 'org.mongodb:bson:5.1.0',
 ]
 def mcLibExportOnly = [
-        "io.ktor:ktor-utils-jvm:$ktor_version",
-        "io.ktor:ktor-network-jvm:$ktor_version",
-        "io.ktor:ktor-network-tls-jvm:$ktor_version",
-        "io.ktor:ktor-events-jvm:$ktor_version",
-        "io.ktor:ktor-http-jvm:$ktor_version",
-        "io.ktor:ktor-http-cio-jvm:$ktor_version",
-        "io.ktor:ktor-io-jvm:$ktor_version",
-        "io.ktor:ktor-sse-jvm:$ktor_version",
         "org.jetbrains.kotlinx:kotlinx-io-bytestring-jvm:0.7.0",
         "org.jetbrains.kotlinx:kotlinx-io-core-jvm:0.7.0"
         ]
@@ -304,5 +291,5 @@ idea {
 tasks.register('出core', Copy) {
     dependsOn(tasks.named('build'))
     from(layout.buildDirectory.file("libs/rdi-${version}.jar"))
-    into("C:\\Users\\liberatorch\\Documents\\RDI5sea-server\\mods")
+    into("\\\\caleb\\Users\\liberatorch\\Documents\\RDI5sea-server\\mods")
 }

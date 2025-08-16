@@ -31,10 +31,8 @@ class ProfileFragment : RFragment("我的信息") {
             textButton("修改信息", onClick = { mc go (ChangeProfileFragment()) })
             textButton("导入正版皮肤", onClick = { mc go (MojangSkinFragment()) })
             textButton("衣柜", onClick = {
-                if(Const.DEBUG)
+
                 mc go WardrobeFragment()
-                else
-                    alertErr("没开发完")
             }
             )
 
@@ -61,7 +59,7 @@ class ProfileFragment : RFragment("我的信息") {
             ConnectScreen.startConnecting(
                 mc.screen, mc,
 
-                ServerAddress(server.gameCarrierIp[carrier], server.gamePorts[area]), server.mcData, false, null
+                ServerAddress(server.gameCarrierIp[carrier], server.gamePorts[area]), server.mcData(carrier), false, null
             )
         }
 
