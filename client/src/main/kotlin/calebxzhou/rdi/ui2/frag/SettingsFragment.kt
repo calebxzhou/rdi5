@@ -1,5 +1,7 @@
 package calebxzhou.rdi.ui2.frag
 
+import calebxzhou.rdi.PACK
+import calebxzhou.rdi.PackMode
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.util.go
 import calebxzhou.rdi.util.mc
@@ -7,6 +9,7 @@ import calebxzhou.rdi.util.mcComp
 import calebxzhou.rdi.util.renderThread
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.widget.LinearLayout
+import net.caffeinemc.mods.sodium.client.gui.SodiumOptionsGUI
 import net.minecraft.client.gui.screens.options.AccessibilityOptionsScreen
 import net.minecraft.client.gui.screens.options.SoundOptionsScreen
 import net.minecraft.client.gui.screens.options.controls.ControlsScreen
@@ -40,10 +43,24 @@ class SettingsFragment: RFragment("设置") {
                         }, mc.resourcePackDirectory, "选择资源包".mcComp)
                     }
                     iconButton("video", "画质") {
-                        renderThread {
-                            GL.createCapabilities()
-                            mc go EmbeddiumVideoOptionsScreen(mc.screen, EmbeddiumVideoOptionsScreen.makePages())
+                        try {
+                            //先尝试sodium
+                            renderThread {
+                                mc go SodiumOptionsGUI.createScreen(mc.screen)
+                            }
+                        }catch (e:ClassNotFoundException) {
+                            //找不到再embeddium
+                            try {
+                                renderThread {
+                                    GL.createCapabilities()
+                                    mc go EmbeddiumVideoOptionsScreen(mc.screen, EmbeddiumVideoOptionsScreen.makePages())
+                                }
+                            } catch (e: Exception) {
+                                alertErr("请安装Sodium/Embeddium")
+                            }
                         }
+
+
                     }
                 }
                 linearLayout {

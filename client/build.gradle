@@ -99,9 +99,22 @@ neoForge {
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
             systemProperty 'rdi.debug',"true"
             systemProperty 'rdi.noUpdate',"true"
+            systemProperty 'rdi.pack',"RDI5sea"
 
         }
+        client_mech {
+            client()
+            programArgument '--width'
+            programArgument '2560'
+            programArgument '--height'
+            programArgument '1440'
+            // Comma-separated list of namespaces to load gametests from. Empty = all namespaces.
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            systemProperty 'rdi.debug',"true"
+            systemProperty 'rdi.noUpdate',"true"
+            systemProperty 'rdi.pack',"RDI5mech"
 
+        }
         server {
             server()
             programArgument '--nogui'
@@ -194,7 +207,10 @@ def modrinthMods = [
         "justenoughcharacters:4.5.15",
         "notenoughcrashes:4.4.8+1.21.1-neoforge",
         "imblocker-original:5.0.2",
-        "embeddium:1.0.15+mc1.21.1",
+        "sodium:mc1.21.1-0.6.13-neoforge",
+]
+def modrinthModsCompileOnly = [
+        "embeddium:1.0.15+mc1.21.1"
 ]
 dependencies {
     // Example optional mod dependency with JEI
@@ -256,6 +272,9 @@ dependencies {
         implementation("maven.modrinth:$dep")
 
     }
+    modrinthModsCompileOnly.each { dep ->
+        compileOnly("maven.modrinth:$dep")
+    }
 }
 
 // This block of code expands all declared replace properties in the specified resource targets.
@@ -313,13 +332,23 @@ idea {
     }
 }
 
-tasks.register('出core1', Copy) {
+tasks.register('出core1sea', Copy) {
     dependsOn(tasks.named('build'))
     from(layout.buildDirectory.file("libs/rdi-${version}.jar"))
     into("${System.getProperty('user.home')}\\Documents\\RDI5sea-Ref\\.minecraft\\versions\\RDI5sea\\mods")
 }
-tasks.register('出core1+2', Copy) {
-    dependsOn(tasks.named('出core1'))
+tasks.register('出core1mech', Copy) {
+    dependsOn(tasks.named('build'))
+    from(layout.buildDirectory.file("libs/rdi-${version}.jar"))
+    into("${System.getProperty('user.home')}\\Documents\\RDI5sea-Ref\\.minecraft\\versions\\RDI5mech\\mods")
+}
+tasks.register('出core1+2sea', Copy) {
+    dependsOn(tasks.named('出core1sea'))
     from(layout.buildDirectory.file("libs/rdi-${version}.jar"))
     into("\\\\caleb\\Users\\liberatorch\\Documents\\RDI5sea-hq\\mods")
+}
+tasks.register('出core1+2mech', Copy) {
+    dependsOn(tasks.named('出core1mech'))
+    from(layout.buildDirectory.file("libs/rdi-${version}.jar"))
+    into("\\\\caleb\\Users\\Public\\rdi5server\\mech\\hq\\mods")
 }

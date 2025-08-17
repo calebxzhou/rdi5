@@ -14,33 +14,24 @@ import java.net.http.HttpResponse
 
 class RServer(
     val ip: String,
-    val hqPort: Int
+    val bgpIp: String,
+    val hqPort: Int,
+    //下属分区ip
+    var gamePorts : List<Int>,
 ) {
-    var gamePorts = listOf(38510,38510)
-    val gamePort = gamePorts[0]
     val noUpdate = System.getProperty("rdi.noUpdate").toBoolean()
     val mcData
-        get() = {carrier: Int -> ServerData("RDI", "${ip}:${gamePorts[carrier]}", ServerData.Type.OTHER)}
+        get() = {area: Int,bgp: Boolean -> ServerData("RDI", "${if(bgp)bgpIp else ip}:${gamePorts[area]}", ServerData.Type.OTHER)}
     val hqUrl = "http://${ip}:${hqPort}/"
-
-    //电信 联通 移动
-    var gameCarrierIp = arrayOf(ip, ip, ip,ip)
 
     companion object {
         var now: RServer? = null
         val OFFICIAL_DEBUG = RServer(
-            "127.0.0.1", 38511
+            "127.0.0.1", "127.0.0.1",28511,listOf(28510,28510)
         )
-        val OFFICIAL_NNG = RServer(
-            "rdi.calebxzhou.cn",
-            28511,
-        ).apply {
-            gameCarrierIp = arrayOf(ip, "b5rdi.calebxzhou.cn")
-            gamePorts = listOf(28510,58210)
-        }
 
         val default: RServer
-            get() = now ?: if(Const.DEBUG) OFFICIAL_DEBUG else OFFICIAL_NNG
+            get() = now ?: OFFICIAL_DEBUG
     }
 
     var chafu: ChannelFuture? = null

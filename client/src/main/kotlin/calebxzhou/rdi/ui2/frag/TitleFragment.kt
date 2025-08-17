@@ -1,10 +1,10 @@
 package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.Const
+import calebxzhou.rdi.PACK
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.model.RServer
 import calebxzhou.rdi.model.RServer.Companion.OFFICIAL_DEBUG
-import calebxzhou.rdi.model.RServer.Companion.OFFICIAL_NNG
 import calebxzhou.rdi.model.Room
 import calebxzhou.rdi.service.LevelService
 import calebxzhou.rdi.ui2.*
@@ -31,7 +31,7 @@ class TitleFragment : RFragment() {
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: DataSet?): View =
         FrameLayout(fctx).apply {
-            background = rdiDrawable("bg/1")
+            background = BG_IMAGE_MUI
 
             // Add semi-transparent gray strip with text children
             linearLayout() {
@@ -133,7 +133,7 @@ class TitleFragment : RFragment() {
         if (Const.DEBUG) {
             OFFICIAL_DEBUG.connect()
         } else {
-            OFFICIAL_NNG.connect()
+            PACK.server.connect()
         }
     }
 

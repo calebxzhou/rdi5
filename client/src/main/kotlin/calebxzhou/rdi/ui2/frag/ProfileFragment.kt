@@ -1,6 +1,8 @@
 package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.Const
+import calebxzhou.rdi.PACK
+import calebxzhou.rdi.PackMode
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.model.RServer
 import calebxzhou.rdi.model.Room
@@ -36,30 +38,26 @@ class ProfileFragment : RFragment("我的信息") {
             }
             )
 
-            textButton("开始-1区电信", onClick = { start(0,0) })
-            textButton("开始-1区电信以外", onClick = { start(1, 0) })
-            textButton("开始-2区电信", onClick = { start(0, 1) })
-            textButton("开始-2区电信以外", onClick = { start(1, 1) })
+            textButton("开始-1区电信", onClick = { start(false,0) })
+            textButton("开始-1区电信以外", onClick = { start(true, 0) })
+            if(PACK == PackMode.SEA)
+            {
+                textButton("开始-2区电信", onClick = { start(false, 1) })
+                textButton("开始-2区电信以外", onClick = { start(true, 1) })
+            }
             textButton("退出登录", onClick = { close() })
 
 
         }
     }
 
-    fun start(carrier: Int, area: Int) {
-        /* var realCarrier = 0
-         //移动只有18~24能用
-         val isEvening = LocalTime.now().isAfter(LocalTime.of(18, 0)) && LocalTime.now().isBefore(LocalTime.of(23, 59))
-         if (!isEvening && cred.carrier == 2) {
-             //其他时间连联通的
-             realCarrier = 1
-         }*/
+    fun start(bgp: Boolean, area: Int) {
         renderThread {
 
             ConnectScreen.startConnecting(
                 mc.screen, mc,
 
-                ServerAddress(server.gameCarrierIp[carrier], server.gamePorts[area]), server.mcData(carrier), false, null
+                ServerAddress(if(bgp)server.bgpIp else server.ip, server.gamePorts[area]), server.mcData(area,bgp), false, null
             )
         }
 

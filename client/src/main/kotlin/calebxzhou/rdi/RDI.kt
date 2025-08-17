@@ -2,6 +2,9 @@ package calebxzhou.rdi
 
 import calebxzhou.rdi.service.LevelService
 import calebxzhou.rdi.service.Mcmod
+import calebxzhou.rdi.ui2.frag.alertErr
+import calebxzhou.rdi.ui2.frag.alertErrOs
+import calebxzhou.rdi.util.mc
 import net.neoforged.fml.common.Mod
 import org.apache.logging.log4j.LogManager
 import java.io.File
@@ -11,6 +14,7 @@ var TOTAL_TICK_DELTA = 0f
 
 @Mod("rdi")
 class RDI {
+
     companion object {
 
         val DIR = File("rdi")

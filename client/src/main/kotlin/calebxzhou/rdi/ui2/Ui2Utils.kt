@@ -1,5 +1,6 @@
 package calebxzhou.rdi.ui2
 
+import calebxzhou.rdi.PACK
 import calebxzhou.rdi.ui2.component.*
 import calebxzhou.rdi.util.mc
 import calebxzhou.rdi.util.rdiAsset
@@ -42,7 +43,11 @@ val BG_GRAY_BORDER
         }
     }
 
-val BG_IMAGE_MC = rdiAsset("textures/bg/1.png")
+val BG_IMAGE_PATH = "bg/${PACK.bgImage}"
+val BG_IMAGE_MC: ResourceLocation
+    get() = rdiAsset("textures/$BG_IMAGE_PATH")
+val BG_IMAGE_MUI
+    get()= rdiDrawable(BG_IMAGE_PATH)
 
 /**
  * Converts density-independent pixels (dp) to actual pixels
@@ -67,7 +72,7 @@ val Fragment.fctx: Context
 operator fun ViewGroup.plusAssign(view: View) {
     addView(view)
 }
-fun rdiDrawable(path: String) = ImageDrawable("rdi","${path}.png")
+fun rdiDrawable(path: String) = ImageDrawable("rdi", path)
 fun iconDrawable(filename: String) = ImageDrawable("rdi","gui/icons/${filename}.png")
 val ResourceLocation.muiImage: Image
     get() = Image.createTextureFromBitmap(bitmap) ?: MissingTextureAtlasSprite.getLocation().muiImage

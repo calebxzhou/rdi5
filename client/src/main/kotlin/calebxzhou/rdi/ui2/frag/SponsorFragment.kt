@@ -7,7 +7,7 @@ import icyllis.modernui.view.Gravity
 import calebxzhou.rdi.ui2.SELF
 
 class SponsorFragment : RFragment("赞助") {
-    val img = rdiDrawable("sponsor")
+    val img = rdiDrawable("sponsor.png")
     override fun initContent() {
          contentLayout.apply {
              gravity = Gravity.CENTER

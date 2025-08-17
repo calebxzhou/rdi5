@@ -30,8 +30,6 @@
     "mNoVersionCheck",
     "mNoVersionCheck2",
     "mPackListener",
-    "mRconClient",
-    "mRconThread",
     "mSaveBandwidth",
     "mServerLoginPacketListener",
     "mServerProps",

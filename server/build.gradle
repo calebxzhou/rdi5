@@ -95,7 +95,7 @@ neoForge {
             server()
             programArgument '--nogui'
             systemProperty 'rdi.debug','true'
-            systemProperty 'rdi.port','38510'
+          //  systemProperty 'rdi.port','38510'
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
 
@@ -288,8 +288,13 @@ idea {
         downloadJavadoc = true
     }
 }
-tasks.register('出core', Copy) {
+tasks.register('出core_sea', Copy) {
     dependsOn(tasks.named('build'))
     from(layout.buildDirectory.file("libs/rdi-${version}.jar"))
     into("\\\\caleb\\Users\\liberatorch\\Documents\\RDI5sea-server\\mods")
+}
+tasks.register('出core_mech', Copy) {
+    dependsOn(tasks.named('build'))
+    from(layout.buildDirectory.file("libs/rdi-${version}.jar"))
+    into("\\\\caleb\\Users\\Public\\rdi5server\\mech\\game\\mods")
 }

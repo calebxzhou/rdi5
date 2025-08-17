@@ -36,6 +36,7 @@ object EntityTicker {
     }
 
     fun onCreate(e: EntityJoinLevelEvent) {
+        mcs.execute {
             val entity = e.entity
             val cp = entity.chunkPosition()
             val level = (entity.level() as AServerLevel)
@@ -44,21 +45,22 @@ object EntityTicker {
                 if (sect.size() > 768) {
                     //清所有的怪
                     (sect as AEntitySection<*>).storage.find(Monster::class.java).forEach {
-                        mcs.execute {
+
                         it.discard()
-                        }
+
                     }
                     //清没有nbt的物品
                     (sect as AEntitySection<*>).storage.find(ItemEntity::class.java)
-                        .filter { it.item.components== DataComponentMap.EMPTY }
+                        .filter { it.item.components == DataComponentMap.EMPTY }
                         //.maxBy { it.age }
                         .forEach {
-                            mcs.execute {
-                                it.discard()
-                            }
+
+                            it.discard()
+
                         }
                 }
             }
+        }
 
     }
 

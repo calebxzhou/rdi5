@@ -6,13 +6,16 @@ import icyllis.modernui.graphics.Canvas
 import icyllis.modernui.graphics.Paint
 import icyllis.modernui.graphics.drawable.Drawable
 import icyllis.modernui.view.Gravity
+import org.lwjgl.util.tinyfd.TinyFileDialogs
 
 fun alertErr(msg: String) {
     uiThread {
         mc go DialogFragment(msg, lvl = RMessageLevel.ERR)
     }
 }
-
+fun alertErrOs(msg: String){
+    TinyFileDialogs.tinyfd_messageBox("RDI错误", msg, "ok", "error", true)
+}
 fun alertOk(msg: String) {
     uiThread {
         mc go DialogFragment(msg, lvl = RMessageLevel.OK)
