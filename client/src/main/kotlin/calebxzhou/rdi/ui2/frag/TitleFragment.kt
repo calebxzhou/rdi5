@@ -3,8 +3,8 @@ package calebxzhou.rdi.ui2.frag
 import calebxzhou.rdi.Const
 import calebxzhou.rdi.PACK
 import calebxzhou.rdi.model.RAccount
-import calebxzhou.rdi.model.RServer
-import calebxzhou.rdi.model.RServer.Companion.OFFICIAL_DEBUG
+import calebxzhou.rdi.net.RServer
+import calebxzhou.rdi.net.RServer.Companion.OFFICIAL_DEBUG
 import calebxzhou.rdi.model.Room
 import calebxzhou.rdi.service.LevelService
 import calebxzhou.rdi.ui2.*

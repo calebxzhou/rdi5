@@ -2,7 +2,7 @@ package calebxzhou.rdi.auth
 
 import calebxzhou.rdi.lgr
 import calebxzhou.rdi.model.RAccount
-import calebxzhou.rdi.model.RServer
+import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.net.body
 import calebxzhou.rdi.util.ioScope
 import calebxzhou.rdi.util.serdesJson

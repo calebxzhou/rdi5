@@ -1,6 +1,7 @@
 package calebxzhou.rdi
 
 import calebxzhou.rdi.cmd.DebugCommand
+import calebxzhou.rdi.model.RGamePayload
 import calebxzhou.rdi.service.EnglishStorage
 import calebxzhou.rdi.service.Mcmod
 import calebxzhou.rdi.service.RGuiHud
@@ -17,6 +18,10 @@ import net.neoforged.fml.common.EventBusSubscriber
 import net.neoforged.fml.event.lifecycle.FMLLoadCompleteEvent
 import net.neoforged.neoforge.client.event.*
 import net.neoforged.neoforge.event.RegisterCommandsEvent
+import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent
+import net.neoforged.neoforge.network.handlers.ClientPayloadHandler
+import net.neoforged.neoforge.network.handlers.ServerPayloadHandler
+import net.neoforged.neoforge.network.handling.DirectionalPayloadHandler
 
 @EventBusSubscriber(modid = "rdi")
 class RGameEvents {
@@ -78,6 +83,13 @@ class RGameEvents {
             }else if(RKeyBinds.MCMOD.consumeClick()){
                 Mcmod. onKeyPressIngame()
             }
+        }
+        @SubscribeEvent
+        @JvmStatic
+        fun registerNetworkHandler(e: RegisterPayloadHandlersEvent) {
+            e.registrar("1").playBidirectional(RGamePayload.TYPE, RGamePayload.CODEC, DirectionalPayloadHandler(
+                RGamePayload::handleData,
+                {a,b->}))
         }
     }
 

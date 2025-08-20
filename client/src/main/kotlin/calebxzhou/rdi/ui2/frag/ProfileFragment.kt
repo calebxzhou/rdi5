@@ -4,7 +4,7 @@ import calebxzhou.rdi.Const
 import calebxzhou.rdi.PACK
 import calebxzhou.rdi.PackMode
 import calebxzhou.rdi.model.RAccount
-import calebxzhou.rdi.model.RServer
+import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.model.Room
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.util.go

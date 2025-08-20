@@ -5,7 +5,7 @@ import calebxzhou.rdi.lgr
 import calebxzhou.rdi.mixin.AMinecraft
 import calebxzhou.rdi.model.HwSpec
 import calebxzhou.rdi.model.RAccount
-import calebxzhou.rdi.model.RServer
+import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.net.StringHttpResponse
 import calebxzhou.rdi.net.body
 import calebxzhou.rdi.net.success

@@ -1,6 +1,6 @@
 package calebxzhou.rdi.ui2.frag
 
-import calebxzhou.rdi.model.RServer
+import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.service.PlayerService.playerLogin
 import calebxzhou.rdi.ui2.component.REditPassword
 import calebxzhou.rdi.ui2.component.REditText
