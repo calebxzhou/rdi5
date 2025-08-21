@@ -1,5 +1,7 @@
 package calebxzhou.rdi
 
+import net.minecraft.core.BlockPos
+
 object Const {
     const val MODID = "rdi"
     //是否为调试模式,本地用
@@ -17,5 +19,6 @@ object Const {
     @JvmStatic
     val VERSION_DISP = "RDI5 ${if(DEBUG)"DEBUG" else ""} $VERSION_NUMBER"
     const val VERSION_STR = "5.0"
-
+    val BASE_POS = BlockPos(0,63,0)
+    val OLD_PLAYER = "rdi_old_player"
 }

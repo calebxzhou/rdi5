@@ -94,8 +94,8 @@ neoForge {
         server {
             server()
             programArgument '--nogui'
-            systemProperty 'rdi.debug','true'
-          //  systemProperty 'rdi.port','38510'
+            systemProperty 'rdi.debug', 'true'
+            //  systemProperty 'rdi.port','38510'
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
 
@@ -186,10 +186,11 @@ def mcLibs = [
 def mcLibExportOnly = [
         "org.jetbrains.kotlinx:kotlinx-io-bytestring-jvm:0.7.0",
         "org.jetbrains.kotlinx:kotlinx-io-core-jvm:0.7.0"
-        ]
+]
 def modrinthMods = [
-"lithium:mc1.21.1-0.15.0-neoforge",
+        "lithium:mc1.21.1-0.15.0-neoforge",
         "jade:15.10.0+neoforge",
+        "packet-fixer:LL1w2rTw",
 ]
 dependencies {
     // Example optional mod dependency with JEI
@@ -229,7 +230,7 @@ dependencies {
         jarJar(lib)
     }
     modrinthMods.each { dep ->
-        implementation ("maven.modrinth:$dep")
+        implementation("maven.modrinth:$dep")
 
     }
 }

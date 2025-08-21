@@ -1,10 +1,9 @@
 package calebxzhou.rdi.net
 
-import calebxzhou.rdi.lgr
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.ByteToMessageDecoder
-import kotlinx.io.IOException
+import java.io.IOException
 
 class RPacketDecoder : ByteToMessageDecoder() {
     override fun decode(

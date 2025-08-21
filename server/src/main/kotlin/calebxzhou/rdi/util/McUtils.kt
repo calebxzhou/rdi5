@@ -2,19 +2,15 @@ package calebxzhou.rdi.util
 
 import io.netty.util.concurrent.DefaultThreadFactory
 import net.minecraft.client.Minecraft
-import net.minecraft.client.gui.screens.Screen
-import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite
-import net.minecraft.client.server.IntegratedServer
 import net.minecraft.commands.CommandSourceStack
 import net.minecraft.core.BlockPos
-import net.minecraft.network.chat.Component
-import net.minecraft.network.chat.MutableComponent
+import net.minecraft.core.Holder
+import net.minecraft.resources.ResourceKey
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.level.ChunkPos
-import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.state.BlockState
 import java.util.concurrent.ExecutorService
@@ -57,7 +53,11 @@ val Int.asChunkPos: ChunkPos
         return ChunkPos(x.toShort().toInt(), z.toShort().toInt())
     }
 
+fun <T> ResourceKey<T>.holder(): Holder<T> {
+    return mcs.registryAccess().holderOrThrow(this)
+}
 
+fun rdiAsset(path: String) = ResourceLocation.fromNamespaceAndPath("rdi",path)
 val MinecraftServer.playingLevel: ServerLevel?
     get() = mc.level?.let { getLevel(it.dimension()) }
 

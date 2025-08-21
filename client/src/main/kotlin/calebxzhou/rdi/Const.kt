@@ -14,7 +14,7 @@ object Const {
     //显示版本
     const val VERSION_NUMBER = "5.1.1"
     @JvmStatic
-    val VERSION_DISP = "${PACK.verName}${PACK.dscr} ${if(DEBUG)"DEBUG" else ""} $VERSION_NUMBER"
+    val VERSION_DISP = "${PACK.verName} ${if(DEBUG)"DEBUG" else ""} $VERSION_NUMBER"
     const val VERSION_STR = "5.0"
 
 }

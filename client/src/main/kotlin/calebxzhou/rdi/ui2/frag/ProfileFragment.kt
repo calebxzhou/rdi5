@@ -38,26 +38,21 @@ class ProfileFragment : RFragment("我的信息") {
             }
             )
 
-            textButton("开始-1区电信", onClick = { start(false,0) })
-            textButton("开始-1区电信以外", onClick = { start(true, 0) })
-            if(PACK == PackMode.SEA)
-            {
-                textButton("开始-2区电信", onClick = { start(false, 1) })
-                textButton("开始-2区电信以外", onClick = { start(true, 1) })
-            }
+            textButton("开始-电信", onClick = { start(false,) })
+            textButton("开始-电信以外", onClick = { start(true, ) })
             textButton("退出登录", onClick = { close() })
 
 
         }
     }
 
-    fun start(bgp: Boolean, area: Int) {
+    fun start(bgp: Boolean, ) {
         renderThread {
 
             ConnectScreen.startConnecting(
                 mc.screen, mc,
 
-                ServerAddress(if(bgp)server.bgpIp else server.ip, server.gamePorts[area]), server.mcData(area,bgp), false, null
+                ServerAddress(if(bgp)server.bgpIp else server.ip, server.gamePort), server.mcData(bgp), false, null
             )
         }
 
