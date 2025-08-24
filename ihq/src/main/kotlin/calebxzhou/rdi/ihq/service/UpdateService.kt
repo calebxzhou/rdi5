@@ -5,13 +5,23 @@ import calebxzhou.rdi.ihq.net.e404
 import calebxzhou.rdi.ihq.net.initGetParams
 import calebxzhou.rdi.ihq.net.ok
 import calebxzhou.rdi.ihq.util.serdesJson
-import com.electronwill.nightconfig.core.Config
-import com.electronwill.nightconfig.toml.TomlFormat
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.response.respondFile
+import kotlinx.serialization.Serializable
+import net.peanuuutz.tomlkt.Toml
 import java.io.File
 import java.security.MessageDigest
 import java.util.jar.JarFile
+
+@Serializable
+data class ModsToml(
+    val mods: List<ModInfo> = emptyList()
+)
+@Serializable
+data class ModInfo(
+    val modId: String,
+    val version: String
+)
 
 object UpdateService {
     val MODS_DIR = File("mods")
@@ -40,15 +50,15 @@ object UpdateService {
 
 
                     jar.getInputStream(modsTomlEntry).bufferedReader().use { reader ->
-                        // Parse the TOML content using NightConfig
-                        val config: Config = TomlFormat.instance().createParser().parse(reader.readText())
-                        val modsArray = config.get<List<Config>>("mods")
-                        val firstMod = modsArray.first()
-                        val modId = firstMod.get<String>("modId")
-                        val version = firstMod.get<String>("version")
-                        modIdSha1 += modId to calculateSha1(jarFile)
-                        modIdFile += modId to jarFile
-                        //Pair(modId, jarFile.length())
+                        try {
+                            val modsToml = Toml.decodeFromString(ModsToml.serializer(), reader.readText())
+                            modsToml.mods.firstOrNull()?.let {
+                                modIdSha1[it.modId] = calculateSha1(jarFile)
+                                modIdFile[it.modId] = jarFile
+                            }
+                        }catch (e:Exception){
+                            lgr.warn(e){"fail to parse ${jarFile.name}"}
+                        }
                     }
                 }
             }

@@ -8,6 +8,7 @@ import calebxzhou.rdi.model.RGamePayload.Companion.handleData
 import calebxzhou.rdi.util.mcComp
 import calebxzhou.rdi.util.mcs
 import net.minecraft.core.BlockPos
+import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.minecraft.world.level.block.Blocks
@@ -87,10 +88,12 @@ class RGameEvents {
         @SubscribeEvent
         @JvmStatic
         fun playerLogin( e: PlayerEvent.PlayerLoggedInEvent){
-            val player = e.entity
+            val player = e.entity as ServerPlayer
             val data = player.persistentData
             if(!data.getBoolean(Const.OLD_PLAYER)) {
                 player.sendSystemMessage("欢迎新玩家！".mcComp)
+                player.teleportTo(0.5,68.0,0.5)
+                player.setRespawnPosition(player.level().dimension(), BlockPos(0,65,0), 0f, true, false)
                 player.inventory.add(ItemStack(Items.OAK_SAPLING,4))
                 player.inventory.add(ItemStack(Items.DIRT,4))
                 data.putBoolean(Const.OLD_PLAYER,true)

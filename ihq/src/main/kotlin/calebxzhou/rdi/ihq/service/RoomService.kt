@@ -92,7 +92,8 @@ object RoomService {
             call.e500("创建房间失败：iid=null")
             return
         }
-        //rconPost("createIsland $iid")
+        //创建房间逻辑
+
         call.ok(iid)
     }
 

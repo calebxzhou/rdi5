@@ -1,12 +1,10 @@
 package calebxzhou.rdi.ui2.frag
 
-import calebxzhou.rdi.Const
-import calebxzhou.rdi.PACK
-import calebxzhou.rdi.PackMode
 import calebxzhou.rdi.model.RAccount
-import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.model.Room
+import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.ui2.*
+import calebxzhou.rdi.ui2.component.HwSpecView
 import calebxzhou.rdi.util.go
 import calebxzhou.rdi.util.mc
 import calebxzhou.rdi.util.renderThread
@@ -21,38 +19,47 @@ class ProfileFragment : RFragment("我的信息") {
     val server = RServer.now ?: RServer.OFFICIAL_DEBUG
     override fun initContent() {
         contentLayout.apply {
-            orientation = LinearLayout.VERTICAL
-
-            // Create a container for the head button
+            headButton(account._id,{
+                gravity = Gravity.CENTER_HORIZONTAL
+                layoutParams = linearLayoutParam(SELF, SELF) {
+                    gravity = Gravity.CENTER_HORIZONTAL
+                }
+            }) {
+                mc go ChangeProfileFragment()
+            }
             linearLayout {
-                layoutParams = linearLayoutParam(PARENT, SELF)
-                gravity = Gravity.CENTER
 
-                headButton(account._id)
+                layoutParams = linearLayoutParam(SELF, SELF) {
+                    gravity = Gravity.CENTER_HORIZONTAL
+                }
+
+
+                this += HwSpecView(context).apply {
+
+                }
             }
-            textButton("修改信息", onClick = { mc go (ChangeProfileFragment()) })
-            textButton("导入正版皮肤", onClick = { mc go (MojangSkinFragment()) })
-            textButton("衣柜", onClick = {
+            frameLayout {
+                layoutParams = frameLayoutParam(PARENT, PARENT)
+                bottomOptions {
 
-                mc go WardrobeFragment()
+                    iconButton("clothes", "衣柜", onClick = { mc go WardrobeFragment() })
+                    iconButton("play", "开始-电信", onClick = { start(false) })
+                    iconButton("play", "开始-电信以外", onClick = { start(true) })
+                    iconButton("error", "退出登录", onClick = { close() })
+                }
             }
-            )
-
-            textButton("开始-电信", onClick = { start(false,) })
-            textButton("开始-电信以外", onClick = { start(true, ) })
-            textButton("退出登录", onClick = { close() })
 
 
         }
     }
 
-    fun start(bgp: Boolean, ) {
+    fun start(bgp: Boolean) {
         renderThread {
 
             ConnectScreen.startConnecting(
                 mc.screen, mc,
 
-                ServerAddress(if(bgp)server.bgpIp else server.ip, server.gamePort), server.mcData(bgp), false, null
+                ServerAddress(if (bgp) server.bgpIp else server.ip, server.gamePort), server.mcData(bgp), false, null
             )
         }
 

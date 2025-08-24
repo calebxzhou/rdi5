@@ -19,7 +19,7 @@ import java.time.Duration
  * calebxzhou @ 2025-05-10 23:20
  */
 
-
+const val WEB_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:143.0) Gecko/20100101 Firefox/143.0"
 // Helper function to force restricted headers using reflection
 private fun HttpRequest.Builder.forceHeader(name: String, value: String): HttpRequest.Builder {
     return try {
@@ -70,6 +70,7 @@ suspend inline fun <reified T> httpRequest(
     params: List<Pair<String, Any?>> = emptyList(),
     headers: List<Pair<String, String>> = emptyList()
 ): HttpResponse<T> = withContext(Dispatchers.IO) {
+    System.setProperty("jdk.httpclient.allowRestrictedHeaders", "host,connection,content-length,expect,upgrade,via")
     // Filter out parameters with null values
     val filteredParams = params.filter { it.second != null }
 

@@ -18,7 +18,6 @@ import com.mongodb.client.model.IndexOptions
 import com.mongodb.client.model.Indexes
 import com.mongodb.kotlin.client.coroutine.MongoClient
 import io.github.oshai.kotlinlogging.KotlinLogging
-import io.ktor.network.selector.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.engine.*
@@ -28,41 +27,22 @@ import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.routing.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.plugins.compression.Compression
-import io.netty.bootstrap.ServerBootstrap
-import io.netty.channel.Channel
-import io.netty.channel.ChannelInitializer
-import io.netty.channel.ChannelOption
-import io.netty.channel.epoll.Epoll
-import io.netty.channel.epoll.EpollEventLoopGroup
-import io.netty.channel.epoll.EpollServerSocketChannel
-import io.netty.channel.nio.NioEventLoopGroup
-import io.netty.channel.socket.nio.NioServerSocketChannel
-import io.netty.handler.codec.compression.StandardCompressionOptions.deflate
-import io.netty.handler.codec.compression.StandardCompressionOptions.gzip
-import io.netty.handler.flow.FlowControlHandler
-import io.netty.handler.timeout.ReadTimeoutHandler
-import io.netty.util.concurrent.DefaultThreadFactory
-import kotlinx.coroutines.Dispatchers
+import io.ktor.server.plugins.compression.deflate
+import io.ktor.server.plugins.compression.gzip
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.bson.UuidRepresentation
 import java.io.File
-import java.util.Timer
-import java.util.TimerTask
-import javax.print.attribute.standard.Compression
 
-val DB_HOST = System.getProperty("rdi.dbHost") ?: "127.0.0.1"
-val DB_PORT = System.getProperty("rdi.dbPort")?.toIntOrNull() ?: 27017
-val DB_NAME = System.getProperty("rdi.dbName") ?: "rdi5"
+val CONF = AppConfig.load()
 val lgr = KotlinLogging.logger {  }
 val DB = MongoClient.create(
     MongoClientSettings.builder()
         .applyToClusterSettings { builder ->
-            builder.hosts(listOf(ServerAddress(DB_HOST, DB_PORT)))
+            builder.hosts(listOf(ServerAddress(CONF.database.host, CONF.database.port)))
         }
         .uuidRepresentation(UuidRepresentation.STANDARD)
-        .build()).getDatabase(DB_NAME)
-val HQ_PORT = System.getProperty("rdi.hqPort")?.toIntOrNull() ?: 28511
+        .build()).getDatabase(CONF.database.name)
 val CRASH_REPORT_DIR = File("crash-report")
 fun main(): Unit =runBlocking {
     CRASH_REPORT_DIR.mkdir()
@@ -85,9 +65,9 @@ fun main(): Unit =runBlocking {
 
 }
 fun startHttp(){
-    embeddedServer(Netty, host = "::", port = HQ_PORT){
+    embeddedServer(Netty, host = "::", port = CONF.server.port){
         install(StatusPages) {
-            //参数不全或者有问题
+            //参数不全或者有��题
             exception<ParamError> { call, cause ->
                 call.e400(cause.message)
             }

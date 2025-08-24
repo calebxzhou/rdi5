@@ -34,7 +34,7 @@ abstract class RFragment(var title: String = "") : Fragment() {
 
         // Create new content view
         return LinearLayout(fctx).apply {
-            contentLayout = this
+
             orientation = LinearLayout.VERTICAL
             paddingDp(16)
             // Create frame layout for back button and title
@@ -72,6 +72,8 @@ abstract class RFragment(var title: String = "") : Fragment() {
             } else {
                 initHeader()
             }
+
+            contentLayout = this
             initContent()
             // Store the view in cache if caching is enabled
             if (contentViewCache) {
