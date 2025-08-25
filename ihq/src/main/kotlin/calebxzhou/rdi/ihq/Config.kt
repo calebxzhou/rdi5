@@ -18,9 +18,18 @@ data class ServerConfig(
 )
 
 @Serializable
+data class McsmConfig(
+    val host: String = "127.0.0.1",
+    val port: Int = 23333,
+    val apiKey: String = "0f587f45d02b4aed9a3f1e69a83510e2",
+    val daemonId: String = "87f1a66a45ec4326a7ad85bebebc77ea",
+)
+
+@Serializable
 data class AppConfig(
     val database: DatabaseConfig = DatabaseConfig(),
-    val server: ServerConfig = ServerConfig()
+    val server: ServerConfig = ServerConfig(),
+    val mcsm: McsmConfig = McsmConfig(),
 ) {
     companion object {
         private val configFile = File("config.toml")

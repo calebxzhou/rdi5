@@ -2,8 +2,11 @@ package calebxzhou.rdi.ihq.net
 
 import calebxzhou.rdi.ihq.exception.AuthError
 import calebxzhou.rdi.ihq.exception.ParamError
+import io.ktor.client.HttpClient
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Parameters
+import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.auth.UserIdPrincipal
 import io.ktor.server.auth.principal
@@ -11,12 +14,21 @@ import io.ktor.server.plugins.origin
 import io.ktor.server.request.receiveParameters
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
+import kotlinx.serialization.json.Json
 import org.bson.types.ObjectId
 
 /**
  * calebxzhou @ 2025-05-26 12:25
  */
-
+val httpClient
+    get() = HttpClient {
+        install(ContentNegotiation) {
+            json(Json {
+                ignoreUnknownKeys = true
+                isLenient = true
+            })
+        }
+    }
 suspend fun ApplicationCall.e400(msg: String? = null) {
     err(HttpStatusCode.BadRequest, msg)
 }
