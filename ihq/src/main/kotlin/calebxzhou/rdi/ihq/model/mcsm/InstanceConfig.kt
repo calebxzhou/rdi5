@@ -38,15 +38,15 @@ data class InstanceConfig(
     val startCommand: String,
     val stopCommand: String,
     val cwd: String,
-    val ie: String = "gbk",                        // 输入 encode
-    val oe: String = "gbk",                        // 输出 encode
+    val ie: String = "utf-8",                        // 输入 encode
+    val oe: String = "utf-8",                        // 输出 encode
     val createDatetime: Long,
     val lastDatetime: Long,
     val type: String = "universal",                // 实例类型
     val tag: List<String> = emptyList(),
     val endTime: Long,
-    val fileCode: String = "gbk",
-    val processType: String = "docker",
+    val fileCode: String = "utf8",
+    val processType: String = "general",
     val updateCommand: String = "",
     val actionCommandList: List<String> = emptyList(),
     val crlf: Int = 2,
