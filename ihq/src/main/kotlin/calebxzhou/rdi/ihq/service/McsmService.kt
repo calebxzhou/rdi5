@@ -68,7 +68,7 @@ object McsmService {
 
     suspend fun updateInstance(instanceUuid: String, instanceConfig: InstanceConfig): McsmResponse<UpdateInstanceResponse> {
         return httpClient.use { client ->
-            client.put("/instance?uuid=$instanceUuid&daemonId=${CONF.mcsm.daemonId}".mcsmUrl) {
+            client.put("/protected_instance/instance_update?uuid=$instanceUuid&daemonId=${CONF.mcsm.daemonId}".mcsmUrl) {
                 contentType(ContentType.Application.Json)
                 setBody(instanceConfig)
             }.body()

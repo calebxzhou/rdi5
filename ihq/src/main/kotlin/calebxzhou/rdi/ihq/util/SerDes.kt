@@ -19,6 +19,7 @@ val module = SerializersModule {
 }
 // Use the module with JSON configuration
 val serdesJson = Json {
+    ignoreUnknownKeys = true
     serializersModule = module
     encodeDefaults = true
     explicitNulls = false

@@ -26,9 +26,9 @@ data class ProcessInfo(
 @Serializable
 data class InstanceDetail(
     val config: InstanceConfig,
-    val info: InstanceInfo,
+    val info: OInstanceInfo,
     val instanceUuid: String,
-    val processInfo: ProcessInfo,
+    val processInfo: OProcessInfo,
     val space: Long = 0,
     val started: Int = 0, // 启动次数
     val status: Int = 0   // -1 = 忙碌, 0 = 停止, 1 = 停止中, 2 = 启动中, 3 = 运行中

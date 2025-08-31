@@ -6,7 +6,7 @@ import kotlinx.serialization.Serializable
 data class Overview(
     val version: String,
     val specifiedDaemonVersion: String,
-    val process: ProcessInfo,
+    val process: OProcessInfo,
     val record: Record,
     val system: SystemInfo,
     val chart: Chart,
@@ -15,7 +15,7 @@ data class Overview(
 )
 
 @Serializable
-data class ProcessInfo(
+data class OProcessInfo(
     val cpu: Int,
     val memory: Long,
     val cwd: String
@@ -83,8 +83,8 @@ data class RemoteCount(
 @Serializable
 data class RemoteNode(
     val version: String,
-    val process: ProcessInfo,
-    val instance: InstanceInfo,
+    val process: OProcessInfo,
+    val instance: OInstanceInfo,
     val system: RemoteSystemInfo,
     val cpuMemChart: List<ChartSystemData>,
     val uuid: String,
@@ -96,7 +96,7 @@ data class RemoteNode(
 )
 
 @Serializable
-data class InstanceInfo(
+data class OInstanceInfo(
     val running: Int,
     val total: Int
 )

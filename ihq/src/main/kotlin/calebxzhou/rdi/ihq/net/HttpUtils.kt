@@ -2,8 +2,15 @@ package calebxzhou.rdi.ihq.net
 
 import calebxzhou.rdi.ihq.exception.AuthError
 import calebxzhou.rdi.ihq.exception.ParamError
+import calebxzhou.rdi.ihq.util.serdesJson
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.DefaultRequest
+import io.ktor.client.request.get
+import io.ktor.client.request.header
+import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsText
+import io.ktor.client.statement.readBytes
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Parameters
 import io.ktor.serialization.kotlinx.json.json
@@ -16,6 +23,8 @@ import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
 import kotlinx.serialization.json.Json
 import org.bson.types.ObjectId
+import java.net.ServerSocket
+import java.nio.charset.Charset
 
 /**
  * calebxzhou @ 2025-05-26 12:25
@@ -23,12 +32,16 @@ import org.bson.types.ObjectId
 val httpClient
     get() = HttpClient {
         install(ContentNegotiation) {
-            json(Json {
-                ignoreUnknownKeys = true
-                isLenient = true
-            })
+            json(serdesJson)
+        }
+
+        install(DefaultRequest) {
+            // Set Accept-Charset to prefer UTF-8 but also accept GBK
+            header("Accept-Charset", "utf-8")
         }
     }
+
+
 suspend fun ApplicationCall.e400(msg: String? = null) {
     err(HttpStatusCode.BadRequest, msg)
 }
@@ -74,3 +87,6 @@ suspend fun ApplicationCall.initPostParams() = receiveParameters()
 suspend fun ApplicationCall.initGetParams() = request.queryParameters
 val ApplicationCall.clientIp
     get() = this.request.origin.remoteAddress
+
+val randomPort: Int
+    get() = ServerSocket(0).use { it.localPort }

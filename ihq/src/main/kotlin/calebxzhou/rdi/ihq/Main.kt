@@ -186,7 +186,7 @@ fun startHttp(){
                     post("/visit") {
                         RoomService.visit(call)
                     }
-                    post("/section/add"){
+                    /*post("/section/add"){
                         RoomService.addFirmSection(call)
                     }
                     post("/section/remove"){
@@ -194,7 +194,7 @@ fun startHttp(){
                     }
                     get("/section"){
                         RoomService.getFirmSectionData(call)
-                    }
+                    }*/
 
                 }
             }

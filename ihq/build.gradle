@@ -31,6 +31,8 @@ dependencies {
     testImplementation 'org.jetbrains.kotlin:kotlin-test'
     implementation 'org.mongodb:mongodb-driver-kotlin-coroutine:5.5.1'
     implementation("net.benwoodworth.knbt:knbt:0.11.8")
+    // https://mvnrepository.com/artifact/com.github.docker-java/docker-java
+    implementation 'com.github.docker-java:docker-java:3.6.0'
 }
 ktor {
     fatJar {

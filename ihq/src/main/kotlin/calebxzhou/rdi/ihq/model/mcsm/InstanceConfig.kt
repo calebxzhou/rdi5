@@ -4,8 +4,10 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class TerminalOption(
-    val haveColor: Boolean = false,
-    val pty: Boolean = true
+    val haveColor: Boolean = true,
+    val pty: Boolean = true,
+    val ptyWindowCol: Int = 164,
+    val ptyWindowRow: Int = 40
 )
 
 @Serializable
@@ -24,33 +26,51 @@ data class PingConfig(
 
 @Serializable
 data class DockerConfig(
-    // Add docker configuration properties as needed
-    // This can be expanded based on the actual docker config structure
-    val image: String? = null,
-    val containerName: String? = null,
-    val ports: List<String>? = null,
-    val volumes: List<String>? = null
+    val containerName: String = "",
+    val image: String = "",
+    val ports: List<String> = emptyList(),
+    val extraVolumes: List<String> = emptyList(),
+    val memory: Int = 0,
+    val networkMode: String = "bridge",
+    val networkAliases: List<String> = emptyList(),
+    val cpusetCpus: String = "",
+    val cpuUsage: Int = 0,
+    val maxSpace: Int = 0,
+    val io: Int = 0,
+    val network: Int = 0,
+    val workingDir: String = "/workspace/",
+    val env: List<String> = emptyList(),
+    val changeWorkdir: Boolean = true
+)
+
+@Serializable
+data class ExtraServiceConfig(
+    val openFrpTunnelId: String = "",
+    val openFrpToken: String = ""
 )
 
 @Serializable
 data class InstanceConfig(
     val nickname: String,
     val startCommand: String,
-    val stopCommand: String,
+    val stopCommand: String = "stop",
     val cwd: String,
-    val ie: String = "utf-8",                        // 输入 encode
-    val oe: String = "utf-8",                        // 输出 encode
-    val createDatetime: Long,
-    val lastDatetime: Long,
-    val type: String = "universal",                // 实例类型
+    val ie: String = "utf8",                        // 输入 encode
+    val oe: String = "utf8",                        // 输出 encode
+    val createDatetime: Long = System.currentTimeMillis(),
+    val lastDatetime: Long = System.currentTimeMillis(),
+    val type: String = "minecraft/java",                // 实例类型
     val tag: List<String> = emptyList(),
-    val endTime: Long,
+    val endTime: Long = 0L,
     val fileCode: String = "utf8",
     val processType: String = "general",
     val updateCommand: String = "",
+    val runAs: String = "",
     val actionCommandList: List<String> = emptyList(),
     val crlf: Int = 2,
-    val docker: DockerConfig? = null,
+    val category: Int = 0,
+    val basePort: Int = 10035,
+    val docker: DockerConfig = DockerConfig(),
 
     // Steam RCON
     val enableRcon: Boolean = false,
@@ -61,5 +81,6 @@ data class InstanceConfig(
     // 终端选项
     val terminalOption: TerminalOption = TerminalOption(),
     val eventTask: EventTask = EventTask(),
-    val pingConfig: PingConfig = PingConfig()
+    val pingConfig: PingConfig = PingConfig(),
+    val extraServiceConfig: ExtraServiceConfig = ExtraServiceConfig()
 )

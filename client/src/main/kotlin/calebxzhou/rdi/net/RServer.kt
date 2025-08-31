@@ -30,7 +30,6 @@ class RServer(
     val ip: String,
     val bgpIp: String,
     val hqPort: Int,
-    val ghqPort: Int,
     var gamePort : Int,
 ) {
     val noUpdate = System.getProperty("rdi.noUpdate").toBoolean()
@@ -52,7 +51,7 @@ class RServer(
     companion object {
         var now: RServer? = null
         val OFFICIAL_DEBUG = RServer(
-            "127.0.0.1", "127.0.0.1",28511,28512,28510
+            "127.0.0.1", "127.0.0.1",65231,65230
         )
 
         val default: RServer

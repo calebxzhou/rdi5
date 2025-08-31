@@ -4,7 +4,6 @@ import calebxzhou.rdi.ihq.DB
 import calebxzhou.rdi.ihq.exception.RequestError
 import calebxzhou.rdi.ihq.model.FirmSection
 import calebxzhou.rdi.ihq.model.FirmSectionData
-import calebxzhou.rdi.ihq.model.RBlockState
 import calebxzhou.rdi.ihq.model.Room
 import calebxzhou.rdi.ihq.net.e500
 import calebxzhou.rdi.ihq.net.got
@@ -28,13 +27,13 @@ object RoomService {
 
     init {
         runBlocking {
-            dbcl.createIndex(
+            /*dbcl.createIndex(
                 Indexes.ascending(
                     "${Room::firmSections.name}.${FirmSection::dimension.name}",
                     "${Room::firmSections.name}.${FirmSection::chunkPos.name}",
                     "${Room::firmSections.name}.${FirmSection::sectionY.name}"
                 )
-            )
+            )*/
             dbcl.createIndex(
                 Indexes.ascending("${Room::members.name}.${Room.Member::id.name}"),
             )
@@ -75,10 +74,12 @@ object RoomService {
         }
         val player = PlayerService.getById(call.uid) ?: throw RequestError("玩家未注册")
         val roomName = player.name + "的房间"
-        val bstates = serdesJson.decodeFromString<List<RBlockState>>(params got "bstates")
-
+        //val bstates = serdesJson.decodeFromString<List<RBlockState>>(params got "bstates")
+        val roomId= ObjectId()
+        val contId = DockerService.create(roomId.toString(),"data_${roomId}","abc")
         val iid = dbcl.insertOne(
             Room(
+                roomId,
                 name = roomName,
                 members = listOf(
                     Room.Member(
@@ -86,26 +87,22 @@ object RoomService {
                         true
                     )
                 ),
-                blockStates = bstates
+                containerId = contId,
             )
         ).insertedId?.asObjectId()?.value?.toString() ?: let {
             call.e500("创建房间失败：iid=null")
             return
         }
-        //创建房间逻辑
-
         call.ok(iid)
     }
 
     suspend fun delete(call: ApplicationCall) {
-        val island = getOwnRoom(call.uid) ?: let {
+        val room = getOwnRoom(call.uid) ?: let {
             throw RequestError("没岛")
         }
-        dbcl.deleteOne(eq("_id", island._id))
-        //rconPost("deleteIsland ${island._id}")
-        //rconPost("resetPlayer ${call.uid}")
-
-        //  向mc服务器发送rcon指令 清存档+删岛
+        dbcl.deleteOne(eq("_id", room._id))
+        DockerService.stop(room.containerId)
+        DockerService.delete("data_${room._id}",room.containerId)
         call.ok()
     }
 
@@ -263,159 +260,5 @@ object RoomService {
         } ?: throw RequestError("没这个岛")
     }
 
-    suspend fun addFirmSection(call: ApplicationCall) {
-        val room = getJoinedRoom(call.uid) ?: let {
-            throw RequestError("没房")
-        }
-        val params = call.receiveParameters()
-        val roomId = room._id
-        val dimension = params got "dimension"
-        val chunkPos = (params got "chunkPos").toInt()
-        val sectionY = (params got "sectionY").toByte()
-        if(getFirmSectionsSize(roomId)>32){
-            throw RequestError("持久子区块数量已达上限")
-        }
-        findFirmSection(dimension, chunkPos, sectionY)?.let {
-            throw RequestError("持久子区块已存在: $it" )
-        }
-        val sectionId = ObjectId()
-        val section = FirmSection(
-            id = sectionId,
-            dimension = dimension,
-            chunkPos = chunkPos,
-            sectionY = sectionY
-        )
-        val data = FirmSectionData(
-            _id = sectionId,
-            roomId = roomId,
-        )
-        LevelService.sectionDataCol.insertOne(data).let { insertResult ->
-            if (insertResult.wasAcknowledged().not()) {
-                throw RequestError("添加持久子区块数据失败")
-            }
-        }
-        val updateResult = dbcl.updateOne(
-            eq("_id", roomId),
-            Updates.push(Room::firmSections.name, section),
-            UpdateOptions().upsert(true)
-        )
-        if (updateResult.modifiedCount == 0L && updateResult.upsertedId == null) {
-            throw RequestError("添加持久子区块失败")
-        }
-        call.ok("$sectionId")
-    }
-    suspend fun removeFirmSection(call: ApplicationCall) {
-        val params = call.receiveParameters()
-        val room = getJoinedRoom(call.uid) ?: let {
-            throw RequestError("没房")
-        }
-        val roomId = room._id
-        val sectionId = ObjectId(params got "sectionId")
-        val section = findFirmSection(
-            params got "dimension",
-            (params got "chunkPos").toInt(),
-            (params got "sectionY").toByte()
-        ) ?: let {
-            throw RequestError("持久子区块不存在")
-        }
-        if (section.id != sectionId) {
-            throw RequestError("持久子区块id不匹配")
-        }
-        dbcl.updateOne(
-            eq("_id", roomId),
-            Updates.pull(Room::firmSections.name, eq(FirmSection::id.name, sectionId))
-        ).let { updateResult ->
-            if (updateResult.modifiedCount == 0L) {
-                throw RequestError("删除持久子区块失败")
-            }
-        }
-        LevelService.sectionDataCol.deleteOne(eq("_id", sectionId)).let { deleteResult ->
-            if (deleteResult.deletedCount == 0L) {
-                throw RequestError("删除持久子区块数据失败")
-            }
-        }
-        call.ok()
-    }
-    suspend fun getFirmSectionsSize(roomId: ObjectId): Int {
-        val pipeline = listOf(
-            Aggregates.match(eq("_id", roomId)),
-            Aggregates.project(Projections.fields(
-                Projections.excludeId(),
-                Projections.computed("firmSectionsSize", Document($$"$size", $$"$firmSections"))
-            ))
-        )
-        val flow = dbcl.aggregate<Document>(pipeline)
-        val result = flow.first()
-        return result.getInteger("firmSectionsSize")
 
-    }
-    suspend fun getFirmSectionData(call: ApplicationCall){
-        val params = call.receiveParameters()
-        val room = getJoinedRoom(call.uid) ?: let {
-            throw RequestError("没房")
-        }
-        val roomId = room._id
-        val sectionId = ObjectId(params got "sectionId")
-        val section = findFirmSection(
-            params got "dimension",
-            (params got "chunkPos").toInt(),
-            (params got "sectionY").toByte()
-        ) ?: let {
-            throw RequestError("持久子区块不存在")
-        }
-        LevelService.sectionDataCol.find(
-            eq("_id", sectionId)
-        ).firstOrNull()?.let { sectionData ->
-            call.ok(serdesJson.encodeToString(sectionData))
-        } ?: throw RequestError("持久子区块数据不存在")
-
-    }
-    suspend fun findFirmSection(
-        dimension: String,
-        chunkPos: Int,
-        sectionY: Byte
-    ): FirmSection? {
-        val pipeline = listOf(
-            Aggregates.match(
-                Filters.elemMatch(
-                    Room::firmSections.name,
-                    and(
-                        eq(FirmSection::dimension.name, dimension),
-                        eq(FirmSection::chunkPos.name, chunkPos),
-                        eq(FirmSection::sectionY.name, sectionY)
-                    )
-                )
-            ),
-            Aggregates.unwind($$"$$${Room::firmSections.name}"),
-            Aggregates.match(
-                and(
-                    eq("${Room::firmSections.name}.${FirmSection::dimension.name}", dimension),
-                    eq("${Room::firmSections.name}.${FirmSection::chunkPos.name}", chunkPos),
-                    eq("${Room::firmSections.name}.${FirmSection::sectionY.name}", sectionY)
-                )
-            ),
-            Aggregates.project(
-                Projections.fields(
-                    Projections.excludeId(),
-                    Projections.computed(
-                        FirmSection::id.name,
-                        $$"$$${Room::firmSections.name}.$${FirmSection::id.name}"
-                    ),
-                    Projections.computed(
-                        FirmSection::dimension.name,
-                        $$"$$${Room::firmSections.name}.$${FirmSection::dimension.name}"
-                    ),
-                    Projections.computed(
-                        FirmSection::chunkPos.name,
-                        $$"$$${Room::firmSections.name}.$${FirmSection::chunkPos.name}"
-                    ),
-                    Projections.computed(
-                        FirmSection::sectionY.name,
-                        $$"$$${Room::firmSections.name}.$${FirmSection::sectionY.name}"
-                    )
-                )
-            )
-        )
-        return dbcl.aggregate<FirmSection>(pipeline).firstOrNull()
-    }
 }

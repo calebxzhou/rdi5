@@ -8,7 +8,7 @@ object Const {
     @JvmStatic
     val DEBUG = System.getProperty("rdi.debug").toBoolean()
     @JvmField
-    val SERVER_PORT =  System.getProperty("rdi.port")?.toIntOrNull()?:28510
+    val SERVER_PORT =  System.getProperty("rdi.port")?.toIntOrNull()?:65232
     const val RCON_PORT = 28512
     //版本号与协议号
     const val VERSION = 0x500

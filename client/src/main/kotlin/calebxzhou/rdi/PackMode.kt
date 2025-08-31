@@ -30,9 +30,8 @@ enum class PackMode(
         RServer(
             "rdi.calebxzhou.cn",
             "b5rdi.calebxzhou.cn",
-            28531,
-            28532,
-            28530,
+            65231,
+            65230,
             )
     ),
 
