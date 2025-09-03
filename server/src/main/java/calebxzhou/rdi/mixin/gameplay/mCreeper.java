@@ -16,7 +16,7 @@ import org.spongepowered.asm.mixin.Shadow;
 public class mCreeper {
     @Shadow
     @Mutable
-    private int explosionRadius = 1;
+    private int explosionRadius = 10;
     @Shadow
     @Mutable
     private int maxSwell = 20;

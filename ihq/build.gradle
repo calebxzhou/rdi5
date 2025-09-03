@@ -33,6 +33,7 @@ dependencies {
     implementation("net.benwoodworth.knbt:knbt:0.11.8")
     // https://mvnrepository.com/artifact/com.github.docker-java/docker-java
     implementation 'com.github.docker-java:docker-java:3.6.0'
+    implementation 'com.github.docker-java:docker-java-transport-httpclient5:3.6.0'
 }
 ktor {
     fatJar {

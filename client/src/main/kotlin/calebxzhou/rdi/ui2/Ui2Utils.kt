@@ -159,7 +159,6 @@ fun ViewGroup.textView(
 ) = TextView(this.context).apply{
     text = msg
     init()
-
 }.also { this += it }
 
 fun ViewGroup.imageView(
@@ -221,6 +220,10 @@ fun ViewGroup.iconButton(
 fun ViewGroup.scrollView(
     init: ScrollView.() -> Unit = {}
 ) = ScrollView(this.context).apply(init).also { this += it }
+fun TextView.leadingIcon(icon: String){
+    compoundDrawablePadding = dp(8f)
+    setCompoundDrawables(iconDrawable(icon).apply { setBounds(0,0,dp(24f),dp(24f)) },null,null,null)
+}
 /*
 
 fun Context.showContextMenu(anchor: View, items: List<Pair<String, () -> Unit>>, x: Float = Float.NaN, y: Float = Float.NaN) {

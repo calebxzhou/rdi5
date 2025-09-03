@@ -45,17 +45,10 @@
     "gameplay.mContainerNeverBoom",
     "gameplay.mCreeper",
     "gameplay.mDifficulty",
-    "gameplay.mEntitySight",
     "gameplay.mExplosion",
-    "gameplay.mFire",
     "gameplay.mGameRule",
-    "gameplay.mGlowSquid",
     "gameplay.mHigherExplosion",
-    "gameplay.mItemEntity",
-    "gameplay.mNetherPortal",
-    "gameplay.mTargetGoal",
-    "gameplay.mTraders",
-    "gameplay.mWitch",
-    "gameplay.mZombie"
+    "gameplay.mIslandStorage",
+    "gameplay.mItemEntity"
   ]
 }

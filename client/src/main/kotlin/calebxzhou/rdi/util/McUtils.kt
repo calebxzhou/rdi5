@@ -20,6 +20,7 @@ import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.level.ChunkPos
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.state.BlockState
+import org.lwjgl.glfw.GLFW
 import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -50,7 +51,9 @@ fun rdiAsset(path: String) = ResourceLocation.fromNamespaceAndPath("rdi",path)
 fun mcAsset(path: String) = ResourceLocation.withDefaultNamespace(path)
 val ResourceLocation.isTextureReady
     get() = mc.textureManager.getTexture(this, MissingTextureAtlasSprite.getTexture()) != MissingTextureAtlasSprite.getTexture()
-
+fun copyToClipboard(s: String) {
+    GLFW.glfwSetClipboardString(WindowHandle, s)
+}
 val screenLayer = Stack<Screen>()
 //go加入forge gui layer, set不
 infix fun Minecraft.go(screen: Screen?) {

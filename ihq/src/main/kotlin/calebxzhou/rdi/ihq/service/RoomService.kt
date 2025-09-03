@@ -9,6 +9,7 @@ import calebxzhou.rdi.ihq.net.e500
 import calebxzhou.rdi.ihq.net.got
 import calebxzhou.rdi.ihq.net.ok
 import calebxzhou.rdi.ihq.net.uid
+import calebxzhou.rdi.ihq.service.DockerService.asVolumeName
 import calebxzhou.rdi.ihq.util.serdesJson
 import com.mongodb.client.model.*
 import com.mongodb.client.model.Filters.*
@@ -76,34 +77,50 @@ object RoomService {
         val roomName = player.name + "的房间"
         //val bstates = serdesJson.decodeFromString<List<RBlockState>>(params got "bstates")
         val roomId= ObjectId()
-        val contId = DockerService.create(roomId.toString(),"data_${roomId}","abc")
+        val contId = DockerService.create(roomId.toString(),roomId.asVolumeName,"abc")
+        val room = Room(
+            roomId,
+            name = roomName,
+            members = listOf(
+                Room.Member(
+                    call.uid,
+                    true
+                )
+            ),
+            containerId = contId,
+        )
         val iid = dbcl.insertOne(
-            Room(
-                roomId,
-                name = roomName,
-                members = listOf(
-                    Room.Member(
-                        call.uid,
-                        true
-                    )
-                ),
-                containerId = contId,
-            )
+            room
         ).insertedId?.asObjectId()?.value?.toString() ?: let {
             call.e500("创建房间失败：iid=null")
             return
         }
-        call.ok(iid)
+        call.ok(serdesJson.encodeToString(room))
     }
 
     suspend fun delete(call: ApplicationCall) {
         val room = getOwnRoom(call.uid) ?: let {
             throw RequestError("没岛")
         }
-        dbcl.deleteOne(eq("_id", room._id))
-        DockerService.stop(room.containerId)
-        DockerService.delete("data_${room._id}",room.containerId)
-        call.ok()
+
+        try {
+            // First delete from database - this is the most important operation
+            dbcl.deleteOne(eq("_id", room._id))
+
+            // Then try to clean up Docker resources (don't let Docker errors prevent room deletion)
+            try {
+                DockerService.stop(room.containerId)
+                DockerService.delete("data_${room._id}", room.containerId)
+            } catch (e: Exception) {
+                // Log Docker cleanup failure but don't fail the entire operation
+                println("Warning: Failed to clean up Docker resources for room ${room._id}: ${e.message}")
+            }
+
+            call.ok()
+        } catch (e: Exception) {
+            println("Error deleting room: ${e.message}")
+            throw RequestError("删除房间失败: ${e.message}")
+        }
     }
 
     //回到自己拥有/加入的房间

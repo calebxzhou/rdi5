@@ -148,6 +148,8 @@ class RServer(
             }
             if (req.success) {
                 onOk(req)
+            }else{
+                lgr.error("${req.statusCode()} ${req.body}")
             }
 
 

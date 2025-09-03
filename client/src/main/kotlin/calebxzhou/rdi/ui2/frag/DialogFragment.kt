@@ -1,5 +1,6 @@
 package calebxzhou.rdi.ui2.frag
 
+import ca.weblite.objc.RuntimeUtils.msg
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.util.*
 import icyllis.modernui.graphics.Canvas
@@ -21,9 +22,9 @@ fun alertOk(msg: String) {
         mc go DialogFragment(msg, lvl = RMessageLevel.OK)
     }
 }
-fun confirm(msg: String, onNo: () -> Unit = {}, onYes: () -> Unit={}) {
+fun confirm(msg: String,yesText: String="是",noText: String="否", onNo: () -> Unit = {}, onYes: () -> Unit={}) {
     uiThread {
-        mc go DialogFragment(msg, RDialogType.CONFIRM, onYes = onYes, onNo = onNo)
+        mc go DialogFragment(msg, RDialogType.CONFIRM, yesText = yesText, noText = noText, onYes = onYes, onNo = onNo)
     }
 }
 enum class RDialogType {

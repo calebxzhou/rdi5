@@ -36,7 +36,7 @@ class SelectAccountFragment(val server: RServer) : RFragment("选择账号") {
                     orientation = LinearLayout.VERTICAL
                     layoutParams = frameLayoutParam(PARENT, PARENT)
 
-                    creds.idPwds.forEach { id, pwd ->
+                    creds.idPwds.forEach { (id, pwd) ->
                         headButton(ObjectId(id), onClick = {
                             RServer.now = server
                             ioScope.launch {
