@@ -17,9 +17,9 @@ class CPlayerMovePacket {
             Room.now?.let { room ->
                 mcs?.execute {
                     mcs?.allLevels?.forEach { level ->
-                        room.onlineMembers[tempUid]?.mcProfile?.let { level.getEntity(it.id) }?.setPos(x.toDouble(), y.toDouble(),
+                       /* room.onlineMembers[tempUid]?.mcProfile?.let { level.getEntity(it.id) }?.setPos(x.toDouble(), y.toDouble(),
                             z.toDouble()
-                        )
+                        )*/
                     }
                 }
             }
@@ -36,10 +36,10 @@ class CPlayerMovePacket {
             Room.now?.let { room ->
                 mcs?.execute {
                     mcs?.allLevels?.forEach { level ->
-                        room.onlineMembers[tempUid]?.mcProfile?.let { level.getEntity(it.id) }?.let { ent->
+                       /* room.onlineMembers[tempUid]?.mcProfile?.let { level.getEntity(it.id) }?.let { ent->
                             ent.yRot = yr
                             ent.xRot = xr
-                        }
+                        }*/
 
 
                     }

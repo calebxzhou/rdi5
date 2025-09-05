@@ -133,27 +133,11 @@ class mGuardServerLevelTick extends Level{
         }
 
     }*/
-    @Unique
-    private int tick$=0;
     @Redirect(method = "tick",at= @At(value = "INVOKE", target = "Lnet/minecraft/server/level/ServerLevel;tickBlockEntities()V"))
     private void RDI$tickBlockEntties(ServerLevel level){
-        if(players.isEmpty())
-            return;
         try {
                 this.tickBlockEntities();
 
-
-            /*boolean hasActivePlayers = PlayerService.atLeast1NoAfk(players);
-            if (hasActivePlayers) {*/
-               /**/
-           /* } else {
-                if(tick$>=20){
-                    this.tickBlockEntities();
-                    tick$=0;
-                }else{
-                    tick$++;
-                }
-            }*/
         } catch (Exception e) {
             e.printStackTrace();
         }

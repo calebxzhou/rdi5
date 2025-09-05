@@ -32,12 +32,6 @@ public abstract class mServerProps  {
 @Mixin(DedicatedServerProperties.class)
 class mServerProps2  {
     @Mutable @Shadow @Final
-    public final boolean enableRcon = true;
-    @Mutable @Shadow @Final
-    public final int rconPort=Const.RCON_PORT;
-    @Mutable @Shadow @Final
-    public final String rconPassword = "123456";
-    @Mutable @Shadow @Final
     public final int spawnProtection =0;
     @Mutable @Shadow @Final
     public final int serverPort = Const.SERVER_PORT;

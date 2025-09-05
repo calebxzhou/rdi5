@@ -1,10 +1,12 @@
 package calebxzhou.rdi.net
 
+import calebxzhou.rdi.Const
 import calebxzhou.rdi.lgr
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.ui2.frag.LoadingFragment
 import calebxzhou.rdi.ui2.frag.SelectAccountFragment
 import calebxzhou.rdi.ui2.frag.UpdateFragment
+import calebxzhou.rdi.ui2.frag.alertErr
 import calebxzhou.rdi.util.encodeBase64
 import calebxzhou.rdi.util.go
 import calebxzhou.rdi.util.ioScope
@@ -118,7 +120,7 @@ class RServer(
         params: List<Pair<String, Any>> = listOf(),
     ): HttpResponse<String> {
         val fullUrl = "http://${ip}:${hqPort}/${path}"
-        val headers = RAccount.Companion.now?.let {
+        val headers = RAccount.now?.let {
             listOf("Authorization" to "Basic ${"${it._id}:${it.pwd}".encodeBase64}")
         } ?: listOf()
         return httpStringRequest(post, fullUrl, params, headers)
@@ -141,14 +143,12 @@ class RServer(
         }
         ioScope.launch {
             val req = prepareRequest(post, path, params)
-            if (showLoading && frag != null) {
-                uiThread {
-                    frag.close()
-                }
-            }
+            LoadingFragment.close()
             if (req.success) {
+                if(Const.DEBUG) lgr.info(req.body)
                 onOk(req)
             }else{
+                alertErr("请求错误: ${req.statusCode()} ${req.body}")
                 lgr.error("${req.statusCode()} ${req.body}")
             }
 

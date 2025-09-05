@@ -13,8 +13,6 @@ import icyllis.modernui.view.Gravity
 import icyllis.modernui.widget.CheckBox
 import icyllis.modernui.widget.LinearLayout
 import icyllis.modernui.widget.ScrollView
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
@@ -155,7 +153,7 @@ class WardrobeFragment : RFragment("衣柜") {
 
                         // Load more when within 200px of bottom
                         if (diff <= 200) {
-                            loadMoreSkins()
+                            loadMoreSkins(this)
                         }
                     }
                 }
@@ -165,7 +163,7 @@ class WardrobeFragment : RFragment("衣柜") {
         refreshSkins()
     }
 
-    private fun loadMoreSkins() {
+    private fun loadMoreSkins(view1: ScrollView) {
         if (loading || !hasMoreData) return
 
         loading = true
@@ -182,7 +180,7 @@ class WardrobeFragment : RFragment("衣柜") {
                 hasMoreData = false
                 loading = false
                 uiThread {
-                    toast("没有更多皮肤了")
+                    view1.toast("没有更多皮肤了")
                 }
             }
         }
@@ -202,7 +200,7 @@ class WardrobeFragment : RFragment("衣柜") {
                     }
                 } else {
                     uiThread {
-                        toast("没有找到相关皮肤")
+                        searchBox.toast("没有找到相关皮肤")
                         loading = false
                         hasMoreData = false
                     }
@@ -342,7 +340,7 @@ class WardrobeFragment : RFragment("衣柜") {
             } catch (e: Exception) {
                 e.printStackTrace()
                 uiThread {
-                    toast("设置皮肤失败: ${e.message}")
+                    searchBox.toast("设置皮肤失败: ${e.message}")
                 }
             }
         }

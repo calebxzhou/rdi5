@@ -14,15 +14,8 @@ data class Room(
     val score: Int=0,
     val centerPos: IslandBlockPos = IslandBlockPos(),
     val members: List<Member> = arrayListOf(),
-
-
-    ) {
-    //临时id 最大0xff
-    @Volatile
-    var tempId: Byte=0
-    @Volatile
-    var onlineMembers = hashMapOf<Byte,RAccount>()
-
+) {
+    var port = 0
     fun hasMember(pid: ObjectId): Boolean {
         return members.find { it.id==pid } != null
     }

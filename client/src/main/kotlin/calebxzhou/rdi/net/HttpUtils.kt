@@ -77,6 +77,7 @@ suspend inline fun <reified T> httpRequest(
     // Debug logging
     if (Const.DEBUG) {
         lgr.info("http ${if (post) "post" else "get"} $url ${filteredParams.joinToString(",")}")
+        lgr.info("headers: ${headers.joinToString(",")}")
     }
 
     // Create JDK HTTP client

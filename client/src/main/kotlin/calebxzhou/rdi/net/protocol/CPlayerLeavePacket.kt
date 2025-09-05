@@ -16,7 +16,7 @@ data class CPlayerLeavePacket(
         tempUid = buf.readByte()
     )
     override fun handle() {
-        Room.now?.let { room->
+        /*Room.now?.let { room->
             room.onlineMembers[tempUid]?.let { account->
                 mc.addChatMessage("${account.name}退出了房间")
                 lgr.info("${account} quit the room")
@@ -31,6 +31,6 @@ data class CPlayerLeavePacket(
                     }
                 }
             }
-        }
+        }*/
     }
 }

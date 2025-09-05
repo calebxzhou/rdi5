@@ -186,6 +186,9 @@ fun startHttp(){
                     post("/visit") {
                         RoomService.visit(call)
                     }
+                    get("/log"){
+                        RoomService.getServerLog(call)
+                    }
                     /*post("/section/add"){
                         RoomService.addFirmSection(call)
                     }

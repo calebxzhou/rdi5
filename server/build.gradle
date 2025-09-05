@@ -189,7 +189,6 @@ def mcLibExportOnly = [
 ]
 def modrinthMods = [
         "lithium:mc1.21.1-0.15.0-neoforge",
-        "jade:15.10.0+neoforge",
         "packet-fixer:LL1w2rTw",
 ]
 dependencies {

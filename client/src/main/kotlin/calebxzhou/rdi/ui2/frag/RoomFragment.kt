@@ -32,10 +32,10 @@ class RoomFragment(val room: Room) : RFragment("我的房间") {
                 iconButton("play", "开玩(电信)") { start(false) }
                 iconButton("play", "开玩(电信以外)") { start(true) }
                 iconButton("smp", "成员") { }
-                iconButton("server", "服务端") { }
+                iconButton("server", "服务端") { mc go ServerFragment(server) }
                 iconButton("error", "删除房间") {
                     //confirm("真的要删除整个房间吗？\n所有的存档等内容将永久删除，无法恢复") {
-                        mc go ConfirmDeleteRoomFragment(room)
+                        mc go ConfirmDeleteRoomFragment(room,server)
                    // }
                 }
             }

@@ -2,7 +2,7 @@ plugins {
     id 'java-library'
     id 'maven-publish'
     id 'idea'
-    id 'net.neoforged.moddev' version '2.0.99'
+    id 'net.neoforged.moddev' version '2.0.107'
     // Adds the Kotlin Gradle plugin
     id 'org.jetbrains.kotlin.jvm' version "${kotlin_version}"
     // OPTIONAL Kotlin Serialization plugin
@@ -197,7 +197,8 @@ def mcLibs = [
 //添加三方库别忘了jar jarJar reobfJarJar genIntellijRuns 不然找不到class
 'org.jsoup:jsoup:1.19.1',
 'org.mongodb:bson:5.1.0',
-
+// https://mvnrepository.com/artifact/com.github.ben-manes.caffeine/caffeine
+'com.github.ben-manes.caffeine:caffeine:3.2.2'
 ]
 def mcLibExportOnly = [
 ]
@@ -250,13 +251,13 @@ dependencies {
     implementation('org.hotswapagent:hotswap-agent-core:2.0.1')
     //implementation 'thedarkcolour:kotlinforforge-neoforge:5.7.0:slim'
     implementation 'thedarkcolour:kotlinforforge-neoforge:5.7.0'
-    libraries 'icyllis.modernui:ModernUI-Core:3.11.1'
-    testImplementation 'icyllis.modernui:ModernUI-Core:3.11.1'
-    additionalRuntimeClasspath 'icyllis.modernui:ModernUI-Core:3.11.1'
-    implementation 'icyllis.modernui:ModernUI-NeoForge:1.21.1-3.11.1.9'
-    implementation "icyllis.modernui:ModernUI-Markdown:3.11.1"
-    additionalRuntimeClasspath "icyllis.modernui:ModernUI-Markdown:3.11.1"
-    testImplementation "icyllis.modernui:ModernUI-Markdown:3.11.1"
+    implementation 'icyllis.modernui:ModernUI-Core:3.12.0'
+    testImplementation 'icyllis.modernui:ModernUI-Core:3.12.0'
+    additionalRuntimeClasspath 'icyllis.modernui:ModernUI-Core:3.12.0'
+    implementation 'icyllis.modernui:ModernUI-NeoForge:1.21.1-3.12.0.2'
+    implementation "icyllis.modernui:ModernUI-Markflow:3.12.0"
+    additionalRuntimeClasspath "icyllis.modernui:ModernUI-Markflow:3.12.0"
+    testImplementation "icyllis.modernui:ModernUI-Markflow:3.12.0"
     // compile against the JEI API but do not include it at runtime
     compileOnly("mezz.jei:jei-${minecraft_version}-neoforge-api:${jei_version}")
     // at runtime, use the full JEI jar for NeoForge
@@ -275,6 +276,14 @@ dependencies {
     }
     modrinthModsCompileOnly.each { dep ->
         compileOnly("maven.modrinth:$dep")
+    }
+    //for modernui
+    configurations.configureEach {
+        resolutionStrategy {
+            force 'com.ibm.icu:icu4j:76.1'
+            force 'it.unimi.dsi:fastutil:8.5.15'
+
+        }
     }
 }
 

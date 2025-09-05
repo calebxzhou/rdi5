@@ -37,7 +37,7 @@ data class CPlayerJoinPacket(
             mc.connection?.let {
                 it.listedOnlinePlayers+= pInfo
                 (it as AClientPacketListener).playerInfoMap += pInfo.profile.id to pInfo
-                Room.now?.onlineMembers += tempUid to playerInfo
+                //Room.now?.onlineMembers += tempUid to playerInfo
                 mcs?.execute {
                     mcs?.overworld()?.let { level->
                         level.addFreshEntity(FakePlayer(level,playerInfo.mcProfile))

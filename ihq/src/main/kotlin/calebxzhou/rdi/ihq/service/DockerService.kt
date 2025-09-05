@@ -1,24 +1,20 @@
 package calebxzhou.rdi.ihq.service
 
+import calebxzhou.rdi.ihq.lgr
 import calebxzhou.rdi.ihq.model.Room
 import calebxzhou.rdi.ihq.net.randomPort
-import calebxzhou.rdi.ihq.net.httpClient
 import com.github.dockerjava.api.async.ResultCallback.Adapter
 import com.github.dockerjava.api.model.Bind
 import com.github.dockerjava.api.model.ExposedPort
 import com.github.dockerjava.api.model.Frame
 import com.github.dockerjava.api.model.HostConfig
 import com.github.dockerjava.api.model.PortBinding.parse
-import com.github.dockerjava.core.DockerClientBuilder
 import com.github.dockerjava.core.DefaultDockerClientConfig
+import com.github.dockerjava.core.DockerClientBuilder
 import com.github.dockerjava.httpclient5.ApacheDockerHttpClient
 import com.github.dockerjava.transport.DockerHttpClient
-import java.time.Duration
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
-import io.ktor.http.*
-import kotlinx.coroutines.runBlocking
 import org.bson.types.ObjectId
+import java.time.Duration
 
 object DockerService {
     private val client by lazy {
@@ -42,102 +38,142 @@ object DockerService {
     val ObjectId.asVolumeName
         get() = "data_$this"
 
-    fun create(containerName: String,volumeName: String,image: String): String {
+    private fun findContainerById(containerId: String, includeStopped: Boolean = true) =
+        client.listContainersCmd()
+            .withIdFilter(listOf(containerId))
+            .withShowAll(includeStopped)
+            .exec().firstOrNull()
+
+    fun create(containerName: String, volumeName: String, image: String): String {
         val port = randomPort
         client.createVolumeCmd().withName(volumeName).exec()
         return client.createContainerCmd(image)
             .withName(containerName)
             .withEnv(listOf("EULA=TRUE"))
-            .withExposedPorts(ExposedPort(25565))
+            .withExposedPorts(ExposedPort(65232))
             .withHostConfig(
                 HostConfig.newHostConfig()
-                    .withPortBindings(parse("$port:25565"))
+                    .withPortBindings(parse("$port:65232"))
                     .withBinds(Bind.parse("$volumeName:/data"))
-                    .withCpuCount(1L)  // Limit to 2 CPUs
+                    .withCpuCount(2L)  // Limit to 2 CPUs
                     .withMemory(2L * 1024 * 1024 * 1024)  // 2GB RAM limit
             )
             .exec().id
     }
-    fun delete(volume: String,containerId: String){
+
+    fun delete(volume: String, containerId: String) {
+        // First, try to force stop and remove the container if it exists
+        findContainerById(containerId)?.let { container ->
+            try {
+                // Force kill container if it's running
+                if (container.state == "running") {
+                    client.killContainerCmd(container.id).exec()
+                }
+                // Force remove the container
+                client.removeContainerCmd(container.id)
+                    .withForce(true)
+                    .withRemoveVolumes(true)
+                    .exec()
+            } catch (e: Exception) {
+                lgr.warn { "Error force stopping/removing container ${container.id}: ${e.message}" }
+            }
+        }
+
+        // Then try to remove the volume
         try {
-            // First, try to stop and remove the container if it exists
-            client.listContainersCmd()
-                .withIdFilter(listOf(containerId))
-                .withShowAll(true) // Include stopped containers
-                .exec().firstOrNull()?.let { container ->
-                    try {
-                        // Stop container if it's running
-                        if (container.state == "running") {
-                            client.stopContainerCmd(container.id).exec()
-                        }
-                        // Remove the container
-                        client.removeContainerCmd(container.id).exec()
-                    } catch (e: Exception) {
-                        println("Error stopping/removing container ${container.id}: ${e.message}")
+            client.removeVolumeCmd(volume)
+                .exec()
+        } catch (e: Exception) {
+            lgr.warn { "Error removing volume $volume: ${e.message}" }
+            // Volume might not exist or be in use, continue anyway
+        }
+    }
+    fun start(containerId: String) {
+
+            client.startContainerCmd(containerId).exec()
+
+    }
+
+    fun stop(containerId: String) {
+        // Check if container exists first
+        val container = findContainerById(containerId)
+        if (container == null) {
+            lgr.warn { "Container $containerId not found, skipping stop operation" }
+            return
+        }
+
+        // Only stop if the container is actually running
+        if (container.state.equals("running", ignoreCase = true)) {
+            client.stopContainerCmd(containerId).exec()
+            lgr.info { "Successfully stopped container $containerId" }
+        } else {
+            lgr.warn { "Container $containerId is already in state: ${container.state}, skipping stop operation" }
+        }
+
+    }
+    fun getLog(containerId: String, page: Int): String {
+        return try {
+            val callback = object : Adapter<Frame>() {
+                val logs = mutableListOf<String>()
+
+                override fun onNext(frame: Frame) {
+                    val logLine = String(frame.payload).trim()
+                    if (logLine.isNotEmpty()) {
+                        logs.add(logLine)
                     }
                 }
+            }
 
-            // Then try to remove the volume
-            try {
-                client.removeVolumeCmd(volume).exec()
-            } catch (e: Exception) {
-                println("Error removing volume $volume: ${e.message}")
-                // Volume might not exist or be in use, continue anyway
+            // Get all logs first
+            client.logContainerCmd(containerId)
+                .withStdOut(true)
+                .withStdErr(true)
+                .exec(callback)
+                .awaitCompletion()
+
+            // Reverse logs to show most recent first, then paginate
+            val allLogs = callback.logs.reversed()
+            val startIndex = page * 50
+            val endIndex = (page + 1) * 50
+
+            // Return the requested page of logs
+            if (startIndex >= allLogs.size) {
+                ""
+            } else {
+                val pageEndIndex = minOf(endIndex, allLogs.size)
+                allLogs.subList(startIndex, pageEndIndex).joinToString("\n")
             }
         } catch (e: Exception) {
-            println("Error in Docker delete operation: ${e.message}")
-            // Don't throw the exception, just log it
+            lgr.warn { "Error getting logs for container $containerId: ${e.message}" }
+            ""
         }
     }
+    fun pause(containerId: String) {
 
-    fun start(containerId: String){
-        try {
-            client.startContainerCmd(containerId).exec()
+        client.pauseContainerCmd(containerId).exec()
+
+    }
+
+    fun unpause(containerId: String) {
+        client.unpauseContainerCmd(containerId).exec()
+    }
+
+    fun isStarted(containerId: String): Boolean {
+        return try {
+            val container = findContainerById(containerId)
+            container?.state?.equals("running", ignoreCase = true) == true
         } catch (e: Exception) {
-            println("Error starting container $containerId: ${e.message}")
-            throw e
+            lgr.warn { "Error checking container $containerId status: ${e.message}" }
+            false
         }
     }
 
-    fun stop(containerId: String){
-        try {
-            client.stopContainerCmd(containerId).exec()
-        } catch (e: Exception) {
-            println("Error stopping container $containerId: ${e.message}")
-            // Don't throw for stop operations, container might already be stopped
-        }
-    }
-
-    fun pause(containerId: String){
-        try {
-            client.pauseContainerCmd(containerId).exec()
-        } catch (e: Exception) {
-            println("Error pausing container $containerId: ${e.message}")
-            throw e
-        }
-    }
-
-    fun unpause(containerId: String){
-        try {
-            client.unpauseContainerCmd(containerId).exec()
-        } catch (e: Exception) {
-            println("Error unpausing container $containerId: ${e.message}")
-            throw e
-        }
-    }
-
-
-    fun Room.getVolumeSize(): Long {
+    /*fun Room.getVolumeSize(): Long {
         return try {
             // Check if container is running first
-            val containers = client.listContainersCmd()
-                .withIdFilter(listOf(containerId))
-                .exec()
+            val container = findContainerById(containerId, includeStopped = false) ?: return 0L
 
             // If container is not found or not running, return 0
-            if (containers.isEmpty()) {
-                return 0L
-            }
 
             // Execute du command in the existing running container
             val execCreateResponse = client.execCreateCmd(containerId)
@@ -162,6 +198,6 @@ object DockerService {
             e.printStackTrace()
             0L
         }
-    }
+    }*/
 
 }

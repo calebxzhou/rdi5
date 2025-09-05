@@ -2,7 +2,6 @@ package calebxzhou.rdi
 
 import calebxzhou.rdi.cmd.DebugCommand
 import calebxzhou.rdi.cmd.SpeakCommand
-import calebxzhou.rdi.cmd.SpecCommand
 import calebxzhou.rdi.model.RGamePayload
 import calebxzhou.rdi.model.RGamePayload.Companion.handleData
 import calebxzhou.rdi.util.mcComp

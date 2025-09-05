@@ -11,14 +11,7 @@ data class Room(
     val name: String,
     val score: Int=0,
     val members: List<Member> = arrayListOf(),
-    val blockStates: List<RBlockState> = arrayListOf(),
-    var firmSections: List<FirmSection> = arrayListOf()
 ){
-    @Volatile
-    //临时id 最大0xff
-    var tempId: Byte=0
-    @Volatile
-    var onlineMembers = hashMapOf<Byte, RAccount.Dto>()
     @Serializable
     data class Member(
         @Contextual

@@ -54,23 +54,23 @@ class MojangSkinFragment : RFragment("导入正版皮肤") {
             this += capeCheckBox
 
             textButton("导入") {
-                importMojangSkin()
+                importMojangSkin(this)
             }
         }
     }
 
-    private fun importMojangSkin() {
+    private fun importMojangSkin(layout: LinearLayout) {
         val name = nameInput.text.toString().trim()
         val importSkin = skinCheckBox.isChecked
         val importCape = capeCheckBox.isChecked
 
         if (name.isEmpty()) {
-            toast("请输入玩家名")
+            layout.toast("请输入玩家名")
             return
         }
 
         if (!importSkin && !importCape) {
-            toast("请选择皮肤或披风")
+            layout.toast("请选择皮肤或披风")
             return
         }
 

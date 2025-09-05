@@ -12,9 +12,9 @@ class GameContext(
     val net: ChannelHandlerContext
 ){
     fun forEachMember(handler: (Byte, RAccount) -> Unit) {
-        room.onlineMembers.forEach { tmpId, member ->
+        /*room.onlineMembers.forEach { tmpId, member ->
             if(member._id == net.account?._id) return@forEach // 不发送给自己
             handler(tmpId,member)
-        }
+        }*/
     }
 }

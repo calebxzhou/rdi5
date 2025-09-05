@@ -91,9 +91,6 @@ val ResourceLocation.bitmap: Bitmap
 fun View.toast(msg: String, duration: Int = 2000) {
     Toast.makeText(context,msg, duration).show()
 }
-fun Fragment.toast(msg: String, duration: Int = 2000) {
-    Toast.makeText(fctx,msg, duration).show()
-}
 fun toast(context: Context, msg: String, duration: Int = 2000) {
     Toast.makeText(context,msg, duration).show()
 }

@@ -7,6 +7,7 @@ import calebxzhou.rdi.ihq.model.FirmSectionData
 import calebxzhou.rdi.ihq.model.Room
 import calebxzhou.rdi.ihq.net.e500
 import calebxzhou.rdi.ihq.net.got
+import calebxzhou.rdi.ihq.net.initGetParams
 import calebxzhou.rdi.ihq.net.ok
 import calebxzhou.rdi.ihq.net.uid
 import calebxzhou.rdi.ihq.service.DockerService.asVolumeName
@@ -89,12 +90,13 @@ object RoomService {
             ),
             containerId = contId,
         )
-        val iid = dbcl.insertOne(
+        dbcl.insertOne(
             room
         ).insertedId?.asObjectId()?.value?.toString() ?: let {
-            call.e500("创建房间失败：iid=null")
+            call.e500("创建房间失败：rid=null")
             return
         }
+        DockerService.start(contId)
         call.ok(serdesJson.encodeToString(room))
     }
 
@@ -109,9 +111,9 @@ object RoomService {
 
             // Then try to clean up Docker resources (don't let Docker errors prevent room deletion)
             try {
-                DockerService.stop(room.containerId)
                 DockerService.delete("data_${room._id}", room.containerId)
             } catch (e: Exception) {
+                e.printStackTrace()
                 // Log Docker cleanup failure but don't fail the entire operation
                 println("Warning: Failed to clean up Docker resources for room ${room._id}: ${e.message}")
             }
@@ -269,13 +271,26 @@ object RoomService {
 
     suspend fun visit(call: ApplicationCall) {
         val params = call.receiveParameters()
-        val iid = ObjectId(params got "iid")
-        getById(iid)?.let { island ->
+        val rid = ObjectId(params got "rid")
+        getById(rid)?.let { island ->
             //  rconPost("spectator ${call.uid}")
             //   rconPost("tp ${call.uid} posL rdi:i_${island._id},${island.homePos}")
             call.ok()
         } ?: throw RequestError("没这个岛")
     }
 
-
+    suspend fun isServerStarted(call: ApplicationCall) {
+        val params = call.initGetParams()
+        val rid = ObjectId(params got "rid")
+        getById(rid)?.let { room ->
+            call.ok(DockerService.isStarted(room.containerId).toString())
+        } ?: throw RequestError("没这个岛")
+    }
+    suspend fun getServerLog(call: ApplicationCall){
+        val params = call.initGetParams()
+        val page = params got "page"
+        getJoinedRoom(call.uid)?.let { room ->
+            call.ok(DockerService.getLog(room.containerId,page.toInt()))
+        } ?: throw RequestError("没这个岛")
+    }
 }
