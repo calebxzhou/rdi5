@@ -5,7 +5,9 @@ bin
 .metadata
 .classpath
 .project
-
+*.log
+*.log.gz
+logs
 # idea
 out
 *.ipr

@@ -3,6 +3,8 @@ package calebxzhou.rdi.ui2
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.ui2.frag.ProfileFragment
+import calebxzhou.rdi.ui2.frag.RoomFragment
+import calebxzhou.rdi.ui2.frag.SelectAccountFragment
 import calebxzhou.rdi.ui2.frag.ServerFragment
 import icyllis.modernui.ModernUI
 import icyllis.modernui.TestFragment
@@ -24,7 +26,7 @@ fun main() {
     ModernUI().use { app ->
         app.run(
 
-            ServerFragment(RServer.OFFICIAL_DEBUG)
+            ProfileFragment()
         )
     }
     AudioManager.getInstance().close()

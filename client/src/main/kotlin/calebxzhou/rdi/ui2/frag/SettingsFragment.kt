@@ -7,6 +7,7 @@ import calebxzhou.rdi.util.go
 import calebxzhou.rdi.util.mc
 import calebxzhou.rdi.util.mcComp
 import calebxzhou.rdi.util.renderThread
+import icyllis.modernui.R.attr.button
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.widget.LinearLayout
 import net.caffeinemc.mods.sodium.client.gui.SodiumOptionsGUI
@@ -18,9 +19,40 @@ import net.neoforged.neoforge.client.gui.ModListScreen
 import org.embeddedt.embeddium.impl.gui.EmbeddiumVideoOptionsScreen
 import org.lwjgl.opengl.GL
 
-class SettingsFragment: RFragment("设置") {
+class SettingsFragment : RFragment("设置") {
     val options = mc.options
-     override fun initContent() {
+
+    init {
+        bottomOptionsConfig = {
+            "\uEB2D 模组" with { mc go ModListScreen(mc.screen) }
+            "\uEB29  资源包" with {
+                mc go PackSelectionScreen(mc.resourcePackRepository, {
+                    options.updateResourcePacks(it)
+                    mc.popGuiLayer()
+                }, mc.resourcePackDirectory, "选择资源包".mcComp)
+            }
+            "\uEA7A  画质" with {
+                renderThread {
+                    mc go SodiumOptionsGUI.createScreen(mc.screen)
+                }
+            }
+
+            "\uF03D  视野" with  {
+                mc go FovFragment()
+            }
+            "\uE638  音频" with {
+                mc go SoundOptionsScreen(mc.screen, options)
+            }
+            "\uF11C  键位" with {
+                mc go ControlsScreen(mc.screen, options)
+            }
+            "\uF29A  辅助" with {
+                mc go AccessibilityOptionsScreen(mc.screen, options)
+            }
+        }
+    }
+
+    override fun initContent() {
         contentLayout.apply {
             linearLayout {
                 orientation = LinearLayout.VERTICAL
@@ -32,52 +64,9 @@ class SettingsFragment: RFragment("设置") {
                     paddingDp(16)
 
 
-                    // First row - 3 buttons
-                    iconButton("plugin", "模组") {
-                        mc go ModListScreen(mc.screen)
-                    }
-                    iconButton("resources", "资源包") {
-                        mc go PackSelectionScreen(mc.resourcePackRepository, {
-                            options.updateResourcePacks(it)
-                            mc.popGuiLayer()
-                        }, mc.resourcePackDirectory, "选择资源包".mcComp)
-                    }
-                    iconButton("video", "画质") {
-                        try {
-                            //先尝试sodium
-                            renderThread {
-                                mc go SodiumOptionsGUI.createScreen(mc.screen)
-                            }
-                        }catch (e:ClassNotFoundException) {
-                            //找不到再embeddium
-                            try {
-                                renderThread {
-                                    GL.createCapabilities()
-                                    mc go EmbeddiumVideoOptionsScreen(mc.screen, EmbeddiumVideoOptionsScreen.makePages())
-                                }
-                            } catch (e: Exception) {
-                                alertErr("请安装Sodium/Embeddium")
-                            }
-                        }
-
-
-                    }
                 }
                 linearLayout {
-                    gravity = Gravity.CENTER
-                    // Second row - 4 buttons
-                    iconButton("camera","视野") {
-                        mc go FovFragment()
-                    }
-                    iconButton("sound",text = "音频"){
-                        mc go SoundOptionsScreen(mc.screen,options)
-                    }
-                    iconButton("controller",text = "键位"){
-                        mc go ControlsScreen(mc.screen,options)
-                    }
-                    iconButton("accessibility",text = "辅助"){
-                        mc go AccessibilityOptionsScreen(mc.screen,options)
-                    }
+
                 }
             }
         }

@@ -87,7 +87,7 @@ class WardrobeFragment : RFragment("衣柜") {
                         refreshSkins()
                     }
                 }
-                textButton("导入正版皮肤", onClick = { mc go (MojangSkinFragment()) })
+                button("导入正版皮肤", onClick = { mc go (MojangSkinFragment()) })
 
                 capeBox = checkBox(
                     msg = "披风",

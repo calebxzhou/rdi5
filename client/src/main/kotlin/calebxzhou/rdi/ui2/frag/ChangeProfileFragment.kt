@@ -6,7 +6,7 @@ import calebxzhou.rdi.ui2.component.REditPassword
 import calebxzhou.rdi.ui2.component.REditText
 import calebxzhou.rdi.ui2.editPwd
 import calebxzhou.rdi.ui2.editText
-import calebxzhou.rdi.ui2.textButton
+import calebxzhou.rdi.ui2.button
 
 class ChangeProfileFragment: RFragment("修改信息") {
     val account = RAccount.now ?: RAccount.DEFAULT
@@ -22,7 +22,7 @@ class ChangeProfileFragment: RFragment("修改信息") {
             /*qqEdit = editText("QQ号") {
                 setText(account.qq)
             }*/
-            textButton("修改"){onChangeClicked()}
+            button("修改"){onChangeClicked()}
         }
     }
     //不允许修改qq

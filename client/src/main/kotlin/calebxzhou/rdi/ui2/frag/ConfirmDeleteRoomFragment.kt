@@ -4,13 +4,12 @@ import calebxzhou.rdi.model.Room
 import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.ui2.component.REditText
 import calebxzhou.rdi.ui2.editText
-import calebxzhou.rdi.ui2.textButton
+import calebxzhou.rdi.ui2.button
 import calebxzhou.rdi.ui2.toast
 import calebxzhou.rdi.util.copyToClipboard
 import calebxzhou.rdi.util.go
 import calebxzhou.rdi.util.mc
 import calebxzhou.rdi.util.uiThread
-import icyllis.modernui.widget.Toast
 
 class ConfirmDeleteRoomFragment(val room: Room,val server: RServer): RFragment("确认删除房间 ${room.name}"){
     init {
@@ -23,10 +22,10 @@ class ConfirmDeleteRoomFragment(val room: Room,val server: RServer): RFragment("
             idInput = editText("输入你的房间ID ${room._id}",400f){
 
             }
-            textButton("删除"){
+            button("删除"){
                 if(idInput.text.toString() != room._id.toString()){
                     alertErr("房间ID输入错误")
-                    return@textButton
+                    return@button
                 }
                 confirm("真的要删除吗？所有的进度 存档等数据都会被永久删除！"){
 

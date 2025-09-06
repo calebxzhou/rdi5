@@ -1,6 +1,7 @@
 package calebxzhou.rdi.ui2.component
 
 import calebxzhou.rdi.model.HwSpec
+import calebxzhou.rdi.ui2.Fonts
 import calebxzhou.rdi.ui2.iconDrawable
 import calebxzhou.rdi.ui2.leadingIcon
 import calebxzhou.rdi.ui2.linearLayout
@@ -9,8 +10,11 @@ import calebxzhou.rdi.ui2.textView
 import calebxzhou.rdi.util.toFixed
 import com.mojang.datafixers.functions.Functions.comp
 import icyllis.modernui.core.Context
+import icyllis.modernui.view.View
+import icyllis.modernui.view.ViewGroup
 import icyllis.modernui.widget.LinearLayout
 import icyllis.modernui.widget.ScrollView
+import icyllis.modernui.widget.TextView
 import kotlin.math.pow
 import kotlin.math.roundToInt
 
@@ -19,6 +23,7 @@ class HwSpecView(context: Context) : ScrollView(context) {
 
     init {
         val container = linearLayout {
+
             orientation = LinearLayout.VERTICAL
             paddingDp(8)
         }
@@ -42,6 +47,21 @@ class HwSpecView(context: Context) : ScrollView(context) {
             }
             spec.videoMode.forEach {
                 textView(it)
+            }
+        }
+
+        // Apply code typeface to all TextViews without modifying each creation site
+        applyTypefaceRecursive(container, Fonts.CODE)
+    }
+
+    private fun applyTypefaceRecursive(view: View, font: Fonts) {
+        when (view) {
+            is TextView -> view.typeface = font.typeface
+            is ViewGroup -> {
+                val count = view.childCount
+                for (i in 0 until count) {
+                    applyTypefaceRecursive(view.getChildAt(i), font)
+                }
             }
         }
     }

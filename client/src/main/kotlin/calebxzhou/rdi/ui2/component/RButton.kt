@@ -1,5 +1,6 @@
 package calebxzhou.rdi.ui2.component
 
+import icyllis.modernui.R
 import icyllis.modernui.core.Context
 import icyllis.modernui.view.ContextMenu
 import icyllis.modernui.view.Menu
@@ -9,9 +10,9 @@ import icyllis.modernui.widget.Button
 open class RButton(
     context: Context,
     val onClick: (RButton) -> Unit = {},
-): Button(context) {
+): Button(context,null, R.attr.buttonStyle,R.style.Widget_Material3_Button_IconButton) {
     private var menuItems = listOf<Pair<String, () -> Unit>>()
-    private var   mContextMenuAnchorX = 0f;
+    private var mContextMenuAnchorX = 0f;
     private var mContextMenuAnchorY = 0f
     var contextMenu: (List<Pair<String, () -> Unit>>) -> Unit = { items ->
         menuItems = items

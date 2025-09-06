@@ -4,7 +4,7 @@ import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.model.Room
 import calebxzhou.rdi.ui2.headButton
-import calebxzhou.rdi.ui2.textButton
+import calebxzhou.rdi.ui2.button
 import calebxzhou.rdi.util.go
 import calebxzhou.rdi.util.mc
 
@@ -13,7 +13,7 @@ class RoomCenterFragment(val account: RAccount, val server: RServer,val room: Ro
         contentLayout.apply {
 
             room.members.forEach { headButton(it.id) }
-            textButton("邀请成员"){mc go InviteMemberFragment() }
+            button("邀请成员"){mc go InviteMemberFragment() }
         }
     }
 }

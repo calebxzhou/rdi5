@@ -1,9 +1,11 @@
 package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.ui2.*
+import calebxzhou.rdi.ui2.component.MaterialButton
 import calebxzhou.rdi.util.mc
 import calebxzhou.rdi.util.set
 import icyllis.modernui.fragment.Fragment
+import icyllis.modernui.graphics.drawable.ColorDrawable
 import icyllis.modernui.mc.MuiScreen
 import icyllis.modernui.mc.UIManager
 import icyllis.modernui.util.DataSet
@@ -12,6 +14,7 @@ import icyllis.modernui.view.LayoutInflater
 import icyllis.modernui.view.View
 import icyllis.modernui.view.ViewGroup
 import icyllis.modernui.widget.Button
+import icyllis.modernui.widget.FrameLayout
 import icyllis.modernui.widget.LinearLayout
 import net.minecraft.client.Minecraft
 
@@ -25,6 +28,35 @@ abstract class RFragment(var title: String = "") : Fragment() {
     protected lateinit var contentLayout: LinearLayout
     private var _contentView: View? = null
 
+    // Bottom options configuration - if null, no bottom options will be rendered
+    open var bottomOptionsConfig: (BottomOptionsBuilder.() -> Unit)? = null
+
+    // Builder class for bottom options DSL - using "with" syntax and colored options
+    class BottomOptionsBuilder {
+        private val buttons = mutableListOf<ButtonData>()
+
+        infix fun String.with(handler: () -> Unit) {
+            buttons.add(ButtonData(this, null, handler))
+        }
+
+        infix fun String.colored(color: MaterialColor): ColoredButtonBuilder {
+            return ColoredButtonBuilder(this, color)
+        }
+
+        inner class ColoredButtonBuilder(private val text: String, private val color: MaterialColor) {
+            infix fun with(handler: () -> Unit) {
+                buttons.add(ButtonData(text, color, handler))
+            }
+        }
+
+        internal fun getButtons() = buttons
+    }
+
+    data class ButtonData(
+        val text: String,
+        val color: MaterialColor?,
+        val handler: () -> Unit
+    )
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: DataSet?): View {
         // If caching is enabled and we have a cached view, return it
@@ -32,49 +64,60 @@ abstract class RFragment(var title: String = "") : Fragment() {
             return _contentView!!
         }
 
-        // Create new content view
-        return LinearLayout(fctx).apply {
-
-            orientation = LinearLayout.VERTICAL
+        // Create new content view - use FrameLayout as root to allow bottom positioning
+        return FrameLayout(fctx).apply {
+            // 20% dim background for better contrast with light content
+            background = ColorDrawable(0x33000000.toInt())
             paddingDp(16)
-            // Create frame layout for back button and title
-            if (showTitle || showCloseButton) {
-                frameLayout() {
-                    layoutParams = linearLayoutParam {
-                        bottomMargin = dp(32f)
-                    }
-                    // Title (add first to be in the background)
-                    if (showTitle) {
-                        textView() {
-                            text = title
-                            textSize = 24f
-                            layoutParams = linearLayoutParam {
+
+            // Main content in a LinearLayout
+            linearLayout {
+                orientation = LinearLayout.VERTICAL
+                layoutParams = frameLayoutParam(PARENT, PARENT)
+
+                // Create frame layout for back button and title
+                if (showTitle || showCloseButton) {
+                    frameLayout() {
+                        layoutParams = linearLayoutParam {
+                            bottomMargin = dp(32f)
+                        }
+                        // Title (add first to be in the background)
+                        if (showTitle) {
+                            textView {
+                                text = title
+                                textSize = 24f
+                                layoutParams = linearLayoutParam {
+                                    gravity = Gravity.CENTER
+                                }
                                 gravity = Gravity.CENTER
                             }
-                            gravity = Gravity.CENTER
                         }
-                    }
-                    // Back button (add last to be on top)
-                    if (showCloseButton) {
-
-                        this += Button(fctx).apply {
-                            background = iconDrawable("back")
-                            layoutParams = linearLayoutParam(dp(32f), dp(32f)) {
-                                gravity = Gravity.START or Gravity.CENTER_VERTICAL
-                            }
-                            setOnClickListener {
-                                close()
-                                //parentFragmentManager.popBackStack()
+                        // Back button (add last to be on top)
+                        if (showCloseButton) {
+                            this += Button(fctx).apply {
+                                background = iconDrawable("back")
+                                layoutParams = linearLayoutParam(dp(32f), dp(32f)) {
+                                    gravity = Gravity.START or Gravity.CENTER_VERTICAL
+                                }
+                                setOnClickListener {
+                                    close()
+                                }
                             }
                         }
                     }
+                } else {
+                    initHeader()
                 }
-            } else {
-                initHeader()
+
+                contentLayout = this
+                initContent()
             }
 
-            contentLayout = this
-            initContent()
+            // Render bottom options if configured - positioned at actual bottom
+            bottomOptionsConfig?.let { config ->
+                bottomOptions(config)
+            }
+
             // Store the view in cache if caching is enabled
             if (contentViewCache) {
                 _contentView = this
@@ -83,7 +126,6 @@ abstract class RFragment(var title: String = "") : Fragment() {
     }
 
     open fun close() {
-        //UIManager.getInstance().onBackPressedDispatcher.onBackPressed()
         if (Minecraft.getInstance() == null) {
             UIManager.getInstance().onBackPressedDispatcher.onBackPressed()
             return
@@ -101,4 +143,51 @@ abstract class RFragment(var title: String = "") : Fragment() {
         //只有用到linear layout的fragment才需要写这个，否则直接override onCreateView即可
     }
 
+    //底部一堆按钮 - 使用connected button styling
+    private fun ViewGroup.bottomOptions(
+        config: BottomOptionsBuilder.() -> Unit
+    ) {
+        val builder = BottomOptionsBuilder()
+        builder.config()
+        val buttons = builder.getButtons()
+
+        if (buttons.isEmpty()) return
+
+        linearLayout {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            layoutParams = frameLayoutParam(PARENT, SELF).apply {
+                gravity = Gravity.BOTTOM
+                bottomMargin = dp(16f)
+            }
+
+            // Create buttons that stick together in material design style
+            buttons.forEachIndexed { index, buttonData ->
+                val button = MaterialButton(context,buttonData.color?: MaterialColor.WHITE) { buttonData.handler() }
+                button.text = buttonData.text
+                // Apply material color if provided
+
+                button.layoutParams = linearLayoutParam(SELF, SELF).apply {
+                    if (index > 0) leftMargin = dp(12f)
+                }
+                addView(button)
+            }
+        }
+    }
+
+    // No longer needed: color luminance helpers moved into MaterialButton
 }
+
+/*
+Example usage with "with" DSL:
+
+class MyFragment : RFragment("Title") {
+    init {
+        bottomOptionsConfig = {
+            "Save" with { saveData() }
+            "Cancel" with { close() }
+            "Settings" with { openSettings() }
+        }
+    }
+}
+*/

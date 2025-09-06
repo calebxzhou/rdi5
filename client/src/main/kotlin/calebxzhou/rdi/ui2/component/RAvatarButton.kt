@@ -17,7 +17,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.bson.types.ObjectId
 
-class RPlayerHeadButton(
+class RAvatarButton(
     context: Context,
     val id: ObjectId,
     onClick: (RButton) -> Unit = {},
@@ -115,12 +115,13 @@ class RPlayerHeadButton(
     }
 
     private fun updateAvatarDrawable() {
-        val bounds = dp(32f)
+    // Smaller avatar size for a more compact look
+    val bounds = dp(24f)
         val drawable = ImageDrawable(avatar)
         drawable.bounds.set(0, 0, bounds, bounds)
         drawable.paint.isFilter = false  // Disable bilinear filtering to keep pixels sharp
 
-        setCompoundDrawablePadding(dp(8f))
+    setCompoundDrawablePadding(dp(6f))
         setCompoundDrawables(drawable, null, null, null)
         gravity = Gravity.START or Gravity.CENTER_VERTICAL
         minWidth = dp(120f)
@@ -165,6 +166,10 @@ class RPlayerHeadButton(
     init {
         text = "载入中..."
         paddingDp(16,8,16,8)
+    // Remove any default colored background; keep it visually flat/transparent
+    background = null
+    // Ensure text is white for better contrast
+    setTextColor(0xFFFFFFFF.toInt())
         updateAvatarDrawable()
         loadData()
     }

@@ -16,7 +16,6 @@ import icyllis.modernui.graphics.drawable.ImageDrawable
 import icyllis.modernui.material.MaterialCheckBox
 import icyllis.modernui.material.MaterialRadioButton
 import icyllis.modernui.mc.neoforge.MuiForgeApi
-import icyllis.modernui.view.Gravity
 import icyllis.modernui.view.KeyEvent
 import icyllis.modernui.view.View
 import icyllis.modernui.view.ViewGroup
@@ -130,17 +129,6 @@ fun ViewGroup.linearLayout(
 fun ViewGroup.radioGroup(
     init: RadioGroup.() -> Unit = {}
 ) = RadioGroup(this.context).apply(init).also { this += it }
-//底部一堆按钮
-fun ViewGroup.bottomOptions(
-    init: LinearLayout.() -> Unit = {}
-) = linearLayout {
-    orientation = LinearLayout.HORIZONTAL
-    gravity = Gravity.CENTER_HORIZONTAL
-    layoutParams = frameLayoutParam(PARENT, SELF).apply {
-        gravity = Gravity.BOTTOM
-    }
-    init()
-}
 
 fun ViewGroup.frameLayout(
     init: FrameLayout.() -> Unit = {}
@@ -163,11 +151,14 @@ fun ViewGroup.imageView(
 ) = ImageView(this.context).apply(init).also { this += it }
 
 
-fun ViewGroup.textButton(
+fun ViewGroup.button(
     msg: String,
-    init: RTextButton.() -> Unit = {},
+    init: MaterialButton.() -> Unit = {},
     onClick: (RButton) -> Unit = {},
-) = RTextButton(this.context, msg, onClick).apply(init).also { this += it }
+) = MaterialButton(this.context, MaterialColor.TEAL_100, onClick).apply{
+    text=msg
+    init()
+}.also { this += it }
 
 fun ViewGroup.editText(
     msg: String = "",
@@ -194,9 +185,9 @@ fun ViewGroup.editPwd(
 
 fun ViewGroup.headButton(
     id: ObjectId,
-    init: RPlayerHeadButton.() -> Unit = {},
+    init: RAvatarButton.() -> Unit = {},
     onClick: (RButton) -> Unit = {},
-) = RPlayerHeadButton(context, id, onClick).apply(init).also { this += it }
+) = RAvatarButton(context, id, onClick).apply(init).also { this += it }
 
 
 fun ViewGroup.radioButton(
@@ -206,6 +197,7 @@ fun ViewGroup.radioButton(
     init()
     text=msg
 }.also { this += it }
+
 
 
 fun ViewGroup.iconButton(

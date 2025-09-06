@@ -69,9 +69,12 @@ class TitleFragment : RFragment() {
                         gravity = Gravity.TOP or Gravity.START
                     }
                 }
-
+                textView {
+                    text = "SkyPro"
+                    typeface = Fonts.CODE.typeface
+                }
                 // Add spacer to push Enter tip to the end
-                this +=View(context).apply {
+                this += View(context).apply {
                     layoutParams = linearLayoutParam {
                         width = 0
                         height = SELF
@@ -83,6 +86,7 @@ class TitleFragment : RFragment() {
                 textView() {
                     text = "按 Enter ➡️"
                     setTextColor(0xFFFFFFFF.toInt())
+                    typeface = Fonts.ART.typeface
                     textSize = 24f
                     isClickable = true
                     setOnClickListener {

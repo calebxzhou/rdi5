@@ -50,14 +50,14 @@ class FovFragment : RFragment("视野") {
                 layoutParams = linearLayoutParam {
                     gravity = Gravity.CENTER_HORIZONTAL
                 }
-                textButton("超超广角") { bar.progress = 120 }
-                textButton("超广角") { bar.progress = 103 }
-                textButton("广角") { bar.progress = 81 }
-                textButton("标准") { bar.progress = 54 }
-                textButton("中焦") { bar.progress = 40 }
-                textButton("长焦") { bar.progress = 24 }
-                textButton("超长焦") { bar.progress = 6 }
-                textButton("超超长焦") { bar.progress = 2 }
+                button("超超广角") { bar.progress = 120 }
+                button("超广角") { bar.progress = 103 }
+                button("广角") { bar.progress = 81 }
+                button("标准") { bar.progress = 54 }
+                button("中焦") { bar.progress = 40 }
+                button("长焦") { bar.progress = 24 }
+                button("超长焦") { bar.progress = 6 }
+                button("超超长焦") { bar.progress = 2 }
             }
         }
         updateFocusDisp()

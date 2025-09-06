@@ -53,7 +53,7 @@ class MojangSkinFragment : RFragment("导入正版皮肤") {
             }
             this += capeCheckBox
 
-            textButton("导入") {
+            button("导入") {
                 importMojangSkin(this)
             }
         }

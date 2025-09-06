@@ -19,16 +19,28 @@ class SelectAccountFragment(val server: RServer) : RFragment("选择账号") {
     val creds = LocalCredentials.read()
     //否则登录账号回来看不见
     override var contentViewCache = false
+
     init {
         RServer.now = server
+
+        bottomOptionsConfig = {
+            "➕ 添加旧号" with { mc go LoginFragment() }
+            "✏ 注册新号" colored MaterialColor.LIGHT_GREEN_900 with { mc go RegisterFragment() }
+            "⚙ 设置" colored MaterialColor.BLUE_900 with { mc go SettingsFragment() }
+            /*"自由创造" with {
+                renderThread {
+                    LevelService.openFlatLevel()
+                }
+            }*/
+        }
     }
 
     override fun close() {
         mc go TitleFragment()
     }
+
     override fun initContent() {
         contentLayout.apply {
-            frameLayout {
                 layoutParams = frameLayoutParam(PARENT, PARENT)
 
                 linearLayout {
@@ -57,24 +69,6 @@ class SelectAccountFragment(val server: RServer) : RFragment("选择账号") {
                     }
                 }
 
-                // Bottom buttons container
-                bottomOptions {
-                    iconButton(icon = "plus", text = "添加", onClick = {
-                        mc go LoginFragment()
-                    })
-                    iconButton(icon = "ssp", text = "注册", onClick  = {
-                        mc go RegisterFragment()
-                    })
-                    iconButton(icon = "settings", text = "设置", onClick = {
-                        mc go SettingsFragment()
-                    })
-                    iconButton(icon = "island", text = "自由创造", onClick = {
-                        renderThread {
-                            LevelService.openFlatLevel()
-                        }
-                    })
-                }
-            }
         }
 
     }

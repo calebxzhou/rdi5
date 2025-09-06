@@ -2,16 +2,14 @@ package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.net.body
-import calebxzhou.rdi.ui2.bottomOptions
+import calebxzhou.rdi.ui2.Fonts
 import calebxzhou.rdi.ui2.fctx
-import calebxzhou.rdi.ui2.iconButton
 import calebxzhou.rdi.util.ioScope
 import calebxzhou.rdi.util.uiThread
 import icyllis.modernui.graphics.Color
 import icyllis.modernui.graphics.drawable.ColorDrawable
 import icyllis.modernui.text.SpannableStringBuilder
 import icyllis.modernui.text.Spanned
-import icyllis.modernui.text.Typeface
 import icyllis.modernui.text.style.ForegroundColorSpan
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.view.View
@@ -32,6 +30,14 @@ class ServerFragment(val server: RServer) : RFragment("服务端") {
     private val YELLOW_COLOR = Color.rgb(255, 255, 0)   // Yellow for warnings
     private val RED_COLOR = Color.rgb(255, 0, 0)        // Red for errors
 
+    init {
+        bottomOptionsConfig = {
+            "启动" with { }
+            "停止" with { }
+            "升级/重装" with { }
+        }
+    }
+
     override fun initContent() {
         contentLayout.apply {
             gravity = Gravity.CENTER
@@ -42,11 +48,7 @@ class ServerFragment(val server: RServer) : RFragment("服务端") {
                 )
                 background = ColorDrawable(Color.rgb(0, 0, 0)) // Black background
                 console = TextView(fctx).apply {
-                    Typeface.getSystemFont("Sarasa Mono SC").let {
-                       // if(it != Typeface.){
-                            typeface = it
-                       // }
-                    }
+                    typeface = Fonts.CODE.typeface
 
                     layoutParams = LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT,
@@ -61,12 +63,6 @@ class ServerFragment(val server: RServer) : RFragment("服务端") {
                         loadMoreLogs()
                     }
                 }
-            }
-
-            bottomOptions {
-                iconButton("play","启动")
-                iconButton("stop","停止")
-                iconButton("zip","升级/重装")
             }
             addView(scrollView)
         }
@@ -176,8 +172,8 @@ class ServerFragment(val server: RServer) : RFragment("服务端") {
                         val remainingText = line.substring(closeBracketPos + 1)
                         when {
                             remainingText.contains("ERROR", ignoreCase = true) ||
-                            remainingText.contains("SEVERE", ignoreCase = true) ||
-                            remainingText.contains("FATAL", ignoreCase = true) -> {
+                                    remainingText.contains("SEVERE", ignoreCase = true) ||
+                                    remainingText.contains("FATAL", ignoreCase = true) -> {
                                 builder.setSpan(
                                     ForegroundColorSpan(RED_COLOR),
                                     startPos + closeBracketPos + 1,
@@ -185,8 +181,9 @@ class ServerFragment(val server: RServer) : RFragment("服务端") {
                                     Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
                                 )
                             }
+
                             remainingText.contains("WARN", ignoreCase = true) ||
-                            remainingText.contains("WARNING", ignoreCase = true) -> {
+                                    remainingText.contains("WARNING", ignoreCase = true) -> {
                                 builder.setSpan(
                                     ForegroundColorSpan(YELLOW_COLOR),
                                     startPos + closeBracketPos + 1,
@@ -194,6 +191,7 @@ class ServerFragment(val server: RServer) : RFragment("服务端") {
                                     Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
                                 )
                             }
+
                             else -> {
                                 builder.setSpan(
                                     ForegroundColorSpan(WHITE_COLOR),
@@ -207,9 +205,9 @@ class ServerFragment(val server: RServer) : RFragment("服务端") {
                 }
                 // Lines without timestamps but with error indicators
                 line.contains("ERROR", ignoreCase = true) ||
-                line.contains("SEVERE", ignoreCase = true) ||
-                line.contains("FATAL", ignoreCase = true) ||
-                line.contains("Exception", ignoreCase = true) -> {
+                        line.contains("SEVERE", ignoreCase = true) ||
+                        line.contains("FATAL", ignoreCase = true) ||
+                        line.contains("Exception", ignoreCase = true) -> {
                     builder.setSpan(
                         ForegroundColorSpan(RED_COLOR),
                         startPos,
@@ -219,7 +217,7 @@ class ServerFragment(val server: RServer) : RFragment("服务端") {
                 }
                 // Lines without timestamps but with warning indicators
                 line.contains("WARN", ignoreCase = true) ||
-                line.contains("WARNING", ignoreCase = true) -> {
+                        line.contains("WARNING", ignoreCase = true) -> {
                     builder.setSpan(
                         ForegroundColorSpan(YELLOW_COLOR),
                         startPos,

@@ -7,7 +7,7 @@ import calebxzhou.rdi.ui2.component.REditPassword
 import calebxzhou.rdi.ui2.component.REditText
 import calebxzhou.rdi.ui2.editPwd
 import calebxzhou.rdi.ui2.editText
-import calebxzhou.rdi.ui2.textButton
+import calebxzhou.rdi.ui2.button
 import calebxzhou.rdi.util.ioScope
 import kotlinx.coroutines.launch
 
@@ -23,7 +23,7 @@ class RegisterFragment : RFragment("注册新账号") {
             qqInput = editText("QQ号")
             passwordInput = editPwd("密码")
             passwordInput2 = editPwd("确认密码")
-            textButton("注册"){onRegisterClicked()}
+            button("注册"){onRegisterClicked()}
         }
 
     }
