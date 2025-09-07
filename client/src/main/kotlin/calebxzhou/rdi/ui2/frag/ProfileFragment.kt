@@ -23,7 +23,7 @@ class ProfileFragment : RFragment("我的信息") {
 
     init {
         bottomOptionsConfig = {
-            "👚 衣柜" colored MaterialColor.PINK_300 with { mc go WardrobeFragment() }
+            "👚 衣柜" colored MaterialColor.PINK_800 with { mc go WardrobeFragment() }
             "🏠 进入房间" colored MaterialColor.LIGHT_GREEN_900 with {
                 server.hqRequest(false, "room/my", false) {
                     val body = it.body
@@ -60,11 +60,7 @@ class ProfileFragment : RFragment("我的信息") {
                 layoutParams = linearLayoutParam(SELF, SELF) {
                     gravity = Gravity.CENTER_HORIZONTAL
                 }
-
-
-                this += HwSpecView(context).apply {
-
-                }
+                this += HwSpecView(context)
             }
             setOnKeyListener { _, keyCode, event ->
                 if (keyCode == KeyEvent.KEY_1  && event.action == KeyEvent.ACTION_UP) {
