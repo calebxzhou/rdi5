@@ -1,11 +1,16 @@
 package calebxzhou.rdi.ui2.component
 
+import calebxzhou.rdi.ui2.HoldToConfirm.clearHoldToConfirm
+import calebxzhou.rdi.ui2.HoldToConfirm.holdTooltipEnabled
+import calebxzhou.rdi.ui2.HoldToConfirm.holdTooltipFormatter
+import calebxzhou.rdi.ui2.HoldToConfirm.onLongPress
 import icyllis.modernui.R
 import icyllis.modernui.core.Context
 import icyllis.modernui.view.ContextMenu
 import icyllis.modernui.view.Menu
 import icyllis.modernui.view.MotionEvent
 import icyllis.modernui.widget.Button
+ 
 
 open class RButton(
     context: Context,
@@ -14,24 +19,32 @@ open class RButton(
     private var menuItems = listOf<Pair<String, () -> Unit>>()
     private var mContextMenuAnchorX = 0f;
     private var mContextMenuAnchorY = 0f
+    // Long-press API: onLongPress(millis) { ... } + tooltip extension properties
+ /*   var longPressThresholdMs: Long = 0
+        set(value) { field = value; configureHoldExtension() }*/
+  /*  var onLongPress: ((view: RButton) -> Unit)? = null
+        set(value) { field = value; configureHoldExtension() } */
     var contextMenu: (List<Pair<String, () -> Unit>>) -> Unit = { items ->
         menuItems = items
     }
 
+    init {
+        // Ensure normal click works when hold-to-confirm is not enabled
+        setOnClickListener { onClick(this) }
+    }
+
     override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {
-        when (event.action) {
-            event.action if event.isButtonPressed(MotionEvent.BUTTON_SECONDARY) -> {
-                //显示右键菜单
-                showContextMenu(event.x,event.y)
-                return true
-            }
-            event.action if event.isButtonPressed(MotionEvent.BUTTON_PRIMARY) -> {
-                onClick(this)
-                return true
-            }
+        // Preserve right-click context menu behavior
+        if (event.isButtonPressed(MotionEvent.BUTTON_SECONDARY)) {
+            showContextMenu(event.x, event.y)
+            return true
         }
         return super.dispatchGenericMotionEvent(event)
     }
+
+
+
+
 
     override fun onCreateContextMenu(menu: ContextMenu) {
         menu.setHeaderView(this)

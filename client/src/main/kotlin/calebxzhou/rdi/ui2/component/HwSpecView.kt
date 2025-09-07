@@ -10,6 +10,7 @@ import calebxzhou.rdi.ui2.textView
 import calebxzhou.rdi.util.toFixed
 import com.mojang.datafixers.functions.Functions.comp
 import icyllis.modernui.core.Context
+import icyllis.modernui.graphics.drawable.ColorDrawable
 import icyllis.modernui.view.View
 import icyllis.modernui.view.ViewGroup
 import icyllis.modernui.widget.LinearLayout
@@ -22,6 +23,9 @@ class HwSpecView(context: Context) : ScrollView(context) {
     val spec = HwSpec.now
 
     init {
+    // 50% dim background to improve readability
+    background = ColorDrawable(0x80000000.toInt())
+
         val container = linearLayout {
 
             orientation = LinearLayout.VERTICAL

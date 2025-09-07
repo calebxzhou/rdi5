@@ -2,6 +2,7 @@ package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.MaterialButton
+import calebxzhou.rdi.ui2.component.RButton
 import calebxzhou.rdi.util.mc
 import calebxzhou.rdi.util.set
 import icyllis.modernui.fragment.Fragment
@@ -36,16 +37,45 @@ abstract class RFragment(var title: String = "") : Fragment() {
         private val buttons = mutableListOf<ButtonData>()
 
         infix fun String.with(handler: () -> Unit) {
-            buttons.add(ButtonData(this, null, handler))
+            buttons.add(ButtonData(this, null, handler, null))
         }
 
         infix fun String.colored(color: MaterialColor): ColoredButtonBuilder {
             return ColoredButtonBuilder(this, color)
         }
 
+        // Allow customizing the created button via an init block
+        infix fun String.init(block: RButton.() -> Unit): InitButtonBuilder {
+            return InitButtonBuilder(this, block)
+        }
+
         inner class ColoredButtonBuilder(private val text: String, private val color: MaterialColor) {
+            private var initBlock: (RButton.() -> Unit)? = null
+            infix fun init(block: RButton.() -> Unit): ColoredButtonBuilder {
+                initBlock = block
+                return this
+            }
             infix fun with(handler: () -> Unit) {
-                buttons.add(ButtonData(text, color, handler))
+                buttons.add(ButtonData(text, color, handler, initBlock))
+            }
+        }
+
+        inner class InitButtonBuilder(private val text: String, private val initBlock: RButton.() -> Unit) {
+            infix fun with(handler: () -> Unit) {
+                buttons.add(ButtonData(text, null, handler, initBlock))
+            }
+            infix fun colored(color: MaterialColor): ColoredInitButtonBuilder {
+                return ColoredInitButtonBuilder(text, color, initBlock)
+            }
+        }
+
+        inner class ColoredInitButtonBuilder(
+            private val text: String,
+            private val color: MaterialColor,
+            private val initBlock: RButton.() -> Unit
+        ) {
+            infix fun with(handler: () -> Unit) {
+                buttons.add(ButtonData(text, color, handler, initBlock))
             }
         }
 
@@ -55,7 +85,8 @@ abstract class RFragment(var title: String = "") : Fragment() {
     data class ButtonData(
         val text: String,
         val color: MaterialColor?,
-        val handler: () -> Unit
+        val handler: () -> Unit,
+        val init: (RButton.() -> Unit)?
     )
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: DataSet?): View {
@@ -165,7 +196,8 @@ abstract class RFragment(var title: String = "") : Fragment() {
             buttons.forEachIndexed { index, buttonData ->
                 val button = MaterialButton(context,buttonData.color?: MaterialColor.WHITE) { buttonData.handler() }
                 button.text = buttonData.text
-                // Apply material color if provided
+                // Apply optional customizations via init block
+                buttonData.init?.invoke(button)
 
                 button.layoutParams = linearLayoutParam(SELF, SELF).apply {
                     if (index > 0) leftMargin = dp(12f)

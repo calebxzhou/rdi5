@@ -2,6 +2,8 @@ package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.model.Room
 import calebxzhou.rdi.net.RServer
+import calebxzhou.rdi.ui2.HoldToConfirm.onLongPress
+import calebxzhou.rdi.ui2.MaterialColor
 import calebxzhou.rdi.ui2.SELF
 import calebxzhou.rdi.ui2.iconButton
 import calebxzhou.rdi.ui2.linearLayoutParam
@@ -17,13 +19,17 @@ class RoomFragment(val room: Room) : RFragment("我的房间") {
 
     init {
         bottomOptionsConfig = {
-            "开玩(电信)" with { start(false) }
-            "开玩(电信以外)" with { start(true) }
-            "成员" with { }
-            "服务端" with { mc go ServerFragment(server) }
-            "删除房间" with {
-                //confirm("真的要删除整个房间吗？\n所有的存档等内容将永久删除，无法恢复") {
+            "▶ 开玩(电信)" colored MaterialColor.GREEN_900 with { start(false) }
+            "▶ 开玩(电信以外)" colored MaterialColor.GREEN_700 with { start(true) }
+            "👥 成员" colored MaterialColor.BLUE_500 with { }
+            "\uEB50  服务端" colored MaterialColor.BLUE_500 with { mc go ServerFragment(server) }
+            "❌ 删除房间" colored MaterialColor.RED_900 init {
+                onLongPress(2000){
                     mc go ConfirmDeleteRoomFragment(room,server)
+                }
+            } with {
+                //confirm("真的要删除整个房间吗？\n所有的存档等内容将永久删除，无法恢复") {
+
                // }
             }
         }
