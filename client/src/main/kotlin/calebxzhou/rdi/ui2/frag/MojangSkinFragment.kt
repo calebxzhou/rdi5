@@ -6,6 +6,8 @@ import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.net.success
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.REditText
+import calebxzhou.rdi.ui2.component.alertErr
+import calebxzhou.rdi.ui2.component.alertOk
 import calebxzhou.rdi.util.ioScope
 import calebxzhou.rdi.util.uiThread
 import icyllis.modernui.material.MaterialCheckBox

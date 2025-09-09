@@ -6,13 +6,16 @@ import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.net.RServer.Companion.OFFICIAL_DEBUG
 import calebxzhou.rdi.model.Room
-import calebxzhou.rdi.service.LevelService
 import calebxzhou.rdi.ui2.*
-import calebxzhou.rdi.util.renderThread
+import calebxzhou.rdi.util.go
+import calebxzhou.rdi.util.goto
+import calebxzhou.rdi.util.mc
+import calebxzhou.rdi.util.set
 import icyllis.modernui.animation.ObjectAnimator
 import icyllis.modernui.animation.PropertyValuesHolder
 import icyllis.modernui.animation.TimeInterpolator
 import icyllis.modernui.graphics.drawable.ColorDrawable
+import icyllis.modernui.mc.ui.CenterFragment2
 import icyllis.modernui.util.DataSet
 import icyllis.modernui.view.*
 import icyllis.modernui.widget.FrameLayout
@@ -121,10 +124,10 @@ class TitleFragment : RFragment() {
                     startMulti()
                     true
                 } else if(keyCode== KeyEvent.KEY_KP_0 && event.action == KeyEvent.ACTION_UP) {
-                    renderThread {
 
-                        LevelService.openFlatLevel()
-                    }
+                        mc set CenterFragment2().mcScreen
+                    //LevelService.openFlatLevel()
+
                     true
                 }
                 else {

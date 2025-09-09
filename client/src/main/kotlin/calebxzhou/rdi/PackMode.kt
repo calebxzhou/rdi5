@@ -1,9 +1,6 @@
 package calebxzhou.rdi
 
 import calebxzhou.rdi.net.RServer
-import calebxzhou.rdi.ui2.frag.alertErr
-import calebxzhou.rdi.ui2.frag.alertErrOs
-import calebxzhou.rdi.util.mc
 
 
 val PACK = PackMode.PRO/*PackMode.entries.find { it.verName == mc.launchedVersion }?:run{

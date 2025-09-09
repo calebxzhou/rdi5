@@ -3,9 +3,9 @@ package calebxzhou.rdi.ui2
 /**
  * calebxzhou @ 2025-08-04 22:27
  */
-enum class RMessageLevel(s: String) {
-    ERR("错误"),
-    WARN("警告"),
-    INFO("提示"),
-    OK("成功")
+enum class RMessageLevel(val msg: String,val color: MaterialColor) {
+    ERR("× 错误", MaterialColor.RED_900),
+    WARN("⚠ 警告", MaterialColor.ORANGE_800),
+    INFO("ℹ 提示", MaterialColor.BLUE_900),
+    OK("√ 成功", MaterialColor.LIGHT_GREEN_900)
 }

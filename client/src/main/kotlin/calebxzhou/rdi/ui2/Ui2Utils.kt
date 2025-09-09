@@ -1,7 +1,9 @@
 package calebxzhou.rdi.ui2
 
+import ca.weblite.objc.RuntimeUtils.msg
 import calebxzhou.rdi.PACK
 import calebxzhou.rdi.ui2.component.*
+import calebxzhou.rdi.ui2.frag.RFragment
 import calebxzhou.rdi.util.mc
 import calebxzhou.rdi.util.rdiAsset
 import com.mojang.blaze3d.platform.NativeImage
@@ -15,11 +17,13 @@ import icyllis.modernui.graphics.drawable.Drawable
 import icyllis.modernui.graphics.drawable.ImageDrawable
 import icyllis.modernui.material.MaterialCheckBox
 import icyllis.modernui.material.MaterialRadioButton
+import icyllis.modernui.mc.MuiScreen
 import icyllis.modernui.mc.neoforge.MuiForgeApi
 import icyllis.modernui.view.KeyEvent
 import icyllis.modernui.view.View
 import icyllis.modernui.view.ViewGroup
 import icyllis.modernui.widget.*
+import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite
 import net.minecraft.resources.ResourceLocation
@@ -105,6 +109,9 @@ fun View.onPressEnterKey(handler: () -> Unit) {
 }
 val Fragment.mcScreen: Screen
     get() = MuiForgeApi.get().createScreen(this,null,mc.screen)
+val Minecraft.fragment
+    get() = (mc.screen as? MuiScreen)?.fragment as? RFragment
+
 fun linearLayoutParam(
     width: Int = PARENT,
     height: Int = SELF,
@@ -153,9 +160,10 @@ fun ViewGroup.imageView(
 
 fun ViewGroup.button(
     msg: String,
-    init: MaterialButton.() -> Unit = {},
+    color: MaterialColor = MaterialColor.WHITE,
+    init: RButton.() -> Unit = {},
     onClick: (RButton) -> Unit = {},
-) = MaterialButton(this.context, MaterialColor.TEAL_100, onClick).apply{
+) = RButton(this.context,color,onClick = onClick).apply{
     text=msg
     init()
 }.also { this += it }
@@ -212,6 +220,11 @@ fun ViewGroup.scrollView(
 fun TextView.leadingIcon(icon: String){
     compoundDrawablePadding = dp(8f)
     setCompoundDrawables(iconDrawable(icon).apply { setBounds(0,0,dp(24f),dp(24f)) },null,null,null)
+}
+fun drawable(drawing: Drawable.(Canvas) -> Unit): Drawable = object : Drawable() {
+    override fun draw(canvas: Canvas) {
+        drawing(canvas)
+    }
 }
 /*
 

@@ -8,6 +8,9 @@ import calebxzhou.rdi.net.success
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.REditText
 import calebxzhou.rdi.ui2.component.SkinItemView
+import calebxzhou.rdi.ui2.component.alertErr
+import calebxzhou.rdi.ui2.component.alertOk
+import calebxzhou.rdi.ui2.component.confirm
 import calebxzhou.rdi.util.*
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.widget.CheckBox

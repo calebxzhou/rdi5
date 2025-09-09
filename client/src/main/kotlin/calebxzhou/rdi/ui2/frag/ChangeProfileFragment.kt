@@ -7,6 +7,8 @@ import calebxzhou.rdi.ui2.component.REditText
 import calebxzhou.rdi.ui2.editPwd
 import calebxzhou.rdi.ui2.editText
 import calebxzhou.rdi.ui2.button
+import calebxzhou.rdi.ui2.component.alertErr
+import calebxzhou.rdi.ui2.component.alertOk
 
 class ChangeProfileFragment: RFragment("修改信息") {
     val account = RAccount.now ?: RAccount.DEFAULT

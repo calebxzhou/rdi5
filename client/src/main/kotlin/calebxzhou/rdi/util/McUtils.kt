@@ -65,7 +65,7 @@ infix fun Minecraft.go(screen: Screen?) {
         }else setScreen(screen)
     }
 } //前screen=null时，默认使用当前screen
-fun Minecraft. go(fragment: Fragment, prevScreen: Screen?=null){
+fun Minecraft. goto(fragment: Fragment, prevScreen: Screen?=null){
     renderThread {
         val screen: Screen = MuiForgeApi.get().createScreen(fragment,null,prevScreen?:mc.screen)
         mc set screen

@@ -7,6 +7,7 @@ import icyllis.modernui.graphics.Color
  * Complete set of Material Design colors with all shades and accent colors
  * @see https://m2.material.io/design/color/the-color-system.html#tools-for-picking-colors
  */
+
 enum class MaterialColor(val colorValue: Int) {
     // Red
     RED_50(Color.parseColor("#FFEBEE")),
@@ -303,6 +304,15 @@ enum class MaterialColor(val colorValue: Int) {
     // Black & White
     BLACK(Color.parseColor("#000000")),
     WHITE(Color.parseColor("#FFFFFF"));
+
+    val isDarkColor
+        get(): Boolean {
+            val red = (colorValue ushr 16) and 0xFF
+            val green = (colorValue ushr 8) and 0xFF
+            val blue = colorValue and 0xFF
+            val luminance = (0.299 * red + 0.587 * green + 0.114 * blue) / 255
+            return luminance < 0.5
+        }
 
     companion object {
         /**

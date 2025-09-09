@@ -5,6 +5,8 @@ import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.ui2.component.REditText
 import calebxzhou.rdi.ui2.editText
 import calebxzhou.rdi.ui2.button
+import calebxzhou.rdi.ui2.component.alertErr
+import calebxzhou.rdi.ui2.component.confirm
 import calebxzhou.rdi.ui2.toast
 import calebxzhou.rdi.util.copyToClipboard
 import calebxzhou.rdi.util.go
@@ -27,9 +29,9 @@ class ConfirmDeleteRoomFragment(val room: Room,val server: RServer): RFragment("
                     alertErr("房间ID输入错误")
                     return@button
                 }
-                confirm("真的要删除吗？所有的进度 存档等数据都会被永久删除！"){
+                confirm("真的要删除吗？所有的进度 存档等数据都会被永久删除！") {
 
-                    server.hqRequest(true,"room/delete", ){
+                    server.hqRequest(true, "room/delete",) {
                         uiThread {
 
                             toast("房间删除成功")

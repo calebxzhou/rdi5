@@ -21,7 +21,7 @@ class RAvatarButton(
     context: Context,
     val id: ObjectId,
     onClick: (RButton) -> Unit = {},
-) : RButton(context,onClick) {
+) : RButton(context, onClick = onClick) {
     var avatar: Image = createDefaultAvatar()
         set(value) {
             field = value

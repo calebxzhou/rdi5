@@ -17,7 +17,7 @@ class REditText(
     context: Context,
     val msg: String = "",
     val width: Float = 200f,
-) : EditText(context,null, R.attr.editTextStyle,R.style.Widget_Material3_EditText_FilledBox) {
+) : EditText(context,null, R.attr.editTextFilledStyle) {
     // MD3 palette
     var md3PrimaryColor: Int = MaterialColor.TEAL_500.colorValue
     var md3Error: Boolean = false
@@ -65,10 +65,10 @@ class REditText(
         // Content padding per MD3 (16dp horizontal, 12dp vertical)
         setPadding(context.dp(16f), context.dp(12f), context.dp(16f), context.dp(12f))
         // Colors
-        setTextColor(MaterialColor.GRAY_900.colorValue)
-        setHintTextColor(MaterialColor.GRAY_600.colorValue)
+      //  setTextColor(MaterialColor.GRAY_900.colorValue)
+       // setHintTextColor(MaterialColor.GRAY_600.colorValue)
         // Background
-        background = md3Background
+       // background = md3Background
         // Focus/hover listeners to update states
         setOnFocusChangeListener { _: View, hasFocus: Boolean ->
             isFocusedState = hasFocus

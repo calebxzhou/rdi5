@@ -1,13 +1,10 @@
 package calebxzhou.rdi.ui2.frag
 
-import calebxzhou.rdi.PACK
-import calebxzhou.rdi.PackMode
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.util.go
 import calebxzhou.rdi.util.mc
 import calebxzhou.rdi.util.mcComp
 import calebxzhou.rdi.util.renderThread
-import icyllis.modernui.R.attr.button
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.widget.LinearLayout
 import net.caffeinemc.mods.sodium.client.gui.SodiumOptionsGUI
@@ -16,8 +13,6 @@ import net.minecraft.client.gui.screens.options.SoundOptionsScreen
 import net.minecraft.client.gui.screens.options.controls.ControlsScreen
 import net.minecraft.client.gui.screens.packs.PackSelectionScreen
 import net.neoforged.neoforge.client.gui.ModListScreen
-import org.embeddedt.embeddium.impl.gui.EmbeddiumVideoOptionsScreen
-import org.lwjgl.opengl.GL
 
 class SettingsFragment : RFragment("设置") {
     val options = mc.options

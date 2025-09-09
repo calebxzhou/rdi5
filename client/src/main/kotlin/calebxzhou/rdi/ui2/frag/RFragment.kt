@@ -1,7 +1,6 @@
 package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.ui2.*
-import calebxzhou.rdi.ui2.component.MaterialButton
 import calebxzhou.rdi.ui2.component.RButton
 import calebxzhou.rdi.util.mc
 import calebxzhou.rdi.util.set
@@ -26,7 +25,7 @@ abstract class RFragment(var title: String = "") : Fragment() {
 
     //true则缓存content view布局，fragment切换时，保存状态不重新计算，false反之
     open var contentViewCache = true
-    protected lateinit var contentLayout: LinearLayout
+    lateinit var contentLayout: LinearLayout
     private var _contentView: View? = null
 
     // Bottom options configuration - if null, no bottom options will be rendered
@@ -55,6 +54,7 @@ abstract class RFragment(var title: String = "") : Fragment() {
                 initBlock = block
                 return this
             }
+
             infix fun with(handler: () -> Unit) {
                 buttons.add(ButtonData(text, color, handler, initBlock))
             }
@@ -64,6 +64,7 @@ abstract class RFragment(var title: String = "") : Fragment() {
             infix fun with(handler: () -> Unit) {
                 buttons.add(ButtonData(text, null, handler, initBlock))
             }
+
             infix fun colored(color: MaterialColor): ColoredInitButtonBuilder {
                 return ColoredInitButtonBuilder(text, color, initBlock)
             }
@@ -194,7 +195,9 @@ abstract class RFragment(var title: String = "") : Fragment() {
 
             // Create buttons that stick together in material design style
             buttons.forEachIndexed { index, buttonData ->
-                val button = MaterialButton(context,buttonData.color?: MaterialColor.WHITE) { buttonData.handler() }
+                val button = RButton(context, color = buttonData.color ?: MaterialColor.WHITE) { buttonData.handler() }.apply {
+
+                }
                 button.text = buttonData.text
                 // Apply optional customizations via init block
                 buttonData.init?.invoke(button)

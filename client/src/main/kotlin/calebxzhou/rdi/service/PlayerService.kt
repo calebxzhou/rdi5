@@ -10,7 +10,8 @@ import calebxzhou.rdi.net.StringHttpResponse
 import calebxzhou.rdi.net.body
 import calebxzhou.rdi.net.success
 import calebxzhou.rdi.service.PlayerService.getPlayerInfo
-import calebxzhou.rdi.ui2.frag.alertErr
+import calebxzhou.rdi.ui2.frag.RFragment
+import calebxzhou.rdi.ui2.component.alertErr
 import calebxzhou.rdi.util.ioScope
 import calebxzhou.rdi.util.mc
 import calebxzhou.rdi.util.objectId
@@ -42,7 +43,7 @@ object PlayerInfoCache{
 }
 
 object PlayerService  {
-    suspend fun RServer.playerLogin(usr: String, pwd: String): RAccount? {
+    suspend fun RServer.playerLogin(frag: RFragment, usr: String, pwd: String): RAccount? {
         val creds = LocalCredentials.read()
         val spec = serdesJson.encodeToString<HwSpec>(HwSpec.now)
         val resp = prepareRequest(path = "login",

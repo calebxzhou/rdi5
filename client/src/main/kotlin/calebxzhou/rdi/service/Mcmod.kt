@@ -4,7 +4,7 @@ import calebxzhou.rdi.integrate.jei.RJeiPlugin
 import calebxzhou.rdi.lgr
 import calebxzhou.rdi.net.body
 import calebxzhou.rdi.net.httpStringRequest
-import calebxzhou.rdi.ui2.frag.alertOk
+import calebxzhou.rdi.ui2.component.alertOk
 import calebxzhou.rdi.util.*
 import kotlinx.coroutines.launch
 import mezz.jei.api.constants.VanillaTypes

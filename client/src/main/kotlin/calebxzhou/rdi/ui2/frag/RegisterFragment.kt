@@ -8,6 +8,8 @@ import calebxzhou.rdi.ui2.component.REditText
 import calebxzhou.rdi.ui2.editPwd
 import calebxzhou.rdi.ui2.editText
 import calebxzhou.rdi.ui2.button
+import calebxzhou.rdi.ui2.component.alertErr
+import calebxzhou.rdi.ui2.component.alertOk
 import calebxzhou.rdi.util.ioScope
 import kotlinx.coroutines.launch
 

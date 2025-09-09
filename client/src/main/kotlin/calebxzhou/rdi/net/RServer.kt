@@ -6,7 +6,7 @@ import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.ui2.frag.LoadingFragment
 import calebxzhou.rdi.ui2.frag.SelectAccountFragment
 import calebxzhou.rdi.ui2.frag.UpdateFragment
-import calebxzhou.rdi.ui2.frag.alertErr
+import calebxzhou.rdi.ui2.component.alertErr
 import calebxzhou.rdi.util.encodeBase64
 import calebxzhou.rdi.util.go
 import calebxzhou.rdi.util.ioScope

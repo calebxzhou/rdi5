@@ -2,6 +2,7 @@ package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.service.RKeyBinds
 import calebxzhou.rdi.ui2.*
+import calebxzhou.rdi.ui2.component.alertOk
 import calebxzhou.rdi.util.*
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.widget.LinearLayout

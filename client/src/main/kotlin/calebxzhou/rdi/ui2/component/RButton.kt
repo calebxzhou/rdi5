@@ -4,8 +4,13 @@ import calebxzhou.rdi.ui2.HoldToConfirm.clearHoldToConfirm
 import calebxzhou.rdi.ui2.HoldToConfirm.holdTooltipEnabled
 import calebxzhou.rdi.ui2.HoldToConfirm.holdTooltipFormatter
 import calebxzhou.rdi.ui2.HoldToConfirm.onLongPress
+import calebxzhou.rdi.ui2.MaterialColor
+import calebxzhou.rdi.ui2.paddingDp
 import icyllis.modernui.R
 import icyllis.modernui.core.Context
+import icyllis.modernui.graphics.Canvas
+import icyllis.modernui.graphics.Paint
+import icyllis.modernui.graphics.drawable.Drawable
 import icyllis.modernui.view.ContextMenu
 import icyllis.modernui.view.Menu
 import icyllis.modernui.view.MotionEvent
@@ -14,16 +19,14 @@ import icyllis.modernui.widget.Button
 
 open class RButton(
     context: Context,
+    val color: MaterialColor = MaterialColor.WHITE,
     val onClick: (RButton) -> Unit = {},
 ): Button(context,null, R.attr.buttonStyle,R.style.Widget_Material3_Button_IconButton) {
+
+
     private var menuItems = listOf<Pair<String, () -> Unit>>()
     private var mContextMenuAnchorX = 0f;
     private var mContextMenuAnchorY = 0f
-    // Long-press API: onLongPress(millis) { ... } + tooltip extension properties
- /*   var longPressThresholdMs: Long = 0
-        set(value) { field = value; configureHoldExtension() }*/
-  /*  var onLongPress: ((view: RButton) -> Unit)? = null
-        set(value) { field = value; configureHoldExtension() } */
     var contextMenu: (List<Pair<String, () -> Unit>>) -> Unit = { items ->
         menuItems = items
     }
@@ -31,6 +34,29 @@ open class RButton(
     init {
         // Ensure normal click works when hold-to-confirm is not enabled
         setOnClickListener { onClick(this) }
+        paddingDp(16, 8, 16, 8)
+        background = object : Drawable() {
+            override fun draw(canvas: Canvas) {
+                val paint = Paint.obtain()
+                paint.color = color.colorValue
+                // Keep consistent with existing usage of Paint style
+                paint.style = Paint.Style.FILL.ordinal
+                // Rounded rect background
+                canvas.drawRoundRect(
+                    bounds.left.toFloat(),
+                    bounds.top.toFloat(),
+                    bounds.right.toFloat(),
+                    bounds.bottom.toFloat(),
+                    48f,
+                    paint
+                )
+                paint.recycle()
+            }
+        }
+
+        // Ensure text has sufficient contrast
+        val textColor = if (color.isDarkColor) MaterialColor.WHITE.colorValue else MaterialColor.BLACK.colorValue
+        setTextColor(textColor)
     }
 
     override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {

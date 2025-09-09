@@ -9,7 +9,7 @@ class RIconButton(
     val icon: String,
     val msg: String="",
     onClick: (RButton) -> Unit = {},
-) : RButton(context,onClick){
+) : RButton(context,onClick=onClick){
     init {
         text = msg
         paddingDp(16,8,16,8)
