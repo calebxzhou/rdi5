@@ -5,8 +5,11 @@ import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.ui2.HoldToConfirm.onLongPress
 import calebxzhou.rdi.ui2.MaterialColor
 import calebxzhou.rdi.ui2.SELF
+import calebxzhou.rdi.ui2.headButton
 import calebxzhou.rdi.ui2.iconButton
+import calebxzhou.rdi.ui2.linearLayout
 import calebxzhou.rdi.ui2.linearLayoutParam
+import calebxzhou.rdi.ui2.paddingDp
 import calebxzhou.rdi.util.go
 import calebxzhou.rdi.util.mc
 import calebxzhou.rdi.util.renderThread
@@ -21,7 +24,7 @@ class RoomFragment(val room: Room) : RFragment("我的房间") {
         bottomOptionsConfig = {
             "▶ 开玩(电信)" colored MaterialColor.GREEN_900 with { start(false) }
             "▶ 开玩(电信以外)" colored MaterialColor.GREEN_700 with { start(true) }
-            "👥 成员" colored MaterialColor.BLUE_500 with { }
+           // "👥 成员" colored MaterialColor.BLUE_500 with { }
             "\uEB50  服务端" colored MaterialColor.BLUE_500 with { mc go ServerFragment(server) }
             "❌ 删除房间" colored MaterialColor.RED_900 init {
                 onLongPress(2000){
@@ -43,6 +46,11 @@ class RoomFragment(val room: Room) : RFragment("我的房间") {
                     gravity = Gravity.CENTER_HORIZONTAL
                 }
             }) {}
+            linearLayout {
+                gravity = Gravity.CENTER
+                paddingDp(0,20,0,0)
+                room.members.forEach { headButton(it.id) }
+            }
         }
     }
 

@@ -14,6 +14,8 @@ import icyllis.modernui.view.MotionEvent
 import icyllis.modernui.view.View
 import icyllis.modernui.view.ViewGroup
 import icyllis.modernui.widget.*
+import icyllis.modernui.text.method.PasswordTransformationMethod
+
 // (animation removed)
 
 /**
@@ -26,15 +28,36 @@ import icyllis.modernui.widget.*
 class RTextField(
     context: Context,
     var label: String = "",
-    val widthDp: Float = 120f,
+    var widthDp: Float = 120f,
     var icon: String? = null,
     var clearable: Boolean = true,
 ) : FrameLayout(context) {
 
+    var nightMode: Boolean = true
+        set(value) {
+            field = value
+            applyColors()
+            invalidate()
+        }
+    var isPassword: Boolean = false
+        set(value) {
+            field = value
+            icon = "lock"
+            if (value) {
+                if (!passwordVisible) edit.setTransformationMethod(PasswordTransformationMethod.getInstance())
+            } else {
+                edit.setTransformationMethod(null)
+            }
+            configureTrailing()
+        }
     var md3PrimaryColor: Int = MaterialColor.TEAL_500.colorValue
-        set(value) { field = value; invalidate() }
+        set(value) {
+            field = value; invalidate()
+        }
     var md3Error: Boolean = false
-        set(value) { field = value; invalidate() }
+        set(value) {
+            field = value; invalidate()
+        }
 
     private var isFocusedState = false
     private var isHoveredState = false
@@ -45,19 +68,25 @@ class RTextField(
     // Views
     private val labelTv = TextView(context)
     private val row = LinearLayout(context)
-    private val rowLp = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-        gravity = Gravity.TOP or Gravity.START
-        topMargin = context.dp(8f)
-    }
+    private val rowLp =
+        FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+            gravity = Gravity.TOP or Gravity.START
+            topMargin = context.dp(8f)
+        }
     private val iconStart = ImageView(context)
     private val clearBtn = TextView(context)
-    val edit: EditText = object : EditText(context, null,  R.attr.editTextFilledStyle) {
+    private var passwordVisible = false
+    val edit: EditText = object : EditText(context, null, R.attr.editTextFilledStyle) {
         override fun onTextChanged(text: CharSequence?, start: Int, before: Int, count: Int) {
             super.onTextChanged(text, start, before, count)
             updateLabelAndClear()
         }
+
         init {
             setTextAppearance(R.attr.textAppearanceLabelLarge)
+            setSingleLine(true)
+            includeFontPadding = false
+            minHeight = 0
         }
     }
 
@@ -68,17 +97,25 @@ class RTextField(
             val stroke = Paint.obtain()
 
             // Container fill
-            val fillColor = if (isEnabled) MaterialColor.GRAY_100.colorValue else MaterialColor.GRAY_200.colorValue
+            val fillColor =
+                if (nightMode) 0xFF1E1E1E.toInt() else if (isEnabled) MaterialColor.GRAY_100.colorValue else MaterialColor.GRAY_200.colorValue
             container.color = fillColor
             container.style = Paint.Style.FILL.ordinal
-            canvas.drawRoundRect(bounds.left.toFloat(), bounds.top.toFloat(), bounds.right.toFloat(), bounds.bottom.toFloat(), r, container)
+            canvas.drawRoundRect(
+                bounds.left.toFloat(),
+                bounds.top.toFloat(),
+                bounds.right.toFloat(),
+                bounds.bottom.toFloat(),
+                r,
+                container
+            )
 
             // Bottom indicator line
             val lineColor = when {
                 md3Error -> MaterialColor.RED_500.colorValue
                 isFocusedState -> md3PrimaryColor
-                isHoveredState -> MaterialColor.GRAY_600.colorValue
-                else -> MaterialColor.GRAY_400.colorValue
+                isHoveredState -> if (nightMode) MaterialColor.GRAY_300.colorValue else MaterialColor.GRAY_600.colorValue
+                else -> if (nightMode) MaterialColor.GRAY_500.colorValue else MaterialColor.GRAY_400.colorValue
             }
             val lineHeight = if (isFocusedState || md3Error) context.dp(2f).toFloat() else context.dp(1f).toFloat()
             stroke.color = lineColor
@@ -96,27 +133,31 @@ class RTextField(
     }
 
     init {
-    // Container look
-    background = backgroundDrawable
-    setPadding(context.dp(12f), context.dp(12f), context.dp(12f), context.dp(12f))
-    // Use widthDp as a minimum width for the whole field; content row expands to fill available space
-    minimumWidth = context.dp(widthDp)
+
+        // Container look
+        background = backgroundDrawable
+        // Slightly tighter vertical padding to make the field thinner
+        setPadding(context.dp(12f), context.dp(8f), context.dp(12f), context.dp(8f))
+        // Use widthDp as a minimum width for the whole field; content row expands to fill available space
+        minimumWidth = context.dp(widthDp)
 
         // Label (floating)
         labelTv.text = label
-    labelTv.textSize = 12f
+        labelTv.textSize = 12f
         labelTv.setTextColor(MaterialColor.INDIGO_500.colorValue)
-    labelTv.translationY = context.dp(2f).toFloat()
-        addView(labelTv, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-            leftMargin = context.dp(12f)
-            topMargin = context.dp(6f)
-            gravity = Gravity.TOP or Gravity.START
-        })
+        labelTv.translationY = context.dp(2f).toFloat()
+        addView(
+            labelTv,
+            FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                leftMargin = context.dp(12f)
+                topMargin = context.dp(6f)
+                gravity = Gravity.TOP or Gravity.START
+            })
 
         // Row: icon + input + clear
-    row.orientation = LinearLayout.HORIZONTAL
-    row.gravity = Gravity.CENTER_VERTICAL
-    addView(row, rowLp)
+        row.orientation = LinearLayout.HORIZONTAL
+        row.gravity = Gravity.CENTER_VERTICAL
+        addView(row, rowLp)
 
         // Leading icon
         if (icon != null) {
@@ -129,20 +170,25 @@ class RTextField(
         // EditText styling (transparent inside; caret/hint colors)
         edit.setBackground(null)
         edit.hint = label
-        edit.setTextColor(MaterialColor.GRAY_900.colorValue)
-        edit.setHintTextColor(MaterialColor.GRAY_600.colorValue)
-    edit.paddingDp(0, 8, 0, 8)
-    edit.layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        // Reduce internal vertical padding for a thinner look
+        edit.paddingDp(0, 4, 0, 4)
+        edit.layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         row.addView(edit)
 
-        // Trailing clear button
+        // Trailing action (clear or eye depending on mode)
         val clearSize = context.dp(18f)
         clearBtn.text = "❌"
-        clearBtn.setOnClickListener { edit.setText("") }
         clearBtn.visibility = View.GONE
-        row.addView(clearBtn, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-            leftMargin = context.dp(8f)
-        })
+        // Keep the trailing control from increasing the row height
+        clearBtn.includeFontPadding = false
+        clearBtn.setPadding(0, 0, 0, 0)
+        row.addView(
+            clearBtn,
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                leftMargin = context.dp(8f)
+            })
+
+        configureTrailing()
 
         // Focus/hover
         edit.setOnFocusChangeListener { _, hasFocus ->
@@ -152,19 +198,33 @@ class RTextField(
         }
         setOnHoverListener { _, ev ->
             when (ev.action) {
-                MotionEvent.ACTION_HOVER_ENTER -> { isHoveredState = true; invalidate(); true }
-                MotionEvent.ACTION_HOVER_EXIT -> { isHoveredState = false; invalidate(); true }
+                MotionEvent.ACTION_HOVER_ENTER -> {
+                    isHoveredState = true; invalidate(); true
+                }
+
+                MotionEvent.ACTION_HOVER_EXIT -> {
+                    isHoveredState = false; invalidate(); true
+                }
+
                 else -> false
             }
         }
 
-    // Finish construction and update
-    constructed = true
-    updateLabelAndClear()
+        // Apply initial color scheme
+        applyColors()
+
+        // Finish construction and update
+        constructed = true
+        updateLabelAndClear()
+        layoutParams = LinearLayout.LayoutParams(
+            dp(widthDp),
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        )
     }
 
+    val txt get() = edit.text.toString()
     private fun updateLabelAndClear() {
-    if (!constructed) return
+        if (!constructed) return
         val hasText = edit.text?.isNotEmpty() == true
         // Label floats on focus or when text present
         val shouldFloat = isFocusedState || hasText
@@ -186,13 +246,44 @@ class RTextField(
         }
         row.layoutParams = rowLp
         row.requestLayout()
-        // Clear button
-        clearBtn.visibility = if (clearable && hasText) View.VISIBLE else View.GONE
+        // Trailing button visibility policy
+        clearBtn.visibility = if (isPassword) View.VISIBLE else if (clearable && hasText) View.VISIBLE else View.GONE
         lastFloating = shouldFloat
     }
     // animations removed; no compute/anim helpers
 
-    fun setText(value: String) { edit.setText(value); updateLabelAndClear() }
+    private fun configureTrailing() {
+        if (isPassword) {
+            // Eye toggle
+            clearBtn.text = "👁"
+            clearBtn.setOnClickListener {
+                passwordVisible = !passwordVisible
+                edit.setTransformationMethod(if (passwordVisible) null else PasswordTransformationMethod.getInstance())
+            }
+        } else {
+            // Clear button
+            clearBtn.text = "❌"
+            clearBtn.setOnClickListener { edit.setText("") }
+        }
+    }
+
+    private fun applyColors() {
+        if (nightMode) {
+            // Texts on dark
+            edit.setTextColor(MaterialColor.WHITE.colorValue)
+            edit.setHintTextColor(MaterialColor.GRAY_400.colorValue)
+            clearBtn.setTextColor(MaterialColor.WHITE.colorValue)
+        } else {
+            edit.setTextColor(MaterialColor.GRAY_900.colorValue)
+            edit.setHintTextColor(MaterialColor.GRAY_600.colorValue)
+            clearBtn.setTextColor(MaterialColor.GRAY_900.colorValue)
+        }
+    }
+
+    fun setText(value: String) {
+        edit.setText(value); updateLabelAndClear()
+    }
+
     fun getText(): String = edit.text?.toString() ?: ""
 
     fun setLeadingIcon(name: String?) {
@@ -201,9 +292,14 @@ class RTextField(
             if (iconStart.parent === row) row.removeView(iconStart)
         } else {
             iconStart.setImageDrawable(iconDrawable(name))
-            if (iconStart.parent == null) row.addView(iconStart, 0, LinearLayout.LayoutParams(context.dp(20f), context.dp(20f)).apply { rightMargin = context.dp(8f) })
+            if (iconStart.parent == null) row.addView(
+                iconStart,
+                0,
+                LinearLayout.LayoutParams(context.dp(20f), context.dp(20f)).apply { rightMargin = context.dp(8f) })
         }
     }
 
-    fun setErrorEnabled(enabled: Boolean) { md3Error = enabled; updateLabelAndClear(); invalidate() }
+    fun setErrorEnabled(enabled: Boolean) {
+        md3Error = enabled; updateLabelAndClear(); invalidate()
+    }
 }

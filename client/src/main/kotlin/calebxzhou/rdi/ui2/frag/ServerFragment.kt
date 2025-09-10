@@ -3,6 +3,8 @@ package calebxzhou.rdi.ui2.frag
 import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.net.body
 import calebxzhou.rdi.ui2.Fonts
+import calebxzhou.rdi.ui2.MaterialColor
+import calebxzhou.rdi.ui2.dp
 import calebxzhou.rdi.ui2.fctx
 import calebxzhou.rdi.util.ioScope
 import calebxzhou.rdi.util.uiThread
@@ -32,9 +34,9 @@ class ServerFragment(val server: RServer) : RFragment("服务端") {
 
     init {
         bottomOptionsConfig = {
-            "启动" with { }
-            "停止" with { }
-            "升级/重装" with { }
+            "▶ 启动" colored MaterialColor.GREEN_900 with { }
+            "👆 升级/重装" colored MaterialColor.BLUE_800 with { }
+            "⏹ 停止" colored MaterialColor.RED_900 with { }
         }
     }
 
@@ -47,6 +49,9 @@ class ServerFragment(val server: RServer) : RFragment("服务端") {
                     LinearLayout.LayoutParams.MATCH_PARENT
                 )
                 background = ColorDrawable(Color.rgb(0, 0, 0)) // Black background
+                // Leave space for bottom options row so content isn't obscured
+                setPadding(0, dp(8f), 0, dp(96f))
+                clipToPadding = false
                 console = TextView(fctx).apply {
                     typeface = Fonts.CODE.typeface
 

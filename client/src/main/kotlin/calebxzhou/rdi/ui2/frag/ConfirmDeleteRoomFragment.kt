@@ -2,9 +2,9 @@ package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.model.Room
 import calebxzhou.rdi.net.RServer
-import calebxzhou.rdi.ui2.component.REditText
 import calebxzhou.rdi.ui2.editText
 import calebxzhou.rdi.ui2.button
+import calebxzhou.rdi.ui2.component.RTextField
 import calebxzhou.rdi.ui2.component.alertErr
 import calebxzhou.rdi.ui2.component.confirm
 import calebxzhou.rdi.ui2.toast
@@ -17,15 +17,15 @@ class ConfirmDeleteRoomFragment(val room: Room,val server: RServer): RFragment("
     init {
         copyToClipboard(room._id.toString())
     }
-    private lateinit var idInput: REditText
+    private lateinit var idInput: RTextField
     override fun initContent() {
 
         contentLayout.apply {
-            idInput = editText("输入你的房间ID ${room._id}",400f){
+            idInput = editText("输入你的房间ID ${room._id}"){
 
             }
             button("删除"){
-                if(idInput.text.toString() != room._id.toString()){
+                if(idInput.txt != room._id.toString()){
                     alertErr("房间ID输入错误")
                     return@button
                 }

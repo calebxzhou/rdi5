@@ -2,6 +2,7 @@ package calebxzhou.rdi.util
 
 import calebxzhou.rdi.lgr
 import calebxzhou.rdi.ui2.frag.RFragment
+import icyllis.modernui.core.Core
 import icyllis.modernui.fragment.Fragment
 import icyllis.modernui.mc.MuiModApi
 import icyllis.modernui.mc.ScreenCallback
@@ -45,7 +46,7 @@ fun renderThread(run: () -> Unit) {
     mc.execute(run)
 }
 fun uiThread(run: () -> Unit) {
-    MuiModApi.postToUiThread(run)
+    Core.getUiHandlerAsync().post(run)
 }
 fun rdiAsset(path: String) = ResourceLocation.fromNamespaceAndPath("rdi",path)
 fun mcAsset(path: String) = ResourceLocation.withDefaultNamespace(path)
@@ -75,7 +76,8 @@ infix fun Minecraft. go(fragment: RFragment){
     renderThread {
         val screen: Screen = MuiForgeApi.get().createScreen(fragment, object:ScreenCallback {
             override fun shouldClose(): Boolean {
-                return fragment.closable
+                //禁用自带的esc逻辑 用rdi写的
+                return false
             }
         },mc.screen)
         mc set screen

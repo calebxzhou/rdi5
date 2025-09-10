@@ -119,19 +119,12 @@ class TitleFragment : RFragment() {
             isFocusable = true
             isFocusableInTouchMode = true
             requestFocus()
-            setOnKeyListener { _, keyCode, event ->
-                if ((keyCode == KeyEvent.KEY_ENTER || keyCode == KeyEvent.KEY_KP_ENTER) && event.action == KeyEvent.ACTION_UP) {
+            keyAction {
+                enter {
                     startMulti()
-                    true
-                } else if(keyCode== KeyEvent.KEY_KP_0 && event.action == KeyEvent.ACTION_UP) {
-
-                        mc set CenterFragment2().mcScreen
-                    //LevelService.openFlatLevel()
-
-                    true
                 }
-                else {
-                    false
+                KeyEvent.KEY_KP_0{
+                    mc set CenterFragment2().mcScreen
                 }
             }
         }

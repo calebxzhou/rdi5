@@ -5,41 +5,62 @@ import icyllis.modernui.core.Context
 import icyllis.modernui.text.method.PasswordTransformationMethod
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.widget.Button
+import icyllis.modernui.widget.EditText
 import icyllis.modernui.widget.FrameLayout
+import icyllis.modernui.graphics.Canvas
+import icyllis.modernui.graphics.Paint
+import icyllis.modernui.graphics.drawable.Drawable
 
 class REditPassword(
     context: Context,
     val msg: String = "",
     val width_: Float = 200f,
 ) : FrameLayout(context) {
-    private val editText = editText(msg, width_) {
-        layoutParams = frameLayoutParam(
-            dp(width_),
-            SELF  // Fixed height instead of SELF
-        ) {
-            gravity = Gravity.CENTER
-            setTransformationMethod(PasswordTransformationMethod.getInstance())
+    private val editText = EditText(context).apply {
+        hint = msg
+        // Let container control width; make EditText match parent minus padding
+        layoutParams = frameLayoutParam(PARENT, SELF) {
+            gravity = Gravity.CENTER_VERTICAL or Gravity.START
         }
-        paddingDp(8, 8, 40, 8)
+        // MD3-ish paddings
+        paddingDp(12, 8, 40, 8)
+        // Hide default background for a custom filled container look
+        background = null
+        // Start hidden characters
+        setTransformationMethod(PasswordTransformationMethod.getInstance())
     }
     private var isPasswordVisible = false
 
     init {
-        // Add right padding to editText to prevent text behind the button
-        layoutParams = linearLayoutParam(
-            dp(width_),
-            SELF  // Fixed height instead of SELF
-        ) {
-            bottomMargin = dp(16f)
+        // Container (this) controls width and draws background like RTextField
+        layoutParams = linearLayoutParam(dp(width_), SELF) {
+            bottomMargin = dp(12f)
             gravity = Gravity.CENTER_HORIZONTAL
+        }
+        background = object : Drawable() {
+            override fun draw(canvas: Canvas) {
+                val r = dp(12f).toFloat()
+                val fill = Paint.obtain()
+                val line = Paint.obtain()
+                // Filled box bg
+                fill.setRGBA(245, 245, 245, 255)
+                fill.style = Paint.Style.FILL.ordinal
+                canvas.drawRoundRect(bounds.left.toFloat(), bounds.top.toFloat(), bounds.right.toFloat(), bounds.bottom.toFloat(), r, fill)
+                // Bottom line
+                line.setRGBA(180, 180, 180, 255)
+                line.style = Paint.Style.FILL.ordinal
+                val h = dp(1f).toFloat()
+                canvas.drawRect(bounds.left.toFloat()+dp(12f), bounds.bottom - h, bounds.right.toFloat()-dp(12f), bounds.bottom.toFloat(), line)
+                fill.recycle(); line.recycle()
+            }
         }
 
 
         // Add eye toggle button
-        Button(context).apply {
+        val eye = Button(context).apply {
             text = "👁"
             background = null
-            layoutParams = frameLayoutParam(dp(32f), PARENT) {  // Fixed height instead of PARENT
+            layoutParams = frameLayoutParam(dp(32f), PARENT) {
                 gravity = Gravity.END or Gravity.CENTER_VERTICAL
             }
             setOnClickListener {
@@ -49,8 +70,10 @@ class REditPassword(
                     else PasswordTransformationMethod.getInstance()
                 )
             }
-        }.also { addView(it) }
-
+        }
+        // Order: edit first, then eye so eye is on top
+        addView(editText)
+        addView(eye)
 
     }
 

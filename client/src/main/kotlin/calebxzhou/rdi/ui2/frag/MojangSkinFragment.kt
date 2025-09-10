@@ -5,19 +5,18 @@ import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.net.success
 import calebxzhou.rdi.ui2.*
-import calebxzhou.rdi.ui2.component.REditText
+import calebxzhou.rdi.ui2.component.RTextField
 import calebxzhou.rdi.ui2.component.alertErr
 import calebxzhou.rdi.ui2.component.alertOk
 import calebxzhou.rdi.util.ioScope
 import calebxzhou.rdi.util.uiThread
-import icyllis.modernui.material.MaterialCheckBox
 import icyllis.modernui.widget.CheckBox
 import icyllis.modernui.widget.LinearLayout
 import kotlinx.coroutines.launch
 
 
 class MojangSkinFragment : RFragment("导入正版皮肤") {
-    private lateinit var nameInput: REditText
+    private lateinit var nameInput: RTextField
     private lateinit var skinCheckBox: CheckBox
     private lateinit var capeCheckBox: CheckBox
 
@@ -32,13 +31,13 @@ class MojangSkinFragment : RFragment("导入正版皮肤") {
                 }
             }
 
-            nameInput = editText("输入正版玩家名", 200f) {
+            nameInput = editText("输入正版玩家名") {
                 layoutParams = linearLayoutParam(PARENT, SELF) {
                     bottomMargin = dp(16f)
                 }
             }
 
-            skinCheckBox = MaterialCheckBox(fctx).apply {
+            skinCheckBox = CheckBox(fctx).apply {
                 text = "导入皮肤"
                 isChecked = true
                 layoutParams = linearLayoutParam(PARENT, SELF) {
@@ -47,7 +46,7 @@ class MojangSkinFragment : RFragment("导入正版皮肤") {
             }
             this += skinCheckBox
 
-            capeCheckBox = MaterialCheckBox(fctx).apply {
+            capeCheckBox = CheckBox(fctx).apply {
                 text = "导入披风"
                 layoutParams = linearLayoutParam(PARENT, SELF) {
                     bottomMargin = dp(16f)
@@ -62,7 +61,7 @@ class MojangSkinFragment : RFragment("导入正版皮肤") {
     }
 
     private fun importMojangSkin(layout: LinearLayout) {
-        val name = nameInput.text.toString().trim()
+        val name = nameInput.txt.toString().trim()
         val importSkin = skinCheckBox.isChecked
         val importCape = capeCheckBox.isChecked
 

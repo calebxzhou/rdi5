@@ -22,8 +22,8 @@ class SelectAccountFragment(val server: RServer) : RFragment("选择账号") {
         RServer.now = server
 
         bottomOptionsConfig = {
-            "➕ 添加旧号" with { mc go LoginFragment() }
-            "✏ 注册新号" colored MaterialColor.LIGHT_GREEN_900 with { mc go RegisterFragment() }
+            "➕ 添加旧号" with {showChildFragmentOver( LoginFragment()) }
+            "✏ 注册新号" colored MaterialColor.LIGHT_GREEN_900 with { showChildFragmentOver(RegisterFragment()) }
             "⚙ 设置" colored MaterialColor.BLUE_900 with { mc go SettingsFragment() }
             /*"自由创造" with {
                 renderThread {

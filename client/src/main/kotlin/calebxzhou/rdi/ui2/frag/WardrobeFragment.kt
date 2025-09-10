@@ -6,7 +6,7 @@ import calebxzhou.rdi.net.body
 import calebxzhou.rdi.net.httpStringRequest
 import calebxzhou.rdi.net.success
 import calebxzhou.rdi.ui2.*
-import calebxzhou.rdi.ui2.component.REditText
+import calebxzhou.rdi.ui2.component.RTextField
 import calebxzhou.rdi.ui2.component.SkinItemView
 import calebxzhou.rdi.ui2.component.alertErr
 import calebxzhou.rdi.ui2.component.alertOk
@@ -63,7 +63,7 @@ class WardrobeFragment : RFragment("衣柜") {
     private var capeMode = false
     private var hasMoreData = true
 
-    private lateinit var searchBox: REditText
+    private lateinit var searchBox: RTextField
     private lateinit var capeBox: CheckBox
     private lateinit var skinContainer: LinearLayout
     private lateinit var scrollView: ScrollView
@@ -80,12 +80,11 @@ class WardrobeFragment : RFragment("衣柜") {
                 }
                 gravity = Gravity.CENTER_VERTICAL
 
-                searchBox = editText("搜索...", 100f) {
+                searchBox = editText("搜索...") {
                     layoutParams = linearLayoutParam(SELF, SELF) {
                         weight = 1f
                         rightMargin = dp(16f)
                     }
-                    setSingleLine(true)
                     onPressEnterKey {
                         refreshSkins()
                     }
@@ -173,7 +172,7 @@ class WardrobeFragment : RFragment("衣柜") {
         page++
 
         ioScope.launch {
-            val newSkins = querySkins(page, searchBox.text.toString(), capeMode)
+            val newSkins = querySkins(page, searchBox.txt.toString(), capeMode)
             if (newSkins.isNotEmpty()) {
                 uiThread {
                     appendSkinWidgets(newSkins)
@@ -195,7 +194,7 @@ class WardrobeFragment : RFragment("衣柜") {
         hasMoreData = true
         skinContainer.removeAllViews()
         ioScope.launch {
-            querySkins(page, searchBox.text.toString(),capeMode).let { skins ->
+            querySkins(page, searchBox.txt.toString(),capeMode).let { skins ->
                 if (skins.isNotEmpty()) {
                     uiThread {
                         loadSkinWidgets(skins)

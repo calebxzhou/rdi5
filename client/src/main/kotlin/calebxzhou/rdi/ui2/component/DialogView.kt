@@ -9,6 +9,8 @@ import icyllis.modernui.graphics.Paint
 import icyllis.modernui.graphics.drawable.Drawable
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.mc.BlurHandler
+import icyllis.modernui.fragment.Fragment
+import icyllis.modernui.view.View
 import icyllis.modernui.view.ViewGroup
 import icyllis.modernui.view.ViewParent
 import icyllis.modernui.view.WindowManager
@@ -171,14 +173,28 @@ class DialogView(
         }
     }
 
-    fun showOver(parent: RFragment) = uiThread {
+    // Back-compat API: show over our custom RFragment by delegating to the generic view-based overload
+    fun showOver(parent: RFragment) = showOver(parent.contentLayout)
+
+    // New API: show over any ModernUI Fragment
+    fun showOver(fragment: Fragment) {
+        val v = fragment.view ?: return
+        showOver(v)
+    }
+
+    // New API: show over any anchor view in the hierarchy
+    fun showOver(anchor: View) = uiThread {
         // Ascend to the topmost root so we center relative to whole screen
-        var root: ViewGroup = parent.contentLayout
-        var cur: ViewParent? = root.parent
+        var root: ViewGroup? = when (anchor) {
+            is ViewGroup -> anchor
+            else -> anchor.parent as? ViewGroup
+        }
+        var cur: ViewParent? = root?.parent
         while (cur is ViewGroup) {
             root = cur
             cur = cur.parent
         }
+        val nonNullRoot = root ?: return@uiThread
         // Manage global blur state (enable while at least one dialog is open)
         if (openCount == 0) {
             prevGlobalBlur = true
@@ -196,15 +212,15 @@ class DialogView(
             dialogContainer.scaleX = 0.92f
             dialogContainer.scaleY = 0.92f
         }
-        root.addView(this, WindowManager.LayoutParams())
+        nonNullRoot.addView(this, WindowManager.LayoutParams())
         post {
-            ensureCentered(root)
+            ensureCentered(nonNullRoot)
             if (!hasEntered) {
                 playEnterAnimation()
                 hasEntered = true
             }
         }
-        addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> ensureCentered(root) }
+        addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> ensureCentered(nonNullRoot) }
     }
 
     private fun ensureCentered(root: ViewGroup) {

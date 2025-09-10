@@ -7,12 +7,13 @@ import calebxzhou.rdi.ui2.component.REditText
 import calebxzhou.rdi.ui2.editPwd
 import calebxzhou.rdi.ui2.editText
 import calebxzhou.rdi.ui2.button
+import calebxzhou.rdi.ui2.component.RTextField
 import calebxzhou.rdi.ui2.component.alertErr
 import calebxzhou.rdi.ui2.component.alertOk
 
 class ChangeProfileFragment: RFragment("修改信息") {
     val account = RAccount.now ?: RAccount.DEFAULT
-    private lateinit var nameEdit: REditText
+    private lateinit var nameEdit: RTextField
     private lateinit var qqEdit: REditText
     private lateinit var pwdEdit: REditPassword
     override fun initContent() {
@@ -29,7 +30,7 @@ class ChangeProfileFragment: RFragment("修改信息") {
     }
     //不允许修改qq
     private fun onChangeClicked() {
-        val name = nameEdit.text.toString()
+        val name = nameEdit.txt.toString()
         val pwd = pwdEdit.text.toString()
         if (name.toByteArray().size !in 3..24) {
             alertErr("昵称须在3~24个字节，当前为${name.toByteArray(Charsets.UTF_8).size}（1个汉字=3字节）")

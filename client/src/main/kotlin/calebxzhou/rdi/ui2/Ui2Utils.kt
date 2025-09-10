@@ -7,6 +7,7 @@ import calebxzhou.rdi.ui2.frag.RFragment
 import calebxzhou.rdi.util.mc
 import calebxzhou.rdi.util.rdiAsset
 import com.mojang.blaze3d.platform.NativeImage
+import icyllis.modernui.ModernUI
 import icyllis.modernui.core.Context
 import icyllis.modernui.fragment.Fragment
 import icyllis.modernui.graphics.Bitmap
@@ -15,11 +16,10 @@ import icyllis.modernui.graphics.Image
 import icyllis.modernui.graphics.Paint
 import icyllis.modernui.graphics.drawable.Drawable
 import icyllis.modernui.graphics.drawable.ImageDrawable
-import icyllis.modernui.material.MaterialCheckBox
-import icyllis.modernui.material.MaterialRadioButton
 import icyllis.modernui.mc.MuiScreen
 import icyllis.modernui.mc.neoforge.MuiForgeApi
 import icyllis.modernui.view.KeyEvent
+import icyllis.modernui.view.LayoutInflater
 import icyllis.modernui.view.View
 import icyllis.modernui.view.ViewGroup
 import icyllis.modernui.widget.*
@@ -32,6 +32,7 @@ import org.bson.types.ObjectId
 /**
  * calebxzhou @ 2025-07-22 21:28
  */
+val mui = ModernUI.getInstance()
 val PARENT = LinearLayout.LayoutParams.MATCH_PARENT
 val SELF = LinearLayout.LayoutParams.WRAP_CONTENT
 val BG_GRAY_BORDER
@@ -70,7 +71,7 @@ fun View.paddingDp(all: Int) {
 }
 //frag的上下文
 val Fragment.fctx: Context
-    get() = requireContext()
+    get() = ModernUI.getInstance()//requireContext()
 
 operator fun ViewGroup.plusAssign(view: View) {
     addView(view)
@@ -161,26 +162,34 @@ fun ViewGroup.imageView(
 fun ViewGroup.button(
     msg: String,
     color: MaterialColor = MaterialColor.WHITE,
+    width: Int = 100,
     init: RButton.() -> Unit = {},
     onClick: (RButton) -> Unit = {},
 ) = RButton(this.context,color,onClick = onClick).apply{
+    layoutParams = linearLayoutParam(context.dp(width.toFloat()), SELF)
     text=msg
+
     init()
 }.also { this += it }
 
 fun ViewGroup.editText(
     msg: String = "",
-    width: Float = 200f,
-    init: REditText.() -> Unit = {}
-) = REditText(this.context, msg, width).apply(init).also { this += it }
+    icon: String? = null,
+    width: Int=200,
+    init: RTextField.() -> Unit = {}
+) = RTextField(this.context, msg,width.toFloat(),icon).apply{
+    init()
+    padding8dp()
+
+}.also { this += it }
 fun ViewGroup.checkBox(
     msg: String = "",
-    init: MaterialCheckBox.() -> Unit = {},
-    onClick: (MaterialCheckBox, Boolean) -> Unit = {_,_->}
-) = MaterialCheckBox(this.context).apply{
+    init: CheckBox.() -> Unit = {},
+    onClick: (CheckBox, Boolean) -> Unit = {_,_->}
+) = CheckBox(this.context).apply{
     text=msg
     setOnCheckedChangeListener { v,chk->
-        onClick(v as MaterialCheckBox, chk)
+        onClick(v as CheckBox, chk)
     }
     init()
 }.also { this += it }
@@ -200,8 +209,8 @@ fun ViewGroup.headButton(
 
 fun ViewGroup.radioButton(
     msg:String,
-    init: MaterialRadioButton.() -> Unit = {},
-) = MaterialRadioButton(context,).apply{
+    init: RadioButton.() -> Unit = {},
+) = RadioButton(context,).apply{
     init()
     text=msg
 }.also { this += it }
@@ -226,6 +235,7 @@ fun drawable(drawing: Drawable.(Canvas) -> Unit): Drawable = object : Drawable()
         drawing(canvas)
     }
 }
+val layoutInflater = object : LayoutInflater(){}
 /*
 
 fun Context.showContextMenu(anchor: View, items: List<Pair<String, () -> Unit>>, x: Float = Float.NaN, y: Float = Float.NaN) {
