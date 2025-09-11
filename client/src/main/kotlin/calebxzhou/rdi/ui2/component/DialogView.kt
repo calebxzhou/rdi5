@@ -19,7 +19,7 @@ import org.lwjgl.util.tinyfd.TinyFileDialogs
 
 fun alertErr(msg: String, parent: RFragment? = mc.fragment) {
     if (parent != null) {
-        uiThread { DialogView(parent.fctx, msg,msglvl = RMessageLevel.ERR) .showOver(parent) }
+        uiThread { DialogView(parent.fctx, msg,msglvl = MessageLevel.ERR) .showOver(parent) }
     }
 }
 
@@ -29,16 +29,16 @@ fun alertErrOs(msg: String) {
 
 fun alertOk(msg: String, parent: RFragment? = mc.fragment) {
     if (parent != null) {
-        uiThread { DialogView(parent.fctx, msg, msglvl = RMessageLevel.OK).apply {  }.showOver(parent) }
+        uiThread { DialogView(parent.fctx, msg, msglvl = MessageLevel.OK).apply {  }.showOver(parent) }
     }
 }
 
-fun confirm(msg: String, parent: RFragment? = mc.fragment, init: DialogView.() -> Unit = {}, onYes: () -> Unit = {}) {
+fun confirm(msg: String, parent: RFragment? = mc.fragment,  noText: String = "❎ 否",
+             yesText: String = "✅ 是", onYes: () -> Unit = {}) {
     if (parent != null) {
         uiThread {
-            DialogView(parent.fctx, msg,type = RDialogType.CONFIRM,onYes=onYes).apply {
-                init()
-            }.showOver(parent)
+            DialogView(parent.fctx, msg,type = RDialogType.CONFIRM,
+                noText = noText, yesText = yesText, onNo = {},onYes=onYes).showOver(parent)
         }
     }
 }
@@ -52,7 +52,7 @@ class DialogView(
     context: Context,
     val msg: String,
     var type: RDialogType = RDialogType.ALERT,
-    var msglvl: RMessageLevel = RMessageLevel.INFO,
+    var msglvl: MessageLevel = MessageLevel.INFO,
     var noText: String = "❎ 否",
     var yesText: String = if (type == RDialogType.ALERT) "🆗 明白" else "✅ 是",
     val onNo: () -> Unit = { },

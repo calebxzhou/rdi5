@@ -33,9 +33,6 @@ class SelectAccountFragment(val server: RServer) : RFragment("选择账号") {
         }
     }
 
-    override fun close() {
-        mc go TitleFragment()
-    }
 
     override fun initContent() {
         contentLayout.apply {

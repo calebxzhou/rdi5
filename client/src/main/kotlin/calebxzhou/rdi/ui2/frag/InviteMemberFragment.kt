@@ -8,7 +8,7 @@ import calebxzhou.rdi.ui2.component.REditText
 import calebxzhou.rdi.ui2.component.alertOk
 import calebxzhou.rdi.ui2.fctx
 import calebxzhou.rdi.ui2.plusAssign
-import calebxzhou.rdi.util.uiThread
+import calebxzhou.rdi.ui2.uiThread
 
 class InviteMemberFragment : RFragment("邀请成员") {
 

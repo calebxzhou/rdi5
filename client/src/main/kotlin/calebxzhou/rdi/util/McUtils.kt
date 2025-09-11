@@ -2,6 +2,8 @@ package calebxzhou.rdi.util
 
 import calebxzhou.rdi.lgr
 import calebxzhou.rdi.ui2.frag.RFragment
+import calebxzhou.rdi.ui2.goto
+import icyllis.modernui.R
 import icyllis.modernui.core.Core
 import icyllis.modernui.fragment.Fragment
 import icyllis.modernui.mc.MuiModApi
@@ -45,9 +47,7 @@ val mcs: IntegratedServer?
 fun renderThread(run: () -> Unit) {
     mc.execute(run)
 }
-fun uiThread(run: () -> Unit) {
-    Core.getUiHandlerAsync().post(run)
-}
+
 fun rdiAsset(path: String) = ResourceLocation.fromNamespaceAndPath("rdi",path)
 fun mcAsset(path: String) = ResourceLocation.withDefaultNamespace(path)
 val ResourceLocation.isTextureReady
@@ -66,21 +66,22 @@ infix fun Minecraft.go(screen: Screen?) {
         }else setScreen(screen)
     }
 } //前screen=null时，默认使用当前screen
-fun Minecraft. goto(fragment: Fragment, prevScreen: Screen?=null){
+/*fun Minecraft. goto(fragment: Fragment, prevScreen: Screen?=null){
     renderThread {
         val screen: Screen = MuiForgeApi.get().createScreen(fragment,null,prevScreen?:mc.screen)
         mc set screen
     }
-}
-infix fun Minecraft. go(fragment: RFragment){
+}*/
+infix fun Minecraft. go(fragment: Fragment){
     renderThread {
-        val screen: Screen = MuiForgeApi.get().createScreen(fragment, object:ScreenCallback {
+        goto(fragment)
+       /* val screen: Screen = MuiForgeApi.get().createScreen(fragment, object:ScreenCallback {
             override fun shouldClose(): Boolean {
                 //禁用自带的esc逻辑 用rdi写的
                 return false
             }
         },mc.screen)
-        mc set screen
+        mc set screen*/
     }
 }
 infix fun Minecraft.set(screen: Screen?) {

@@ -11,7 +11,10 @@ import calebxzhou.rdi.util.encodeBase64
 import calebxzhou.rdi.util.go
 import calebxzhou.rdi.util.ioScope
 import calebxzhou.rdi.util.mc
-import calebxzhou.rdi.util.uiThread
+import calebxzhou.rdi.ui2.uiThread
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import io.netty.bootstrap.Bootstrap
 import io.netty.channel.Channel
 import io.netty.channel.ChannelFuture
@@ -27,6 +30,13 @@ import io.netty.util.concurrent.DefaultThreadFactory
 import kotlinx.coroutines.launch
 import net.minecraft.client.multiplayer.ServerData
 import java.net.http.HttpResponse
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.nio.charset.StandardCharsets
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.URI
+import java.util.concurrent.atomic.AtomicBoolean
 
 class RServer(
     val ip: String,
@@ -155,4 +165,76 @@ class RServer(
 
         }
     }
+
+    /**
+     * Open a Server-Sent Events stream to /room/log/stream.
+     * Returns a close function to terminate the stream.
+     */
+    fun openLogSse(
+        onEvent: (event: String?, data: String) -> Unit,
+        onError: (Throwable) -> Unit = {},
+        onClosed: () -> Unit = {}
+    ): () -> Unit {
+        val authHeader = RAccount.now?.let { "Basic ${"${it._id}:${it.pwd}".encodeBase64}" }
+        val url = "http://${ip}:${hqPort}/room/log/stream"
+        val client = HttpClient.newBuilder().build()
+        val reqBuilder = HttpRequest.newBuilder()
+            .uri(URI.create(url))
+            .header("Accept", "text/event-stream")
+            .header("Cache-Control", "no-cache")
+            .GET()
+        if (authHeader != null) reqBuilder.header("Authorization", authHeader)
+        val request = reqBuilder.build()
+        val cancelled = AtomicBoolean(false)
+        val job: Job = ioScope.launch(Dispatchers.IO) {
+            try {
+                val resp = client.send(request, HttpResponse.BodyHandlers.ofInputStream())
+                if (resp.statusCode() !in 200..299) {
+                    onError(IllegalStateException("SSE HTTP ${resp.statusCode()}")); return@launch
+                }
+                BufferedReader(InputStreamReader(resp.body(), StandardCharsets.UTF_8)).use { reader ->
+                    var event: String? = null
+                    val dataBuf = StringBuilder()
+                    fun dispatch() {
+                        if (dataBuf.isNotEmpty()) {
+                            onEvent(event, dataBuf.toString().trimEnd())
+                            dataBuf.setLength(0)
+                            event = null
+                        }
+                    }
+                    while (!cancelled.get()) {
+                        val line = reader.readLine() ?: break
+                        if (line.isEmpty()) { dispatch(); continue }
+                        when {
+                            line.startsWith("event:") -> event = line.substring(6).trim()
+                            line.startsWith(":") -> { /* comment / heartbeat */ }
+                            line.startsWith("data:") -> dataBuf.append(line.substring(5).trim()).append('\n')
+                        }
+                    }
+                    dispatch()
+                }
+            } catch (e: Exception) {
+                if (!cancelled.get()) onError(e)
+            } finally { onClosed() }
+        }
+        return {
+            cancelled.set(true)
+            job.cancel()
+        }
+    }
+
+    /** Convenience wrapper to consume only log lines (ignores control events). */
+    fun openLogLineStream(
+        onLine: (String) -> Unit,
+        onError: (Throwable) -> Unit = {},
+        onClosed: () -> Unit = {}
+    ): () -> Unit = openLogSse(onEvent = { ev, data ->
+        if (ev == "error") {
+            onError(IllegalStateException(data)); return@openLogSse
+        }
+        if (ev == "done") { return@openLogSse }
+        if (data == "💓" || ev == "hello") return@openLogSse
+        // Multi-line payload possible
+        data.lines().filter { it.isNotBlank() }.forEach { onLine(it) }
+    }, onError = onError, onClosed = onClosed)
 }

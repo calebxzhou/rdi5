@@ -10,6 +10,7 @@ import calebxzhou.rdi.ui2.dp
 import calebxzhou.rdi.ui2.editPwd
 import calebxzhou.rdi.ui2.editText
 import calebxzhou.rdi.ui2.fctx
+import calebxzhou.rdi.ui2.goto
 import calebxzhou.rdi.ui2.linearLayoutParam
 import calebxzhou.rdi.ui2.paddingDp
 import calebxzhou.rdi.ui2.plusAssign
@@ -44,7 +45,7 @@ class LoginFragment : RFragment("登录") {
     val pwd = passwordInput.txt
         ioScope.launch {
             RServer.now?.playerLogin(this@LoginFragment, qq, pwd)?.let {
-                mc go ProfileFragment()
+                goto( ProfileFragment())
             }
         }
 

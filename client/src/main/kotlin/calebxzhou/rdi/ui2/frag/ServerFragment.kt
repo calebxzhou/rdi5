@@ -6,8 +6,9 @@ import calebxzhou.rdi.ui2.Fonts
 import calebxzhou.rdi.ui2.MaterialColor
 import calebxzhou.rdi.ui2.dp
 import calebxzhou.rdi.ui2.fctx
+import calebxzhou.rdi.ui2.toast
 import calebxzhou.rdi.util.ioScope
-import calebxzhou.rdi.util.uiThread
+import calebxzhou.rdi.ui2.uiThread
 import icyllis.modernui.graphics.Color
 import icyllis.modernui.graphics.drawable.ColorDrawable
 import icyllis.modernui.text.SpannableStringBuilder
@@ -18,13 +19,21 @@ import icyllis.modernui.view.View
 import icyllis.modernui.widget.LinearLayout
 import icyllis.modernui.widget.ScrollView
 import icyllis.modernui.widget.TextView
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-class ServerFragment(val server: RServer) : RFragment("服务端") {
+class ServerFragment() : RFragment("服务端") {
+    val server= RServer.default
     lateinit var console: TextView
     private lateinit var scrollView: ScrollView
     private var currentPage = 0
     private var isLoading = false
+    private var autoRefreshJob: Job? = null
+    private var lastAllLines: MutableList<String> = mutableListOf()
+    private var refreshIntervalMs: Long = 5000
+    private var realTime: Boolean = false
+    private var sseCloser: (() -> Unit)? = null
 
     // Colors for different log types
     private val GOLD_COLOR = Color.rgb(255, 215, 0)     // Gold for timestamps
@@ -34,9 +43,18 @@ class ServerFragment(val server: RServer) : RFragment("服务端") {
 
     init {
         bottomOptionsConfig = {
-            "▶ 启动" colored MaterialColor.GREEN_900 with { }
+            "▶ 启动" colored MaterialColor.GREEN_900 with {
+                server.hqRequest(true,"/room/server/start"){
+                    toast("启动指令已发送")
+                }
+            }
             "👆 升级/重装" colored MaterialColor.BLUE_800 with { }
-            "⏹ 停止" colored MaterialColor.RED_900 with { }
+            "⏹ 停止" colored MaterialColor.RED_900 with {
+                server.hqRequest(true,"/room/server/stop"){
+                    toast("停止指令已发送")
+                }
+            }
+            "⚡ 实时" colored MaterialColor.YELLOW_900 with { toggleRealTime() }
         }
     }
 
@@ -71,9 +89,12 @@ class ServerFragment(val server: RServer) : RFragment("服务端") {
             }
             addView(scrollView)
         }
-
-        // Load initial logs
-        loadLogs()
+        // Start SSE real-time streaming immediately (no initial paged load to avoid duplication with tail lines)
+        if(!realTime){
+            toggleRealTime()
+            // SSE tail supplies last ~100 lines; skip pages 0 and 1 when loading older history later
+            currentPage = 1
+        }
     }
 
     private fun loadLogs() {
@@ -85,6 +106,7 @@ class ServerFragment(val server: RServer) : RFragment("服务端") {
                     // Reverse the log order to show earliest logs at top
                     val reversedLog = reverseLogOrder(log)
                     displayColoredLogs(reversedLog)
+                    lastAllLines = reversedLog.split("\n").toMutableList()
                     isLoading = false
 
                     // Scroll to bottom after logs are displayed
@@ -247,6 +269,96 @@ class ServerFragment(val server: RServer) : RFragment("服务端") {
         }
 
         return builder
+    }
+
+    private fun startAutoRefresh() {
+        autoRefreshJob?.cancel()
+        autoRefreshJob = ioScope.launch {
+            while (true) {
+                delay(refreshIntervalMs)
+                try {
+                    refreshLatestLogs()
+                } catch (_: Throwable) { }
+            }
+        }
+    }
+
+    private fun toggleRealTime(){
+        realTime = !realTime
+        if(realTime){
+            toast("实时模式: SSE")
+            // Stop polling
+            autoRefreshJob?.cancel(); autoRefreshJob = null
+            // Clear incremental cache to avoid duplicate detection – we append live
+            sseCloser = server.openLogLineStream(
+                onLine = { line ->
+                    uiThread {
+                        val atBottom = !scrollView.canScrollVertically(1)
+                        val spanNew = displayColoredLogs(line, setDirectly = false)
+                        val existing = SpannableStringBuilder()
+                        existing.append(console.text)
+                        existing.append(spanNew)
+                        console.text = existing
+                        lastAllLines.add(line)
+                        if(atBottom) scrollView.post { scrollView.fullScroll(View.FOCUS_DOWN) }
+                    }
+                },
+                onError = { e -> uiThread { toast("SSE错误:${e.message}") } },
+                onClosed = { uiThread { if(realTime) toast("SSE关闭") } }
+            )
+        }else{
+            toast("实时模式: 关闭")
+            sseCloser?.invoke(); sseCloser = null
+            refreshIntervalMs = 5000
+            startAutoRefresh()
+        }
+    }
+
+    private suspend fun refreshLatestLogs() {
+        // Always work from page 0 (latest logs) and append new lines
+        val log = getLog(0)
+        val reversed = reverseLogOrder(log)
+        val newLines = reversed.split("\n")
+        if (lastAllLines.isEmpty()) {
+            uiThread {
+                displayColoredLogs(reversed)
+                lastAllLines = newLines.toMutableList()
+                scrollView.post { scrollView.fullScroll(View.FOCUS_DOWN) }
+            }
+            return
+        }
+        if (newLines.size < lastAllLines.size) {
+            // Log rotated or truncated; reload full
+            uiThread {
+                displayColoredLogs(reversed)
+                lastAllLines = newLines.toMutableList()
+                val atBottom = !scrollView.canScrollVertically(1)
+                if (atBottom) scrollView.post { scrollView.fullScroll(View.FOCUS_DOWN) }
+            }
+            return
+        }
+        if (newLines.size == lastAllLines.size) return // No change
+        val added = newLines.subList(lastAllLines.size, newLines.size).joinToString("\n")
+        if (added.isBlank()) return
+        val atBottom = !scrollView.canScrollVertically(1)
+        uiThread {
+            // Build colored spans only for new portion
+            val spanNew = displayColoredLogs(added, setDirectly = false)
+            val existing = SpannableStringBuilder()
+            existing.append(console.text)
+            existing.append(spanNew)
+            console.text = existing
+            lastAllLines = newLines.toMutableList()
+            if (atBottom) {
+                scrollView.post { scrollView.fullScroll(View.FOCUS_DOWN) }
+            }
+        }
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        autoRefreshJob?.cancel(); autoRefreshJob = null
+    sseCloser?.invoke(); sseCloser = null
     }
 
     suspend fun getLog(page: Int = 0): String {

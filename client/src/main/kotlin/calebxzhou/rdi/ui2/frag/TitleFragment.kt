@@ -3,12 +3,10 @@ package calebxzhou.rdi.ui2.frag
 import calebxzhou.rdi.Const
 import calebxzhou.rdi.PACK
 import calebxzhou.rdi.model.RAccount
+import calebxzhou.rdi.model.Room
 import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.net.RServer.Companion.OFFICIAL_DEBUG
-import calebxzhou.rdi.model.Room
 import calebxzhou.rdi.ui2.*
-import calebxzhou.rdi.util.go
-import calebxzhou.rdi.util.goto
 import calebxzhou.rdi.util.mc
 import calebxzhou.rdi.util.set
 import icyllis.modernui.animation.ObjectAnimator

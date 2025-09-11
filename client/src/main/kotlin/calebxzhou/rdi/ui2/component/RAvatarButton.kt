@@ -5,7 +5,7 @@ import calebxzhou.rdi.net.success
 import calebxzhou.rdi.service.PlayerInfoCache
 import calebxzhou.rdi.ui2.paddingDp
 import calebxzhou.rdi.util.ioScope
-import calebxzhou.rdi.util.uiThread
+import calebxzhou.rdi.ui2.uiThread
 import icyllis.modernui.core.Context
 import icyllis.modernui.graphics.Bitmap
 import icyllis.modernui.graphics.BitmapFactory

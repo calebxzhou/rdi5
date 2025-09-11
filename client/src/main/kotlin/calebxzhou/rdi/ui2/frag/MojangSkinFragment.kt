@@ -9,7 +9,7 @@ import calebxzhou.rdi.ui2.component.RTextField
 import calebxzhou.rdi.ui2.component.alertErr
 import calebxzhou.rdi.ui2.component.alertOk
 import calebxzhou.rdi.util.ioScope
-import calebxzhou.rdi.util.uiThread
+import calebxzhou.rdi.ui2.uiThread
 import icyllis.modernui.widget.CheckBox
 import icyllis.modernui.widget.LinearLayout
 import kotlinx.coroutines.launch

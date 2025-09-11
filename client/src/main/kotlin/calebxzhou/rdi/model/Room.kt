@@ -12,6 +12,7 @@ data class Room(
     val score: Int=0,
     val members: List<Member> = arrayListOf(),
 ){
+    var port = 0
     @Serializable
     data class Member(
         @Contextual

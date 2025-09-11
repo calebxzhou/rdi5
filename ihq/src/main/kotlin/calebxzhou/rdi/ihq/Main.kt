@@ -189,6 +189,9 @@ fun startHttp(){
                     get("/log"){
                         RoomService.getServerLog(call)
                     }
+                    get("/log/stream"){
+                        RoomService.streamServerLogSse(call)
+                    }
                     /*post("/section/add"){
                         RoomService.addFirmSection(call)
                     }
@@ -198,7 +201,15 @@ fun startHttp(){
                     get("/section"){
                         RoomService.getFirmSectionData(call)
                     }*/
+                    route("/server"){
 
+                        post("/start") {
+                            RoomService.startServer(call)
+                        }
+                        post("/stop") {
+                            RoomService.stopServer(call)
+                        }
+                    }
                 }
             }
         }

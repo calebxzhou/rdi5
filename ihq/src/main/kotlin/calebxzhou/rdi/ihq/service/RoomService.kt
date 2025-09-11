@@ -16,6 +16,13 @@ import com.mongodb.client.model.*
 import com.mongodb.client.model.Filters.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.http.*
+import io.ktor.utils.io.writeFully
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.delay
+import java.util.concurrent.ConcurrentLinkedQueue
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
@@ -293,4 +300,59 @@ object RoomService {
             call.ok(DockerService.getLog(room.containerId,page.toInt()))
         } ?: throw RequestError("没这个岛")
     }
+    suspend fun streamServerLogSse(call: ApplicationCall){
+        val room = getJoinedRoom(call.uid) ?: throw RequestError("没这个岛")
+        call.response.cacheControl(CacheControl.NoCache(null))
+        call.respondBytesWriter(contentType = ContentType.Text.EventStream) {
+            val writer = this
+            val pending = ConcurrentLinkedQueue<String>()
+            fun enqueue(event: String? = null, data: String) {
+                val sb = StringBuilder()
+                if(event!=null) sb.append("event: ").append(event).append('\n')
+                data.lines().forEach { line -> sb.append("data: ").append(line).append('\n') }
+                sb.append('\n')
+                pending.add(sb.toString())
+            }
+            enqueue("hello","start streaming")
+            val closer = DockerService.followLog(
+                room.containerId,
+                tail = 100,
+                onLine = { line -> enqueue(data = line) },
+                onError = { t -> enqueue("error", t.message ?: "error") },
+                onFinished = { enqueue("done","finished") }
+            )
+            try {
+                // Drain queue periodically; also send heartbeat every 15s
+                var lastHeartbeat = System.currentTimeMillis()
+                while(true){
+                    var wrote = false
+                    while(true){
+                        val msg = pending.poll() ?: break
+                        writer.writeFully(msg.toByteArray())
+                        wrote = true
+                    }
+                    val now = System.currentTimeMillis()
+                    if(now - lastHeartbeat > 15000){
+                        writer.writeFully("data: 💓\n\n".toByteArray())
+                        lastHeartbeat = now
+                        wrote = true
+                    }
+                    if(wrote) flush()
+                    delay(500)
+                }
+            } catch (_: Throwable) { }
+            finally { try { closer.close() } catch (_: Throwable) {} }
+        }
+    }
+    suspend fun startServer(call: ApplicationCall) {
+        val room = getJoinedRoom(call.uid) ?: throw RequestError("没岛")
+        DockerService.start(room.containerId)
+        call.ok()
+    }
+    suspend fun stopServer(call: ApplicationCall) {
+        val room = getJoinedRoom(call.uid) ?: throw RequestError("没岛")
+        DockerService.stop(room.containerId)
+        call.ok()
+    }
+
 }

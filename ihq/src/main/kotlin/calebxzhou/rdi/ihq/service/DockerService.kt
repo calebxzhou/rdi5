@@ -13,6 +13,7 @@ import com.github.dockerjava.core.DefaultDockerClientConfig
 import com.github.dockerjava.core.DockerClientBuilder
 import com.github.dockerjava.httpclient5.ApacheDockerHttpClient
 import com.github.dockerjava.transport.DockerHttpClient
+import java.io.Closeable
 import org.bson.types.ObjectId
 import java.time.Duration
 
@@ -147,6 +148,42 @@ object DockerService {
             lgr.warn { "Error getting logs for container $containerId: ${e.message}" }
             ""
         }
+    }
+
+    /**
+     * Follow the container log stream and invoke [onLine] for each new line.
+     * Returns a [Closeable] you should close to stop streaming.
+     */
+    fun followLog(
+        containerId: String,
+        tail: Int = 50,
+        onLine: (String) -> Unit,
+        onError: (Throwable) -> Unit = {},
+        onFinished: () -> Unit = {}
+    ): Closeable {
+        val callback = object : Adapter<Frame>() {
+            override fun onNext(frame: Frame) {
+                val logLine = String(frame.payload).trim()
+                if (logLine.isNotEmpty()) {
+                    try { onLine(logLine) } catch (_: Throwable) {}
+                }
+            }
+            override fun onError(throwable: Throwable) {
+                try { onError(throwable) } catch (_: Throwable) {}
+                super.onError(throwable)
+            }
+            override fun onComplete() {
+                try { onFinished() } catch (_: Throwable) {}
+                super.onComplete()
+            }
+        }
+        client.logContainerCmd(containerId)
+            .withStdOut(true)
+            .withStdErr(true)
+            .withFollowStream(true)
+            .withTail(tail)
+            .exec(callback)
+        return callback
     }
     fun pause(containerId: String) {
 

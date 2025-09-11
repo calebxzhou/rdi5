@@ -84,7 +84,7 @@ abstract class RFragment(var title: String = "") : Fragment() {
 
         // Create new content view - use FrameLayout as root to allow bottom positioning
         return FrameLayout(mui).apply {
-            keyAction {  }
+
             // 20% dim background for better contrast with light content
             background = ColorDrawable(0x33000000.toInt())
 
@@ -144,6 +144,7 @@ abstract class RFragment(var title: String = "") : Fragment() {
             if (contentViewCache) {
                 _contentView = this
             }
+            keyAction {  }
         }
     }
 
@@ -154,12 +155,13 @@ abstract class RFragment(var title: String = "") : Fragment() {
             remover()
             return
         }
+        goBack()/*
         if (Minecraft.getInstance() == null) {
             UIManager.getInstance().onBackPressedDispatcher.onBackPressed()
             return
         }
         (mc.screen as? MuiScreen)?.let { mc set it.previousScreen }
-            ?: UIManager.getInstance().onBackPressedDispatcher.onBackPressed()
+            ?: UIManager.getInstance().onBackPressedDispatcher.onBackPressed()*/
     }
 
     //载入标题+返回按钮 和自定义header 二选一

@@ -29,10 +29,11 @@ class ProfileFragment : RFragment("我的信息") {
                 server.hqRequest(false, "room/my", false) {
                     val body = it.body
                     if (body == "0") {
-                        confirm("你还没有加入房间，你可以：", init = {
-                            yesText = "创建自己的房间"
-                            noText = "等朋友邀请我加入他的"
-                        }) {
+                        confirm(
+                            "你还没有加入房间，你可以：",
+                            yesText = "创建自己的房间",
+                            noText = "等朋友邀请我加入他的",
+                        ) {
                             server.hqRequest(true, "room/create") { resp ->
                                 val room = serdesJson.decodeFromString<Room>(resp.body)
                                 mc go RoomFragment(room)

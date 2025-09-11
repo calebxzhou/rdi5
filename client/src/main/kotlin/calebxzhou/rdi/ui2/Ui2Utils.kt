@@ -9,7 +9,10 @@ import calebxzhou.rdi.util.rdiAsset
 import com.mojang.blaze3d.platform.NativeImage
 import icyllis.modernui.ModernUI
 import icyllis.modernui.core.Context
+import icyllis.modernui.core.Core
 import icyllis.modernui.fragment.Fragment
+import icyllis.modernui.fragment.FragmentManager
+import icyllis.modernui.fragment.FragmentTransaction
 import icyllis.modernui.graphics.Bitmap
 import icyllis.modernui.graphics.Canvas
 import icyllis.modernui.graphics.Image
@@ -52,7 +55,9 @@ val BG_IMAGE_MC: ResourceLocation
     get() = rdiAsset("textures/$BG_IMAGE_PATH")
 val BG_IMAGE_MUI
     get()= rdiDrawable(BG_IMAGE_PATH)
-
+fun uiThread(run: () -> Unit) {
+    Core.getUiHandlerAsync().post(run)
+}
 /**
  * Converts density-independent pixels (dp) to actual pixels
  */
@@ -95,8 +100,8 @@ val ResourceLocation.bitmap: Bitmap
 fun View.toast(msg: String, duration: Int = 2000) {
     Toast.makeText(context,msg, duration).show()
 }
-fun toast(context: Context, msg: String, duration: Int = 2000) {
-    Toast.makeText(context,msg, duration).show()
+fun toast( msg: String, duration: Int = 2000) {
+    Toast.makeText(mui,msg, duration).show()
 }
 fun View.onPressEnterKey(handler: () -> Unit) {
     setOnKeyListener { _, keyCode, event ->
@@ -234,6 +239,9 @@ fun drawable(drawing: Drawable.(Canvas) -> Unit): Drawable = object : Drawable()
     override fun draw(canvas: Canvas) {
         drawing(canvas)
     }
+}
+fun FragmentManager.transaction(handler: FragmentTransaction.() -> Unit){
+    beginTransaction().apply { handler() }.commit()
 }
 val layoutInflater = object : LayoutInflater(){}
 /*
