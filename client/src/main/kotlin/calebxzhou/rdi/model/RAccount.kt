@@ -81,7 +81,7 @@ data class RAccount(
             RAccount(ObjectId("685aa7669acabdc07df8a731"), "测试2", "456456", "456456", 0)
         )
 
-        @JvmStatic
+        @JvmField
         var now: RAccount? = null
 
         @JvmStatic

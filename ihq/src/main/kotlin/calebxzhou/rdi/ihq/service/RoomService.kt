@@ -2,13 +2,12 @@ package calebxzhou.rdi.ihq.service
 
 import calebxzhou.rdi.ihq.DB
 import calebxzhou.rdi.ihq.exception.RequestError
-import calebxzhou.rdi.ihq.model.FirmSection
-import calebxzhou.rdi.ihq.model.FirmSectionData
 import calebxzhou.rdi.ihq.model.Room
 import calebxzhou.rdi.ihq.net.e500
 import calebxzhou.rdi.ihq.net.got
 import calebxzhou.rdi.ihq.net.initGetParams
 import calebxzhou.rdi.ihq.net.ok
+import calebxzhou.rdi.ihq.net.randomPort
 import calebxzhou.rdi.ihq.net.uid
 import calebxzhou.rdi.ihq.service.DockerService.asVolumeName
 import calebxzhou.rdi.ihq.util.serdesJson
@@ -19,16 +18,12 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.http.*
 import io.ktor.utils.io.writeFully
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
 import java.util.concurrent.ConcurrentLinkedQueue
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
-import org.bson.Document
 import org.bson.types.ObjectId
 
 object RoomService {
@@ -74,7 +69,6 @@ object RoomService {
         } ?: call.ok("0")
     }
 
-
     //建岛
     suspend fun create(call: ApplicationCall) {
         val params = call.receiveParameters()
@@ -85,10 +79,12 @@ object RoomService {
         val roomName = player.name + "的房间"
         //val bstates = serdesJson.decodeFromString<List<RBlockState>>(params got "bstates")
         val roomId= ObjectId()
-        val contId = DockerService.create(roomId.toString(),roomId.asVolumeName,"abc")
+        val port = randomPort
+        val contId = DockerService.create(port,roomId.toString(),roomId.asVolumeName,"abc")
         val room = Room(
             roomId,
             name = roomName,
+            port=port,
             members = listOf(
                 Room.Member(
                     call.uid,
@@ -354,5 +350,9 @@ object RoomService {
         DockerService.stop(room.containerId)
         call.ok()
     }
-
+    suspend fun getServerStatus(call: ApplicationCall) {
+        val room = getJoinedRoom(call.uid) ?: throw RequestError("没岛")
+//todo
+        call.ok(DockerService.getStatus(room.containerId).toString())
+    }
 }

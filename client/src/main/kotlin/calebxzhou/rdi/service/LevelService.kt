@@ -4,6 +4,7 @@ import calebxzhou.rdi.Const
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.ui2.frag.ProfileFragment
 import calebxzhou.rdi.ui2.frag.TitleFragment
+import calebxzhou.rdi.ui2.goto
 import calebxzhou.rdi.ui2.mcScreen
 import calebxzhou.rdi.util.go
 import calebxzhou.rdi.util.mc
@@ -21,7 +22,7 @@ object LevelService {
         val levelName = "rdi"+ RAccount.now?.name
         if (mc.levelSource.levelExists(levelName)) {
             mc.createWorldOpenFlows().openWorld(levelName){
-                mc go TitleFragment()
+                goto(TitleFragment())
             }
         } else {
             val levelSettings = LevelSettings(
@@ -46,7 +47,7 @@ object LevelService {
         val levelName = "rdi_creative"
         if (mc.levelSource.levelExists(levelName)) {
             mc.createWorldOpenFlows().openWorld( levelName){
-                mc go TitleFragment()
+                goto(TitleFragment())
             }
         } else {
             val levelSettings = LevelSettings(

@@ -10,9 +10,10 @@ data class Room(
     val _id: ObjectId = ObjectId(),
     val name: String,
     val score: Int=0,
+    val port: Int = 0,
     val members: List<Member> = arrayListOf(),
 ){
-    var port = 0
+
     @Serializable
     data class Member(
         @Contextual
@@ -21,7 +22,7 @@ data class Room(
     )
     companion object{
 
-        @JvmStatic
+        @JvmField
         var now: Room? = null
     }
 }

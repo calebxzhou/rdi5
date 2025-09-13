@@ -24,7 +24,7 @@ class SelectAccountFragment(val server: RServer) : RFragment("选择账号") {
         bottomOptionsConfig = {
             "➕ 添加旧号" with {showChildFragmentOver( LoginFragment()) }
             "✏ 注册新号" colored MaterialColor.LIGHT_GREEN_900 with { showChildFragmentOver(RegisterFragment()) }
-            "⚙ 设置" colored MaterialColor.BLUE_900 with { mc go SettingsFragment() }
+            "⚙ 设置" colored MaterialColor.BLUE_900 with { goto(SettingsFragment()) }
             /*"自由创造" with {
                 renderThread {
                     LevelService.openFlatLevel()
@@ -48,7 +48,7 @@ class SelectAccountFragment(val server: RServer) : RFragment("选择账号") {
                             RServer.now = server
                             ioScope.launch {
                                 RServer.now?.playerLogin(this@SelectAccountFragment,id, pwd)?.let {
-                                    mc go ProfileFragment()
+                                    goto( ProfileFragment())
                                 }
                             }
                         }, init = {

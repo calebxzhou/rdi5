@@ -3,15 +3,21 @@ package calebxzhou.rdi.net
 import calebxzhou.rdi.Const
 import calebxzhou.rdi.lgr
 import calebxzhou.rdi.model.RAccount
-import calebxzhou.rdi.ui2.frag.LoadingFragment
+import calebxzhou.rdi.ui2.component.LoadingView
 import calebxzhou.rdi.ui2.frag.SelectAccountFragment
 import calebxzhou.rdi.ui2.frag.UpdateFragment
 import calebxzhou.rdi.ui2.component.alertErr
+import calebxzhou.rdi.ui2.component.closeLoading
+import calebxzhou.rdi.ui2.component.showLoading
+import calebxzhou.rdi.ui2.fragment
+import calebxzhou.rdi.ui2.goto
+import calebxzhou.rdi.ui2.nowFragment
 import calebxzhou.rdi.util.encodeBase64
 import calebxzhou.rdi.util.go
 import calebxzhou.rdi.util.ioScope
 import calebxzhou.rdi.util.mc
 import calebxzhou.rdi.ui2.uiThread
+import calebxzhou.rdi.util.isMcStarted
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -27,7 +33,6 @@ import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.nio.NioSocketChannel
 import io.netty.handler.flow.FlowControlHandler
 import io.netty.util.concurrent.DefaultThreadFactory
-import kotlinx.coroutines.launch
 import net.minecraft.client.multiplayer.ServerData
 import java.net.http.HttpResponse
 import java.io.BufferedReader
@@ -108,10 +113,10 @@ class RServer(
     }
     fun connect() {
 
-        if (!noUpdate) {
-            mc go UpdateFragment(this)
+        if (!noUpdate && isMcStarted) {
+            goto(UpdateFragment(this))
         } else {
-            mc go SelectAccountFragment(this)
+            goto(SelectAccountFragment(this))
         }
     }
     fun disconnectGhq() {
@@ -144,16 +149,13 @@ class RServer(
         params: List<Pair<String, Any>> = listOf(),
         onOk: (HttpResponse<String>) -> Unit
     ) {
-        var frag: LoadingFragment? = null
         if (showLoading) {
-            uiThread {
-                frag = LoadingFragment()
-                mc go frag
-            }
+            nowFragment?.showLoading()
         }
         ioScope.launch {
             val req = prepareRequest(post, path, params)
-            LoadingFragment.close()
+            if(showLoading)
+                nowFragment?.closeLoading()
             if (req.success) {
                 if(Const.DEBUG) lgr.info(req.body)
                 onOk(req)

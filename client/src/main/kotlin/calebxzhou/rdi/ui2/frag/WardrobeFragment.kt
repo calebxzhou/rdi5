@@ -76,26 +76,19 @@ class WardrobeFragment : RFragment("衣柜") {
             linearLayout {
                 orientation = LinearLayout.HORIZONTAL
                 layoutParams = linearLayoutParam(PARENT, SELF) {
-                    bottomMargin = dp(16f)
+                    bottomMargin = dp(8f)
                 }
-                gravity = Gravity.CENTER_VERTICAL
+                gravity = Gravity.CENTER_HORIZONTAL
 
-                searchBox = editText("搜索...") {
-                    layoutParams = linearLayoutParam(SELF, SELF) {
-                        weight = 1f
-                        rightMargin = dp(16f)
-                    }
+                searchBox = editText("搜索...","search",240) {
                     onPressEnterKey {
                         refreshSkins()
                     }
                 }
-                button("导入正版皮肤", onClick = { mc go (MojangSkinFragment()) })
+                button("导入正版", onClick = { mc go (MojangSkinFragment()) })
 
                 capeBox = checkBox(
                     msg = "披风",
-                    init = {
-                    layoutParams = linearLayoutParam(SELF, SELF)
-                    },
                     onClick = { box, chk ->
                         if (chk != capeMode) {
                             capeMode = chk
@@ -103,42 +96,6 @@ class WardrobeFragment : RFragment("衣柜") {
                     },
                 )
             }
-
-            // Navigation buttons
-           /* linearLayout {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_HORIZONTAL
-                layoutParams = linearLayoutParam(PARENT, SELF) {
-                    bottomMargin = dp(16f)
-                }
-
-                textButton("上一页", init = {
-
-                }, onClick = {
-                    it.isEnabled = page > 1
-                    if (page > 1) {
-                        page--
-                        querySkins(page, searchBox.text.toString())
-                    }
-                })
-
-                textButton("正版导入", init = {
-                    layoutParams = linearLayoutParam(SELF, SELF) {
-                        leftMargin = dp(8f)
-                        rightMargin = dp(8f)
-                    }
-
-                }){showMojangSkinDialog()}
-
-                textButton("下一页") {
-                    it.isEnabled = page < 500
-                        if (page < 500) {
-                            page++
-                            querySkins(page, searchBox.text.toString())
-                        }
-
-                }
-            }*/
 
             // Skin container wrapped in ScrollView for scrolling
             scrollView = scrollView {
@@ -277,7 +234,7 @@ class WardrobeFragment : RFragment("衣柜") {
                 itemsInCurrentRow = 0
             }
 
-            currentRow?.let { row ->
+            currentRow.let { row ->
                 val skinItem = createSkinItemView(row, skin, itemsInCurrentRow, itemsPerRow, marginBetweenItems)
                 row.addView(skinItem)
                 itemsInCurrentRow++
@@ -360,7 +317,7 @@ class WardrobeFragment : RFragment("衣柜") {
             if (response.success) {
                 account.updateCloth(cloth)
                 uiThread {
-                    mc go ProfileFragment()
+                    goto(ProfileFragment())
                     alertOk("皮肤设置成功 （半小时或重启后可见）")
                 }
             } else {
@@ -372,6 +329,6 @@ class WardrobeFragment : RFragment("衣柜") {
     }
 
     private fun showMojangSkinDialog() {
-        mc go MojangSkinFragment()
+        goto(MojangSkinFragment())
     }
 }

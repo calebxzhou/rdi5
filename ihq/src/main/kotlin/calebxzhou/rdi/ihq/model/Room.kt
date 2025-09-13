@@ -5,6 +5,8 @@ import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import org.bson.types.ObjectId
 
+
+
 @Serializable
 data class Room(
     @Contextual
@@ -12,10 +14,10 @@ data class Room(
     val name: String,
     val containerId: String,
     val score: Int=0,
+    var port: Int,
     val centerPos: IslandBlockPos = IslandBlockPos(),
     val members: List<Member> = arrayListOf(),
 ) {
-    var port = 0
     fun hasMember(pid: ObjectId): Boolean {
         return members.find { it.id==pid } != null
     }

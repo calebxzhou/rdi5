@@ -22,6 +22,7 @@ class RoomFragment(val room: Room) : RFragment("我的房间") {
     val server = RServer.default
 
     init {
+        Room.now=room
         bottomOptionsConfig = {
             "▶ 开玩(电信)" colored MaterialColor.GREEN_900 with { start(false) }
             "▶ 开玩(电信以外)" colored MaterialColor.GREEN_700 with { start(true) }

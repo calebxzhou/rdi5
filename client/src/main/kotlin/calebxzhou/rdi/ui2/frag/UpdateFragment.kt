@@ -58,7 +58,7 @@ class UpdateFragment(val server: RServer) : RFragment("正在检查更新") {
             iconButton("next", "跳过更新，一会再说",{
                 layoutParams = linearLayoutParam(SELF, SELF)
             }) {
-                mc go SelectAccountFragment(server)
+                goto(SelectAccountFragment(server))
             }
             view = scrollView {
                 layoutParams = frameLayoutParam(PARENT, PARENT)
@@ -75,7 +75,7 @@ class UpdateFragment(val server: RServer) : RFragment("正在检查更新") {
             if (modsToUpdate.isEmpty()) {
                 lgr.info("没有需要更新的mod")
                 close()
-                mc go SelectAccountFragment(server)
+                goto(SelectAccountFragment(server))
                 return@ioTask
             }
             uiThread {
@@ -407,7 +407,7 @@ class UpdateFragment(val server: RServer) : RFragment("正在检查更新") {
                         }
                     }, onClick = {
                         fragment.close()
-                        mc go TitleFragment()
+                        goto(TitleFragment())
                     })
                 }
                 fragment.scrollToBottom()

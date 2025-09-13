@@ -26,7 +26,7 @@ class PauseFragment : RFragment("暂停") {
                         "https://play.mcmod.cn/sv20188037.html".openAsUri()
                     }
                     iconButton("heart", "赞助") {
-                        mc go SponsorFragment()
+                        goto(SponsorFragment())
 
                     }
                     iconButton("mcmod", "MC百科") {
@@ -43,14 +43,14 @@ class PauseFragment : RFragment("暂停") {
                     iconButton("island","房间中心")
                     iconButton("camera","摄影")
                     iconButton("settings","设置"){
-                        mc go SettingsFragment()
+                        goto(SettingsFragment())
                     }
                     iconButton("exit","退出"){
                         renderThread {
                             mc set null
                             mc.level?.disconnect()
                             if(mc.isLocalServer){
-                                mc go TitleFragment()
+                                goto(TitleFragment())
                                 mc.singleplayerServer?.let {
                                     it.saveEverything(true,true,true)
                                     it.runningThread.stop()
@@ -58,7 +58,7 @@ class PauseFragment : RFragment("暂停") {
 
                             }else{
                                 mc.disconnect()
-                                mc go ProfileFragment()
+                                goto(ProfileFragment())
                             }
                         }
                     }

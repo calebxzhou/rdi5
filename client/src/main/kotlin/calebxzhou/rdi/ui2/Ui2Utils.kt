@@ -97,10 +97,10 @@ val ResourceLocation.bitmap: Bitmap
             return bitmap
         }
     }
-fun View.toast(msg: String, duration: Int = 2000) {
+fun View.toast(msg: String, duration: Int = 2000)=uiThread {
     Toast.makeText(context,msg, duration).show()
 }
-fun toast( msg: String, duration: Int = 2000) {
+fun toast( msg: String, duration: Int = 2000)= uiThread {
     Toast.makeText(mui,msg, duration).show()
 }
 fun View.onPressEnterKey(handler: () -> Unit) {

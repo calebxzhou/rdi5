@@ -3,6 +3,7 @@ package calebxzhou.rdi.util
 import calebxzhou.rdi.lgr
 import calebxzhou.rdi.ui2.frag.RFragment
 import calebxzhou.rdi.ui2.goto
+import calebxzhou.rdi.ui2.uiThread
 import icyllis.modernui.R
 import icyllis.modernui.core.Core
 import icyllis.modernui.fragment.Fragment
@@ -73,7 +74,7 @@ infix fun Minecraft.go(screen: Screen?) {
     }
 }*/
 infix fun Minecraft. go(fragment: Fragment){
-    renderThread {
+    uiThread {
         goto(fragment)
        /* val screen: Screen = MuiForgeApi.get().createScreen(fragment, object:ScreenCallback {
             override fun shouldClose(): Boolean {

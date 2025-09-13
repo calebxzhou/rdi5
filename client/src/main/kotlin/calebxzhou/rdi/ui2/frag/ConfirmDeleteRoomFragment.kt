@@ -7,6 +7,7 @@ import calebxzhou.rdi.ui2.component.RTextField
 import calebxzhou.rdi.ui2.component.alertErr
 import calebxzhou.rdi.ui2.component.confirm
 import calebxzhou.rdi.ui2.editText
+import calebxzhou.rdi.ui2.goto
 import calebxzhou.rdi.ui2.toast
 import calebxzhou.rdi.ui2.uiThread
 import calebxzhou.rdi.util.copyToClipboard
@@ -34,8 +35,7 @@ class ConfirmDeleteRoomFragment(val room: Room,val server: RServer): RFragment("
 
                             toast("房间删除成功")
                         }
-                        val f = TitleFragment()
-                        mc go f
+                        goto(TitleFragment())
                     }
                 }
             }

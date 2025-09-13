@@ -22,10 +22,21 @@ import kotlin.jvm.javaClass
 
 
 var prevFragment: Fragment? = null
+val nowFragment
+    get() =
+        if(isMcStarted)
+            mc.fragment
+            else
+        FRAG_CTRL.fragmentManager.findFragmentById(FRAG_CONTAINER_ID) as? RFragment
+/**
+ * @see icyllis.modernui.ModernUI.fragment_container
+ */
+val FRAG_CONTAINER_ID = 0x01020007
 val FRAG_CTRL
     get() = ModernUI::class.java.getDeclaredField("mFragmentController").also { it.isAccessible=true }.get(ModernUI.getInstance()) as FragmentController
+val Fragment.go
+    get() = goto(this)
 fun goto(fragment: Fragment) {
-
     if (isMcStarted) {
         prevFragment = mc.fragment
         val screen: Screen = MuiForgeApi.get().createScreen(fragment, object : ScreenCallback {
@@ -38,7 +49,7 @@ fun goto(fragment: Fragment) {
         prevFragment = (ModernUI::class.java.getDeclaredField("mFragmentContainerView").also { it.isAccessible = true }
             .get(ModernUI.getInstance()) as FragmentContainerView).*/
         FRAG_CTRL.fragmentManager.transaction{
-            replace(0x01020007,fragment,"main")
+            replace(FRAG_CONTAINER_ID,fragment,"main")
             setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
             addToBackStack("main")
         }

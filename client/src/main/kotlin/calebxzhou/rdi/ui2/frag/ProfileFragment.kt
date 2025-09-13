@@ -24,7 +24,7 @@ class ProfileFragment : RFragment("我的信息") {
 
     init {
         bottomOptionsConfig = {
-            "👚 衣柜" colored MaterialColor.PINK_800 with { mc go WardrobeFragment() }
+            "👚 衣柜" colored MaterialColor.PINK_800 with { goto(WardrobeFragment()) }
             "🏠 进入房间" colored MaterialColor.LIGHT_GREEN_900 with {
                 server.hqRequest(false, "room/my", false) {
                     val body = it.body
@@ -36,13 +36,13 @@ class ProfileFragment : RFragment("我的信息") {
                         ) {
                             server.hqRequest(true, "room/create") { resp ->
                                 val room = serdesJson.decodeFromString<Room>(resp.body)
-                                mc go RoomFragment(room)
+                                goto(RoomFragment(room))
                             }
                         }
                         return@hqRequest
                     } else {
                         val room = serdesJson.decodeFromString<Room>(body)
-                        mc go RoomFragment(room)
+                        goto(RoomFragment(room))
                     }
                 }
             }
@@ -58,7 +58,7 @@ class ProfileFragment : RFragment("我的信息") {
                     gravity = Gravity.CENTER_HORIZONTAL
                 }
             }) {
-                mc go ChangeProfileFragment()
+                goto(ChangeProfileFragment())
             }
             linearLayout {
 
@@ -93,6 +93,6 @@ class ProfileFragment : RFragment("我的信息") {
 
     override fun close() {
 
-        mc go TitleFragment()
+        goto(TitleFragment())
     }
 }

@@ -33,7 +33,7 @@ class SettingsFragment : RFragment("设置") {
             }
 
             "\uF03D  视野" with  {
-                mc go FovFragment()
+                goto(FovFragment())
             }
             "\uE638  音频" with {
                 mc go SoundOptionsScreen(mc.screen, options)

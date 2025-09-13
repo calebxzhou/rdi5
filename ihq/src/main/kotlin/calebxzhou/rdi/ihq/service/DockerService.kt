@@ -2,6 +2,7 @@ package calebxzhou.rdi.ihq.service
 
 import calebxzhou.rdi.ihq.lgr
 import calebxzhou.rdi.ihq.model.Room
+import calebxzhou.rdi.ihq.model.ServerStatus
 import calebxzhou.rdi.ihq.net.randomPort
 import com.github.dockerjava.api.async.ResultCallback.Adapter
 import com.github.dockerjava.api.model.Bind
@@ -45,8 +46,7 @@ object DockerService {
             .withShowAll(includeStopped)
             .exec().firstOrNull()
 
-    fun create(containerName: String, volumeName: String, image: String): String {
-        val port = randomPort
+    fun create(port: Int,containerName: String, volumeName: String, image: String): String {
         client.createVolumeCmd().withName(volumeName).exec()
         return client.createContainerCmd(image)
             .withName(containerName)
@@ -202,6 +202,22 @@ object DockerService {
         } catch (e: Exception) {
             lgr.warn { "Error checking container $containerId status: ${e.message}" }
             false
+        }
+    }
+
+    fun getStatus(containerId: String): ServerStatus {
+        return try {
+            val container = findContainerById(containerId) ?: return ServerStatus.UNKNOWN
+            val state = container.state?.lowercase() ?: return ServerStatus.UNKNOWN
+            when (state) {
+                "running" -> ServerStatus.STARTED
+                "paused" -> ServerStatus.PAUSED
+                "exited", "created", "dead", "removing", "stopped" -> ServerStatus.STOPPED
+                else -> ServerStatus.UNKNOWN
+            }
+        } catch (e: Exception) {
+            lgr.warn { "Error getting status for container $containerId: ${e.message}" }
+            ServerStatus.UNKNOWN
         }
     }
 

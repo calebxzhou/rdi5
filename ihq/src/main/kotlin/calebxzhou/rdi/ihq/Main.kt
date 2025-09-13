@@ -202,7 +202,9 @@ fun startHttp(){
                         RoomService.getFirmSectionData(call)
                     }*/
                     route("/server"){
-
+                        get("/status"){
+                            RoomService.getServerStatus(call)
+                        }
                         post("/start") {
                             RoomService.startServer(call)
                         }
@@ -215,3 +217,4 @@ fun startHttp(){
         }
     }.start(wait = true)
 }
+
