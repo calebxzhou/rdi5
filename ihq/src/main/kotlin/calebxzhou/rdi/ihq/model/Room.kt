@@ -14,6 +14,7 @@ data class Room(
     val name: String,
     val containerId: String,
     val score: Int=0,
+    val image: String,
     var port: Int,
     val centerPos: IslandBlockPos = IslandBlockPos(),
     val members: List<Member> = arrayListOf(),

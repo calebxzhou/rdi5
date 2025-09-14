@@ -4,6 +4,7 @@ import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.net.body
 import calebxzhou.rdi.ui2.Fonts
 import calebxzhou.rdi.ui2.MaterialColor
+import calebxzhou.rdi.ui2.component.confirm
 import calebxzhou.rdi.ui2.dp
 import calebxzhou.rdi.ui2.fctx
 import calebxzhou.rdi.ui2.toast
@@ -48,13 +49,18 @@ class ServerFragment() : RFragment("服务端") {
                     toast("启动指令已发送")
                 }
             }
-            "👆 升级/重装" colored MaterialColor.BLUE_800 with { }
+            "👆 升级/重装" colored MaterialColor.BLUE_800 with {
+                confirm("要升级当前房间的整合包")
+                server.hqRequest(true,"/room/server/update"){
+                    toast("已开始重装 过一分钟能玩")
+                }
+            }
             "⏹ 停止" colored MaterialColor.RED_900 with {
                 server.hqRequest(true,"/room/server/stop"){
                     toast("停止指令已发送")
                 }
             }
-            "⚡ 实时" colored MaterialColor.YELLOW_900 with { toggleRealTime() }
+            "⚡ 实时日志" colored MaterialColor.YELLOW_900 with { toggleRealTime() }
         }
     }
 
@@ -286,7 +292,7 @@ class ServerFragment() : RFragment("服务端") {
     private fun toggleRealTime(){
         realTime = !realTime
         if(realTime){
-            toast("实时模式: SSE")
+            toast("自动刷新日志——已启动")
             // Stop polling
             autoRefreshJob?.cancel(); autoRefreshJob = null
             // Clear incremental cache to avoid duplicate detection – we append live
@@ -303,8 +309,8 @@ class ServerFragment() : RFragment("服务端") {
                         if(atBottom) scrollView.post { scrollView.fullScroll(View.FOCUS_DOWN) }
                     }
                 },
-                onError = { e -> uiThread { toast("SSE错误:${e.message}") } },
-                onClosed = { uiThread { if(realTime) toast("SSE关闭") } }
+                onError = { e -> uiThread { toast("日志刷新错误:${e.message}") } },
+                onClosed = { uiThread { if(realTime) toast("自动刷新日志——已关闭") } }
             )
         }else{
             toast("实时模式: 关闭")

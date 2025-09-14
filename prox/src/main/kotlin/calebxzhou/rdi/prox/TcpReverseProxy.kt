@@ -79,7 +79,7 @@ class ProxyServerInitializer(
     override fun initChannel(ch: SocketChannel) {
         ch.pipeline().addLast(
             // 启用包数据的日志记录
-            // LoggingHandler(LogLevel.INFO),
+           //  LoggingHandler(LogLevel.INFO),
             DynamicProxyFrontendHandler(defaultBackendHost, defaultBackendPort, backendGroup)
         )
     }
@@ -98,78 +98,126 @@ class DynamicProxyFrontendHandler(
     private var currentBackendHost: String = defaultBackendHost
     private var currentBackendPort: Int = defaultBackendPort
     private val pendingBuffer = mutableListOf<Any>()
+    private var controlBuf: ByteBuf? = null
+
+    // Parse exactly 10-byte control packet: magic(8) + port(2, big-endian).
+    // On success, the 10 bytes are consumed from the buffer; returns target port.
+    // On failure, reader index is reset and null is returned.
+    private fun parseControlPort(buffer: ByteBuf): Int? {
+        if (buffer.readableBytes() != 10) return null
+        buffer.markReaderIndex()
+        val b1 = buffer.readByte()
+        val b2 = buffer.readByte()
+        val b3 = buffer.readByte()
+        val b4 = buffer.readByte()
+        val b5 = buffer.readByte()
+        val b6 = buffer.readByte()
+        val b7 = buffer.readByte()
+        val b8 = buffer.readByte()
+        val isMagic =
+            (b1 == 0x01.toByte() && b2 == 0x02.toByte() && b3 == 0x03.toByte() && b4 == 0x04.toByte() &&
+             b5 == 0xAA.toByte() && b6 == 0xBB.toByte() && b7 == 0xCC.toByte() && b8 == 0xDD.toByte())
+        if (!isMagic) {
+            buffer.resetReaderIndex()
+            return null
+        }
+        val port = buffer.readUnsignedShort()
+        if (port !in 50000..59999) {
+            buffer.resetReaderIndex()
+            return null
+        }
+        return port
+    }
+
+    // Find the start index of the 8-byte magic header within the buffer, or -1 if not found.
+    private fun findMagicIndex(buf: ByteBuf): Int {
+        val start = buf.readerIndex()
+        val end = buf.readerIndex() + buf.readableBytes() - 8
+        if (end < start) return -1
+        val m = byteArrayOf(0x01,0x02,0x03,0x04,0xAA.toByte(),0xBB.toByte(),0xCC.toByte(),0xDD.toByte())
+        var i = start
+        while (i <= end) {
+            var j = 0
+            while (j < 8 && buf.getByte(i + j) == m[j]) j++
+            if (j == 8) return i
+            i++
+        }
+        return -1
+    }
 
     override fun channelActive(ctx: ChannelHandlerContext) {
-        // Connect to default backend immediately
-        lgr.info { "Client connected, connecting to default backend..." }
-        connectToBackend(ctx)
+        // Do NOT connect immediately. Wait for client to send control packet indicating target port.
+        lgr.info { "Client connected, waiting for control packet (0x01020304AABBCCDD + port)" }
     }
 
     override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
-        // Always check for control packets, regardless of when they arrive
+        // Before backend selection, we must accumulate until we get at least the 10-byte control header
+        if (backendChannel == null) {
+            val incoming = msg as ByteBuf
+            val cb = controlBuf ?: run {
+                controlBuf = ctx.alloc().buffer(16)
+                controlBuf!!
+            }
+            cb.writeBytes(incoming)
+            io.netty.util.ReferenceCountUtil.release(incoming)
+
+            if (cb.readableBytes() >= 10) {
+                // Search for magic header anywhere in the accumulated buffer
+                val magicIdx = findMagicIndex(cb)
+                if (magicIdx >= 0 && (cb.readerIndex() + cb.readableBytes()) >= magicIdx + 10) {
+                    // Extract data before magic to forward later
+                    var preData: ByteBuf? = null
+                    val preLen = magicIdx - cb.readerIndex()
+                    if (preLen > 0) {
+                        preData = cb.readRetainedSlice(preLen)
+                    }
+                    // Extract and parse the 10-byte header
+                    val header = cb.readRetainedSlice(10)
+                    val newPort = parseControlPort(header)
+                    if (newPort != null) {
+                        header.release()
+                        // Remaining data after header to forward later
+                        var postData: ByteBuf? = null
+                        if (cb.readableBytes() > 0) {
+                            postData = cb.readRetainedSlice(cb.readableBytes())
+                        }
+                        cb.release()
+                        controlBuf = null
+                        lgr.info { "Control received (embedded): connecting backend 127.0.0.1:$newPort" }
+                        switchBackend(ctx, "127.0.0.1", newPort)
+                        // Forward original payload (without the control header) in order
+                        if (preData != null) forwardToBackend(ctx, preData)
+                        if (postData != null) forwardToBackend(ctx, postData)
+                    } else {
+                        // Header bytes did not validate; release and keep accumulating (do not close immediately)
+                        header.release()
+                        // Put back preData into pending or release it; safer to keep accumulating and release
+                        preData?.release()
+                    }
+                }
+            }
+            return
+        }
+
+        // After backend is chosen, still allow dynamic control packets (e.g., switching)
         val controlResult = checkForControlPacket(ctx, msg)
         if (!controlResult) {
-            // Not a control packet, forward to backend
             forwardToBackend(ctx, msg)
         }
     }
 
     private fun checkForControlPacket(ctx: ChannelHandlerContext, msg: Any): Boolean {
         val buffer = msg as ByteBuf
-
-        // Check if this is a binary port switching command
-        if (buffer.readableBytes() == 10) { // 8 bytes header + 2 bytes port
-            // Mark the reader index to reset if it's not a control packet
-            buffer.markReaderIndex()
-
-            // Check for the magic header: 0x01 02 03 04 AA BB CC DD
-            val b1 = buffer.readByte()
-            val b2 = buffer.readByte()
-            val b3 = buffer.readByte()
-            val b4 = buffer.readByte()
-            val b5 = buffer.readByte()
-            val b6 = buffer.readByte()
-            val b7 = buffer.readByte()
-            val b8 = buffer.readByte()
-
-            if (b1 == 0x01.toByte() && b2 == 0x02.toByte() && b3 == 0x03.toByte() && b4 == 0x04.toByte() &&
-                b5 == 0xAA.toByte() && b6 == 0xBB.toByte() && b7 == 0xCC.toByte() && b8 == 0xDD.toByte()) {
-
-                // Read the next 2 bytes as port number (big-endian)
-                val newPort = buffer.readUnsignedShort()
-
-                if (newPort in 1..65535) {
-                    // Check if we need to switch backends
-                    if (newPort != currentBackendPort) {
-                        lgr.info { "Binary port switching: changing backend from $currentBackendHost:$currentBackendPort to 127.0.0.1:$newPort" }
-                        switchBackend(ctx, "127.0.0.1", newPort)
-                    } else {
-                        lgr.info { "Binary control packet received but already connected to port $newPort" }
-                    }
-
-                    // Check if there's remaining data after the control packet
-                    if (buffer.readableBytes() > 0) {
-                        // Create a new buffer with the remaining data and forward it
-                        val remainingData = buffer.slice()
-                        remainingData.retain() // Increase ref count for the slice
-                        forwardToBackend(ctx, remainingData)
-                    }
-
-                    // Release the original control packet
-                    io.netty.util.ReferenceCountUtil.release(msg)
-                    return true // Control packet consumed
-                } else {
-                    lgr.info { "Invalid binary port number: $newPort, ignoring control packet" }
-                    // Reset reader index to treat as regular data
-                    buffer.resetReaderIndex()
-                }
-            } else {
-                // Not a binary control packet, reset reader index
-                buffer.resetReaderIndex()
-            }
+        if (buffer.readableBytes() != 10) return false
+        val newPort = parseControlPort(buffer)
+        return if (newPort != null) {
+            lgr.info { "Binary port switching: connecting backend 127.0.0.1:$newPort" }
+            switchBackend(ctx, "127.0.0.1", newPort)
+            io.netty.util.ReferenceCountUtil.release(msg)
+            true
+        } else {
+            false
         }
-
-        return false // Not a control packet
     }
 
     private fun switchBackend(ctx: ChannelHandlerContext, newHost: String, newPort: Int) {
@@ -269,16 +317,8 @@ class DynamicProxyFrontendHandler(
                 }
             }
         } else {
-            // Backend not available, buffer the message if we're still connecting
-            // Check if we have a backend channel that's connecting
-            if (backendChannel != null && !backendChannel!!.isActive) {
-                // Still connecting, buffer the message
-                pendingBuffer.add(msg)
-            } else {
-                // No backend connection attempt or already failed, release and close
-                io.netty.util.ReferenceCountUtil.release(msg)
-                ctx.close()
-            }
+            // Backend not available or not yet chosen: buffer the message
+            pendingBuffer.add(msg)
         }
     }
 
@@ -291,6 +331,10 @@ class DynamicProxyFrontendHandler(
             io.netty.util.ReferenceCountUtil.release(bufferedMsg)
         }
         pendingBuffer.clear()
+        controlBuf?.let {
+            it.release()
+            controlBuf = null
+        }
     }
 
     override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {

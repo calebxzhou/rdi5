@@ -1,9 +1,7 @@
 package calebxzhou.rdi.ihq.service
 
 import calebxzhou.rdi.ihq.lgr
-import calebxzhou.rdi.ihq.model.Room
 import calebxzhou.rdi.ihq.model.ServerStatus
-import calebxzhou.rdi.ihq.net.randomPort
 import com.github.dockerjava.api.async.ResultCallback.Adapter
 import com.github.dockerjava.api.model.Bind
 import com.github.dockerjava.api.model.ExposedPort
@@ -87,6 +85,54 @@ object DockerService {
         } catch (e: Exception) {
             lgr.warn { "Error removing volume $volume: ${e.message}" }
             // Volume might not exist or be in use, continue anyway
+        }
+    }
+    fun update(containerId: String,image: String){
+        try {
+            // Inspect current container to reuse settings
+            val inspect = client.inspectContainerCmd(containerId).exec()
+            val name = inspect.name?.trim('/') ?: (inspect.id ?: containerId)
+            val hostConfig = inspect.hostConfig
+            val config = inspect.config
+
+            // Pull latest image
+            val repoTag = if (image.contains(":")) image else "$image:latest"
+            client.pullImageCmd(repoTag.substringBefore(":"))
+                .withTag(repoTag.substringAfter(":", "latest"))
+                .start()
+                .awaitCompletion()
+
+            // Determine running state and stop
+            val wasRunning = isStarted(containerId)
+            if (wasRunning) {
+                try { client.stopContainerCmd(containerId).exec() } catch (_: Exception) {}
+            }
+            // Remove old container but keep volumes
+            try {
+                client.removeContainerCmd(containerId)
+                    .withForce(true)
+                    .withRemoveVolumes(false)
+                    .exec()
+            } catch (_: Exception) {}
+
+            // Recreate container with same options
+            val createCmd = client.createContainerCmd(repoTag)
+                .withName(name)
+
+            // Env
+            config?.env?.let { if (it.isNotEmpty()) createCmd.withEnv(it.toList()) }
+            // Exposed ports
+            config?.exposedPorts?.let { createCmd.withExposedPorts(*it) }
+            // Host config (ports/volumes/limits)
+            hostConfig?.let { createCmd.withHostConfig(it) }
+
+            val newId = createCmd.exec().id
+            if (wasRunning) {
+                client.startContainerCmd(newId).exec()
+            }
+            lgr.info { "Updated container $name to image $repoTag" }
+        } catch (e: Exception) {
+            lgr.warn { "Failed to update container $containerId: ${e.message}" }
         }
     }
     fun start(containerId: String) {

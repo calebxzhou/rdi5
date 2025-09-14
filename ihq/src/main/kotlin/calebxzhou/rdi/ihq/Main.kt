@@ -180,14 +180,17 @@ fun startHttp(){
                     post("/transfer") {
                         RoomService.transfer(call)
                     }
+                    get("/log"){
+                        RoomService.getServerLog(call)
+                    }
+                    post("/update"){
+                        RoomService.update(call)
+                    }
                     get("/list") {
                         RoomService.list(call)
                     }
                     post("/visit") {
                         RoomService.visit(call)
-                    }
-                    get("/log"){
-                        RoomService.getServerLog(call)
                     }
                     get("/log/stream"){
                         RoomService.streamServerLogSse(call)

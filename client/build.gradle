@@ -97,9 +97,9 @@ neoForge {
             programArgument '1440'
             // Comma-separated list of namespaces to load gametests from. Empty = all namespaces.
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
-            systemProperty 'rdi.debug',"true"
-            systemProperty 'rdi.noUpdate',"true"
-            systemProperty 'rdi.pack',"RDI5sea"
+            systemProperty 'rdi.debug', "true"
+            systemProperty 'rdi.noUpdate', "true"
+            systemProperty 'rdi.pack', "RDI5sea"
 
         }
         client_mech {
@@ -110,9 +110,9 @@ neoForge {
             programArgument '1440'
             // Comma-separated list of namespaces to load gametests from. Empty = all namespaces.
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
-            systemProperty 'rdi.debug',"true"
-            systemProperty 'rdi.noUpdate',"true"
-            systemProperty 'rdi.pack',"RDI5mech"
+            systemProperty 'rdi.debug', "true"
+            systemProperty 'rdi.noUpdate', "true"
+            systemProperty 'rdi.pack', "RDI5mech"
 
         }
         server {
@@ -203,16 +203,25 @@ def mcLibs = [
 def mcLibExportOnly = [
 ]
 def modrinthMods = [
-"packet-fixer:LL1w2rTw",
-
+        "architectury-api:13.0.8+neoforge",
+        "packet-fixer:LL1w2rTw",
         "jade:15.10.0+neoforge",
         "justenoughcharacters:4.5.15",
         "notenoughcrashes:4.4.8+1.21.1-neoforge",
         "imblocker-original:5.0.2",
         "sodium:mc1.21.1-0.6.13-neoforge",
+        "kubejs:2101.7.1-build.181+KubeJS-1.21.1",
+        "rhino:2101.2.7-build.77+Rhino-1.21",
 ]
 def modrinthModsCompileOnly = [
-        "embeddium:1.0.15+mc1.21.1"
+]
+def curseMods = [
+        "ftb-library-forge-404465:6975628",
+        "ftb-quests-forge-289412:6975870",
+        "ftb-teams-forge-404468:6930910",
+        "ftb-ultimine-forge-386134:6930900",
+]
+def curseExportOnly = [
 ]
 dependencies {
     // Example optional mod dependency with JEI
@@ -268,7 +277,7 @@ dependencies {
         additionalRuntimeClasspath lib
     }
     mcLibExportOnly.each { lib ->
-        jarJar(lib)
+    //    jarJar(lib)
     }
     modrinthMods.each { dep ->
         implementation("maven.modrinth:$dep")
@@ -276,6 +285,11 @@ dependencies {
     }
     modrinthModsCompileOnly.each { dep ->
         compileOnly("maven.modrinth:$dep")
+    }
+    curseMods.each { dep ->
+        implementation "curse.maven:$dep-deobf"
+    }
+    curseExportOnly.each { dep ->
     }
     //for modernui
     configurations.configureEach {

@@ -161,7 +161,7 @@ class RServer(
                 onOk(req)
             }else{
                 alertErr("请求错误: ${req.statusCode()} ${req.body}")
-                lgr.error("${req.statusCode()} ${req.body}")
+                lgr.error("请求错误 ${req.statusCode()} ${req.body}")
             }
 
 

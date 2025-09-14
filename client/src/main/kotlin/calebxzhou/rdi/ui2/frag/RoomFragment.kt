@@ -2,15 +2,18 @@ package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.model.Room
 import calebxzhou.rdi.net.RServer
+import calebxzhou.rdi.net.body
 import calebxzhou.rdi.ui2.HoldToConfirm.onLongPress
 import calebxzhou.rdi.ui2.MaterialColor
 import calebxzhou.rdi.ui2.SELF
+import calebxzhou.rdi.ui2.component.alertErr
 import calebxzhou.rdi.ui2.goto
 import calebxzhou.rdi.ui2.headButton
 import calebxzhou.rdi.ui2.iconButton
 import calebxzhou.rdi.ui2.linearLayout
 import calebxzhou.rdi.ui2.linearLayoutParam
 import calebxzhou.rdi.ui2.paddingDp
+import calebxzhou.rdi.ui2.uiThread
 import calebxzhou.rdi.util.go
 import calebxzhou.rdi.util.mc
 import calebxzhou.rdi.util.renderThread
@@ -57,14 +60,19 @@ class RoomFragment(val room: Room) : RFragment("我的房间") {
     }
 
     fun start(bgp: Boolean) {
-        renderThread {
-
-            ConnectScreen.startConnecting(
-                mc.screen, mc,
-
-                ServerAddress(if (bgp) server.bgpIp else server.ip, server.gamePort), server.mcData(bgp), false, null
-            )
+        server.hqRequest(false,"/room/server/status"){
+            if(it.body != "STARTED"){
+                alertErr("请先启动房间的服务端")
+                return@hqRequest
+            }
+            renderThread {
+                ConnectScreen.startConnecting(
+                    mc.screen, mc,
+                    ServerAddress(if (bgp) server.bgpIp else server.ip, server.gamePort), server.mcData(bgp), false, null
+                )
+            }
         }
+
 
     }
 

@@ -1,13 +1,13 @@
 package calebxzhou.rdi.ihq.service
 
 import calebxzhou.rdi.ihq.DB
+import calebxzhou.rdi.ihq.DEFAULT_IMAGE
 import calebxzhou.rdi.ihq.exception.RequestError
 import calebxzhou.rdi.ihq.model.Room
 import calebxzhou.rdi.ihq.net.e500
 import calebxzhou.rdi.ihq.net.got
 import calebxzhou.rdi.ihq.net.initGetParams
 import calebxzhou.rdi.ihq.net.ok
-import calebxzhou.rdi.ihq.net.randomPort
 import calebxzhou.rdi.ihq.net.uid
 import calebxzhou.rdi.ihq.service.DockerService.asVolumeName
 import calebxzhou.rdi.ihq.util.serdesJson
@@ -42,6 +42,21 @@ object RoomService {
                 Indexes.ascending("${Room::members.name}.${Room.Member::id.name}"),
             )
         }
+    }
+
+    private const val PORT_START = 50000
+    private const val PORT_END_EXCLUSIVE = 60000
+
+    // Pick a port in [50000, 60000) that isn't used by any existing room
+    private suspend fun allocateRoomPort(): Int {
+        val used = dbcl.find().map { it.port }.toList().toSet()
+        val candidates = (PORT_START until PORT_END_EXCLUSIVE).asSequence()
+            .filter { it !in used }
+            .toList()
+        if (candidates.isEmpty()) {
+            throw RequestError("没有可用端口，请联系管理员")
+        }
+        return candidates.random()
     }
 
     //玩家已创建的房间
@@ -79,8 +94,10 @@ object RoomService {
         val roomName = player.name + "的房间"
         //val bstates = serdesJson.decodeFromString<List<RBlockState>>(params got "bstates")
         val roomId= ObjectId()
-        val port = randomPort
-        val contId = DockerService.create(port,roomId.toString(),roomId.asVolumeName,"abc")
+        //以后支持自定义image
+        val image = DEFAULT_IMAGE
+        val port = allocateRoomPort()
+        val contId = DockerService.create(port,roomId.toString(),roomId.asVolumeName,image)
         val room = Room(
             roomId,
             name = roomName,
@@ -91,6 +108,7 @@ object RoomService {
                     true
                 )
             ),
+            image = image,
             containerId = contId,
         )
         dbcl.insertOne(
@@ -352,7 +370,14 @@ object RoomService {
     }
     suspend fun getServerStatus(call: ApplicationCall) {
         val room = getJoinedRoom(call.uid) ?: throw RequestError("没岛")
-//todo
         call.ok(DockerService.getStatus(room.containerId).toString())
+    }
+
+    suspend fun update(call: ApplicationCall){
+        val params = call.receiveParameters()
+        val room = getJoinedRoom(call.uid) ?: throw RequestError("没岛")
+        val image = params["image"]?:DEFAULT_IMAGE
+        DockerService.update(room.containerId,image)
+        call.ok()
     }
 }
