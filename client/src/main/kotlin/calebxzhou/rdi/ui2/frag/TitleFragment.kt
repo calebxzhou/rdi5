@@ -25,7 +25,6 @@ class TitleFragment : RFragment() {
     override fun initContent() {}
 
     init {
-        RServer.now=null
         RAccount.now=null
         Room.now=null
     }

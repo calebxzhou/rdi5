@@ -25,7 +25,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class ServerFragment() : RFragment("服务端") {
-    val server= RServer.default
+    val server= RServer.now
     lateinit var console: TextView
     private lateinit var scrollView: ScrollView
     private var currentPage = 0

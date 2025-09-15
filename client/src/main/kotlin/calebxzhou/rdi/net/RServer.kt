@@ -66,13 +66,14 @@ class RServer(
         NioEventLoopGroup(0, DefaultThreadFactory("RDI-Nio"))
     var channelFuture: ChannelFuture? = null
     companion object {
-        var now: RServer? = null
+
         val OFFICIAL_DEBUG = RServer(
             "127.0.0.1", "127.0.0.1",65231,65230
         )
-
-        val default: RServer
-            get() = now ?: OFFICIAL_DEBUG
+        val OFFICIAL_NNG = RServer(
+            "rdi.calebxzhou.cn", "b5rdi.calebxzhou.cn",65231,65230
+        )
+        var now: RServer = if(Const.DEBUG) OFFICIAL_DEBUG else OFFICIAL_NNG
     }
 
     fun connectGhq(){

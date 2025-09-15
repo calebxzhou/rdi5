@@ -10,7 +10,7 @@ object CrashUploader {
     @JvmStatic
     fun start(report: CrashReport){
         val uid = RAccount.now?._id?.toString()?: ObjectId().toString()
-        RServer.default.hqRequest(true,"crash-report",false,
+        RServer.now.hqRequest(true,"crash-report",false,
             listOf("report" to report.getFriendlyReport(ReportType.CRASH),
                 "uid" to uid)){
             println("上传崩溃日志成功")

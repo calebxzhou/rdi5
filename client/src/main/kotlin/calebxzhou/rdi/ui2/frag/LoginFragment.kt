@@ -2,6 +2,7 @@ package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.service.PlayerService.playerLogin
+import calebxzhou.rdi.service.playerLogin
 import calebxzhou.rdi.ui2.MaterialColor
 import calebxzhou.rdi.ui2.SELF
 import calebxzhou.rdi.ui2.button
@@ -29,12 +30,12 @@ class LoginFragment : RFragment("登录") {
             // Center children
             this.gravity = Gravity.CENTER_HORIZONTAL
 
-            qqInput = editText("QQ号","qq")
+            qqInput = editText("QQ号", "qq")
             passwordInput = editText("密码", "lock") {
                 isPassword = true
             }
             bottomOptionsConfig = {
-                "登录" colored MaterialColor.BLUE_800 with {onClicked()}
+                "登录" colored MaterialColor.BLUE_800 with { onClicked() }
             }
         }
 
@@ -42,11 +43,10 @@ class LoginFragment : RFragment("登录") {
 
     private fun onClicked() {
         val qq = qqInput.edit.text.toString()
-    val pwd = passwordInput.txt
+        val pwd = passwordInput.txt
         ioScope.launch {
-            RServer.now?.playerLogin(this@LoginFragment, qq, pwd)?.let {
-                goto( ProfileFragment())
-            }
+            playerLogin(qq, pwd)
+
         }
 
     }

@@ -1,5 +1,8 @@
 package calebxzhou.rdi
 
+import calebxzhou.rdi.auth.LocalCredentials
+import calebxzhou.rdi.model.RAccount
+import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.service.LevelService
 import calebxzhou.rdi.service.Mcmod
 import net.neoforged.fml.common.Mod
@@ -25,7 +28,9 @@ class RDI {
         DIR.mkdir()
 
         Mcmod.getServerInfo()
+        //提前启动服务器
 
+        RServer.now.hqRequest(true,"/room/server/start",showLoading = false){}
         /*val port = HttpUtil.getAvailablePort()
         lgr.info("local port started at $port")
         embeddedServer(CIO,host="::",port=port){

@@ -1,26 +1,18 @@
 package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.auth.LocalCredentials
-import calebxzhou.rdi.common.GREEN
-import calebxzhou.rdi.net.RServer
-import calebxzhou.rdi.service.PlayerService.playerLogin
+import calebxzhou.rdi.service.playerLogin
 import calebxzhou.rdi.ui2.*
-import calebxzhou.rdi.util.go
-import calebxzhou.rdi.util.ioScope
-import calebxzhou.rdi.util.mc
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.widget.LinearLayout
-import kotlinx.coroutines.launch
 import org.bson.types.ObjectId
 
-class SelectAccountFragment(val server: RServer) : RFragment("选择账号") {
+class SelectAccountFragment() : RFragment("选择账号") {
     val creds = LocalCredentials.read()
     //否则登录账号回来看不见
     override var contentViewCache = false
 
     init {
-        RServer.now = server
-
         bottomOptionsConfig = {
             "➕ 添加旧号" with {showChildFragmentOver( LoginFragment()) }
             "✏ 注册新号" colored MaterialColor.LIGHT_GREEN_900 with { showChildFragmentOver(RegisterFragment()) }
@@ -43,23 +35,18 @@ class SelectAccountFragment(val server: RServer) : RFragment("选择账号") {
                     orientation = LinearLayout.VERTICAL
                     layoutParams = frameLayoutParam(PARENT, PARENT)
 
-                    creds.idPwds.forEach { (id, pwd) ->
+                    creds.loginInfos.forEach { (id, pwd) ->
                         headButton(ObjectId(id), onClick = {
-                            RServer.now = server
-                            ioScope.launch {
-                                RServer.now?.playerLogin(this@SelectAccountFragment,id, pwd)?.let {
-                                    goto( ProfileFragment())
-                                }
-                            }
+                                playerLogin(id, pwd)
                         }, init = {
                             layoutParams = linearLayoutParam(SELF, SELF)
                             gravity = Gravity.CENTER_HORIZONTAL
-                            if (creds.lastLoggedId == id) {
-                                setTextColor(GREEN)
+                            if (creds.lastLogged?.id == id) {
+                                setTextColor(MaterialColor.YELLOW_800.colorValue)
                             }
-                            contextMenu(listOf(
+                           /* contextMenu(listOf(
                                 "删除账号" to { deleteAccount(id) }
-                            ))
+                            ))*/
                         })
                     }
                 }
@@ -67,12 +54,12 @@ class SelectAccountFragment(val server: RServer) : RFragment("选择账号") {
         }
 
     }
-    fun deleteAccount(id: String) {
+  /*  fun deleteAccount(id: String) {
         creds.idPwds.remove(id)
         creds.write()
         contentLayout.apply {
             removeAllViews()
             initContent()
         }
-    }
+    }*/
 }

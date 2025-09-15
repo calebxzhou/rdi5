@@ -1,6 +1,7 @@
 package calebxzhou.rdi.service
 
 import calebxzhou.rdi.auth.LocalCredentials
+import calebxzhou.rdi.auth.LoginInfo
 import calebxzhou.rdi.lgr
 import calebxzhou.rdi.mixin.AMinecraft
 import calebxzhou.rdi.model.HwSpec
@@ -8,12 +9,9 @@ import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.net.StringHttpResponse
 import calebxzhou.rdi.net.body
-import calebxzhou.rdi.net.success
 import calebxzhou.rdi.service.PlayerService.getPlayerInfo
-import calebxzhou.rdi.ui2.frag.RFragment
-import calebxzhou.rdi.ui2.component.alertErr
-import calebxzhou.rdi.ui2.component.closeLoading
-import calebxzhou.rdi.ui2.component.showLoading
+import calebxzhou.rdi.ui2.frag.ProfileFragment
+import calebxzhou.rdi.ui2.goto
 import calebxzhou.rdi.util.ioScope
 import calebxzhou.rdi.util.isMcStarted
 import calebxzhou.rdi.util.mc
@@ -44,38 +42,26 @@ object PlayerInfoCache {
         return cache.get(uid).join()
     }
 }
-
-object PlayerService {
-    suspend fun RServer.playerLogin(frag: RFragment, usr: String, pwd: String): RAccount? = try {
-        frag.showLoading()
-        val creds = LocalCredentials.read()
-        val spec = serdesJson.encodeToString<HwSpec>(HwSpec.now)
-        val resp = prepareRequest(
-            path = "login",
-            post = true,
-            params = listOf("usr" to usr, "pwd" to pwd, "spec" to spec)
-        )
-        if (resp.success) {
-            val account = serdesJson.decodeFromString<RAccount>(resp.body)
-            creds.idPwds += account._id.toHexString() to account.pwd
-            creds.lastLoggedId = account._id.toHexString()
-            creds.write()
-            RAccount.now = account
-            if (isMcStarted)
-                (mc as AMinecraft).setUser(account.mcUser)
-
-            account
-        } else {
-            alertErr(resp.body)
-            null
-        }
-
-    } catch (e: Exception){
-        e.printStackTrace()
-        null
-    } finally {
-       // frag.closeLoading()
+fun playerLogin(usr: String, pwd: String){
+    val creds = LocalCredentials.read()
+    val spec = serdesJson.encodeToString<HwSpec>(HwSpec.now)
+    RServer.now.hqRequest(
+        path = "login",
+        post = true,
+        params = listOf("usr" to usr, "pwd" to pwd, "spec" to spec)
+    ){
+        val account = serdesJson.decodeFromString<RAccount>(it.body)
+        creds.loginInfos += LoginInfo(account._id.toHexString(),account.pwd)
+        creds.write()
+        RAccount.now = account
+        if (isMcStarted)
+            (mc as AMinecraft).setUser(account.mcUser)
+        ProfileFragment()
     }
+
+}
+object PlayerService {
+
 
     suspend fun RServer.sendLoginRecord(account: RAccount) {
 

@@ -98,7 +98,7 @@ abstract class RFragment(var title: String = "") : Fragment() {
                 if (showTitle || showCloseButton) {
                     frameLayout() {
                         layoutParams = linearLayoutParam {
-                            bottomMargin = dp(12f)
+                            bottomMargin = dp(8f)
                         }
                         // Title (add first to be in the background)
                         if (showTitle) {

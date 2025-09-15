@@ -22,7 +22,7 @@ import net.minecraft.client.gui.screens.ConnectScreen
 import net.minecraft.client.multiplayer.resolver.ServerAddress
 
 class RoomFragment(val room: Room) : RFragment("我的房间") {
-    val server = RServer.default
+    val server = RServer.now
 
     init {
         Room.now=room
@@ -31,6 +31,8 @@ class RoomFragment(val room: Room) : RFragment("我的房间") {
             "▶ 开玩(电信以外)" colored MaterialColor.GREEN_700 with { start(true) }
            // "👥 成员" colored MaterialColor.BLUE_500 with { }
             "\uEB50  服务端" colored MaterialColor.BLUE_500 with { goto( ServerFragment( )) }
+            //"\uEB29  整合包" colored MaterialColor.YELLOW_800 with { goto( ServerFragment( )) }
+            //"\uE6AA  存档" colored MaterialColor.PINK_800 with { goto( ServerFragment( )) }
             "❌ 删除房间" colored MaterialColor.RED_900 init {
                 onLongPress(2000){
                     showChildFragmentOver(ConfirmDeleteRoomFragment(room,server))

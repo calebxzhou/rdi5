@@ -34,8 +34,7 @@ val nowFragment
 val FRAG_CONTAINER_ID = 0x01020007
 val FRAG_CTRL
     get() = ModernUI::class.java.getDeclaredField("mFragmentController").also { it.isAccessible=true }.get(ModernUI.getInstance()) as FragmentController
-val Fragment.go
-    get() = goto(this)
+fun Fragment.go()= goto(this)
 fun goto(fragment: Fragment) {
     if (isMcStarted) {
         prevFragment = mc.fragment
