@@ -15,7 +15,7 @@ data class LoginInfo(
 
 @Serializable
 data class LocalCredentials(
-    var loginInfos: List<LoginInfo> = arrayListOf()
+    var loginInfos: Set<LoginInfo> = hashSetOf()
 ) {
 
     companion object {

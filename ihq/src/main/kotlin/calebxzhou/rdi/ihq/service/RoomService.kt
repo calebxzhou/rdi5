@@ -377,7 +377,11 @@ object RoomService {
         val params = call.receiveParameters()
         val room = getJoinedRoom(call.uid) ?: throw RequestError("没岛")
         val image = params["image"]?:DEFAULT_IMAGE
-        DockerService.update(room.containerId,image)
+        val newId = DockerService.update(room.containerId,image)
+        dbcl.updateOne(
+            eq("_id", room._id),
+            Updates.set("containerId", newId)
+        )
         call.ok()
     }
 }

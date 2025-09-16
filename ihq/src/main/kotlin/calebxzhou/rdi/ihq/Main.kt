@@ -183,9 +183,7 @@ fun startHttp(){
                     get("/log"){
                         RoomService.getServerLog(call)
                     }
-                    post("/update"){
-                        RoomService.update(call)
-                    }
+
                     get("/list") {
                         RoomService.list(call)
                     }
@@ -213,6 +211,9 @@ fun startHttp(){
                         }
                         post("/stop") {
                             RoomService.stopServer(call)
+                        }
+                        post("/update"){
+                            RoomService.update(call)
                         }
                     }
                 }

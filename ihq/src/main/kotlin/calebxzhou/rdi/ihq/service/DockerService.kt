@@ -1,5 +1,6 @@
 package calebxzhou.rdi.ihq.service
 
+import calebxzhou.rdi.ihq.exception.RequestError
 import calebxzhou.rdi.ihq.lgr
 import calebxzhou.rdi.ihq.model.ServerStatus
 import com.github.dockerjava.api.async.ResultCallback.Adapter
@@ -15,6 +16,7 @@ import com.github.dockerjava.transport.DockerHttpClient
 import java.io.Closeable
 import org.bson.types.ObjectId
 import java.time.Duration
+import com.github.dockerjava.api.exception.NotFoundException
 
 object DockerService {
     private val client by lazy {
@@ -87,8 +89,8 @@ object DockerService {
             // Volume might not exist or be in use, continue anyway
         }
     }
-    fun update(containerId: String,image: String){
-        try {
+    fun update(containerId: String,image: String): String {
+
             // Inspect current container to reuse settings
             val inspect = client.inspectContainerCmd(containerId).exec()
             val name = inspect.name?.trim('/') ?: (inspect.id ?: containerId)
@@ -97,10 +99,13 @@ object DockerService {
 
             // Pull latest image
             val repoTag = if (image.contains(":")) image else "$image:latest"
-            client.pullImageCmd(repoTag.substringBefore(":"))
-                .withTag(repoTag.substringAfter(":", "latest"))
-                .start()
-                .awaitCompletion()
+
+            val hasLocal = imageExistsLocally(repoTag)
+            if (hasLocal) {
+                lgr.info { "Image $repoTag found locally; skipping pull." }
+            } else {
+                throw RequestError("找不到此整合包")
+            }
 
             // Determine running state and stop
             val wasRunning = isStarted(containerId)
@@ -116,7 +121,8 @@ object DockerService {
             } catch (_: Exception) {}
 
             // Recreate container with same options
-            val createCmd = client.createContainerCmd(repoTag)
+            val createImageRef = repoTag
+            val createCmd = client.createContainerCmd(createImageRef)
                 .withName(name)
 
             // Env
@@ -127,12 +133,22 @@ object DockerService {
             hostConfig?.let { createCmd.withHostConfig(it) }
 
             val newId = createCmd.exec().id
+
             if (wasRunning) {
                 client.startContainerCmd(newId).exec()
             }
             lgr.info { "Updated container $name to image $repoTag" }
-        } catch (e: Exception) {
-            lgr.warn { "Failed to update container $containerId: ${e.message}" }
+            return newId
+    }
+
+    private fun imageExistsLocally(repoTag: String): Boolean {
+        return try {
+            client.inspectImageCmd(repoTag).exec()
+            true
+        } catch (_: NotFoundException) {
+            false
+        } catch (_: Exception) {
+            false
         }
     }
     fun start(containerId: String) {

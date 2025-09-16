@@ -7,6 +7,7 @@ import calebxzhou.rdi.ui2.MaterialColor
 import calebxzhou.rdi.ui2.component.confirm
 import calebxzhou.rdi.ui2.dp
 import calebxzhou.rdi.ui2.fctx
+import calebxzhou.rdi.ui2.go
 import calebxzhou.rdi.ui2.toast
 import calebxzhou.rdi.util.ioScope
 import calebxzhou.rdi.ui2.uiThread
@@ -52,7 +53,8 @@ class ServerFragment() : RFragment("服务端") {
             "👆 更新" colored MaterialColor.BLUE_800 with {
                 confirm("要更新当前房间的整合包到最新版吗？（不会删除存档）"){
                     server.hqRequest(true,"/room/server/update"){
-                        toast("已开始更新 过一分钟能玩")
+                        toast("已开始更新 过一分钟能玩 请重进房间")
+                        ProfileFragment().go()
                     }
                 }
             }
