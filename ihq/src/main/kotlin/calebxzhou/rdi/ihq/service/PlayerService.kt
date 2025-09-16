@@ -14,14 +14,11 @@ import calebxzhou.rdi.ihq.util.serdesJson
 import com.mongodb.client.model.Filters.eq
 import com.mongodb.client.model.Updates
 import io.ktor.server.application.*
-import io.ktor.server.plugins.origin
 import io.ktor.server.request.*
-import io.ktor.server.routing.RoutingCall
 import kotlinx.coroutines.flow.firstOrNull
 import org.bson.conversions.Bson
 import org.bson.types.ObjectId
 import java.io.File
-import java.util.Date
 
 object PlayerService {
     val accountCol = DB.getCollection<RAccount>("account")
@@ -112,7 +109,7 @@ object PlayerService {
             qq = qq
         )
         accountCol.insertOne(account)
-        call.ok()
+        call.ok( )
     }
 
     suspend fun login(call: ApplicationCall) {
