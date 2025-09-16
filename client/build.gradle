@@ -115,7 +115,7 @@ neoForge {
             systemProperty 'rdi.pack', "RDI5mech"
 
         }
-        server {
+       /* server {
             server()
             programArgument '--nogui'
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
@@ -128,7 +128,7 @@ neoForge {
             type = "gameTestServer"
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
-
+*/
         data {
             data()
 
@@ -277,7 +277,7 @@ dependencies {
         additionalRuntimeClasspath lib
     }
     mcLibExportOnly.each { lib ->
-    //    jarJar(lib)
+        //    jarJar(lib)
     }
     modrinthMods.each { dep ->
         implementation("maven.modrinth:$dep")

@@ -127,11 +127,7 @@ class TitleFragment : RFragment() {
         }
 
     fun startMulti() {
-        if (Const.DEBUG) {
-            OFFICIAL_DEBUG.connect()
-        } else {
-            PACK.server.connect()
-        }
+        RServer.now.connect()
     }
 
 }

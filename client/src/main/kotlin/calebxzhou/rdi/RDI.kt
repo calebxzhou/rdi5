@@ -5,6 +5,8 @@ import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.service.LevelService
 import calebxzhou.rdi.service.Mcmod
+import calebxzhou.rdi.util.ioScope
+import kotlinx.coroutines.launch
 import net.neoforged.fml.common.Mod
 import org.apache.logging.log4j.LogManager
 import java.io.File
@@ -29,8 +31,9 @@ class RDI {
 
         Mcmod.getServerInfo()
         //提前启动服务器
-
-        RServer.now.hqRequest(true,"/room/server/start",showLoading = false){}
+        ioScope.launch {
+            RServer.now.prepareRequest(true,"/room/server/start")
+        }
         /*val port = HttpUtil.getAvailablePort()
         lgr.info("local port started at $port")
         embeddedServer(CIO,host="::",port=port){

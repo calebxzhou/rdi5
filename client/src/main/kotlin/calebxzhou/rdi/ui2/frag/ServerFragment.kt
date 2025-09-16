@@ -49,10 +49,11 @@ class ServerFragment() : RFragment("服务端") {
                     toast("启动指令已发送")
                 }
             }
-            "👆 升级/重装" colored MaterialColor.BLUE_800 with {
-                confirm("要升级当前房间的整合包")
-                server.hqRequest(true,"/room/server/update"){
-                    toast("已开始重装 过一分钟能玩")
+            "👆 更新" colored MaterialColor.BLUE_800 with {
+                confirm("要更新当前房间的整合包到最新版吗？（不会删除存档）"){
+                    server.hqRequest(true,"/room/server/update"){
+                        toast("已开始更新 过一分钟能玩")
+                    }
                 }
             }
             "⏹ 停止" colored MaterialColor.RED_900 with {

@@ -117,7 +117,7 @@ class RServer(
         if (!noUpdate && isMcStarted) {
             goto(UpdateFragment(this))
         } else {
-            goto(SelectAccountFragment(this))
+            goto(SelectAccountFragment())
         }
     }
     fun disconnectGhq() {

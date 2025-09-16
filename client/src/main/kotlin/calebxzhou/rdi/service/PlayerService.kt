@@ -11,6 +11,7 @@ import calebxzhou.rdi.net.StringHttpResponse
 import calebxzhou.rdi.net.body
 import calebxzhou.rdi.service.PlayerService.getPlayerInfo
 import calebxzhou.rdi.ui2.frag.ProfileFragment
+import calebxzhou.rdi.ui2.go
 import calebxzhou.rdi.ui2.goto
 import calebxzhou.rdi.util.ioScope
 import calebxzhou.rdi.util.isMcStarted
@@ -56,7 +57,7 @@ fun playerLogin(usr: String, pwd: String){
         RAccount.now = account
         if (isMcStarted)
             (mc as AMinecraft).setUser(account.mcUser)
-        ProfileFragment()
+        ProfileFragment().go()
     }
 
 }

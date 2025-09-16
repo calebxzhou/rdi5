@@ -3,6 +3,7 @@ package calebxzhou.rdi.ui2.frag
 import calebxzhou.rdi.auth.LocalCredentials
 import calebxzhou.rdi.service.playerLogin
 import calebxzhou.rdi.ui2.*
+import calebxzhou.rdi.ui2.component.confirm
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.widget.LinearLayout
 import org.bson.types.ObjectId
@@ -34,7 +35,11 @@ class SelectAccountFragment() : RFragment("选择账号") {
                     gravity = Gravity.CENTER_HORIZONTAL
                     orientation = LinearLayout.VERTICAL
                     layoutParams = frameLayoutParam(PARENT, PARENT)
-
+                    if(creds.loginInfos.isEmpty()){
+                        confirm("当前没有可用账号，是否前往注册？"){
+                            showChildFragmentOver(RegisterFragment())
+                        }
+                    }
                     creds.loginInfos.forEach { (id, pwd) ->
                         headButton(ObjectId(id), onClick = {
                                 playerLogin(id, pwd)

@@ -3,6 +3,8 @@ package calebxzhou.rdi.ui2.frag
 import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.net.body
 import calebxzhou.rdi.net.success
+import calebxzhou.rdi.service.PlayerService
+import calebxzhou.rdi.service.playerLogin
 import calebxzhou.rdi.ui2.MaterialColor
 import calebxzhou.rdi.ui2.component.REditPassword
 import calebxzhou.rdi.ui2.editPwd
@@ -11,6 +13,8 @@ import calebxzhou.rdi.ui2.button
 import calebxzhou.rdi.ui2.component.RTextField
 import calebxzhou.rdi.ui2.component.alertErr
 import calebxzhou.rdi.ui2.component.alertOk
+import calebxzhou.rdi.ui2.toast
+import calebxzhou.rdi.ui2.uiThread
 import calebxzhou.rdi.util.ioScope
 import icyllis.modernui.view.Gravity
 import kotlinx.coroutines.launch
@@ -59,18 +63,13 @@ class RegisterFragment : RFragment("注册新账号") {
             alertErr("两次输入的密码不一致")
             return
         }
-
-        ioScope.launch {
-            RServer.now?.prepareRequest(true,"register",
-                listOf("name" to usr, "qq" to qq, "pwd" to pwd)
-            )?.let { resp ->
-                    if (resp.success) {
-                        close()
-                        alertOk("注册成功")
-                    }else{
-                        alertErr(resp.body)
-                    }
+        RServer.now.hqRequest(true,"register", params =
+            listOf("name" to usr, "qq" to qq, "pwd" to pwd) ){
+            uiThread {
+                playerLogin(qq,pwd)
+                toast("注册成功 点击登录开玩")
             }
         }
+
     }
 }
