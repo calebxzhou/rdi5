@@ -1,10 +1,13 @@
 package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.auth.LocalCredentials
+import calebxzhou.rdi.auth.LoginInfo
 import calebxzhou.rdi.service.playerLogin
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.confirm
 import icyllis.modernui.view.Gravity
+import icyllis.modernui.view.View
+import icyllis.modernui.view.ViewGroup
 import icyllis.modernui.widget.LinearLayout
 import org.bson.types.ObjectId
 
@@ -40,18 +43,20 @@ class SelectAccountFragment() : RFragment("选择账号") {
                             showChildFragmentOver(RegisterFragment())
                         }
                     }
-                    creds.loginInfos.forEach { (id, pwd) ->
-                        headButton(ObjectId(id), onClick = {
-                                playerLogin(id, pwd)
+                    creds.loginInfos.forEach { info ->
+                        headButton(info.key, onClick = {
+                                playerLogin(info.key.toHexString(),info.value.pwd)
                         }, init = {
+                            // Use the key's timestamp so we can reliably find and remove this view later
+                            id = info.key.timestamp
                             layoutParams = linearLayoutParam(SELF, SELF)
                             gravity = Gravity.CENTER_HORIZONTAL
-                            if (creds.lastLogged?.id == id) {
+                            if (creds.lastLogged?.id == uid) {
                                 setTextColor(MaterialColor.YELLOW_800.colorValue)
                             }
-                           /* contextMenu(listOf(
-                                "删除账号" to { deleteAccount(id) }
-                            ))*/
+                            contextMenu{
+                                "❌ 删除此记录" with  { deleteAccount(info.key) }
+                            }
                         })
                     }
                 }
@@ -59,12 +64,13 @@ class SelectAccountFragment() : RFragment("选择账号") {
         }
 
     }
-  /*  fun deleteAccount(id: String) {
-        creds.idPwds.remove(id)
+    fun deleteAccount(info: ObjectId) {
+        creds.loginInfos.remove(info)
         creds.write()
-        contentLayout.apply {
-            removeAllViews()
-            initContent()
+        contentLayout.findViewById<View>(info.timestamp)?.let { v ->
+            // Remove from its actual parent, not necessarily the root container
+            (v.parent as? ViewGroup)?.removeView(v)
         }
-    }*/
+        toast("已删除记录")
+    }
 }

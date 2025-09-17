@@ -17,7 +17,7 @@ import icyllis.modernui.view.WindowManager
 import icyllis.modernui.widget.FrameLayout
 import org.lwjgl.util.tinyfd.TinyFileDialogs
 
-fun alertErr(msg: String, parent: RFragment? = mc.fragment) {
+fun alertErr(msg: String, parent: RFragment? = nowFragment) {
     if (parent != null) {
         uiThread { DialogView(parent.fctx, msg,msglvl = MessageLevel.ERR) .showOver(parent) }
     }
@@ -27,13 +27,13 @@ fun alertErrOs(msg: String) {
     TinyFileDialogs.tinyfd_messageBox("RDI错误", msg, "ok", "error", true)
 }
 
-fun alertOk(msg: String, parent: RFragment? = mc.fragment) {
+fun alertOk(msg: String, parent: RFragment? = nowFragment) {
     if (parent != null) {
         uiThread { DialogView(parent.fctx, msg, msglvl = MessageLevel.OK).apply {  }.showOver(parent) }
     }
 }
 
-fun confirm(msg: String, parent: RFragment? = mc.fragment,  noText: String = "❎ 否",
+fun confirm(msg: String, parent: RFragment? = nowFragment,  noText: String = "❎ 否",
              yesText: String = "✅ 是", onYes: () -> Unit = {}) {
     if (parent != null) {
         uiThread {

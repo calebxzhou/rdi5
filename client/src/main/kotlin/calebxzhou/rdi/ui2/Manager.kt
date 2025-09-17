@@ -34,15 +34,41 @@ val nowFragment
 val FRAG_CONTAINER_ID = 0x01020007
 val FRAG_CTRL
     get() = ModernUI::class.java.getDeclaredField("mFragmentController").also { it.isAccessible=true }.get(ModernUI.getInstance()) as FragmentController
+val SCREEN_CALLBACK = object : ScreenCallback {
+    override fun shouldClose(): Boolean = false
+}
 fun Fragment.go()= goto(this)
+fun Fragment.refresh(){
+    if (isMcStarted) {
+        // In MC, rebuild the MuiScreen for this fragment
+        val screen: Screen = MuiForgeApi.get().createScreen(this, SCREEN_CALLBACK, mc.screen)
+        mc set screen
+    } else {
+        // In standalone ModernUI, force re-create the fragment's view by detach/attach
+        val fm = FRAG_CTRL.fragmentManager
+        try {
+            fm.transaction {
+                // Only detach/attach if the fragment is currently added, otherwise navigate to it
+                if (this@refresh.isAdded) {
+                    detach(this@refresh)
+                    attach(this@refresh)
+                    setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE)
+                } else {
+                    replace(FRAG_CONTAINER_ID, this@refresh, "main")
+                    setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
+                    addToBackStack("main")
+                }
+            }
+        } catch (_: Throwable) {
+            // Fallback: navigate to ensure a visible refresh
+            goto(this)
+        }
+    }
+}
 fun goto(fragment: Fragment) {
     if (isMcStarted) {
         prevFragment = mc.fragment
-        val screen: Screen = MuiForgeApi.get().createScreen(fragment, object : ScreenCallback {
-            override fun shouldClose(): Boolean {
-                return false
-            }
-        }, mc.screen)
+        val screen: Screen = MuiForgeApi.get().createScreen(fragment, SCREEN_CALLBACK, mc.screen)
         mc set screen
     }else{/*
         prevFragment = (ModernUI::class.java.getDeclaredField("mFragmentContainerView").also { it.isAccessible = true }

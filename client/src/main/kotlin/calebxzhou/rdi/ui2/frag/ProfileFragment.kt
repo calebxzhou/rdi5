@@ -91,8 +91,4 @@ class ProfileFragment : RFragment("我的信息") {
     }
 
 
-    override fun close() {
-
-        goto(TitleFragment())
-    }
 }

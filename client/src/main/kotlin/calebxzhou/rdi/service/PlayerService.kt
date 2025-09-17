@@ -52,7 +52,7 @@ fun playerLogin(usr: String, pwd: String){
         params = listOf("usr" to usr, "pwd" to pwd, "spec" to spec)
     ){
         val account = serdesJson.decodeFromString<RAccount>(it.body)
-        creds.loginInfos += LoginInfo(account._id.toHexString(),account.pwd)
+        creds.loginInfos += account._id to LoginInfo(account._id,account.pwd)
         creds.write()
         RAccount.now = account
         if (isMcStarted)
@@ -74,12 +74,12 @@ object PlayerService {
             ?.also { profile.properties.put("textures", it) }
     }
 
-    suspend fun queryPlayerInfo(uid: ObjectId): StringHttpResponse? {
-        return RServer.now?.prepareRequest(false, "player-info", listOf("uid" to uid))
+    suspend fun queryPlayerInfo(uid: ObjectId): StringHttpResponse {
+        return RServer.now.prepareRequest(false, "player-info", listOf("uid" to uid))
     }
 
     suspend fun getPlayerInfo(uid: ObjectId): RAccount.Dto {
-        return queryPlayerInfo(uid)?.let { resp ->
+        return queryPlayerInfo(uid).let { resp ->
             val json = resp.body
             lgr.info("玩家信息:${json}")
             serdesJson.decodeFromString(json)

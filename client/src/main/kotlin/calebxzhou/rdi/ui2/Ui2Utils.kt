@@ -208,7 +208,7 @@ fun ViewGroup.editPwd(
 fun ViewGroup.headButton(
     id: ObjectId,
     init: RAvatarButton.() -> Unit = {},
-    onClick: (RButton) -> Unit = {},
+    onClick: (RAvatarButton) -> Unit = {},
 ) = RAvatarButton(context, id, onClick).apply(init).also { this += it }
 
 

@@ -2,20 +2,25 @@ package calebxzhou.rdi.auth
 
 import calebxzhou.rdi.RDI
 import calebxzhou.rdi.util.serdesJson
+import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
+import org.bson.types.ObjectId
 import java.io.File
+import kotlin.collections.maxByOrNull
 
 @Serializable
 data class LoginInfo(
-    val id: String,
+    @Contextual
+    val id: ObjectId,
     val pwd: String,
     var lastLoggedTime: Long = System.currentTimeMillis(),
-)
+){
+}
 
 @Serializable
 data class LocalCredentials(
-    var loginInfos: Set<LoginInfo> = hashSetOf()
+    var loginInfos: MutableMap< @Contextual ObjectId,LoginInfo> = hashMapOf()
 ) {
 
     companion object {
@@ -33,6 +38,6 @@ data class LocalCredentials(
         }
     }
     val lastLogged
-        get() = loginInfos.maxByOrNull { it.lastLoggedTime }
+        get() = loginInfos.values.maxByOrNull { it.lastLoggedTime }
     fun write() = serdesJson.encodeToString(this).let { file.writeText(it) }
 }

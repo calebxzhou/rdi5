@@ -72,16 +72,7 @@ open class RButton(
 
 
 
-    override fun onCreateContextMenu(menu: ContextMenu) {
-        menu.setHeaderView(this)
-        menu.setHeaderTitle("test")
-        menu.add("testtest")
-        menu.add(Menu.NONE, 123543687, 0, "1231320").isEnabled = true
-            /*.setOnMenuItemClickListener(mOnContextMenuItemClickListener)
-            .setEnabled(mTextView.canUndo())*/
-        menu.setQwertyMode(true)
-        super.onCreateContextMenu(menu)
-    }
+
     override fun showContextMenu(x: Float, y: Float): Boolean {
         mContextMenuAnchorX = x;
         mContextMenuAnchorY = y;
