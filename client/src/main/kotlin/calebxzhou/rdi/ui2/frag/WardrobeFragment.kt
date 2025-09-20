@@ -56,7 +56,7 @@ data class Skin(
 
 class WardrobeFragment : RFragment("衣柜") {
     private val account = RAccount.now ?: RAccount.DEFAULT
-    private val server = RServer.now ?: RServer.OFFICIAL_DEBUG
+    private val server = RServer.now
     private val urlPrefix = "https://littleskin.cn"
     private var page = 1
     private var loading = false

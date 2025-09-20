@@ -1,7 +1,6 @@
 package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.auth.LocalCredentials
-import calebxzhou.rdi.auth.LoginInfo
 import calebxzhou.rdi.service.playerLogin
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.confirm
@@ -18,7 +17,7 @@ class SelectAccountFragment() : RFragment("选择账号") {
 
     init {
         bottomOptionsConfig = {
-            "➕ 添加旧号" with {showChildFragmentOver( LoginFragment()) }
+            "+ 添加旧号" colored MaterialColor.BLUE_900 with {showChildFragmentOver( LoginFragment()) }
             "✏ 注册新号" colored MaterialColor.LIGHT_GREEN_900 with { showChildFragmentOver(RegisterFragment()) }
             "⚙ 设置" colored MaterialColor.BLUE_900 with { goto(SettingsFragment()) }
             /*"自由创造" with {
@@ -66,7 +65,7 @@ class SelectAccountFragment() : RFragment("选择账号") {
     }
     fun deleteAccount(info: ObjectId) {
         creds.loginInfos.remove(info)
-        creds.write()
+        creds.save()
         contentLayout.findViewById<View>(info.timestamp)?.let { v ->
             // Remove from its actual parent, not necessarily the root container
             (v.parent as? ViewGroup)?.removeView(v)

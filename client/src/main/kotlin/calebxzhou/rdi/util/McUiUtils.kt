@@ -10,7 +10,7 @@ import net.minecraft.network.chat.Component
  */
 val Font
     get() = mc.font
-val WindowHandle
+val McWindowHandle
     get() = mc.window.window
 val UiWidth
     get() = mc.window.guiScaledWidth

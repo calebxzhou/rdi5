@@ -38,6 +38,7 @@ val SCREEN_CALLBACK = object : ScreenCallback {
     override fun shouldClose(): Boolean = false
 }
 fun Fragment.go()= goto(this)
+fun Fragment.showOver(parent: RFragment,w:Float=640f,h:Float=480f) = parent.showChildFragmentOver(this,w,h)
 fun Fragment.refresh(){
     if (isMcStarted) {
         // In MC, rebuild the MuiScreen for this fragment

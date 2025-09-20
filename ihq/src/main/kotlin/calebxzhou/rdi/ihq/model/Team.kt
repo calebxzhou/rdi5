@@ -1,28 +1,27 @@
-package calebxzhou.rdi.model
+package calebxzhou.rdi.ihq.model
 
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import org.bson.types.ObjectId
 
 @Serializable
-data class Room(
+data class Team(
     @Contextual
     val _id: ObjectId = ObjectId(),
     val name: String,
-    val score: Int=0,
-    val port: Int = 0,
+    val info: String,
     val members: List<Member> = arrayListOf(),
-){
-
+) {
+    enum class Role {
+        OWNER,
+        ADMIN,
+        MEMBER,
+        GUEST
+    }
     @Serializable
     data class Member(
         @Contextual
         val id: ObjectId,
-        val isOwner: Boolean
+        val role: Role
     )
-    companion object{
-        val DEFAULT = Room(ObjectId(),"未知房间",0,0)
-        @JvmField
-        var now: Room = DEFAULT
-    }
 }

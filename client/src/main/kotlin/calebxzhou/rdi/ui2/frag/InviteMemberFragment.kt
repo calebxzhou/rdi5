@@ -19,13 +19,13 @@ class InviteMemberFragment : RFragment("邀请成员") {
     }
     private fun onClicked() {
         val qq = qqInput.text.toString()
-            RServer.now?.hqRequest(true,"room/invite_qq", params = listOf("qq" to qq)) {
-                uiThread {
+        RServer.now.hqRequest(true,"room/invite_qq", params = listOf("qq" to qq)) {
+            uiThread {
 
-                    close()
-                    alertOk("成功邀请${it.body}加入了你的房间。")
-                }
+                close()
+                alertOk("成功邀请${it.body}加入了你的房间。")
             }
+        }
 
 
     }

@@ -24,12 +24,7 @@ open class RButton(
 ): Button(context,null, R.attr.buttonStyle,R.style.Widget_Material3_Button_IconButton) {
 
 
-    private var menuItems = listOf<Pair<String, () -> Unit>>()
-    private var mContextMenuAnchorX = 0f;
-    private var mContextMenuAnchorY = 0f
-    var contextMenu: (List<Pair<String, () -> Unit>>) -> Unit = { items ->
-        menuItems = items
-    }
+
 
     init {
         // Ensure normal click works when hold-to-confirm is not enabled
@@ -59,23 +54,5 @@ open class RButton(
         setTextColor(textColor)
     }
 
-    override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {
-        // Preserve right-click context menu behavior
-        if (event.isButtonPressed(MotionEvent.BUTTON_SECONDARY)) {
-            showContextMenu(event.x, event.y)
-            return true
-        }
-        return super.dispatchGenericMotionEvent(event)
-    }
 
-
-
-
-
-
-    override fun showContextMenu(x: Float, y: Float): Boolean {
-        mContextMenuAnchorX = x;
-        mContextMenuAnchorY = y;
-        return super.showContextMenu(x, y)
-    }
 }

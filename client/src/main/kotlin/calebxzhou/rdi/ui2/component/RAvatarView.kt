@@ -18,10 +18,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.bson.types.ObjectId
 
-class RAvatarButton(
+class RAvatarView(
     context: Context,
     val uid: ObjectId,
-    onClick: (RAvatarButton) -> Unit = {},
+    onClick: (RAvatarView) -> Unit = {},
 ) : TextView(context) {
     var avatar: Image = createDefaultAvatar()
         set(value) {

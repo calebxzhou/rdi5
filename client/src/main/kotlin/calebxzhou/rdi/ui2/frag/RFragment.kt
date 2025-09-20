@@ -6,6 +6,7 @@ import calebxzhou.rdi.util.mc
 import calebxzhou.rdi.util.set
 import com.ibm.icu.text.UTF16.bounds
 import icyllis.modernui.ModernUI
+import icyllis.modernui.R.attr.gravity
 import icyllis.modernui.fragment.Fragment
 import icyllis.modernui.graphics.Paint
 import icyllis.modernui.graphics.drawable.ColorDrawable
@@ -93,7 +94,7 @@ abstract class RFragment(var title: String = "") : Fragment() {
             linearLayout {
                 orientation = LinearLayout.VERTICAL
                 layoutParams = frameLayoutParam(PARENT, PARENT)
-
+                gravity = Gravity.CENTER_HORIZONTAL
                 // Create frame layout for back button and title
                 if (showTitle || showCloseButton) {
                     frameLayout() {
@@ -133,6 +134,9 @@ abstract class RFragment(var title: String = "") : Fragment() {
 
                 contentLayout = this
                 initContent()
+                contentLayout.apply {
+                    contentLayoutInit()
+                }
             }
 
             // Render bottom options if configured - positioned at actual bottom
@@ -147,8 +151,9 @@ abstract class RFragment(var title: String = "") : Fragment() {
             keyAction {  }
         }
     }
-
-    open fun close() {
+    // Make this a var so inheritors can either override it or assign in init {}
+    open var contentLayoutInit: LinearLayout.() -> Unit = {}
+    fun close() {
         // If this fragment is being shown as an overlay child, prefer dismissing the overlay.
         overlayRemover?.let { remover ->
             overlayRemover = null

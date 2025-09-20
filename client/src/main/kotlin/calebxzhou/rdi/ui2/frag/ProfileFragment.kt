@@ -20,7 +20,7 @@ import net.minecraft.client.multiplayer.resolver.ServerAddress
 class ProfileFragment : RFragment("我的信息") {
     override var closable = false
     val account = RAccount.now ?: RAccount.DEFAULT
-    val server = RServer.now ?: RServer.OFFICIAL_DEBUG
+    val server = RServer.now
 
     init {
         bottomOptionsConfig = {
@@ -35,55 +35,39 @@ class ProfileFragment : RFragment("我的信息") {
                             noText = "等朋友邀请我加入他的",
                         ) {
                             server.hqRequest(true, "room/create") { resp ->
-                                val room = serdesJson.decodeFromString<Room>(resp.body)
-                                goto(RoomFragment(room))
+                                Room.now= serdesJson.decodeFromString<Room>(resp.body)
+                                goto(RoomFragment( ))
                             }
                         }
                         return@hqRequest
                     } else {
-                        val room = serdesJson.decodeFromString<Room>(body)
-                        goto(RoomFragment(room))
+                        Room.now=serdesJson.decodeFromString<Room>(body)
+                        goto(RoomFragment( ))
                     }
                 }
             }
             "⛔ 登出" colored MaterialColor.RED_900 with { close() }
         }
-    }
-
-    override fun initContent() {
-        contentLayout.apply {
-            headButton(account._id, {
-                gravity = Gravity.CENTER_HORIZONTAL
-                layoutParams = linearLayoutParam(SELF, SELF) {
-                    gravity = Gravity.CENTER_HORIZONTAL
-                }
-            }) {
-                goto(ChangeProfileFragment())
-            }
-            linearLayout {
-
-                layoutParams = linearLayoutParam(SELF, SELF) {
-                    gravity = Gravity.CENTER_HORIZONTAL
-                }
-                this += HwSpecView(context)
-            }
-            setOnKeyListener { _, keyCode, event ->
-                if (keyCode == KeyEvent.KEY_1 && event.action == KeyEvent.ACTION_UP) {
+        contentLayoutInit = {
+            headButton(account._id, init = {
+                center()
+            }, onClick = {
+                ChangeProfileFragment().showOver(this@ProfileFragment)
+            })
+            this += HwSpecView(context).apply { center() }
+            keyAction {
+                KeyEvent.KEY_1 to {
                     if (Const.DEBUG)
                         start(false)
-                    true
                 }
-                false
             }
         }
     }
 
     fun start(bgp: Boolean) {
         renderThread {
-
             ConnectScreen.startConnecting(
                 mc.screen, mc,
-
                 ServerAddress(if (bgp) server.bgpIp else server.ip, server.gamePort), server.mcData(bgp), false, null
             )
         }

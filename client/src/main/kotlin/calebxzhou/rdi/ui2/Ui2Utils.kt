@@ -1,9 +1,11 @@
 package calebxzhou.rdi.ui2
 
-import ca.weblite.objc.RuntimeUtils.msg
 import calebxzhou.rdi.PACK
+import calebxzhou.rdi.lgr
 import calebxzhou.rdi.ui2.component.*
 import calebxzhou.rdi.ui2.frag.RFragment
+import calebxzhou.rdi.util.McWindowHandle
+import calebxzhou.rdi.util.isMcStarted
 import calebxzhou.rdi.util.mc
 import calebxzhou.rdi.util.rdiAsset
 import com.mojang.blaze3d.platform.NativeImage
@@ -21,6 +23,7 @@ import icyllis.modernui.graphics.drawable.Drawable
 import icyllis.modernui.graphics.drawable.ImageDrawable
 import icyllis.modernui.mc.MuiScreen
 import icyllis.modernui.mc.neoforge.MuiForgeApi
+import icyllis.modernui.view.Gravity
 import icyllis.modernui.view.KeyEvent
 import icyllis.modernui.view.LayoutInflater
 import icyllis.modernui.view.View
@@ -31,6 +34,7 @@ import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite
 import net.minecraft.resources.ResourceLocation
 import org.bson.types.ObjectId
+import org.lwjgl.glfw.GLFW
 
 /**
  * calebxzhou @ 2025-07-22 21:28
@@ -207,9 +211,9 @@ fun ViewGroup.editPwd(
 
 fun ViewGroup.headButton(
     id: ObjectId,
-    init: RAvatarButton.() -> Unit = {},
-    onClick: (RAvatarButton) -> Unit = {},
-) = RAvatarButton(context, id, onClick).apply(init).also { this += it }
+    init: RAvatarView.() -> Unit = {},
+    onClick: (RAvatarView) -> Unit = {},
+) = RAvatarView(context, id, onClick).apply(init).also { this += it }
 
 
 fun ViewGroup.radioButton(
@@ -231,6 +235,28 @@ fun ViewGroup.iconButton(
 fun ViewGroup.scrollView(
     init: ScrollView.() -> Unit = {}
 ) = ScrollView(this.context).apply(init).also { this += it }
+fun View.center(){
+    layoutParams = when (this) {
+        is LinearLayout -> {
+            linearLayoutParam(SELF, SELF) {
+                gravity = Gravity.CENTER_HORIZONTAL
+            }
+        }
+
+        is FrameLayout -> {
+            frameLayoutParam(SELF, SELF) {
+                gravity = Gravity.CENTER_HORIZONTAL
+            }
+        }
+
+        else -> {
+            lgr.warn("尝试默认居中 $this")
+            linearLayoutParam(SELF, SELF) {
+                gravity = Gravity.CENTER_HORIZONTAL
+            }
+        }
+    }
+}
 fun TextView.leadingIcon(icon: String){
     compoundDrawablePadding = dp(8f)
     setCompoundDrawables(iconDrawable(icon).apply { setBounds(0,0,dp(24f),dp(24f)) },null,null,null)
@@ -244,6 +270,10 @@ fun FragmentManager.transaction(handler: FragmentTransaction.() -> Unit){
     beginTransaction().apply { handler() }.commit()
 }
 val layoutInflater = object : LayoutInflater(){}
+val WINDOW_HANDLE = if(isMcStarted)McWindowHandle else ModernUI.getInstance().window.handle
+fun copyToClipboard(s: String) {
+    GLFW.glfwSetClipboardString(WINDOW_HANDLE, s)
+}
 /*
 
 fun Context.showContextMenu(anchor: View, items: List<Pair<String, () -> Unit>>, x: Float = Float.NaN, y: Float = Float.NaN) {

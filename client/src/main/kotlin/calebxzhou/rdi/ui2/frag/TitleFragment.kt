@@ -26,7 +26,7 @@ class TitleFragment : RFragment() {
 
     init {
         RAccount.now=null
-        Room.now=null
+        Room.now= Room.DEFAULT
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: DataSet?): View =

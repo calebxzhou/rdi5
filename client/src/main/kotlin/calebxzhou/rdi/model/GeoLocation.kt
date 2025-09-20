@@ -22,7 +22,19 @@ data class GeoLocation(
     val district: String
 ){
     companion object{
-        suspend fun get(): GeoLocation? {
+        val DEFAULT =  GeoLocation(
+            continent = "未知",
+            country = "未知",
+            zipcode = "未知",
+            owner = "未知",
+            isp = "未知",
+            adcode = "000000",
+            prov = "未知",
+            city = "未知",
+            district = "未知"
+        )
+        var now = DEFAULT
+        suspend fun get(): GeoLocation {
             val resp = httpStringRequest(false,"https://qifu.baidu.com/ip/local/geo/v1/district", headers = listOf(
                 "Referer" to "https://qifu.baidu.com/?activeKey=SEARCH_IP&trace=apistore_ip_aladdin&activeId=SEARCH_IP_ADDRESS&ip=",
                 "User-Agent" to WEB_USER_AGENT,
@@ -37,14 +49,14 @@ data class GeoLocation(
                 val dataElement = jsonObject["data"]
                 if (dataElement == null || dataElement.jsonPrimitive.content.isEmpty()) {
                     lgr.error("Empty data field in response")
-                    return null
+                    return DEFAULT
                 }
                 // Extract location fields from the data object
-                return serdesJson.decodeFromString<GeoLocation>(dataElement.jsonPrimitive.content)
+                return serdesJson.decodeFromString<GeoLocation>(dataElement.jsonPrimitive.content).also { now=it }
             } catch (e: Exception) {
                 lgr.error("无法获取位置信息 ${e.message}")
                 lgr.error(resp.body)
-                return null
+                return DEFAULT
             }
         }
     }

@@ -17,10 +17,12 @@ data class LoginInfo(
     var lastLoggedTime: Long = System.currentTimeMillis(),
 ){
 }
-
+val localCreds
+    get() = LocalCredentials.read()
 @Serializable
 data class LocalCredentials(
-    var loginInfos: MutableMap< @Contextual ObjectId,LoginInfo> = hashMapOf()
+    var loginInfos: MutableMap< @Contextual ObjectId,LoginInfo> = hashMapOf(),
+    var carrier: Int = 0,
 ) {
 
     companion object {
@@ -29,7 +31,7 @@ data class LocalCredentials(
         fun read() = try {
             if (!file.exists()){
                 file.createNewFile()
-                LocalCredentials().write()
+                LocalCredentials().save()
             }
             serdesJson.decodeFromString<LocalCredentials>(file.readText())
         } catch (e: Exception) {
@@ -39,5 +41,5 @@ data class LocalCredentials(
     }
     val lastLogged
         get() = loginInfos.values.maxByOrNull { it.lastLoggedTime }
-    fun write() = serdesJson.encodeToString(this).let { file.writeText(it) }
+    fun save() = serdesJson.encodeToString(this).let { file.writeText(it) }
 }

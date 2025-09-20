@@ -10,7 +10,9 @@ import calebxzhou.rdi.ihq.net.e400
 import calebxzhou.rdi.ihq.net.e401
 import calebxzhou.rdi.ihq.net.e500
 import calebxzhou.rdi.ihq.net.ok
+import calebxzhou.rdi.ihq.service.TeamService.teamRoutes
 import calebxzhou.rdi.ihq.service.UpdateService
+import calebxzhou.rdi.ihq.service.teamRoutes
 import calebxzhou.rdi.ihq.util.serdesJson
 import com.mongodb.MongoClientSettings
 import com.mongodb.ServerAddress
@@ -149,6 +151,7 @@ fun startHttp(){
                 post("/clearSkin") {
                     PlayerService.clearCloth(call)
                 }
+                teamRoutes()
                 route("/room") {
                     get("/my"){
                         RoomService.my(call)

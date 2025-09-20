@@ -12,7 +12,6 @@ import calebxzhou.rdi.net.body
 import calebxzhou.rdi.service.PlayerService.getPlayerInfo
 import calebxzhou.rdi.ui2.frag.ProfileFragment
 import calebxzhou.rdi.ui2.go
-import calebxzhou.rdi.ui2.goto
 import calebxzhou.rdi.util.ioScope
 import calebxzhou.rdi.util.isMcStarted
 import calebxzhou.rdi.util.mc
@@ -53,7 +52,7 @@ fun playerLogin(usr: String, pwd: String){
     ){
         val account = serdesJson.decodeFromString<RAccount>(it.body)
         creds.loginInfos += account._id to LoginInfo(account._id,account.pwd)
-        creds.write()
+        creds.save()
         RAccount.now = account
         if (isMcStarted)
             (mc as AMinecraft).setUser(account.mcUser)

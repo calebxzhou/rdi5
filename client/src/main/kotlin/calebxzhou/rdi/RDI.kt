@@ -1,6 +1,8 @@
 package calebxzhou.rdi
 
 import calebxzhou.rdi.auth.LocalCredentials
+import calebxzhou.rdi.auth.localCreds
+import calebxzhou.rdi.model.GeoLocation
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.service.LevelService
@@ -30,9 +32,16 @@ class RDI {
         DIR.mkdir()
 
         Mcmod.getServerInfo()
-        //提前启动服务器
+
         ioScope.launch {
-            RServer.now.prepareRequest(true,"/room/server/start")
+            //提前启动服务器
+            RServer.now.prepareRequest(true, "/room/server/start")
+            if (GeoLocation.get().isp.contains("电信")) {
+                lgr.info("电信节点")
+                localCreds.apply { carrier=0 }.save()
+            }else{
+                localCreds.apply { carrier=1 }.save()
+            }
         }
         /*val port = HttpUtil.getAvailablePort()
         lgr.info("local port started at $port")
