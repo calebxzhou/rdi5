@@ -11,8 +11,10 @@ import calebxzhou.rdi.ihq.net.uid
 import calebxzhou.rdi.ihq.util.displayLength
 import com.mongodb.client.model.Filters.*
 import com.mongodb.client.model.Indexes
+import com.mongodb.client.model.Updates
 import io.ktor.server.routing.*
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import org.bson.types.ObjectId
 
@@ -23,6 +25,11 @@ fun Route.teamRoutes() = route("/team") {
             response(data = it)
         } ?: err("无此团队")
         ok()
+    }
+    get("/my") {
+        TeamService.getJoinedTeam(uid)
+            ?.let { response(data = it) }
+            ?: throw RequestError("无团队")
     }
     post("/create") {
         TeamService.create(
@@ -37,7 +44,12 @@ fun Route.teamRoutes() = route("/team") {
         ok()
     }
     post("/invite") {
-
+        TeamService.invite(uid, param("qq"))
+        ok()
+    }
+    post("/kick") {
+        TeamService.kick(uid, ObjectId(param("uid2")))
+        ok()
     }
 }
 
@@ -74,9 +86,10 @@ object TeamService {
     suspend fun hasJoinedTeam(uid: ObjectId): Boolean = dbcl.find(eq("members.id", uid)).firstOrNull() != null
 
     suspend fun get(id: ObjectId) = dbcl.find(eq("_id", id)).firstOrNull()
+
     suspend fun create(uid: ObjectId, name: String, info: String) {
-        if (hasJoinedTeam(uid)) throw RequestError("未退出当前团队")
-        val player = PlayerService.getById(uid) ?: throw RequestError("无此账号")
+        if (hasJoinedTeam(uid)) throw RequestError("已有团队")
+        if (!PlayerService.has(uid)) throw RequestError("无此账号")
         if (name.displayLength > 32) throw RequestError("团队名称显示长度>32")
         if (info.displayLength > 512) throw RequestError("团队简介显示长度>512")
         val team = Team(
@@ -91,14 +104,31 @@ object TeamService {
         )
         dbcl.insertOne(team)
     }
-    suspend fun delete(uid: ObjectId){
-        val team = getOwnTeam(uid) ?: throw RequestError("无可删除的团队")
-        dbcl.deleteOne(eq("_id",team._id))
+
+    suspend fun delete(uid: ObjectId) {
+        val team = getOwnTeam(uid) ?: throw RequestError("无团队")
+        dbcl.deleteOne(eq("_id", team._id))
     }
-    suspend fun invite(uid: ObjectId,targetQQ: String){
-        val team = getOwnTeam(uid) ?: throw RequestError("无权限")
+
+    suspend fun invite(uid: ObjectId, targetQQ: String) {
+        val team = getOwnTeam(uid) ?: throw RequestError("无团队")
         val target = PlayerService.getByQQ(targetQQ) ?: throw RequestError("无此账号")
-        if(hasJoinedTeam(target._id)) throw RequestError("目标已在团队中")
+        if (hasJoinedTeam(target._id)) throw RequestError("对方已有团队")
+        RoomService.dbcl.updateOne(
+            eq("_id", team._id),
+            Updates.push("members", Team.Member(target._id, Team.Role.MEMBER))
+        )
+    }
+
+    suspend fun kick(uid: ObjectId, uid2: ObjectId) {
+        if (uid == uid2) throw RequestError("不能踢自己")
+        val team = getOwnTeam(uid) ?: throw RequestError("无团队")
+        if (!PlayerService.has(uid2)) throw RequestError("无此账号")
+        if (team.members.none { it.id == uid2 }) throw RequestError("对方不在团队内")
+        dbcl.updateOne(
+            eq("_id", team._id),
+            Updates.pull("members", eq("id", uid2))
+        )
 
     }
 }
