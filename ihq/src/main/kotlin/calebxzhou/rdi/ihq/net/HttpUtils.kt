@@ -2,15 +2,13 @@ package calebxzhou.rdi.ihq.net
 
 import calebxzhou.rdi.ihq.exception.AuthError
 import calebxzhou.rdi.ihq.exception.ParamError
+import calebxzhou.rdi.ihq.model.Response
 import calebxzhou.rdi.ihq.util.serdesJson
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.DefaultRequest
-import io.ktor.client.request.get
 import io.ktor.client.request.header
-import io.ktor.client.statement.HttpResponse
-import io.ktor.client.statement.bodyAsText
-import io.ktor.client.statement.readBytes
+import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Parameters
 import io.ktor.serialization.kotlinx.json.json
@@ -21,11 +19,10 @@ import io.ktor.server.plugins.origin
 import io.ktor.server.request.receiveParameters
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
+import io.ktor.server.routing.RoutingContext
 import io.ktor.util.AttributeKey
-import kotlinx.serialization.json.Json
 import org.bson.types.ObjectId
 import java.net.ServerSocket
-import java.nio.charset.Charset
 
 /**
  * calebxzhou @ 2025-05-26 12:25
@@ -67,25 +64,28 @@ suspend fun ApplicationCall.err(status: HttpStatusCode, msg: String? = null) {
     }
 }
 
-suspend fun ApplicationCall.ok(msg: String? = null) {
-    msg?.run {
-        respondText(this, status = HttpStatusCode.OK)
-    } ?: run {
-        respond(HttpStatusCode.OK)
-    }
+suspend fun RoutingContext.ok(msg: String="ok") {
+    response(true,msg,null)
 }
-
+suspend fun RoutingContext.err(msg: String="❌") {
+    response(false,msg,null)
+}
+suspend fun <T> RoutingContext.response(ok:Boolean=true, msg: String="", data: T? = null) {
+    call.respondText(
+        serdesJson.encodeToString(Response(if(ok) 0 else -1 ,msg,data)),
+        ContentType.Application.Json,
+        HttpStatusCode.OK
+    )
+}
 infix fun Parameters.got(param: String): String {
     return this[param] ?: throw ParamError("参数不全")
 }
 
 val ApplicationCall.uid
     get() =
-
-        ObjectId(this.principal<UserIdPrincipal>()?.name ?: throw AuthError("无效会话"))
-fun ApplicationCall.param(key: String): String{
-   return parameters[key]?:request.queryParameters[key]?: throw ParamError("参数不全")
-}
+        ObjectId(this.principal<UserIdPrincipal>()?.name ?: throw AuthError("账密错"))
+val RoutingContext.uid
+    get() = call.uid
 
 // ---------- Unified parameter access DSL ----------
 // We sometimes need to read a parameter that could appear as:
@@ -111,11 +111,13 @@ private suspend fun ApplicationCall.cachedFormParameters(): Parameters {
  * Get the first present value among path, query or form parameters.
  * Throws [ParamError] if absent.
  */
-suspend fun ApplicationCall.params(name: String): String =
-    paramsOrNull(name) ?: throw ParamError("缺少参数: $name")
+suspend fun RoutingContext.param(name: String): String = call.param(name)
+suspend fun RoutingContext.paramNull(name: String): String? = call.paramNull(name)
+suspend fun ApplicationCall.param(name: String): String =
+    paramNull(name) ?: throw ParamError("缺少参数: $name")
 
-/** Same as [params] but returns null when absent. */
-suspend fun ApplicationCall.paramsOrNull(name: String): String? {
+/** Same as [param] but returns null when absent. */
+suspend fun ApplicationCall.paramNull(name: String): String? {
     // Path / route
     parameters[name]?.let { return it }
     // Query
@@ -126,24 +128,24 @@ suspend fun ApplicationCall.paramsOrNull(name: String): String? {
 }
 
 /** Try multiple alternative names, return the first found or throw. */
-suspend fun ApplicationCall.params(vararg names: String): String {
-    names.forEach { n -> paramsOrNull(n)?.let { return it } }
+suspend fun ApplicationCall.param(vararg names: String): String {
+    names.forEach { n -> paramNull(n)?.let { return it } }
     throw ParamError("缺少参数: ${names.joinToString("/")}")
 }
 
 /** Convenience typed accessors. Provide default if missing (no exception). */
 suspend fun ApplicationCall.intParam(name: String, default: Int? = null): Int {
-    val v = paramsOrNull(name) ?: return default ?: throw ParamError("缺少参数: $name")
+    val v = paramNull(name) ?: return default ?: throw ParamError("缺少参数: $name")
     return v.toIntOrNull() ?: throw ParamError("参数 $name 不是整数")
 }
 
 suspend fun ApplicationCall.longParam(name: String, default: Long? = null): Long {
-    val v = paramsOrNull(name) ?: return default ?: throw ParamError("缺少参数: $name")
+    val v = paramNull(name) ?: return default ?: throw ParamError("缺少参数: $name")
     return v.toLongOrNull() ?: throw ParamError("参数 $name 不是长整数")
 }
 
 suspend fun ApplicationCall.boolParam(name: String, default: Boolean? = null): Boolean {
-    val v = paramsOrNull(name) ?: return default ?: throw ParamError("缺少参数: $name")
+    val v = paramNull(name) ?: return default ?: throw ParamError("缺少参数: $name")
     return when (v.lowercase()) {
         "true", "1", "yes", "y", "on" -> true
         "false", "0", "no", "n", "off" -> false

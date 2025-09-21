@@ -3,14 +3,11 @@ package calebxzhou.rdi.ihq
 import calebxzhou.rdi.ihq.exception.AuthError
 import calebxzhou.rdi.ihq.exception.ParamError
 import calebxzhou.rdi.ihq.exception.RequestError
+import calebxzhou.rdi.ihq.net.err
+import calebxzhou.rdi.ihq.net.response
 import calebxzhou.rdi.ihq.service.PlayerService
 import calebxzhou.rdi.ihq.service.PlayerService.accountCol
 import calebxzhou.rdi.ihq.service.RoomService
-import calebxzhou.rdi.ihq.net.e400
-import calebxzhou.rdi.ihq.net.e401
-import calebxzhou.rdi.ihq.net.e500
-import calebxzhou.rdi.ihq.net.ok
-import calebxzhou.rdi.ihq.service.TeamService.teamRoutes
 import calebxzhou.rdi.ihq.service.UpdateService
 import calebxzhou.rdi.ihq.service.teamRoutes
 import calebxzhou.rdi.ihq.util.serdesJson
@@ -20,17 +17,15 @@ import com.mongodb.client.model.IndexOptions
 import com.mongodb.client.model.Indexes
 import com.mongodb.kotlin.client.coroutine.MongoClient
 import io.github.oshai.kotlinlogging.KotlinLogging
+import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
+import io.ktor.server.plugins.compression.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.routing.*
-import io.ktor.serialization.kotlinx.json.*
-import io.ktor.server.plugins.compression.Compression
-import io.ktor.server.plugins.compression.deflate
-import io.ktor.server.plugins.compression.gzip
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.bson.UuidRepresentation
@@ -69,21 +64,22 @@ fun main(): Unit =runBlocking {
 fun startHttp(){
     embeddedServer(Netty, host = "::", port = CONF.server.port){
         install(StatusPages) {
-            //参数不全或者有��题
+            //参数不全/有问题
             exception<ParamError> { call, cause ->
-                call.e400(cause.message)
+                call.err("❌参数！${cause.message}")
             }
+            //逻辑错误
             exception<RequestError> { call, cause ->
-                call.e400(cause.message)
+                call.err(""+cause.message)
             }
-
+            //认证错误
             exception<AuthError> { call, cause ->
-                call.e401(cause.message)
+                call.err("会话无效")
             }
 
             //其他内部错误
             exception<Throwable> { call, cause ->
-                call.e500(cause.message)
+                call.err("其他错误："+cause.message)
             }
         }
         install(ContentNegotiation) {
@@ -115,7 +111,11 @@ fun startHttp(){
                 PlayerService.getInfoByNames(call)
             }
             get("/sponsors") {
-                call.ok("""2025-04-11,ChenQu,100""")
+                call.response("""
+                    2025-04-11,ChenQu,100
+                    123
+                    243534
+                    """.trimIndent())
             }
             get("/name") {
                 PlayerService.getNameFromId(call)

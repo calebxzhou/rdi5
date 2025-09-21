@@ -3,7 +3,7 @@ package calebxzhou.rdi.ihq.service
 import calebxzhou.rdi.ihq.lgr
 import calebxzhou.rdi.ihq.net.e404
 import calebxzhou.rdi.ihq.net.initGetParams
-import calebxzhou.rdi.ihq.net.ok
+import calebxzhou.rdi.ihq.net.response
 import calebxzhou.rdi.ihq.util.serdesJson
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.response.respondFile
@@ -68,7 +68,7 @@ object UpdateService {
 
 
     suspend fun getModList(call: ApplicationCall) {
-        call.ok(serdesJson.encodeToString(modIdSha1))
+        call.response(serdesJson.encodeToString(modIdSha1))
     }
 
     suspend fun getModFile(call: ApplicationCall) {

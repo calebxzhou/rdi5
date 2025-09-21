@@ -7,7 +7,7 @@ import calebxzhou.rdi.ihq.model.Room
 import calebxzhou.rdi.ihq.net.e500
 import calebxzhou.rdi.ihq.net.got
 import calebxzhou.rdi.ihq.net.initGetParams
-import calebxzhou.rdi.ihq.net.ok
+import calebxzhou.rdi.ihq.net.response
 import calebxzhou.rdi.ihq.net.uid
 import calebxzhou.rdi.ihq.service.DockerService.asVolumeName
 import calebxzhou.rdi.ihq.util.serdesJson
@@ -80,8 +80,8 @@ object RoomService {
 
     suspend fun my(call: ApplicationCall) {
         getJoinedRoom(call.uid)?.let {
-            call.ok(serdesJson.encodeToString(it))
-        } ?: call.ok("0")
+            call.response(serdesJson.encodeToString(it))
+        } ?: call.response("0")
     }
 
     //建岛
@@ -118,7 +118,7 @@ object RoomService {
             return
         }
         DockerService.start(contId)
-        call.ok(serdesJson.encodeToString(room))
+        call.response(serdesJson.encodeToString(room))
     }
 
     suspend fun delete(call: ApplicationCall) {
@@ -139,7 +139,7 @@ object RoomService {
                 println("Warning: Failed to clean up Docker resources for room ${room._id}: ${e.message}")
             }
 
-            call.ok()
+            call.response()
         } catch (e: Exception) {
             println("Error deleting room: ${e.message}")
             throw RequestError("删除房间失败: ${e.message}")
@@ -149,7 +149,7 @@ object RoomService {
     //回到自己拥有/加入的房间
     suspend fun home(call: ApplicationCall) {
         goHome(call.uid)
-        call.ok()
+        call.response()
     }
 
     suspend fun goHome(uid: ObjectId) {
@@ -173,7 +173,7 @@ object RoomService {
             eq("_id", island._id),
             Updates.set("homePos", homePos)
         )
-        call.ok()
+        call.response()
     }
 
     //退出房间
@@ -190,7 +190,7 @@ object RoomService {
         )
         //删玩家档
         //rconPost("resetPlayer ${call.uid}")
-        call.ok()
+        call.response()
     }
 
     //邀请玩家加入房间
@@ -209,7 +209,7 @@ object RoomService {
             eq("_id", island._id),
             Updates.push("members", Room.Member(uid2, false))
         )
-        call.ok()
+        call.response()
     }
 
     suspend fun inviteQQ(call: ApplicationCall) {
@@ -228,7 +228,7 @@ object RoomService {
             eq("_id", island._id),
             Updates.push("members", Room.Member(uid2._id, false))
         )
-        call.ok(uid2.name + ",QQ" + uid2.qq)
+        call.response(uid2.name + ",QQ" + uid2.qq)
     }
 
     //踢出
@@ -251,7 +251,7 @@ object RoomService {
         )
         // 删除对方存档
         //rconPost("resetPlayer $uid2")
-        call.ok()
+        call.response()
     }
 
     //转让
@@ -280,14 +280,14 @@ object RoomService {
             Updates.set("members.$[element].isOwner", false),
             UpdateOptions().arrayFilters(listOf(eq("element.id", uid1)))
         )
-        call.ok()
+        call.response()
     }
 
 
     suspend fun getById(id: ObjectId): Room? = dbcl.find(eq("_id", id)).firstOrNull()
     suspend fun list(call: ApplicationCall) {
         val islands = dbcl.find().map { it._id.toString() to it.name }.toList()
-        call.ok(serdesJson.encodeToString(islands))
+        call.response(serdesJson.encodeToString(islands))
     }
 
     suspend fun visit(call: ApplicationCall) {
@@ -296,7 +296,7 @@ object RoomService {
         getById(rid)?.let { island ->
             //  rconPost("spectator ${call.uid}")
             //   rconPost("tp ${call.uid} posL rdi:i_${island._id},${island.homePos}")
-            call.ok()
+            call.response()
         } ?: throw RequestError("没这个岛")
     }
 
@@ -304,14 +304,14 @@ object RoomService {
         val params = call.initGetParams()
         val rid = ObjectId(params got "rid")
         getById(rid)?.let { room ->
-            call.ok(DockerService.isStarted(room.containerId).toString())
+            call.response(DockerService.isStarted(room.containerId).toString())
         } ?: throw RequestError("没这个岛")
     }
     suspend fun getServerLog(call: ApplicationCall){
         val params = call.initGetParams()
         val page = params got "page"
         getJoinedRoom(call.uid)?.let { room ->
-            call.ok(DockerService.getLog(room.containerId,page.toInt()))
+            call.response(DockerService.getLog(room.containerId,page.toInt()))
         } ?: throw RequestError("没这个岛")
     }
     suspend fun streamServerLogSse(call: ApplicationCall){
@@ -361,16 +361,16 @@ object RoomService {
     suspend fun startServer(call: ApplicationCall) {
         val room = getJoinedRoom(call.uid) ?: throw RequestError("没岛")
         DockerService.start(room.containerId)
-        call.ok()
+        call.response()
     }
     suspend fun stopServer(call: ApplicationCall) {
         val room = getJoinedRoom(call.uid) ?: throw RequestError("没岛")
         DockerService.stop(room.containerId)
-        call.ok()
+        call.response()
     }
     suspend fun getServerStatus(call: ApplicationCall) {
         val room = getJoinedRoom(call.uid) ?: throw RequestError("没岛")
-        call.ok(DockerService.getStatus(room.containerId).toString())
+        call.response(DockerService.getStatus(room.containerId).toString())
     }
 
     suspend fun update(call: ApplicationCall){
@@ -382,6 +382,6 @@ object RoomService {
             eq("_id", room._id),
             Updates.set("containerId", newId)
         )
-        call.ok()
+        call.response()
     }
 }

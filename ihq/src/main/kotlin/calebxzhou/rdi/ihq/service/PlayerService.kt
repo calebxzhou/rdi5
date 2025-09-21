@@ -60,7 +60,7 @@ object PlayerService {
 
     suspend fun clearCloth(call: ApplicationCall) {
         accountCol.updateOne(equalById(call.uid), Updates.unset("cloth"))
-        call.ok()
+        call.response()
     }
 
 
@@ -80,7 +80,7 @@ object PlayerService {
         }
         val cloth = RAccount.Cloth(params["isSlim"].toBoolean(), skin, cape)
         accountCol.updateOne(equalById(call.uid), Updates.set("cloth", cloth))
-        call.ok()
+        call.response()
     }
 
     suspend fun getSkin(call: ApplicationCall) {
@@ -89,9 +89,9 @@ object PlayerService {
         getById(ObjectId(uid))?.let {
             if (it.cloth.cape == "null")
                 it.cloth.cape = null
-            call.ok(serdesJson.encodeToString(it.cloth))
+            call.response(serdesJson.encodeToString(it.cloth))
 
-        } ?: call.ok(serdesJson.encodeToString(RAccount.Cloth()))
+        } ?: call.response(serdesJson.encodeToString(RAccount.Cloth()))
     }
 
     suspend fun register(call: ApplicationCall) {
@@ -109,7 +109,7 @@ object PlayerService {
             qq = qq
         )
         accountCol.insertOne(account)
-        call.ok( )
+        call.response( )
     }
 
     suspend fun login(call: ApplicationCall) {
@@ -118,7 +118,7 @@ object PlayerService {
         val pwd = params got "pwd"
         validate(usr, pwd)?.let { account ->
             lgr.info { "${account.name} ${account.qq}登录成功" }
-            call.ok(serdesJson.encodeToString(account))
+            call.response(serdesJson.encodeToString(account))
             params["spec"]?.let { specS->
                 val spec = serdesJson.decodeFromString<HwSpec>(specS)
                 authLogCol.insertOne(
@@ -155,7 +155,7 @@ object PlayerService {
         params["pwd"]?.let { pwd ->
             accountCol.updateOne(equalById(call.uid), Updates.set("pwd", pwd))
         }
-        call.ok()
+        call.response()
     }
 
 
@@ -186,21 +186,21 @@ object PlayerService {
         val params = call.initGetParams()
         val uid = ObjectId(params got "uid")
         getById(uid)?.let {
-            call.ok(it.name)
-        } ?: call.ok("【玩家不存在】")
+            call.response(it.name)
+        } ?: call.response("【玩家不存在】")
     }
 
     suspend fun getInfo(call: ApplicationCall) {
         val params = call.initGetParams()
         val uid = ObjectId(params got "uid")
         val account = getById(uid)?.dto ?: RAccount.Dto()
-        call.ok(serdesJson.encodeToString(account))
+        call.response(serdesJson.encodeToString(account))
     }
     suspend fun getInfoByNames(call: ApplicationCall) {
         val params = call.initGetParams()
         val names = (params got "names").split("\n")
         val infos = names.map { getByName(it)?.dto ?: RAccount.Dto() }
-        call.ok(serdesJson.encodeToString(infos))
+        call.response(serdesJson.encodeToString(infos))
     }
 
     suspend fun crashReport(call: ApplicationCall) {
@@ -209,7 +209,7 @@ object PlayerService {
         val account = getById(ObjectId(params got "uid"))
         val fileName = "${account?.name ?: "未知"}-${account?.qq ?: "0"}-${datetime}.txt"
         File(CRASH_REPORT_DIR,fileName).writeText(report)
-        call.ok()
+        call.response()
     }
 
 
