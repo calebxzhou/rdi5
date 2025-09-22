@@ -10,6 +10,7 @@ data class Team(
     val _id: ObjectId = ObjectId(),
     val name: String,
     val info: String,
+    val score: Int=0,
     val members: List<Member> = arrayListOf(),
 ) {
     enum class Role {

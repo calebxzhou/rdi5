@@ -7,7 +7,7 @@ import calebxzhou.rdi.ihq.net.err
 import calebxzhou.rdi.ihq.net.response
 import calebxzhou.rdi.ihq.service.PlayerService
 import calebxzhou.rdi.ihq.service.PlayerService.accountCol
-import calebxzhou.rdi.ihq.service.RoomService
+import calebxzhou.rdi.ihq.service.roomRoutes
 import calebxzhou.rdi.ihq.service.UpdateService
 import calebxzhou.rdi.ihq.service.teamRoutes
 import calebxzhou.rdi.ihq.util.serdesJson
@@ -152,74 +152,7 @@ fun startHttp(){
                     PlayerService.clearCloth(call)
                 }
                 teamRoutes()
-                route("/room") {
-                    get("/my"){
-                        RoomService.my(call)
-                    }
-                    post("/create") {
-                        RoomService.create(call)
-                    }
-                    post("/delete") {
-                        RoomService.delete(call)
-                    }
-                    post("/home") {
-                        RoomService.home(call)
-                    }
-                    post("/sethome") {
-                        RoomService.sethome(call)
-                    }
-                    post("/quit") {
-                        RoomService.quit(call)
-                    }
-                    /*post("/invite") {
-                        RoomService.invite(call)
-                    }*/
-                    post("/invite_qq") {
-                        RoomService.inviteQQ(call)
-                    }
-                    post("/kick") {
-                        RoomService.kick(call)
-                    }
-                    post("/transfer") {
-                        RoomService.transfer(call)
-                    }
-                    get("/log"){
-                        RoomService.getServerLog(call)
-                    }
-
-                    get("/list") {
-                        RoomService.list(call)
-                    }
-                    post("/visit") {
-                        RoomService.visit(call)
-                    }
-                    get("/log/stream"){
-                        RoomService.streamServerLogSse(call)
-                    }
-                    /*post("/section/add"){
-                        RoomService.addFirmSection(call)
-                    }
-                    post("/section/remove"){
-                        RoomService.removeFirmSection(call)
-                    }
-                    get("/section"){
-                        RoomService.getFirmSectionData(call)
-                    }*/
-                    route("/server"){
-                        get("/status"){
-                            RoomService.getServerStatus(call)
-                        }
-                        post("/start") {
-                            RoomService.startServer(call)
-                        }
-                        post("/stop") {
-                            RoomService.stopServer(call)
-                        }
-                        post("/update"){
-                            RoomService.update(call)
-                        }
-                    }
-                }
+                roomRoutes()
             }
         }
     }.start(wait = true)

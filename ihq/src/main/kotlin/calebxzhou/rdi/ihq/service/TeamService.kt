@@ -14,7 +14,6 @@ import com.mongodb.client.model.Indexes
 import com.mongodb.client.model.Updates
 import io.ktor.server.routing.*
 import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import org.bson.types.ObjectId
 
@@ -58,7 +57,7 @@ object TeamService {
 
     init {
         runBlocking {
-            RoomService.dbcl.createIndex(
+            HostService.dbcl.createIndex(
                 Indexes.ascending("members.id"),
             )
         }
@@ -114,7 +113,7 @@ object TeamService {
         val team = getOwnTeam(uid) ?: throw RequestError("无团队")
         val target = PlayerService.getByQQ(targetQQ) ?: throw RequestError("无此账号")
         if (hasJoinedTeam(target._id)) throw RequestError("对方已有团队")
-        RoomService.dbcl.updateOne(
+        HostService.dbcl.updateOne(
             eq("_id", team._id),
             Updates.push("members", Team.Member(target._id, Team.Role.MEMBER))
         )

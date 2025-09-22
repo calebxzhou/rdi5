@@ -46,7 +46,11 @@ object PlayerService {
 
     //根据rid获取
     suspend fun getById(id: ObjectId): RAccount? = accountCol.find(equalById(id)).firstOrNull()
-
+    suspend fun has(id: ObjectId): Boolean = accountCol
+    .find(equalById(id))
+    .projection(org.bson.Document("_id", 1))
+    .limit(1)
+    .firstOrNull() != null
 
     suspend fun validate(usr: String, pwd: String): RAccount? {
         val account = get(usr)
@@ -158,29 +162,6 @@ object PlayerService {
         call.response()
     }
 
-
-    /*suspend fun onJoinGame(call: ApplicationCall) {
-        val params = call.receiveParameters()
-        val uids = params got "uid"
-        val ip = params got "ip"
-        val uid = ObjectId(uids)
-        //没岛 不允许进服
-        if (IslandService.getJoinedIsland(uid) == null) {
-            rconPost("kick $uids")
-            return
-        }
-        lgrinRecordCol.insertOne(lgrinRecord(uid = uid, ip = ip))
-        //自动回岛
-        IslandService.goHome(uid)
-        call.ok()
-    }
-
-    suspend fun onQuitGame(call: ApplicationCall) {
-        val params = call.receiveParameters()
-        val uid = ObjectId(params got "uid")
-        lgrinRecordCol.insertOne(lgrinRecord(uid = uid, ip = null))
-        call.ok()
-    }*/
 
     suspend fun getNameFromId(call: ApplicationCall) {
         val params = call.initGetParams()
