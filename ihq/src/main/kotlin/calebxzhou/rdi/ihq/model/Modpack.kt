@@ -16,6 +16,7 @@ data class Modpack(
     data class Version(
         val name: String,
         val changelog: String,
-
+        val mods: List<Mod>,
+        val configs: List<ModConfig>,
     )
 }
