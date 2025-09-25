@@ -77,7 +77,7 @@ fun String?.isValidHttpUrl(): Boolean {
     val urlRegex = "^(http://|https://).+".toRegex()
     return this.matches(urlRegex)
 }
-
+val ObjectId.str get() = toHexString()
 private const val ENCRYPT_KEY = "wfygiqh%^(*!@&#$%()*qGH83876127RDI"
 fun String.encrypt(): String {
     val key = ENCRYPT_KEY.toByteArray(charset("UTF-8"))

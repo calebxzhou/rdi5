@@ -14,9 +14,9 @@ import com.github.dockerjava.core.DockerClientBuilder
 import com.github.dockerjava.httpclient5.ApacheDockerHttpClient
 import com.github.dockerjava.transport.DockerHttpClient
 import java.io.Closeable
-import org.bson.types.ObjectId
 import java.time.Duration
 import com.github.dockerjava.api.exception.NotFoundException
+import jdk.internal.vm.ThreadContainers.container
 
 object DockerService {
     private val client by lazy {
@@ -37,17 +37,14 @@ object DockerService {
             .withDockerHttpClient(httpClient)
             .build()
     }
-    val ObjectId.asVolumeName
-        get() = "data_$this"
 
-    private fun findContainerById(containerId: String, includeStopped: Boolean = true) =
+    private fun findContainer(containerName: String, includeStopped: Boolean = true) =
         client.listContainersCmd()
-            .withIdFilter(listOf(containerId))
+            .withNameFilter(listOf(containerName))
             .withShowAll(includeStopped)
             .exec().firstOrNull()
 
-    fun create(port: Int,containerName: String, volumeName: String, image: String): String {
-        client.createVolumeCmd().withName(volumeName).exec()
+    fun createContainer(port: Int, containerName: String, volumeName: String, image: String): String {
         return client.createContainerCmd(image)
             .withName(containerName)
             .withEnv(listOf("EULA=TRUE"))
@@ -62,9 +59,13 @@ object DockerService {
             .exec().id
     }
 
-    fun delete(volume: String, containerId: String) {
+    fun createVolume(volumeName: String) {
+        client.createVolumeCmd().withName(volumeName).exec()
+    }
+
+    fun deleteContainer(containerName: String) {
         // First, try to force stop and remove the container if it exists
-        findContainerById(containerId)?.let { container ->
+        findContainer(containerName)?.let { container ->
             try {
                 // Force kill container if it's running
                 if (container.state == "running") {
@@ -79,8 +80,9 @@ object DockerService {
                 lgr.warn { "Error force stopping/removing container ${container.id}: ${e.message}" }
             }
         }
+    }
 
-        // Then try to remove the volume
+    fun deleteVolume(volume: String) {
         try {
             client.removeVolumeCmd(volume)
                 .exec()
@@ -89,56 +91,61 @@ object DockerService {
             // Volume might not exist or be in use, continue anyway
         }
     }
-    fun update(containerId: String,image: String): String {
 
-            // Inspect current container to reuse settings
-            val inspect = client.inspectContainerCmd(containerId).exec()
-            val name = inspect.name?.trim('/') ?: (inspect.id ?: containerId)
-            val hostConfig = inspect.hostConfig
-            val config = inspect.config
+    fun update(containerName: String, image: String): String {
 
-            // Pull latest image
-            val repoTag = if (image.contains(":")) image else "$image:latest"
+        // Inspect current container to reuse settings
+        val inspect = client.inspectContainerCmd(containerName).exec()
+        val name = inspect.name?.trim('/') ?: (inspect.id ?: containerName)
+        val hostConfig = inspect.hostConfig
+        val config = inspect.config
 
-            val hasLocal = imageExistsLocally(repoTag)
-            if (hasLocal) {
-                lgr.info { "Image $repoTag found locally; skipping pull." }
-            } else {
-                throw RequestError("找不到此整合包")
-            }
+        // Pull latest image
+        val repoTag = if (image.contains(":")) image else "$image:latest"
 
-            // Determine running state and stop
-            val wasRunning = isStarted(containerId)
-            if (wasRunning) {
-                try { client.stopContainerCmd(containerId).exec() } catch (_: Exception) {}
-            }
-            // Remove old container but keep volumes
+        val hasLocal = imageExistsLocally(repoTag)
+        if (hasLocal) {
+            lgr.info { "Image $repoTag found locally; skipping pull." }
+        } else {
+            throw RequestError("找不到此整合包")
+        }
+
+        // Determine running state and stop
+        val wasRunning = isStarted(containerName)
+        if (wasRunning) {
             try {
-                client.removeContainerCmd(containerId)
-                    .withForce(true)
-                    .withRemoveVolumes(false)
-                    .exec()
-            } catch (_: Exception) {}
-
-            // Recreate container with same options
-            val createImageRef = repoTag
-            val createCmd = client.createContainerCmd(createImageRef)
-                .withName(name)
-
-            // Env
-            config?.env?.let { if (it.isNotEmpty()) createCmd.withEnv(it.toList()) }
-            // Exposed ports
-            config?.exposedPorts?.let { createCmd.withExposedPorts(*it) }
-            // Host config (ports/volumes/limits)
-            hostConfig?.let { createCmd.withHostConfig(it) }
-
-            val newId = createCmd.exec().id
-
-            if (wasRunning) {
-                client.startContainerCmd(newId).exec()
+                client.stopContainerCmd(containerName).exec()
+            } catch (_: Exception) {
             }
-            lgr.info { "Updated container $name to image $repoTag" }
-            return newId
+        }
+        // Remove old container but keep volumes
+        try {
+            client.removeContainerCmd(containerName)
+                .withForce(true)
+                .withRemoveVolumes(false)
+                .exec()
+        } catch (_: Exception) {
+        }
+
+        // Recreate container with same options
+        val createImageRef = repoTag
+        val createCmd = client.createContainerCmd(createImageRef)
+            .withName(name)
+
+        // Env
+        config?.env?.let { if (it.isNotEmpty()) createCmd.withEnv(it.toList()) }
+        // Exposed ports
+        config?.exposedPorts?.let { createCmd.withExposedPorts(*it) }
+        // Host config (ports/volumes/limits)
+        hostConfig?.let { createCmd.withHostConfig(it) }
+
+        val newId = createCmd.exec().id
+
+        if (wasRunning) {
+            client.startContainerCmd(newId).exec()
+        }
+        lgr.info { "Updated container $name to image $repoTag" }
+        return newId
     }
 
     private fun imageExistsLocally(repoTag: String): Boolean {
@@ -151,30 +158,27 @@ object DockerService {
             false
         }
     }
-    fun start(containerId: String) {
 
-            client.startContainerCmd(containerId).exec()
+    fun start(containerName: String) {
+        val container = findContainer(containerName) ?: throw RequestError("找不到此容器")
+        client.startContainerCmd(container.id).exec()
 
     }
 
-    fun stop(containerId: String) {
+    fun stop(containerName: String) {
         // Check if container exists first
-        val container = findContainerById(containerId)
-        if (container == null) {
-            lgr.warn { "Container $containerId not found, skipping stop operation" }
-            return
-        }
-
+        val container = findContainer(containerName) ?: throw RequestError("找不到此容器")
         // Only stop if the container is actually running
         if (container.state.equals("running", ignoreCase = true)) {
-            client.stopContainerCmd(containerId).exec()
-            lgr.info { "Successfully stopped container $containerId" }
+            client.stopContainerCmd(container.id).exec()
+            lgr.info { "Successfully stopped container $containerName" }
         } else {
-            lgr.warn { "Container $containerId is already in state: ${container.state}, skipping stop operation" }
+            throw RequestError("早就停了")
         }
 
     }
-    fun getLog(containerId: String, page: Int): String {
+
+    fun getLog(containerName: String, page: Int): String {
         return try {
             val callback = object : Adapter<Frame>() {
                 val logs = mutableListOf<String>()
@@ -188,7 +192,7 @@ object DockerService {
             }
 
             // Get all logs first
-            client.logContainerCmd(containerId)
+            client.logContainerCmd(containerName)
                 .withStdOut(true)
                 .withStdErr(true)
                 .exec(callback)
@@ -207,7 +211,7 @@ object DockerService {
                 allLogs.subList(startIndex, pageEndIndex).joinToString("\n")
             }
         } catch (e: Exception) {
-            lgr.warn { "Error getting logs for container $containerId: ${e.message}" }
+            lgr.warn { "Error getting logs for container $containerName: ${e.message}" }
             ""
         }
     }
@@ -217,7 +221,7 @@ object DockerService {
      * Returns a [Closeable] you should close to stop streaming.
      */
     fun followLog(
-        containerId: String,
+        containerName: String,
         tail: Int = 50,
         onLine: (String) -> Unit,
         onError: (Throwable) -> Unit = {},
@@ -227,19 +231,30 @@ object DockerService {
             override fun onNext(frame: Frame) {
                 val logLine = String(frame.payload).trim()
                 if (logLine.isNotEmpty()) {
-                    try { onLine(logLine) } catch (_: Throwable) {}
+                    try {
+                        onLine(logLine)
+                    } catch (_: Throwable) {
+                    }
                 }
             }
+
             override fun onError(throwable: Throwable) {
-                try { onError(throwable) } catch (_: Throwable) {}
+                try {
+                    onError(throwable)
+                } catch (_: Throwable) {
+                }
                 super.onError(throwable)
             }
+
             override fun onComplete() {
-                try { onFinished() } catch (_: Throwable) {}
+                try {
+                    onFinished()
+                } catch (_: Throwable) {
+                }
                 super.onComplete()
             }
         }
-        client.logContainerCmd(containerId)
+        client.logContainerCmd(containerName)
             .withStdOut(true)
             .withStdErr(true)
             .withFollowStream(true)
@@ -247,29 +262,30 @@ object DockerService {
             .exec(callback)
         return callback
     }
-    fun pause(containerId: String) {
 
-        client.pauseContainerCmd(containerId).exec()
+    fun pause(containerName: String) {
+
+        client.pauseContainerCmd(containerName).exec()
 
     }
 
-    fun unpause(containerId: String) {
-        client.unpauseContainerCmd(containerId).exec()
+    fun unpause(containerName: String) {
+        client.unpauseContainerCmd(containerName).exec()
     }
 
-    fun isStarted(containerId: String): Boolean {
+    fun isStarted(containerName: String): Boolean {
         return try {
-            val container = findContainerById(containerId)
+            val container = findContainer(containerName)
             container?.state?.equals("running", ignoreCase = true) == true
         } catch (e: Exception) {
-            lgr.warn { "Error checking container $containerId status: ${e.message}" }
+            lgr.warn { "Error checking container $containerName status: ${e.message}" }
             false
         }
     }
 
-    fun getStatus(containerId: String): ServerStatus {
+    fun getStatus(containerName: String): ServerStatus {
         return try {
-            val container = findContainerById(containerId) ?: return ServerStatus.UNKNOWN
+            val container = findContainer(containerName) ?: return ServerStatus.UNKNOWN
             val state = container.state?.lowercase() ?: return ServerStatus.UNKNOWN
             when (state) {
                 "running" -> ServerStatus.STARTED
@@ -278,7 +294,7 @@ object DockerService {
                 else -> ServerStatus.UNKNOWN
             }
         } catch (e: Exception) {
-            lgr.warn { "Error getting status for container $containerId: ${e.message}" }
+            lgr.warn { "Error getting status for container $containerName: ${e.message}" }
             ServerStatus.UNKNOWN
         }
     }
@@ -286,12 +302,12 @@ object DockerService {
     /*fun Room.getVolumeSize(): Long {
         return try {
             // Check if container is running first
-            val container = findContainerById(containerId, includeStopped = false) ?: return 0L
+            val container = findContainerById(containerName, includeStopped = false) ?: return 0L
 
             // If container is not found or not running, return 0
 
             // Execute du command in the existing running container
-            val execCreateResponse = client.execCreateCmd(containerId)
+            val execCreateResponse = client.execCreateCmd(containerName)
                 .withCmd("sh", "-c", "du -sb /data | cut -f1")
                 .withAttachStdout(true)
                 .exec()

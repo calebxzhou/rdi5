@@ -1,13 +1,12 @@
 package calebxzhou.rdi.ihq.model
 
-import calebxzhou.rdi.ihq.service.PlayerService
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import org.bson.codecs.pojo.annotations.BsonId
 import org.bson.types.ObjectId
 
 @Serializable
-data class RChatMessage(
+data class ChatMsg(
     @Contextual @BsonId val id: ObjectId = ObjectId(),
     @Contextual
     val senderId: ObjectId,

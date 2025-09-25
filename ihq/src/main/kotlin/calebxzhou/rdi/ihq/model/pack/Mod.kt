@@ -1,4 +1,4 @@
-package calebxzhou.rdi.ihq.model
+package calebxzhou.rdi.ihq.model.pack
 
 import kotlinx.serialization.Serializable
 
