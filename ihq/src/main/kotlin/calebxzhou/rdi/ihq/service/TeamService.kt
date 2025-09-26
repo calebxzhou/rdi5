@@ -141,7 +141,7 @@ object TeamService {
 
     suspend fun quit(uid: ObjectId) {
         val team = getJoinedTeam(uid) ?: throw RequestError("无团队")
-        if (team.owner.id == uid) throw RequestError("你是队长，只能解散团队")
+        if (team.owner?.id == uid) throw RequestError("你是队长，只能解散团队")
         dbcl.updateOne(
             eq("_id", team._id),
             Updates.pull("members", eq("id", uid))

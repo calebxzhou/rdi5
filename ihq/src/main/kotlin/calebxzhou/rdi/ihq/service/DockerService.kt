@@ -16,7 +16,6 @@ import com.github.dockerjava.transport.DockerHttpClient
 import java.io.Closeable
 import java.time.Duration
 import com.github.dockerjava.api.exception.NotFoundException
-import jdk.internal.vm.ThreadContainers.container
 
 object DockerService {
     private val client by lazy {
@@ -283,7 +282,7 @@ object DockerService {
         }
     }
 
-    fun getStatus(containerName: String): ServerStatus {
+    fun getContainerStatus(containerName: String): ServerStatus {
         return try {
             val container = findContainer(containerName) ?: return ServerStatus.UNKNOWN
             val state = container.state?.lowercase() ?: return ServerStatus.UNKNOWN

@@ -1,9 +1,9 @@
 package calebxzhou.rdi.ihq.service
 
 import calebxzhou.rdi.ihq.DB
-import calebxzhou.rdi.ihq.DEFAULT_IMAGE
 import calebxzhou.rdi.ihq.exception.RequestError
 import calebxzhou.rdi.ihq.model.Host
+import calebxzhou.rdi.ihq.model.ServerStatus
 import calebxzhou.rdi.ihq.net.ok
 import calebxzhou.rdi.ihq.net.param
 import calebxzhou.rdi.ihq.net.response
@@ -25,38 +25,41 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.toList
 import org.bson.types.ObjectId
 import java.util.concurrent.ConcurrentLinkedQueue
-import javax.print.Doc
 
 // ---------- Routing DSL (mirrors teamRoutes style) ----------
 fun Route.roomRoutes() = route("/host") {
     post("/create") {
-        HostService.create(uid, ObjectId(param("modpackId")), ObjectId(param("worldId")))
+        HostService.create(uid, ObjectId(param("modpackId")), param("packVer"), ObjectId(param("worldId")))
         ok()
     }
     post("/delete") {
-        HostService.delete(uid,ObjectId(param("hostId")))
+        HostService.delete(uid, ObjectId(param("hostId")))
         ok()
     }
-     get("/log") { response(HostService.serverLog(uid, param("page").toInt())) }
+    get("/log") { response(HostService.getLog(uid, param("page").toInt())) }
     get("/log/stream") { HostService.streamServerLogSse(call) }
     get("/list") {
-        val islands = HostService.dbcl.find().map { it._id.toString() to it.name }.toList()
-        response(data = islands)
+        response(data = HostService.dbcl.find().map { it._id.toString() to it.name }.toList())
     }
-    post("/visit") {
-        val rid = ObjectId(param("rid")); HostService.getById(rid) ?: throw RequestError("没这个岛"); response()
+    get("/status") {
+        response(
+            data = HostService.getServerStatus(ObjectId(param("hostId"))).toString()
+        )
     }
-    route("/server") {
-        get("/status") { response(HostService.serverStatus(uid)) }
-        post("/start") { HostService.startServer(uid); response() }
-        post("/stop") { HostService.stopServer(uid); response() }
-        post("/update") {
-            HostService.update(
-                uid,
-                call.receiveParameters()["image"] ?: DEFAULT_IMAGE
-            ); response()
-        }
+    post("/start") {
+        HostService.start(uid, ObjectId(param("hostId")))
+        ok()
     }
+    post("/stop") {
+        HostService.stop(uid, ObjectId(param("hostId")))
+        ok()
+    }
+  /*  post("/update") {
+        HostService.update(
+            uid,
+            call.receiveParameters()["image"] ?: DEFAULT_IMAGE
+        ); response()
+    }*/
 }
 
 object HostService {
@@ -81,10 +84,10 @@ object HostService {
 
     // ---------- Core Logic (no ApplicationCall side-effects) ----------
 
-    suspend fun create(uid: ObjectId, modpackId: ObjectId, packVer: String,worldId: ObjectId) {
+    suspend fun create(uid: ObjectId, modpackId: ObjectId, packVer: String, worldId: ObjectId) {
         val player = PlayerService.getById(uid) ?: throw RequestError("玩家未注册")
         val team = TeamService.getOwn(uid) ?: throw RequestError("你不是队长")
-        if (team.hostIds.size > 3) throw RequestError("主机最多3个")
+        if (team.hosts().size > 3) throw RequestError("主机最多3个")
         val port = allocateRoomPort()
         val host = Host(
             name = player.name + "的房间",
@@ -100,46 +103,63 @@ object HostService {
         DockerService.start(host._id.str)
     }
 
-    suspend fun delete(uid: ObjectId,hostId: ObjectId) {
+    suspend fun delete(uid: ObjectId, hostId: ObjectId) {
         val team = TeamService.getOwn(uid) ?: throw RequestError("你不是队长")
-        if(!team.hostIds.contains(hostId)) throw RequestError("此主机不属于你的团队")
+        if (!team.hasHost(hostId)) throw RequestError("此主机不属于你的团队")
         dbcl.deleteOne(eq("_id", hostId))
         team.delHost(hostId)
         DockerService.deleteContainer(hostId.str)
     }
 
 
-
-    suspend fun update(uid: ObjectId,hostId: ObjectId, packVer: String,modpackId: ObjectId) {
+    suspend fun update(uid: ObjectId, hostId: ObjectId, packVer: String, modpackId: ObjectId) {
         val team = TeamService.getOwn(uid) ?: throw RequestError("你不是队长")
-        if(!team.hostIds.contains(hostId)) throw RequestError("此主机不属于你的团队")
+        if (!team.hasHost(hostId)) throw RequestError("此主机不属于你的团队")
         val host = getById(hostId) ?: throw RequestError("无此主机")
         DockerService.stop(hostId.str)
         DockerService.deleteContainer(hostId.str)
-        DockerService.createContainer(host.port,hostId.str, host.worldId.str, modpackId.str+":"+packVer)
+        DockerService.createContainer(host.port, hostId.str, host.worldId.str, modpackId.str + ":" + packVer)
         dbcl.updateOne(eq("_id", host._id), Updates.set(Host::packVer.name, packVer))
     }
 
-    suspend fun startServer(uid: ObjectId) {
-        val room = getJoined(uid) ?: throw RequestError("没岛")
-        DockerService.start(room.containerId)
+    suspend fun start(uid: ObjectId, hostId: ObjectId) {
+        val host = getById(hostId) ?: throw RequestError("无此主机")
+        val team = TeamService.get(host.teamId) ?: throw RequestError("无此团队")
+        if (!team.hasHost(hostId)) throw RequestError("此主机不属于你的团队")
+        if (!team.isOwnerOrAdmin(uid)) throw RequestError("无权限")
+        DockerService.start(hostId.str)
     }
 
-    suspend fun stopServer(uid: ObjectId) {
-        val room = getJoined(uid) ?: throw RequestError("没岛")
-        DockerService.stop(room.containerId)
+    suspend fun stop(uid: ObjectId, hostId: ObjectId) {
+        val host = getById(hostId) ?: throw RequestError("无此主机")
+        val team = TeamService.get(host.teamId) ?: throw RequestError("无此团队")
+        if (!team.hasHost(hostId)) throw RequestError("此主机不属于你的团队")
+        if (!team.isOwnerOrAdmin(uid)) throw RequestError("无权限")
+        DockerService.stop(hostId.str)
     }
 
-    suspend fun serverStatus(uid: ObjectId): String {
-        val room = getJoined(uid) ?: throw RequestError("没岛")
-        return DockerService.getStatus(room.containerId).toString()
+    suspend fun getServerStatus(hostId: ObjectId): ServerStatus {
+        return getById(hostId)?._id?.let {
+            DockerService.getContainerStatus(
+                it.str
+            )
+        } ?: ServerStatus.UNKNOWN
     }
-
-    suspend fun serverLog(uid: ObjectId, page: Int): String {
+    //skipLines=从后往前跳过多少行
+    suspend fun getLog(uid: ObjectId,hostId: ObjectId, skipLines: Int): String {
         val room = getJoined(uid) ?: throw RequestError("没这个岛")
-        return DockerService.getLog(room.containerId, page)
+        return DockerService.getLog(room.containerId, skipLines)
     }
 
+    // List all hosts belonging to a team
+    suspend fun listByTeam(teamId: ObjectId): List<Host> =
+        dbcl.find(eq("teamId", teamId)).toList()
+
+    suspend fun belongsToTeam(hostId: ObjectId, teamId: ObjectId): Boolean =
+        dbcl.find(and(eq("_id", hostId), eq("teamId", teamId)))
+            .projection(org.bson.Document("_id", 1))
+            .limit(1)
+            .firstOrNull() != null
     suspend fun getById(id: ObjectId): Host? = dbcl.find(eq("_id", id)).firstOrNull()
 
     // ---------- Streaming Helper (still needs ApplicationCall for SSE) ----------
