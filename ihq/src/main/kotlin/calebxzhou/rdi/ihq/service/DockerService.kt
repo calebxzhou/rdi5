@@ -176,8 +176,8 @@ object DockerService {
         }
 
     }
-
-    fun getLog(containerName: String, page: Int): String {
+    //start end都是从后往前的
+    fun getLog(containerName: String, startLine: Int,endLine: Int): String {
         return try {
             val callback = object : Adapter<Frame>() {
                 val logs = mutableListOf<String>()
@@ -199,8 +199,8 @@ object DockerService {
 
             // Reverse logs to show most recent first, then paginate
             val allLogs = callback.logs.reversed()
-            val startIndex = page * 50
-            val endIndex = (page + 1) * 50
+            val startIndex = startLine * 50
+            val endIndex = (startLine + 1) * 50
 
             // Return the requested page of logs
             if (startIndex >= allLogs.size) {
@@ -219,7 +219,7 @@ object DockerService {
      * Follow the container log stream and invoke [onLine] for each new line.
      * Returns a [Closeable] you should close to stop streaming.
      */
-    fun followLog(
+    fun listenLog(
         containerName: String,
         tail: Int = 50,
         onLine: (String) -> Unit,

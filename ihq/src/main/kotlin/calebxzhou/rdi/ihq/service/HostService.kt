@@ -36,8 +36,8 @@ fun Route.roomRoutes() = route("/host") {
         HostService.delete(uid, ObjectId(param("hostId")))
         ok()
     }
-    get("/log") { response(HostService.getLog(uid, param("page").toInt())) }
-    get("/log/stream") { HostService.streamServerLogSse(call) }
+    get("/log") { response(data=HostService.getLog(uid, ObjectId(param("hostId")),param("skipLines").toInt())) }
+    get("/log/stream") { HostService.listenLogs(call) }
     get("/list") {
         response(data = HostService.dbcl.find().map { it._id.toString() to it.name }.toList())
     }
@@ -147,7 +147,11 @@ object HostService {
     }
     //skipLines=从后往前跳过多少行
     suspend fun getLog(uid: ObjectId,hostId: ObjectId, skipLines: Int): String {
-        val room = getJoined(uid) ?: throw RequestError("没这个岛")
+        val host = getById(hostId) ?: throw RequestError("无此主机")
+        val team = TeamService.get(host.teamId) ?: throw RequestError("无此团队")
+        if (!team.hasHost(hostId)) throw RequestError("此主机不属于你的团队")
+        if (!team.isOwnerOrAdmin(uid)) throw RequestError("无权限")
+
         return DockerService.getLog(room.containerId, skipLines)
     }
 
@@ -163,8 +167,12 @@ object HostService {
     suspend fun getById(id: ObjectId): Host? = dbcl.find(eq("_id", id)).firstOrNull()
 
     // ---------- Streaming Helper (still needs ApplicationCall for SSE) ----------
-    suspend fun streamServerLogSse(call: ApplicationCall) {
-        val room = getJoined(call.uid) ?: throw RequestError("没这个岛")
+    suspend fun listenLogs(uid: ObjectId,hostId: ObjectId,call: ApplicationCall) {
+        val host = getById(hostId) ?: throw RequestError("无此主机")
+        val team = TeamService.get(host.teamId) ?: throw RequestError("无此团队")
+        if (!team.hasHost(hostId)) throw RequestError("此主机不属于你的团队")
+        if (!team.isOwnerOrAdmin(uid)) throw RequestError("无权限")
+
         call.response.cacheControl(CacheControl.NoCache(null))
         call.respondBytesWriter(contentType = ContentType.Text.EventStream) {
             val writer = this
@@ -177,15 +185,13 @@ object HostService {
                 pending.add(sb.toString())
             }
             enqueue("hello", "start streaming")
-            val closer = DockerService.followLog(
-                room.containerId,
+            DockerService.listenLog(
+                hostId.str,
                 tail = 100,
                 onLine = { line -> enqueue(data = line) },
                 onError = { t -> enqueue("error", t.message ?: "error") },
                 onFinished = { enqueue("done", "finished") }
-            )
-            try {
-                // Drain queue periodically; also send heartbeat every 15s
+            ).use {
                 var lastHeartbeat = System.currentTimeMillis()
                 while (true) {
                     var wrote = false
@@ -202,12 +208,6 @@ object HostService {
                     }
                     if (wrote) flush()
                     delay(500)
-                }
-            } catch (_: Throwable) {
-            } finally {
-                try {
-                    closer.close()
-                } catch (_: Throwable) {
                 }
             }
         }
