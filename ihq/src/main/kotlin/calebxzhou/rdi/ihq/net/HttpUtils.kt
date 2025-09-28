@@ -41,26 +41,26 @@ val httpClient
 
 
 suspend fun ApplicationCall.e400(msg: String? = null) {
-    err(HttpStatusCode.BadRequest, msg)
+    err(msg)
 }
 
 suspend fun ApplicationCall.e401(msg: String? = null) {
-    err(HttpStatusCode.Unauthorized, msg)
+    err(msg)
 }
 
 suspend fun ApplicationCall.e404(msg: String? = null) {
-    err(HttpStatusCode.NotFound, msg)
+    err(msg)
 }
 
 suspend fun ApplicationCall.e500(msg: String? = null) {
-    err(HttpStatusCode.InternalServerError, msg)
+    err(msg)
 }
 
-suspend fun ApplicationCall.err(status: HttpStatusCode, msg: String? = null) {
+suspend fun ApplicationCall.err(msg: String? = null) {
     msg?.run {
-        respondText(this, status = status)
+        respondText(this, status = HttpStatusCode.OK)
     } ?: run {
-        respond(status)
+        respond(HttpStatusCode.OK)
     }
 }
 

@@ -212,4 +212,11 @@ object TeamService {
             Updates.push("worldIds", worldId)
         )
     }
+
+    suspend fun Team.delWorld(worldId: ObjectId) {
+        dbcl.updateOne(
+            eq("_id", _id),
+            Updates.pull("worldIds", worldId)
+        )
+    }
 }

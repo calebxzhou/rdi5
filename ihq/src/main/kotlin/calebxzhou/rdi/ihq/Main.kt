@@ -4,11 +4,11 @@ import calebxzhou.rdi.ihq.exception.AuthError
 import calebxzhou.rdi.ihq.exception.ParamError
 import calebxzhou.rdi.ihq.exception.RequestError
 import calebxzhou.rdi.ihq.net.err
-import calebxzhou.rdi.ihq.net.response
 import calebxzhou.rdi.ihq.service.PlayerService
 import calebxzhou.rdi.ihq.service.PlayerService.accountCol
-import calebxzhou.rdi.ihq.service.roomRoutes
 import calebxzhou.rdi.ihq.service.UpdateService
+import calebxzhou.rdi.ihq.service.playerRoutes
+import calebxzhou.rdi.ihq.service.roomRoutes
 import calebxzhou.rdi.ihq.service.teamRoutes
 import calebxzhou.rdi.ihq.util.serdesJson
 import com.mongodb.MongoClientSettings
@@ -25,6 +25,7 @@ import io.ktor.server.netty.*
 import io.ktor.server.plugins.compression.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.statuspages.*
+import io.ktor.server.response.respondText
 import io.ktor.server.routing.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -66,20 +67,20 @@ fun startHttp(){
         install(StatusPages) {
             //参数不全/有问题
             exception<ParamError> { call, cause ->
-                call.err("❌参数！${cause.message}")
+                call.err()
             }
             //逻辑错误
             exception<RequestError> { call, cause ->
-                call.err(""+cause.message)
+                call.err()
             }
             //认证错误
             exception<AuthError> { call, cause ->
-                call.err("会话无效")
+                call.err()
             }
 
             //其他内部错误
             exception<Throwable> { call, cause ->
-                call.err("其他错误："+cause.message)
+                call.err()
             }
         }
         install(ContentNegotiation) {
@@ -101,33 +102,13 @@ fun startHttp(){
             deflate()
         }
         routing {
-            get("/playerInfo") {
-                PlayerService.getInfo(call)
-            }
-            get("/player-info") {
-                PlayerService.getInfo(call)
-            }
-            get("/player-info-by-names") {
-                PlayerService.getInfoByNames(call)
-            }
-            get("/sponsors") {
-                call.response("""
+            playerRoutes()
+            /*get("/sponsors") {
+                call.respondText("""
                     2025-04-11,ChenQu,100
                     123
                     243534
                     """.trimIndent())
-            }
-            get("/name") {
-                PlayerService.getNameFromId(call)
-            }
-            get("/skin") {
-                PlayerService.getSkin(call)
-            }
-            post("/register") {
-                PlayerService.register(call)
-            }
-            post("/login") {
-                PlayerService.login(call)
             }
             route("/update"){
                 get("/mod-list"){
@@ -136,21 +117,8 @@ fun startHttp(){
                 get("/mod-file") {
                     UpdateService.getModFile(call)
                 }
-            }
-            post("/crash-report"){
-                PlayerService.crashReport(call)
-            }
+            }*/
             authenticate("auth-basic") {
-                post("/skin") {
-                    PlayerService.changeCloth(call)
-                }
-
-                post("/profile") {
-                    PlayerService.changeProfile(call)
-                }
-                post("/clearSkin") {
-                    PlayerService.clearCloth(call)
-                }
                 teamRoutes()
                 roomRoutes()
             }

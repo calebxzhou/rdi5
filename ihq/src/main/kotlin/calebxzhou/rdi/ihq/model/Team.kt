@@ -1,6 +1,5 @@
 package calebxzhou.rdi.ihq.model
 
-import calebxzhou.rdi.ihq.lgr
 import calebxzhou.rdi.ihq.model.Team.Role
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
@@ -14,6 +13,8 @@ data class Team(
     val info: String,
     val score: Int=0,
     val members: List<Member> = arrayListOf(),
+    val hostIds: List<@Contextual ObjectId> = emptyList(),
+    val worldIds: List<@Contextual ObjectId> = emptyList(),
 ) {
 
     enum class Role {

@@ -9,8 +9,10 @@ data class World(
     @Contextual val _id: ObjectId = ObjectId(),
     val name: String,
     //所属团队
+    @Contextual
     val teamId: ObjectId,
     //如果mount了与上次不同的modpack  警告用户可能坏档
+    @Contextual
     val modpackId: ObjectId,
 
     var size : Long = 0,

@@ -6,7 +6,9 @@ import calebxzhou.rdi.ihq.net.initGetParams
 import calebxzhou.rdi.ihq.net.response
 import calebxzhou.rdi.ihq.util.serdesJson
 import io.ktor.server.application.ApplicationCall
+import io.ktor.http.ContentType
 import io.ktor.server.response.respondFile
+import io.ktor.server.response.respondText
 import kotlinx.serialization.Serializable
 import net.peanuuutz.tomlkt.Toml
 import java.io.File
@@ -68,7 +70,10 @@ object UpdateService {
 
 
     suspend fun getModList(call: ApplicationCall) {
-        call.response(serdesJson.encodeToString(modIdSha1))
+        call.respondText(
+            serdesJson.encodeToString(modIdSha1),
+            ContentType.Application.Json
+        )
     }
 
     suspend fun getModFile(call: ApplicationCall) {

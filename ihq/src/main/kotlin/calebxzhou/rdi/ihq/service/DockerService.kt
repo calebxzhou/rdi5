@@ -43,18 +43,18 @@ object DockerService {
             .withShowAll(includeStopped)
             .exec().firstOrNull()
 
-    fun createContainer(port: Int, containerName: String, volumeName: String, image: String): String {
+    fun createContainer(port: Int, containerName: String, volumeName: String?, image: String): String {
+        val hostConfig = HostConfig.newHostConfig()
+            .withPortBindings(parse("$port:65232"))
+            .withCpuCount(2L)  // Limit to 2 CPUs
+            .withMemory(2L * 1024 * 1024 * 1024)  // 2GB RAM limit
+        volumeName?.let { hostConfig.withBinds(Bind.parse("$it:/data")) }
+
         return client.createContainerCmd(image)
             .withName(containerName)
             .withEnv(listOf("EULA=TRUE"))
             .withExposedPorts(ExposedPort(65232))
-            .withHostConfig(
-                HostConfig.newHostConfig()
-                    .withPortBindings(parse("$port:65232"))
-                    .withBinds(Bind.parse("$volumeName:/data"))
-                    .withCpuCount(2L)  // Limit to 2 CPUs
-                    .withMemory(2L * 1024 * 1024 * 1024)  // 2GB RAM limit
-            )
+            .withHostConfig(hostConfig)
             .exec().id
     }
 
@@ -62,7 +62,36 @@ object DockerService {
         client.createVolumeCmd().withName(volumeName).exec()
     }
 
-    fun deleteContainer(containerName: String) {
+    fun cloneVolume(sourceVolume: String, targetVolume: String) {
+        createVolume(targetVolume)
+        val helperContainer = client.createContainerCmd("busybox:latest")
+            .withCmd("sh", "-c", "cp -a /from/. /to/ || true")
+            .withHostConfig(
+                HostConfig.newHostConfig()
+                    .withBinds(
+                        Bind.parse("$sourceVolume:/from:ro"),
+                        Bind.parse("$targetVolume:/to")
+                    )
+            )
+            .exec().id
+        try {
+            client.startContainerCmd(helperContainer).exec()
+            client.waitContainerCmd(helperContainer).start().awaitStatusCode()
+        } catch (e: Exception) {
+            lgr.warn { "Error cloning volume $sourceVolume -> $targetVolume: ${e.message}" }
+            throw RequestError("复制存档失败")
+        } finally {
+            try {
+                client.removeContainerCmd(helperContainer)
+                    .withForce(true)
+                    .withRemoveVolumes(false)
+                    .exec()
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    fun deleteContainer(containerName: String, removeVolumes: Boolean = false) {
         // First, try to force stop and remove the container if it exists
         findContainer(containerName)?.let { container ->
             try {
@@ -73,7 +102,7 @@ object DockerService {
                 // Force remove the container
                 client.removeContainerCmd(container.id)
                     .withForce(true)
-                    .withRemoveVolumes(true)
+                    .withRemoveVolumes(removeVolumes)
                     .exec()
             } catch (e: Exception) {
                 lgr.warn { "Error force stopping/removing container ${container.id}: ${e.message}" }
@@ -176,8 +205,9 @@ object DockerService {
         }
 
     }
-    //start end都是从后往前的
-    fun getLog(containerName: String, startLine: Int,endLine: Int): String {
+    // startLine/endLine are indices from the newest line (0 = newest), slicing [startLine, endLine)
+    // 两个参数都是“从后往前”的行号：0 表示最新一行，返回区间为 [startLine, endLine)
+    fun getLog(containerName: String, startLine: Int, endLine: Int): String {
         return try {
             val callback = object : Adapter<Frame>() {
                 val logs = mutableListOf<String>()
@@ -197,18 +227,19 @@ object DockerService {
                 .exec(callback)
                 .awaitCompletion()
 
-            // Reverse logs to show most recent first, then paginate
+            // Reverse logs to most-recent-first so index 0 is the newest line
             val allLogs = callback.logs.reversed()
-            val startIndex = startLine * 50
-            val endIndex = (startLine + 1) * 50
+            val total = allLogs.size
 
-            // Return the requested page of logs
-            if (startIndex >= allLogs.size) {
-                ""
-            } else {
-                val pageEndIndex = minOf(endIndex, allLogs.size)
-                allLogs.subList(startIndex, pageEndIndex).joinToString("\n")
-            }
+            if (total == 0) return ""
+
+            // Normalize and clamp the requested range [startLine, endLine)
+            val from = startLine.coerceAtLeast(0)
+            val toExclusive = endLine.coerceAtMost(total)
+
+            if (from >= toExclusive) return ""
+
+            allLogs.subList(from, toExclusive).joinToString("\n")
         } catch (e: Exception) {
             lgr.warn { "Error getting logs for container $containerName: ${e.message}" }
             ""

@@ -1,17 +1,140 @@
 package calebxzhou.rdi.ihq.service
 
 import calebxzhou.rdi.ihq.DB
+import calebxzhou.rdi.ihq.exception.RequestError
 import calebxzhou.rdi.ihq.model.World
+import calebxzhou.rdi.ihq.net.ok
+import calebxzhou.rdi.ihq.net.param
+import calebxzhou.rdi.ihq.net.response
+import calebxzhou.rdi.ihq.net.uid
+import calebxzhou.rdi.ihq.util.displayLength
+import calebxzhou.rdi.ihq.service.TeamService.addWorld
+import calebxzhou.rdi.ihq.service.TeamService.delWorld
 import com.mongodb.client.model.Filters.eq
+import io.ktor.server.routing.Route
+import io.ktor.server.routing.get
+import io.ktor.server.routing.post
+import io.ktor.server.routing.route
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.toList
 import org.bson.types.ObjectId
 
+fun Route.worldRoutes() = route("/world") {
+    get("/list") {
+        val team = TeamService.getJoinedTeam(uid) ?: throw RequestError("无团队")
+        response(data = WorldService.listByTeam(team._id))
+    }
+    post("/create") {
+        val name = param("name")
+        val modpackId = ObjectId(param("modpackId"))
+        val world = WorldService.create(uid, name, modpackId)
+        response(data = world)
+    }
+    post("/duplicate") {
+        val sourceId = ObjectId(param("worldId"))
+        val name = param("name")
+        val world = WorldService.duplicate(uid, sourceId, name)
+        response(data = world)
+    }
+    post("/delete") {
+        val worldId = ObjectId(param("worldId"))
+        WorldService.delete(uid, worldId)
+        ok()
+    }
+    post("/mount") {
+        val hostId = ObjectId(param("hostId"))
+        val worldId = ObjectId(param("worldId"))
+        WorldService.mount(uid, hostId, worldId)
+        ok()
+    }
+    post("/unmount") {
+        val hostId = ObjectId(param("hostId"))
+        WorldService.unmount(uid, hostId)
+        ok()
+    }
+}
+
 object WorldService {
+    private const val MAX_WORLD_PER_TEAM = 3
+
     val dbcl = DB.getCollection<World>("world")
 
     suspend fun getById(id: ObjectId): World? = dbcl.find(eq("_id", id)).firstOrNull()
 
     suspend fun listByTeam(teamId: ObjectId): List<World> =
         dbcl.find(eq("teamId", teamId)).toList()
+
+    private suspend fun requireManageableTeam(uid: ObjectId): calebxzhou.rdi.ihq.model.Team {
+        val team = TeamService.getJoinedTeam(uid) ?: throw RequestError("无团队")
+        if (!team.isOwnerOrAdmin(uid)) throw RequestError("无权限")
+        return team
+    }
+
+    private suspend fun ensureCapacity(teamId: ObjectId) {
+        if (listByTeam(teamId).size >= MAX_WORLD_PER_TEAM) {
+            throw RequestError("存档最多${MAX_WORLD_PER_TEAM}个")
+        }
+    }
+
+    suspend fun create(uid: ObjectId, name: String, modpackId: ObjectId): World {
+        if (name.displayLength > 64) throw RequestError("名称过长")
+        val team = requireManageableTeam(uid)
+        ensureCapacity(team._id)
+        val world = World(name = name, teamId = team._id, modpackId = modpackId)
+        try {
+            DockerService.createVolume(world._id.toHexString())
+        } catch (e: Exception) {
+            throw RequestError("创建存档失败:${e.message}")
+        }
+        dbcl.insertOne(world)
+        team.addWorld(world._id)
+        return world
+    }
+
+    suspend fun duplicate(uid: ObjectId, worldId: ObjectId, newName: String): World {
+        val source = getById(worldId) ?: throw RequestError("存档不存在")
+        val team = TeamService.get(source.teamId) ?: throw RequestError("无此团队")
+        if (!team.isOwnerOrAdmin(uid)) throw RequestError("无权限")
+        ensureCapacity(team._id)
+        if (newName.displayLength > 64) throw RequestError("名称过长")
+        val world = World(name = newName, teamId = team._id, modpackId = source.modpackId)
+        try {
+            DockerService.cloneVolume(source._id.toHexString(), world._id.toHexString())
+        } catch (e: Exception) {
+            DockerService.deleteVolume(world._id.toHexString())
+            throw e
+        }
+        dbcl.insertOne(world)
+        team.addWorld(world._id)
+        return world
+    }
+
+    suspend fun delete(uid: ObjectId, worldId: ObjectId) {
+        val world = getById(worldId) ?: throw RequestError("存档不存在")
+        val team = TeamService.get(world.teamId) ?: throw RequestError("无此团队")
+        if (!team.isOwnerOrAdmin(uid)) throw RequestError("无权限")
+        HostService.findByWorld(worldId)?.let { throw RequestError("存档正在被主机使用") }
+        dbcl.deleteOne(eq("_id", worldId))
+        team.delWorld(worldId)
+        DockerService.deleteVolume(world._id.toHexString())
+    }
+
+    suspend fun mount(uid: ObjectId, hostId: ObjectId, worldId: ObjectId) {
+        val host = HostService.getById(hostId) ?: throw RequestError("无此主机")
+        val world = getById(worldId) ?: throw RequestError("存档不存在")
+        if (host.teamId != world.teamId) throw RequestError("主机与存档不属于同一团队")
+        val team = TeamService.get(world.teamId) ?: throw RequestError("无此团队")
+        if (!team.isOwnerOrAdmin(uid)) throw RequestError("无权限")
+        HostService.findByWorld(worldId)?.let {
+            if (it._id != hostId) throw RequestError("存档已被主机占用")
+        }
+        HostService.remountWorld(host, worldId)
+    }
+
+    suspend fun unmount(uid: ObjectId, hostId: ObjectId) {
+        val host = HostService.getById(hostId) ?: throw RequestError("无此主机")
+        val team = TeamService.get(host.teamId) ?: throw RequestError("无此团队")
+        if (!team.isOwnerOrAdmin(uid)) throw RequestError("无权限")
+        HostService.remountWorld(host, null)
+    }
 }
