@@ -200,7 +200,8 @@ def mcLibs = [
 // https://mvnrepository.com/artifact/com.github.ben-manes.caffeine/caffeine
 'com.github.ben-manes.caffeine:caffeine:3.2.2',
  "io.ktor:ktor-server-core:$ktor_version",
- "io.ktor:ktor-server-jetty:$ktor_version"
+ "io.ktor:ktor-server-cio:$ktor_version",
+'org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0'
 ]
 def mcLibExportOnly = [
 ]
@@ -275,12 +276,27 @@ dependencies {
     runtimeOnly("mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}")
     //循环添加deps
     def jarJarVisited = new LinkedHashSet<String>()
+    def jarJarExcludeCoords = [
+            'org.slf4j:slf4j-api',
+            'com.google.errorprone:error_prone_annotations'
+    ] as Set
     def includeJarJarTransitives
     includeJarJarTransitives = { String notation ->
-        if (!jarJarVisited.add(notation)) {
+        def coordinateParts = notation.split(':')
+        def coordinateKey = coordinateParts.length >= 2 ? "${coordinateParts[0]}:${coordinateParts[1]}" : notation
+        if (jarJarExcludeCoords.iterator().findIndexOf { it == coordinateKey } >= 0) {
+
+            println(coordinateKey+"不要")
             return
         }
-        jarJar(notation)
+        if (!jarJarVisited.add(notation)) {
+            println(coordinateKey+"有了")
+            return
+        }
+        println(coordinateKey+"要")
+        jarJar(notation) {
+            transitive = false
+        }
 
         def dependency = project.dependencies.create(notation)
         def configuration = project.configurations.detachedConfiguration(dependency)
@@ -290,6 +306,10 @@ dependencies {
             if ("jar".equalsIgnoreCase(artifact.type)) {
                 def moduleId = artifact.moduleVersion.id
                 def classifierSuffix = artifact.classifier ? ":${artifact.classifier}" : ""
+                def artifactKey = "${moduleId.group}:${artifact.name}"
+                if (jarJarExcludeCoords.contains(artifactKey)) {
+                    return
+                }
                 def artifactNotation = "${moduleId.group}:${artifact.name}:${moduleId.version}${classifierSuffix}"
                 includeJarJarTransitives(artifactNotation)
             }
@@ -383,5 +403,5 @@ idea {
 tasks.register('出core', Copy) {
     dependsOn(tasks.named('build'))
     from(layout.buildDirectory.file("libs/rdi-${version}.jar"))
-    into("${System.getProperty('user.home')}\\Documents\\RDI5sea-Ref\\.minecraft\\versions\\RDI5sea\\mods")
+    into("${System.getProperty('user.home')}\\Documents\\RDI5sea-Ref\\.minecraft\\versions\\RDI5.5\\mods")
 }
