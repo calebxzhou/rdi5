@@ -4,6 +4,11 @@ import calebxzhou.rdi.lgr
 import calebxzhou.rdi.ui2.frag.RFragment
 import calebxzhou.rdi.ui2.goto
 import calebxzhou.rdi.ui2.uiThread
+import com.google.gson.TypeAdapter
+import com.google.gson.stream.JsonReader
+import com.google.gson.stream.JsonToken
+import com.google.gson.stream.JsonWriter
+import com.mojang.util.UndashedUuid
 import icyllis.modernui.ModernUI
 import icyllis.modernui.R
 import icyllis.modernui.core.Core
@@ -15,6 +20,7 @@ import io.netty.util.concurrent.DefaultThreadFactory
 import net.minecraft.Util
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.Screen
+import net.minecraft.client.User
 import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite
 import net.minecraft.client.server.IntegratedServer
 import net.minecraft.core.BlockPos
@@ -122,5 +128,102 @@ val MinecraftServer.playingLevel: ServerLevel?
 fun Minecraft.sendCommand(cmd: String){
     mc.player?.connection?.sendCommand(cmd)?:let {
         lgr.warn("no connection fail send command")
+    }
+}
+
+val mcUserAdapter = object : TypeAdapter<User>() {
+    override fun write(out: JsonWriter, value: User?) {
+        if (value == null) {
+            out.nullValue()
+            return
+        }
+        out.beginObject()
+        out.name("name").value(value.name)
+        out.name("uuid").value(UndashedUuid.toString(value.profileId))
+        out.name("accessToken").value(value.accessToken)
+
+        out.name("xuid")
+        if (value.xuid.isPresent) {
+            out.value(value.xuid.get())
+        } else {
+            out.nullValue()
+        }
+
+        out.name("clientId")
+        if (value.clientId.isPresent) {
+            out.value(value.clientId.get())
+        } else {
+            out.nullValue()
+        }
+
+        out.name("type").value(value.type.getName())
+        out.endObject()
+    }
+
+    override fun read(reader: JsonReader): User? {
+        if (reader.peek() == JsonToken.NULL) {
+            reader.nextNull()
+            return null
+        }
+
+        var name: String? = null
+        var uuid: UUID? = null
+        var accessToken: String? = null
+        var xuid: String? = null
+        var clientId: String? = null
+        var type: User.Type? = null
+
+        reader.beginObject()
+        while (reader.hasNext()) {
+            when (reader.nextName()) {
+                "name" -> name = reader.nextStringOrNull()
+                "uuid" -> uuid = reader.nextStringOrNull()?.let { parseUuidFlexible(it) }
+                "accessToken" -> accessToken = reader.nextStringOrNull()
+                "xuid" -> xuid = reader.nextStringOrNull()
+                "clientId" -> clientId = reader.nextStringOrNull()
+                "type" -> {
+                    val rawType = reader.nextStringOrNull()
+                    type = rawType?.let { User.Type.byName(it) } ?: type
+                }
+
+                else -> reader.skipValue()
+            }
+        }
+        reader.endObject()
+
+        val resolvedName = name ?: "MissingName"
+        val resolvedUuid = uuid ?: UUID(0L, 0L)
+        val resolvedToken = accessToken ?: ""
+        val resolvedType = type ?: User.Type.MSA
+
+        return User(
+            resolvedName,
+            resolvedUuid,
+            resolvedToken,
+            Optional.ofNullable(xuid),
+            Optional.ofNullable(clientId),
+            resolvedType
+        )
+    }
+
+    private fun JsonReader.nextStringOrNull(): String? {
+        return if (peek() == JsonToken.NULL) {
+            nextNull()
+            null
+        } else {
+            nextString()
+        }
+    }
+}
+
+private fun parseUuidFlexible(raw: String): UUID? {
+    return try {
+        UUID.fromString(raw)
+    } catch (_: IllegalArgumentException) {
+        try {
+            UndashedUuid.fromStringLenient(raw)
+        } catch (_: IllegalArgumentException) {
+            null
+        }
     }
 }

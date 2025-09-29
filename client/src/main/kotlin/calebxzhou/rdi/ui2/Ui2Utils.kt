@@ -1,6 +1,5 @@
 package calebxzhou.rdi.ui2
 
-import calebxzhou.rdi.PACK
 import calebxzhou.rdi.lgr
 import calebxzhou.rdi.ui2.component.*
 import calebxzhou.rdi.ui2.frag.RFragment
@@ -54,7 +53,7 @@ val BG_GRAY_BORDER
         }
     }
 
-val BG_IMAGE_PATH = "bg/${PACK.bgImage}"
+val BG_IMAGE_PATH = "bg/1.jpg"
 val BG_IMAGE_MC: ResourceLocation
     get() = rdiAsset("textures/$BG_IMAGE_PATH")
 val BG_IMAGE_MUI

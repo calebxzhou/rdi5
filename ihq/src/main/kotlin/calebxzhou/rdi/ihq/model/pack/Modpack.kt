@@ -10,6 +10,8 @@ data class Modpack(
     val name: String,
     val icon: ByteArray,
     val info: String,
+    val modloader: String,
+    val mcVer: String,
     val versions: List<String> = arrayListOf(),
 ) {
     @Serializable

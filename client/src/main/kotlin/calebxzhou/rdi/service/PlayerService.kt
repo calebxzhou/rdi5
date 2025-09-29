@@ -78,12 +78,14 @@ object PlayerService {
     }
 
     suspend fun getPlayerInfo(uid: ObjectId): RAccount.Dto {
-        return queryPlayerInfo(uid).let { resp ->
-            val json = resp.body
-            lgr.info("玩家信息:${json}")
-            serdesJson.decodeFromString(json)
-        } ?: let {
-            lgr.warn("服务器未连接!!")
+        return try {
+            queryPlayerInfo(uid).let { resp ->
+                val json = resp.body
+                lgr.info("玩家信息:${json}")
+                serdesJson.decodeFromString(json)
+            }
+        } catch (e: Exception) {
+            lgr.warn("获取玩家信息失败",e)
             RAccount.Dto(ObjectId(), "未知", RAccount.Cloth())
         }
     }

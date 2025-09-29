@@ -10,6 +10,7 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
+import net.minecraft.client.User
 import org.bson.types.ObjectId
 import java.util.*
 import kotlin.reflect.KClass
@@ -30,6 +31,7 @@ val serdesJson = Json { serializersModule = module
 }
 val serdesGson = GsonBuilder()
     .setPrettyPrinting()
+    .registerTypeAdapter(User::class.java, mcUserAdapter)
     .create()
 val Any.json
     get() = serdesGson.toJson(this)
