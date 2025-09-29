@@ -198,7 +198,9 @@ def mcLibs = [
 'org.jsoup:jsoup:1.19.1',
 'org.mongodb:bson:5.1.0',
 // https://mvnrepository.com/artifact/com.github.ben-manes.caffeine/caffeine
-'com.github.ben-manes.caffeine:caffeine:3.2.2'
+'com.github.ben-manes.caffeine:caffeine:3.2.2',
+ "io.ktor:ktor-server-core:$ktor_version",
+ "io.ktor:ktor-server-jetty:$ktor_version"
 ]
 def mcLibExportOnly = [
 ]
@@ -259,7 +261,7 @@ dependencies {
     }
     implementation('org.hotswapagent:hotswap-agent-core:2.0.1')
     //implementation 'thedarkcolour:kotlinforforge-neoforge:5.7.0:slim'
-    implementation 'thedarkcolour:kotlinforforge-neoforge:5.7.0'
+    implementation 'thedarkcolour:kotlinforforge-neoforge:5.7.0:slim'
     implementation 'icyllis.modernui:ModernUI-Core:3.12.0'
     testImplementation 'icyllis.modernui:ModernUI-Core:3.12.0'
     additionalRuntimeClasspath 'icyllis.modernui:ModernUI-Core:3.12.0'
@@ -271,9 +273,32 @@ dependencies {
     compileOnly("mezz.jei:jei-${minecraft_version}-neoforge-api:${jei_version}")
     // at runtime, use the full JEI jar for NeoForge
     runtimeOnly("mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}")
+    //循环添加deps
+    def jarJarVisited = new LinkedHashSet<String>()
+    def includeJarJarTransitives
+    includeJarJarTransitives = { String notation ->
+        if (!jarJarVisited.add(notation)) {
+            return
+        }
+        jarJar(notation)
+
+        def dependency = project.dependencies.create(notation)
+        def configuration = project.configurations.detachedConfiguration(dependency)
+        configuration.transitive = true
+
+        configuration.resolvedConfiguration.resolvedArtifacts.each { artifact ->
+            if ("jar".equalsIgnoreCase(artifact.type)) {
+                def moduleId = artifact.moduleVersion.id
+                def classifierSuffix = artifact.classifier ? ":${artifact.classifier}" : ""
+                def artifactNotation = "${moduleId.group}:${artifact.name}:${moduleId.version}${classifierSuffix}"
+                includeJarJarTransitives(artifactNotation)
+            }
+        }
+    }
+
     mcLibs.each { lib ->
         libraries(lib)
-        jarJar(lib)
+        includeJarJarTransitives(lib)
         additionalRuntimeClasspath lib
     }
     mcLibExportOnly.each { lib ->
@@ -296,7 +321,6 @@ dependencies {
         resolutionStrategy {
             force 'com.ibm.icu:icu4j:76.1'
             force 'it.unimi.dsi:fastutil:8.5.15'
-
         }
     }
 }
@@ -356,23 +380,8 @@ idea {
     }
 }
 
-tasks.register('出core1sea', Copy) {
+tasks.register('出core', Copy) {
     dependsOn(tasks.named('build'))
     from(layout.buildDirectory.file("libs/rdi-${version}.jar"))
     into("${System.getProperty('user.home')}\\Documents\\RDI5sea-Ref\\.minecraft\\versions\\RDI5sea\\mods")
-}
-tasks.register('出core1mech', Copy) {
-    dependsOn(tasks.named('build'))
-    from(layout.buildDirectory.file("libs/rdi-${version}.jar"))
-    into("${System.getProperty('user.home')}\\Documents\\RDI5sea-Ref\\.minecraft\\versions\\RDI5mech\\mods")
-}
-tasks.register('出core1+2sea', Copy) {
-    dependsOn(tasks.named('出core1sea'))
-    from(layout.buildDirectory.file("libs/rdi-${version}.jar"))
-    into("\\\\caleb\\Users\\liberatorch\\Documents\\RDI5sea-hq\\mods")
-}
-tasks.register('出core1+2mech', Copy) {
-    dependsOn(tasks.named('出core1mech'))
-    from(layout.buildDirectory.file("libs/rdi-${version}.jar"))
-    into("\\\\caleb\\Users\\Public\\rdi5server\\mech\\hq\\mods")
 }
