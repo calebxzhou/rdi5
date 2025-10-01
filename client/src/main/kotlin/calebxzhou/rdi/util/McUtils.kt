@@ -50,6 +50,9 @@ val mc: Minecraft
     get() = Minecraft.getInstance() ?: run {
         throw IllegalStateException("Minecraft Not Start !")
     }
+//游戏未启动则null
+val mcn : Minecraft
+    get() = Minecraft.getInstance()
 val mcs: IntegratedServer?
     get() = mc.singleplayerServer
 fun renderThread(run: () -> Unit) {

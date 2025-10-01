@@ -28,10 +28,10 @@ class RegisterFragment : RFragment("注册新账号") {
     override fun initContent() {
         contentLayout.apply {
             this.gravity = Gravity.CENTER_HORIZONTAL
-            usernameInput = editText("昵称 支持中文","ssp")
-            qqInput = editText("QQ号","qq")
-            passwordInput = editText("密码","lock"){isPassword=true}
-            passwordInput2 = editText("确认密码","lock"){isPassword=true}
+            usernameInput = editText("昵称 支持中文")
+            qqInput = editText("QQ号")
+            passwordInput = editText("密码"){isPassword=true}
+            passwordInput2 = editText("确认密码"){isPassword=true}
             bottomOptionsConfig = {
                 "注册" colored MaterialColor.BLUE_800 with {onRegisterClicked()}
             }

@@ -4,15 +4,13 @@ import calebxzhou.rdi.RDI
 import calebxzhou.rdi.util.serdesJson
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import org.bson.types.ObjectId
 import java.io.File
 import kotlin.collections.maxByOrNull
 
 @Serializable
 data class LoginInfo(
-    @Contextual
-    val id: ObjectId,
+    val qq: String,
     val pwd: String,
     var lastLoggedTime: Long = System.currentTimeMillis(),
 ){

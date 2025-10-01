@@ -1,6 +1,7 @@
 package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.ui2.*
+import calebxzhou.rdi.ui2.FragmentSize
 import calebxzhou.rdi.ui2.component.RButton
 import calebxzhou.rdi.util.mc
 import calebxzhou.rdi.util.set
@@ -27,11 +28,13 @@ abstract class RFragment(var title: String = "") : Fragment() {
     open var showTitle = true
     open var closable = true
     open var showCloseButton = closable
-
+    open var fragSize: FragmentSize = FragmentSize.FULL
+    val contentViewId = 666
     //true则缓存content view布局，fragment切换时，保存状态不重新计算，false反之
     open var contentViewCache = true
     lateinit var contentLayout: LinearLayout
     private var _contentView: View? = null
+
     // If this fragment is displayed as an overlay child, this remover will be set so close() dismisses only the overlay.
     internal var overlayRemover: (() -> Unit)? = null
 
@@ -44,13 +47,13 @@ abstract class RFragment(var title: String = "") : Fragment() {
     fun View.keyAction(build: KeyActionBuilder.() -> Unit) {
         keyActions = KeyActionBuilder().apply(build).build()
         setOnKeyListener { v, keyCode, event ->
-            if(closable){
+            if (closable) {
                 if (keyCode == KeyEvent.KEY_ESCAPE && event.action == KeyEvent.ACTION_UP) {
                     close()
                     return@setOnKeyListener true
                 }
             }
-            keyActions.forEach {( key, handler) ->
+            keyActions.forEach { (key, handler) ->
                 if (keyCode == key && event.action == KeyEvent.ACTION_UP) {
                     handler()
                     return@setOnKeyListener true
@@ -63,15 +66,18 @@ abstract class RFragment(var title: String = "") : Fragment() {
 
     class KeyActionBuilder {
         private val actions = mutableListOf<Pair<Int, () -> Unit>>()
+
         // Allow syntax: KeyEvent.KEY_ENTER { ... }
         operator fun Int.invoke(handler: () -> Unit) {
             actions += this to handler
         }
+
         // Convenience names
         fun enter(handler: () -> Unit) {
             KeyEvent.KEY_ENTER.invoke(handler)
             KeyEvent.KEY_KP_ENTER.invoke(handler)
         }
+
         fun esc(handler: () -> Unit) = KeyEvent.KEY_ESCAPE.invoke(handler)
 
         internal fun build(): List<Pair<Int, () -> Unit>> = actions
@@ -82,19 +88,46 @@ abstract class RFragment(var title: String = "") : Fragment() {
         if (contentViewCache && _contentView != null) {
             return _contentView!!
         }
-
+        val sizeDims = when (fragSize) {
+            FragmentSize.FULL -> null
+            FragmentSize.SMALL -> 480f to 320f
+            FragmentSize.MEDIUM -> 640f to 480f
+            FragmentSize.LARGE -> 1280f to 720f
+        }
         // Create new content view - use FrameLayout as root to allow bottom positioning
-        return FrameLayout(mui).apply {
+        val root = FrameLayout(mui).apply {
 
             // 20% dim background for better contrast with light content
-            background = ColorDrawable(0x33000000.toInt())
-
+            background = BG_IMAGE_MUI
 
             // Main content in a LinearLayout
             linearLayout {
+                id = contentViewId
                 orientation = LinearLayout.VERTICAL
-                layoutParams = frameLayoutParam(PARENT, PARENT)
+                layoutParams = sizeDims?.let { (width, height) ->
+                    frameLayoutParam(dp(width), dp(height)) {
+                        gravity = Gravity.CENTER
+                    }
+                } ?: frameLayoutParam(PARENT, PARENT)
                 gravity = Gravity.CENTER_HORIZONTAL
+                val radius = context.dp(20f).toFloat()
+                val fillColor = 0xEE1A1A1A.toInt()
+                background = drawable { canvas ->
+                    val b = bounds
+                    val paint = Paint.obtain()
+                    paint.color = fillColor
+                    paint.style = Paint.Style.FILL.ordinal
+                    canvas.drawRoundRect(
+                        b.left.toFloat(),
+                        b.top.toFloat(),
+                        b.right.toFloat(),
+                        b.bottom.toFloat(),
+                        radius,
+                        paint
+                    )
+                    paint.recycle()
+                }
+                paddingDp(12)
                 // Create frame layout for back button and title
                 if (showTitle || showCloseButton) {
                     frameLayout() {
@@ -104,7 +137,6 @@ abstract class RFragment(var title: String = "") : Fragment() {
                         // Title (add first to be in the background)
                         if (showTitle) {
                             textView {
-                                paddingDp(8)
                                 setTextColor(0xffffffff.toInt())
                                 text = title
                                 textSize = 20f
@@ -117,7 +149,7 @@ abstract class RFragment(var title: String = "") : Fragment() {
                         // Back button (add last to be on top)
                         if (showCloseButton) {
                             this += Button(ModernUI.getInstance()).apply {
-                                paddingDp(8)
+                                paddingDp(4)
                                 background = iconDrawable("back")
                                 layoutParams = linearLayoutParam(dp(32f), dp(32f)) {
                                     gravity = Gravity.START or Gravity.CENTER_VERTICAL
@@ -137,20 +169,32 @@ abstract class RFragment(var title: String = "") : Fragment() {
                 contentLayout.apply {
                     contentLayoutInit()
                 }
+
+                if (fragSize != FragmentSize.FULL) {
+                    bottomOptionsConfig?.let { config ->
+                        bottomOptions(config)
+                    }
+                }
             }
 
             // Render bottom options if configured - positioned at actual bottom
-            bottomOptionsConfig?.let { config ->
-                bottomOptions(config)
+            if (fragSize == FragmentSize.FULL) {
+                bottomOptionsConfig?.let { config ->
+                    bottomOptions(config)
+                }
             }
 
-            // Store the view in cache if caching is enabled
-            if (contentViewCache) {
-                _contentView = this
-            }
-            keyAction {  }
+            keyAction { }
         }
+        // Store the view in cache if caching is enabled
+        if (contentViewCache) {
+            _contentView = root
+        }
+
+
+        return root
     }
+
     // Make this a var so inheritors can either override it or assign in init {}
     open var contentLayoutInit: LinearLayout.() -> Unit = {}
     fun close() {
@@ -188,28 +232,40 @@ abstract class RFragment(var title: String = "") : Fragment() {
 
         if (buttons.isEmpty()) return
 
-        linearLayout {
+        val buttonRow = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_HORIZONTAL
-            layoutParams = frameLayoutParam(PARENT, SELF).apply {
-                gravity = Gravity.BOTTOM
-                bottomMargin = dp(16f)
-            }
+            layoutParams = when (this@bottomOptions) {
+                is FrameLayout -> frameLayoutParam(PARENT, SELF) {
+                    gravity = Gravity.BOTTOM
+                    bottomMargin = context.dp(16f)
+                }
 
-            // Create buttons that stick together in material design style
-            buttons.forEachIndexed { index, buttonData ->
-                val button = RButton(context, color = buttonData.color ?: MaterialColor.WHITE) { buttonData.handler() }.apply {
+                is LinearLayout -> linearLayoutParam(SELF, SELF).apply {
+                    topMargin = context.dp(16f)
+                    gravity = Gravity.CENTER_HORIZONTAL
+                }
+
+                else -> ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            }
+        }
+
+        addView(buttonRow)
+
+        // Create buttons that stick together in material design style
+        buttons.forEachIndexed { index, buttonData ->
+            val button =
+                RButton(context, color = buttonData.color ?: MaterialColor.WHITE) { buttonData.handler() }.apply {
 
                 }
-                button.text = buttonData.text
-                // Apply optional customizations via init block
-                buttonData.init?.invoke(button)
+            button.text = buttonData.text
+            // Apply optional customizations via init block
+            buttonData.init?.invoke(button)
 
-                button.layoutParams = linearLayoutParam(SELF, SELF).apply {
-                    if (index > 0) leftMargin = dp(12f)
-                }
-                addView(button)
+            button.layoutParams = LinearLayout.LayoutParams(SELF, SELF).apply {
+                if (index > 0) leftMargin = context.dp(12f)
             }
+            buttonRow.addView(button)
         }
     }
 
@@ -241,7 +297,7 @@ abstract class RFragment(var title: String = "") : Fragment() {
             layoutParams = frameLayoutParam(dp(widthDp), dp(heightDp)) {
                 gravity = Gravity.CENTER
             }
-            background=drawable { canvas ->
+            background = drawable { canvas ->
                 val b = bounds
                 val fill = Paint.obtain()
                 fill.setRGBA(16, 16, 16, 200)
@@ -260,7 +316,7 @@ abstract class RFragment(var title: String = "") : Fragment() {
         overlay.addView(childContainer)
 
         // Ask the fragment to create its view into our container
-    val childView = child.onCreateView(layoutInflater, childContainer, null)
+        val childView = child.onCreateView(layoutInflater, childContainer, null)
         if (childView != null) {
             childContainer.addView(childView)
             child.onViewCreated(childView, null)
@@ -274,7 +330,8 @@ abstract class RFragment(var title: String = "") : Fragment() {
             // Notify the child its view is being destroyed if needed
             try {
                 child.onDestroyView()
-            } catch (_: Throwable) { }
+            } catch (_: Throwable) {
+            }
         }
         // If child is an RFragment, set its overlayRemover so back/close dismisses only itself
         if (child is RFragment) {

@@ -4,11 +4,11 @@ import calebxzhou.rdi.Const
 import calebxzhou.rdi.lgr
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.ui2.component.LoadingView
-import calebxzhou.rdi.ui2.frag.SelectAccountFragment
 import calebxzhou.rdi.ui2.frag.UpdateFragment
 import calebxzhou.rdi.ui2.component.alertErr
 import calebxzhou.rdi.ui2.component.closeLoading
 import calebxzhou.rdi.ui2.component.showLoading
+import calebxzhou.rdi.ui2.frag.LoginFragment
 import calebxzhou.rdi.ui2.fragment
 import calebxzhou.rdi.ui2.goto
 import calebxzhou.rdi.ui2.nowFragment
@@ -117,7 +117,7 @@ class RServer(
         if (!noUpdate && isMcStarted) {
             goto(UpdateFragment(this))
         } else {
-            goto(SelectAccountFragment())
+            goto(LoginFragment())
         }
     }
     fun disconnectGhq() {

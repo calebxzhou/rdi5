@@ -1,6 +1,5 @@
 package calebxzhou.rdi.ui2.frag
 
-import calebxzhou.rdi.localserver.LOCAL_PORT
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.model.Room
 import calebxzhou.rdi.net.RServer
@@ -35,22 +34,80 @@ class TitleFragment : RFragment() {
             linearLayout() {
                 orientation = LinearLayout.HORIZONTAL
                 background = ColorDrawable(0xaa000000.toInt())
-                layoutParams = frameLayoutParam(dp(480f), dp(320f)) {
-                    gravity = Gravity.CENTER
+                layoutParams = linearLayoutParam() {
+                    width = PARENT
+                    height = dp(100f)
+                    gravity = Gravity.BOTTOM
+
+                    topMargin = (container?.measuredHeight ?: 0) * 2 / 3
                 }
 
                 // Add "rdi" text as child of strip, vertically centered
                 textView() {
-                    text = """
-                        载入完成！
-                        使用浏览器打开https://nng3.calebxzhou.cn:35800
-                        输入连接码 $LOCAL_PORT
-                    """.trimIndent()
+                    text = "RDi"
                     setTextColor(0xFFFFFFFF.toInt())
+                    textSize = 64f
+                    layoutParams = linearLayoutParam {
+                        width = SELF
+                        height = SELF
+                        gravity = Gravity.CENTER_VERTICAL or Gravity.START
+                        leftMargin = dp(16f)
+                    }
                 }
 
                 // Add "5" text directly below the "i"
+                textView() {
+                    text = "5"
+                    setTextColor(0xFFFFFFFF.toInt())
+                    textSize = 28f
+                    layoutParams = linearLayoutParam {
+                        width = SELF
+                        height = SELF
+                        gravity = Gravity.TOP or Gravity.START
+                    }
+                }
+                textView {
+                    text = "SkyPro"
+                    typeface = Fonts.CODE.typeface
+                }
+                // Add spacer to push Enter tip to the end
+                this += View(context).apply {
+                    layoutParams = linearLayoutParam {
+                        width = 0
+                        height = SELF
+                        weight = 1f
+                    }
+                }
 
+                // Add "Press Enter" tip at the right end
+                textView() {
+                    text = "按 Enter ➡️"
+                    setTextColor(0xFFFFFFFF.toInt())
+                    typeface = Fonts.ART.typeface
+                    textSize = 24f
+                    isClickable = true
+                    setOnClickListener {
+                        startMulti()
+                    }
+                    layoutParams = linearLayoutParam {
+                        width = SELF
+                        height = SELF
+                        gravity = Gravity.CENTER_VERTICAL
+                        marginEnd = dp(16f)
+                    }
+
+                    // Add breathing animation
+                    val scaleX = PropertyValuesHolder.ofFloat(View.SCALE_X, 1f, 1.2f)
+                    val scaleY = PropertyValuesHolder.ofFloat(View.SCALE_Y, 1f, 1.2f)
+                    val alpha = PropertyValuesHolder.ofFloat(View.ALPHA, 1f, 0.5f)
+
+                    ObjectAnimator.ofPropertyValuesHolder(this, scaleX, scaleY, alpha).apply {
+                        duration = 1000
+                        repeatCount = ObjectAnimator.INFINITE
+                        repeatMode = ObjectAnimator.REVERSE
+                        interpolator = TimeInterpolator.ACCELERATE_DECELERATE
+                    }.start()
+                }
             }
             // Set keyboard listener for Enter key
             isFocusable = true

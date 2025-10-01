@@ -80,7 +80,7 @@ class WardrobeFragment : RFragment("衣柜") {
                 }
                 gravity = Gravity.CENTER_HORIZONTAL
 
-                searchBox = editText("搜索...","search",240) {
+                searchBox = editText("搜索...", width = 240) {
                     onPressEnterKey {
                         refreshSkins()
                     }

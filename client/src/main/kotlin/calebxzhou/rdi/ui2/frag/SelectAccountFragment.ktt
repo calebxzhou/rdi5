@@ -50,7 +50,7 @@ class SelectAccountFragment() : RFragment("选择账号") {
                             id = info.key.timestamp
                             layoutParams = linearLayoutParam(SELF, SELF)
                             gravity = Gravity.CENTER_HORIZONTAL
-                            if (creds.lastLogged?.id == uid) {
+                            if (creds.lastLogged?.qq == uid) {
                                 setTextColor(MaterialColor.YELLOW_800.colorValue)
                             }
                             contextMenu{

@@ -182,10 +182,9 @@ fun ViewGroup.button(
 
 fun ViewGroup.editText(
     msg: String = "",
-    icon: String? = null,
-    width: Int=200,
+    width: Int = 200,
     init: RTextField.() -> Unit = {}
-) = RTextField(this.context, msg,width.toFloat(),icon).apply{
+) = RTextField(this.context, msg, width.toFloat()).apply{
     init()
     padding8dp()
 

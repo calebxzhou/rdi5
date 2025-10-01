@@ -51,7 +51,7 @@ fun playerLogin(usr: String, pwd: String){
         params = listOf("usr" to usr, "pwd" to pwd, "spec" to spec)
     ){
         val account = serdesJson.decodeFromString<RAccount>(it.body)
-        creds.loginInfos += account._id to LoginInfo(account._id,account.pwd)
+        creds.loginInfos += account._id to LoginInfo(account.qq,account.pwd)
         creds.save()
         RAccount.now = account
         if (isMcStarted)

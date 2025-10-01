@@ -21,5 +21,5 @@ fun Routing.devRoutes() = route("/dev"){
                 props = props
             )
         }
-        json(bss)}
+        gson(bss)}
 }

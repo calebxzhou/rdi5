@@ -2,7 +2,6 @@ package calebxzhou.rdi.ui2.component
 
 import calebxzhou.rdi.ui2.MaterialColor
 import calebxzhou.rdi.ui2.dp
-import calebxzhou.rdi.ui2.iconDrawable
 import calebxzhou.rdi.ui2.paddingDp
 import icyllis.modernui.R
 import icyllis.modernui.core.Context
@@ -29,7 +28,6 @@ class RTextField(
     context: Context,
     var label: String = "",
     var widthDp: Float = 120f,
-    var icon: String? = null,
     var clearable: Boolean = true,
 ) : FrameLayout(context) {
 
@@ -42,7 +40,6 @@ class RTextField(
     var isPassword: Boolean = false
         set(value) {
             field = value
-            icon = "lock"
             if (value) {
                 if (!passwordVisible) edit.setTransformationMethod(PasswordTransformationMethod.getInstance())
             } else {
@@ -50,6 +47,13 @@ class RTextField(
             }
             configureTrailing()
         }
+    var dropdownItems: List<String> = emptyList()
+        set(value) {
+            field = value
+            configureTrailing()
+            updateLabelAndClear()
+        }
+    var onDropdownItemSelected: ((String) -> Unit)? = null
     var md3PrimaryColor: Int = MaterialColor.TEAL_500.colorValue
         set(value) {
             field = value; invalidate()
@@ -73,7 +77,6 @@ class RTextField(
             gravity = Gravity.TOP or Gravity.START
             topMargin = context.dp(8f)
         }
-    private val iconStart = ImageView(context)
     private val clearBtn = TextView(context)
     private var passwordVisible = false
     val edit: EditText = object : EditText(context, null, R.attr.editTextFilledStyle) {
@@ -159,14 +162,6 @@ class RTextField(
         row.gravity = Gravity.CENTER_VERTICAL
         addView(row, rowLp)
 
-        // Leading icon
-        if (icon != null) {
-            iconStart.setImageDrawable(iconDrawable(icon!!))
-            val sz = context.dp(20f)
-            val lp = LinearLayout.LayoutParams(sz, sz).apply { rightMargin = context.dp(8f) }
-            row.addView(iconStart, lp)
-        }
-
         // EditText styling (transparent inside; caret/hint colors)
         edit.setBackground(null)
         edit.hint = label
@@ -247,25 +242,54 @@ class RTextField(
         row.layoutParams = rowLp
         row.requestLayout()
         // Trailing button visibility policy
-        clearBtn.visibility = if (isPassword) View.VISIBLE else if (clearable && hasText) View.VISIBLE else View.GONE
+        clearBtn.visibility = when {
+            isPassword -> View.VISIBLE
+            dropdownItems.isNotEmpty() -> View.VISIBLE
+            clearable && hasText -> View.VISIBLE
+            else -> View.GONE
+        }
         lastFloating = shouldFloat
     }
     // animations removed; no compute/anim helpers
 
     private fun configureTrailing() {
-        if (isPassword) {
-            // Eye toggle
-            clearBtn.text = "👁"
-            clearBtn.setOnClickListener {
-                passwordVisible = !passwordVisible
-                edit.setTransformationMethod(if (passwordVisible) null else PasswordTransformationMethod.getInstance())
+        when {
+            isPassword -> {
+                // Eye toggle
+                clearBtn.text = "👁"
+                clearBtn.setOnClickListener {
+                    passwordVisible = !passwordVisible
+                    edit.setTransformationMethod(if (passwordVisible) null else PasswordTransformationMethod.getInstance())
+                }
             }
-        } else {
-            // Clear button
-            clearBtn.text = "❌"
-            clearBtn.setOnClickListener { edit.setText("") }
+
+            dropdownItems.isNotEmpty() -> {
+                clearBtn.text = "▾"
+                clearBtn.setOnClickListener { showDropdownMenu() }
+            }
+
+            else -> {
+                // Clear button
+                clearBtn.text = "❌"
+                clearBtn.setOnClickListener { edit.setText("") }
+            }
         }
     }
+
+    private fun showDropdownMenu() {
+        if (dropdownItems.isEmpty()) return
+        val popup = PopupMenu(context, this)
+        dropdownItems.forEachIndexed { index, item ->
+            popup.menu.add(0, index, index, item).setOnMenuItemClickListener {
+                setText(item)
+                onDropdownItemSelected?.invoke(item)
+                true
+            }
+        }
+        popup.show()
+    }
+
+    fun openDropdown() = showDropdownMenu()
 
     private fun applyColors() {
         if (nightMode) {
@@ -285,19 +309,6 @@ class RTextField(
     }
 
     fun getText(): String = edit.text?.toString() ?: ""
-
-    fun setLeadingIcon(name: String?) {
-        icon = name
-        if (name == null) {
-            if (iconStart.parent === row) row.removeView(iconStart)
-        } else {
-            iconStart.setImageDrawable(iconDrawable(name))
-            if (iconStart.parent == null) row.addView(
-                iconStart,
-                0,
-                LinearLayout.LayoutParams(context.dp(20f), context.dp(20f)).apply { rightMargin = context.dp(8f) })
-        }
-    }
 
     fun setErrorEnabled(enabled: Boolean) {
         md3Error = enabled; updateLabelAndClear(); invalidate()
