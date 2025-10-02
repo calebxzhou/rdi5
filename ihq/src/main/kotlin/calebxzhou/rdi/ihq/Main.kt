@@ -4,6 +4,7 @@ import calebxzhou.rdi.ihq.exception.AuthError
 import calebxzhou.rdi.ihq.exception.ParamError
 import calebxzhou.rdi.ihq.exception.RequestError
 import calebxzhou.rdi.ihq.net.err
+import calebxzhou.rdi.ihq.net.response
 import calebxzhou.rdi.ihq.service.PlayerService
 import calebxzhou.rdi.ihq.service.PlayerService.accountCol
 import calebxzhou.rdi.ihq.service.UpdateService
@@ -67,20 +68,20 @@ fun startHttp(){
         install(StatusPages) {
             //参数不全/有问题
             exception<ParamError> { call, cause ->
-                call.err()
+                call.response<Unit>(false, cause.message ?: "参数错误",null)
             }
             //逻辑错误
             exception<RequestError> { call, cause ->
-                call.err()
+                call.response<Unit>(false, cause.message ?: "逻辑错误",null)
             }
             //认证错误
             exception<AuthError> { call, cause ->
-                call.err()
+                call.response<Unit>(false, cause.message ?: "认证错误",null)
             }
 
             //其他内部错误
             exception<Throwable> { call, cause ->
-                call.err()
+                call.response<Unit>(false, cause.message ?: "未知错误",null)
             }
         }
         install(ContentNegotiation) {

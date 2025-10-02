@@ -1,0 +1,67 @@
+<main
+  class="relative flex min-h-screen items-center justify-center overflow-hidden"
+>
+  <mat-card
+    class="relative z-10 w-full max-w-md mat-elevation-z12 bg-[color:var(--mat-sys-surface-container-high)] text-[color:var(--mat-sys-on-surface)]"
+    aria-labelledby="login-title"
+  >
+    <mat-card-header class="flex flex-col gap-2 text-center">
+      <mat-card-title id="login-title" class="text-3xl font-semibold pb-8"
+        >RDI登录</mat-card-title
+      >
+    </mat-card-header>
+    <mat-card-content class="pt-6">
+      <form
+        class="flex flex-col gap-4"
+        [formGroup]="loginForm"
+        (ngSubmit)="submit()"
+        novalidate
+      >
+        <mat-form-field class="thin-field">
+          <mat-label>QQ</mat-label>
+          <input
+            matInput
+            type="email"
+            formControlName="email"
+            inputmode="email"
+            required
+          />
+        </mat-form-field>
+
+        <mat-form-field class="thin-field">
+          <mat-label>密码</mat-label>
+          <input
+            matInput
+            type="password"
+            formControlName="password"
+            autocomplete="current-password"
+            required
+          />
+        </mat-form-field>
+
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <mat-checkbox formControlName="rememberMe">记住密码</mat-checkbox>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-center gap-4">
+          <button
+            mat-raised-button
+            color="primary"
+            type="submit"
+            class="py-3 text-base"
+          >
+            登录
+          </button>
+          <button
+            mat-stroked-button
+            color="accent"
+            type="button"
+            routerLink="/register"
+          >
+            注册
+          </button>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+</main>

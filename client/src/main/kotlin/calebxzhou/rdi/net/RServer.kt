@@ -3,21 +3,18 @@ package calebxzhou.rdi.net
 import calebxzhou.rdi.Const
 import calebxzhou.rdi.lgr
 import calebxzhou.rdi.model.RAccount
-import calebxzhou.rdi.ui2.component.LoadingView
+import calebxzhou.rdi.model.Response
 import calebxzhou.rdi.ui2.frag.UpdateFragment
 import calebxzhou.rdi.ui2.component.alertErr
 import calebxzhou.rdi.ui2.component.closeLoading
 import calebxzhou.rdi.ui2.component.showLoading
 import calebxzhou.rdi.ui2.frag.LoginFragment
-import calebxzhou.rdi.ui2.fragment
 import calebxzhou.rdi.ui2.goto
 import calebxzhou.rdi.ui2.nowFragment
 import calebxzhou.rdi.util.encodeBase64
-import calebxzhou.rdi.util.go
 import calebxzhou.rdi.util.ioScope
-import calebxzhou.rdi.util.mc
-import calebxzhou.rdi.ui2.uiThread
 import calebxzhou.rdi.util.isMcStarted
+import calebxzhou.rdi.util.serdesJson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -130,16 +127,21 @@ class RServer(
     }
 
 
-    suspend fun prepareRequest(
+    suspend inline fun <reified T> prepareRequest(
         post: Boolean = false,
         path: String,
         params: List<Pair<String, Any>> = listOf(),
-    ): HttpResponse<String> {
+    ): Response<T> {
         val fullUrl = "http://${ip}:${hqPort}/${path}"
         val headers = RAccount.now?.let {
             listOf("Authorization" to "Basic ${"${it._id}:${it.pwd}".encodeBase64}")
         } ?: listOf()
-        return httpStringRequest(post, fullUrl, params, headers)
+        val resp =
+            httpStringRequest(post, fullUrl, params, headers)
+        val body = resp.body
+        if(Const.DEBUG) lgr.info(resp.statusCode().toString()+" "+ body)
+        return serdesJson.decodeFromString<Response<T>>(body)
+
 
     }
 
@@ -148,21 +150,37 @@ class RServer(
         path: String,
         showLoading: Boolean = true,
         params: List<Pair<String, Any>> = listOf(),
-        onOk: (HttpResponse<String>) -> Unit
+        onErr: (Response<*>) -> Unit = { alertErr(it.msg) },
+        onOk: (Response<*>) -> Unit
+    ) = hqRequestT<Any>(post, path, showLoading, params, onErr = onErr, onOk = onOk)
+
+    inline fun <reified T> hqRequestT(
+        post: Boolean = false,
+        path: String,
+        showLoading: Boolean = true,
+        params: List<Pair<String, Any>> = listOf(),
+        crossinline onErr: (Response<T>) -> Unit = { alertErr(it.msg) },
+        crossinline onOk: (Response<T>) -> Unit,
     ) {
         if (showLoading) {
             nowFragment?.showLoading()
         }
         ioScope.launch {
-            val req = prepareRequest(post, path, params)
-            if(showLoading)
-                nowFragment?.closeLoading()
-            if (req.success) {
-                if(Const.DEBUG) lgr.info(req.body)
-                onOk(req)
-            }else{
-                alertErr("请求错误: ${req.statusCode()} ${req.body}")
-                lgr.error("请求错误 ${req.statusCode()} ${req.body}")
+            try {
+                val req = prepareRequest<T>(post, path, params)
+                if(showLoading)
+                    nowFragment?.closeLoading()
+                if (req.ok) {
+                    onOk(req)
+                }else{
+                    onErr(req)
+                    lgr.error("req error ${req.msg}")
+                }
+            } catch (e: Exception) {
+                if(showLoading)
+                    nowFragment?.closeLoading()
+                alertErr("请求失败: ${e.message}")
+                e.printStackTrace()
             }
 
 

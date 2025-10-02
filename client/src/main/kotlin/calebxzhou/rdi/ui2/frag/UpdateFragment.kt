@@ -106,8 +106,8 @@ class UpdateFragment(val server: RServer) : RFragment("正在检查更新") {
                         // Start download process asynchronously
                         ioTask {
                             // Get server SHA-1 checksums for verification
-                            val modlist = server.prepareRequest(false, "update/mod-list").body
-                            val serverIdSha1: Map<String, String> = serdesJson.decodeFromString(modlist)
+                            val modlistResponse = server.prepareRequest<String>(false, "update/mod-list")
+                            val serverIdSha1: Map<String, String> = serdesJson.decodeFromString(modlistResponse.data!!)
                             server.downloadMods(modsToUpdate, serverIdSha1, this@UpdateFragment)
                         }
                     })
@@ -195,10 +195,15 @@ class UpdateFragment(val server: RServer) : RFragment("正在检查更新") {
     suspend fun RServer.checkUpdate(modsDir: File): Map<String, File> {
         val clientIdFile = gatherModIdFile(modsDir)
         val clientIdSha1 = gatherModIdSha1(modsDir)
-        val modlist = prepareRequest(false, "update/mod-list").body
+        val modlist = prepareRequest<String>(false, "update/mod-list").data
+
         val modsUpdate = hashMapOf<String, File>()
+        if(modlist == null) {
+            lgr.warn("无法获取服务端mod列表，跳过更新")
+            return modsUpdate
+        }
         //服务端
-        val serverIdSha1: Map<String, String> = serdesJson.decodeFromString(modlist)
+    val serverIdSha1: Map<String, String> = serdesJson.decodeFromString(modlist)
         serverIdSha1.forEach { id, serverSha1 ->
             clientIdFile[id]?.let { file ->
                 val clientSha1 = clientIdSha1[id]

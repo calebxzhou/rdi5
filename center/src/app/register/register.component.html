@@ -1,0 +1,80 @@
+<main
+  class="relative flex min-h-screen items-center justify-center overflow-hidden"
+>
+  <mat-card
+    class="relative z-10 w-full max-w-md mat-elevation-z12 bg-[color:var(--mat-sys-surface-container-high)] text-[color:var(--mat-sys-on-surface)]"
+    aria-labelledby="register-title"
+  >
+    <mat-card-header class="flex flex-col gap-2 text-center">
+      <mat-card-title id="login-title" class="text-3xl font-semibold pb-8"
+        >注册</mat-card-title
+      >
+    </mat-card-header>
+    <mat-card-content class="pt-6">
+      <form
+        class="flex flex-col gap-4"
+        [formGroup]="registerForm"
+        (ngSubmit)="submit()"
+        novalidate
+      >
+        <mat-form-field class="thin-field">
+          <mat-label>昵称</mat-label>
+          <input
+            matInput
+            formControlName="name"
+            placeholder="输入你的昵称"
+            required
+            autocomplete="name"
+          />
+        </mat-form-field>
+
+        <mat-form-field class="thin-field">
+          <mat-label>QQ</mat-label>
+          <input matInput formControlName="qq" required />
+        </mat-form-field>
+
+        <mat-form-field class="thin-field">
+          <mat-label>密码</mat-label>
+          <input
+            matInput
+            [type]="hidePassword ? 'password' : 'text'"
+            formControlName="password"
+            autocomplete="password"
+            required
+          />
+          <button
+            mat-icon-button
+            matSuffix
+            type="button"
+            (click)="togglePasswordVisibility()"
+            [attr.aria-label]="hidePassword ? '显示密码' : '隐藏密码'"
+            [attr.aria-pressed]="!hidePassword"
+          >
+            <mat-icon>{{
+              hidePassword ? "visibility" : "visibility_off"
+            }}</mat-icon>
+          </button>
+        </mat-form-field>
+
+        <div class="flex flex-wrap items-center justify-center">
+          <button
+            mat-raised-button
+            color="primary"
+            type="submit"
+            class="py-3 px-8 text-base"
+          >
+            注册
+          </button>
+          <button
+            mat-stroked-button
+            color="accent"
+            type="button"
+            routerLink="/login"
+          >
+            返回
+          </button>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+</main>

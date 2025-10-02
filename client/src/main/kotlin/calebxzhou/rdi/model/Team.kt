@@ -10,8 +10,12 @@ data class Team(
     val _id: ObjectId = ObjectId(),
     val name: String,
     val info: String,
-    val members: List<Room.Member> = arrayListOf(),
+    val score: Int=0,
+    val members: List<Member> = arrayListOf(),
+    val hostIds: List<@Contextual ObjectId> = emptyList(),
+    val worldIds: List<@Contextual ObjectId> = emptyList(),
 ) {
+
     enum class Role {
         OWNER,
         ADMIN,

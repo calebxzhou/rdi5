@@ -65,13 +65,16 @@ suspend fun ApplicationCall.err(msg: String? = null) {
 }
 
 suspend fun RoutingContext.ok(msg: String="ok") {
-    response(true,msg,null)
+    response<Unit>(true,msg,null)
 }
 suspend fun RoutingContext.err(msg: String="❌") {
-    response(false,msg,null)
+    response<Unit>(false,msg,null)
 }
-suspend fun <T> RoutingContext.response(ok:Boolean=true, msg: String="", data: T? = null) {
-    call.respondText(
+suspend inline fun <reified T> RoutingContext.response(ok:Boolean=true, msg: String="", data: T? = null) {
+    call.response(ok,msg,data)
+}
+suspend inline fun <reified T> ApplicationCall.response(ok:Boolean=true, msg: String="", data: T? = null) {
+    respondText(
         serdesJson.encodeToString(Response(if(ok) 0 else -1 ,msg,data)),
         ContentType.Application.Json,
         HttpStatusCode.OK

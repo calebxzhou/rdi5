@@ -5,7 +5,10 @@ import calebxzhou.rdi.service.playerLogin
 import calebxzhou.rdi.ui2.FragmentSize
 import calebxzhou.rdi.ui2.MaterialColor
 import calebxzhou.rdi.ui2.component.RTextField
+import calebxzhou.rdi.ui2.component.alertErr
 import calebxzhou.rdi.ui2.editText
+import calebxzhou.rdi.ui2.go
+import calebxzhou.rdi.ui2.padding8dp
 import calebxzhou.rdi.util.ioScope
 import icyllis.modernui.view.Gravity
 import kotlinx.coroutines.launch
@@ -22,6 +25,7 @@ class LoginFragment : RFragment("登录") {
             this.gravity = Gravity.CENTER_HORIZONTAL
 
             qqInput = editText("QQ号"){
+                padding8dp()
             }
             passwordInput = editText("密码") {
                 isPassword = true
@@ -47,6 +51,7 @@ class LoginFragment : RFragment("登录") {
             }
             bottomOptionsConfig = {
                 "登录" colored MaterialColor.BLUE_800 with { onClicked() }
+                "注册" colored MaterialColor.GREEN_900 with { RegisterFragment().go() }
             }
         }
 
@@ -55,9 +60,11 @@ class LoginFragment : RFragment("登录") {
     private fun onClicked() {
         val qq = qqInput.edit.text.toString()
         val pwd = passwordInput.txt
+        if(qq.isBlank() || pwd.isBlank()){
+            alertErr("未填写完整")
+        }
         ioScope.launch {
             playerLogin(qq, pwd)
-
         }
 
     }

@@ -11,6 +11,7 @@ import calebxzhou.rdi.ihq.model.HwSpec
 import calebxzhou.rdi.ihq.model.RAccount
 import calebxzhou.rdi.ihq.net.*
 import calebxzhou.rdi.ihq.util.datetime
+import calebxzhou.rdi.ihq.util.displayLength
 import calebxzhou.rdi.ihq.util.isValidHttpUrl
 import calebxzhou.rdi.ihq.util.isValidObjectId
 import calebxzhou.rdi.ihq.util.serdesJson
@@ -27,22 +28,23 @@ import kotlinx.coroutines.flow.firstOrNull
 import org.bson.conversions.Bson
 import org.bson.types.ObjectId
 import java.io.File
+import kotlin.text.toByteArray
 
 fun Route.playerRoutes() {
     get("/playerInfo") {
         val uid = ObjectId(param("uid"))
         val info = PlayerService.getInfo(uid)
-        response(data=serdesJson.encodeToString(info))
+        response(data=(info))
     }
     get("/player-info") {
         val uid = ObjectId(param("uid"))
         val info = PlayerService.getInfo(uid)
-        response(data=serdesJson.encodeToString(info))
+        response(data=(info))
     }
     get("/player-info-by-names") {
         val names = param("names").split("\n")
         val infos = PlayerService.getInfoByNames(names)
-        response(data=serdesJson.encodeToString(infos))
+        response(data=(infos))
     }
     get("/name") {
         val uid = ObjectId(param("uid"))
@@ -53,7 +55,7 @@ fun Route.playerRoutes() {
         val uidParam = param("uid")
         val uid = ObjectId(uidParam)
         val cloth = PlayerService.getSkin(uid)
-        response(data=serdesJson.encodeToString(cloth))
+        response(data=(cloth))
     }
     post("/register") {
         val name = param("name")
@@ -67,7 +69,7 @@ fun Route.playerRoutes() {
         val pwd = param("pwd")
         val specJson = paramNull("spec")
         val account = PlayerService.login(usr, pwd, specJson, call.clientIp)
-        response(data=serdesJson.encodeToString(account))
+        response(data=(account))
     }
     post("/crash-report") {
         val uid = ObjectId(param("uid"))
@@ -150,6 +152,17 @@ object PlayerService {
 
     suspend fun register(name: String, pwd: String, qq: String): RAccount {
         if (getByQQ(qq) != null || getByName(name) != null) throw RequestError("QQ或昵称被占用")
+        val nameSize = name.displayLength
+        if(nameSize !in 3..24){
+            throw RequestError("昵称长度应在3~24，当前为${nameSize}")
+        }
+        if(qq.length !in 5..10 || !qq.all { it.isDigit() }) {
+            throw RequestError("QQ号格式不正确")
+
+        }
+        if(pwd.length !in 6..16) {
+            throw RequestError("密码长度须在6~16个字符")
+        }
         val account = RAccount(name = name, pwd = pwd, qq = qq)
         accountCol.insertOne(account)
         return account

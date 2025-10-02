@@ -82,7 +82,7 @@ class MojangSkinFragment : RFragment("导入正版皮肤") {
                     val cloth = MojangApi.getCloth(uuid)
                     if (cloth != null) {
                         val account = RAccount.now ?: return@launch
-                        val server = RServer.now ?: return@launch
+                        val server = RServer.now
 
                         val newCloth = account.cloth.copy()
                         if (importSkin) {
@@ -101,7 +101,7 @@ class MojangSkinFragment : RFragment("导入正版皮肤") {
                         }
 
                         server.hqRequest(true, "skin", params = params) { response ->
-                            if (response.success) {
+                            if (response.ok) {
                                 account.updateCloth(newCloth)
                                 uiThread {
                                     close()

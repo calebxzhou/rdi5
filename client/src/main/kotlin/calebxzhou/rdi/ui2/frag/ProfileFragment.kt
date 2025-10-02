@@ -2,17 +2,13 @@ package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.Const
 import calebxzhou.rdi.model.RAccount
-import calebxzhou.rdi.model.Room
+import calebxzhou.rdi.model.Team
 import calebxzhou.rdi.net.RServer
-import calebxzhou.rdi.net.body
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.HwSpecView
-import calebxzhou.rdi.ui2.component.confirm
 import calebxzhou.rdi.util.go
 import calebxzhou.rdi.util.mc
 import calebxzhou.rdi.util.renderThread
-import calebxzhou.rdi.util.serdesJson
-import icyllis.modernui.view.Gravity
 import icyllis.modernui.view.KeyEvent
 import net.minecraft.client.gui.screens.ConnectScreen
 import net.minecraft.client.multiplayer.resolver.ServerAddress
@@ -21,13 +17,20 @@ class ProfileFragment : RFragment("我的信息") {
     override var closable = false
     val account = RAccount.now ?: RAccount.DEFAULT
     val server = RServer.now
-
+    override var fragSize: FragmentSize
+        get() = FragmentSize.MEDIUM
+        set(value) {}
     init {
         bottomOptionsConfig = {
             "👚 衣柜" colored MaterialColor.PINK_800 with { goto(WardrobeFragment()) }
-            "🏠 进入房间" colored MaterialColor.LIGHT_GREEN_900 with {
+            "▶ 进入团队" colored MaterialColor.GREEN_900 with {
+                server.hqRequestT<Team>(false,"team/my", false) { resp ->
+                    resp.data?.let { TeamFragment(it).go() }
+                }
+            }
+            /*"🏠 团队" colored MaterialColor.LIGHT_GREEN_900 with {
                 server.hqRequest(false, "room/my", false) {
-                    val body = it.body
+                    val body = it.data
                     if (body == "0") {
                         confirm(
                             "你还没有加入房间，你可以：",
@@ -35,7 +38,7 @@ class ProfileFragment : RFragment("我的信息") {
                             noText = "等朋友邀请我加入他的",
                         ) {
                             server.hqRequest(true, "room/create") { resp ->
-                                Room.now= serdesJson.decodeFromString<Room>(resp.body)
+                                Room.now= serdesJson.decodeFromString<Room>(resp.data)
                                 goto(RoomFragment( ))
                             }
                         }
@@ -45,7 +48,7 @@ class ProfileFragment : RFragment("我的信息") {
                         goto(RoomFragment( ))
                     }
                 }
-            }
+            }*/
             "⛔ 登出" colored MaterialColor.RED_900 with { close() }
         }
         contentLayoutInit = {

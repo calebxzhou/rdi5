@@ -54,7 +54,7 @@ class DialogView(
     var type: RDialogType = RDialogType.ALERT,
     var msglvl: MessageLevel = MessageLevel.INFO,
     var noText: String = "❎ 否",
-    var yesText: String = if (type == RDialogType.ALERT) "🆗 明白" else "✅ 是",
+    var yesText: String = if (type == RDialogType.ALERT) "明白" else "✅ 是",
     val onNo: () -> Unit = { },
     var onYes: () -> Unit = { },
 ) : FrameLayout(context) {

@@ -7,8 +7,6 @@ import calebxzhou.rdi.mixin.AMinecraft
 import calebxzhou.rdi.model.HwSpec
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.net.RServer
-import calebxzhou.rdi.net.StringHttpResponse
-import calebxzhou.rdi.net.body
 import calebxzhou.rdi.service.PlayerService.getPlayerInfo
 import calebxzhou.rdi.ui2.frag.ProfileFragment
 import calebxzhou.rdi.ui2.go
@@ -23,7 +21,6 @@ import com.mojang.authlib.GameProfile
 import com.mojang.authlib.properties.Property
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.encodeToString
 import net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket
 import org.bson.types.ObjectId
 import java.util.concurrent.TimeUnit
@@ -45,12 +42,12 @@ object PlayerInfoCache {
 fun playerLogin(usr: String, pwd: String){
     val creds = LocalCredentials.read()
     val spec = serdesJson.encodeToString<HwSpec>(HwSpec.now)
-    RServer.now.hqRequest(
+    RServer.now.hqRequestT<RAccount>(
         path = "login",
         post = true,
         params = listOf("usr" to usr, "pwd" to pwd, "spec" to spec)
     ){
-        val account = serdesJson.decodeFromString<RAccount>(it.body)
+        val account = it.data!!
         creds.loginInfos += account._id to LoginInfo(account.qq,account.pwd)
         creds.save()
         RAccount.now = account
@@ -73,20 +70,14 @@ object PlayerService {
             ?.also { profile.properties.put("textures", it) }
     }
 
-    suspend fun queryPlayerInfo(uid: ObjectId): StringHttpResponse {
-        return RServer.now.prepareRequest(false, "player-info", listOf("uid" to uid))
-    }
+
 
     suspend fun getPlayerInfo(uid: ObjectId): RAccount.Dto {
         return try {
-            queryPlayerInfo(uid).let { resp ->
-                val json = resp.body
-                lgr.info("玩家信息:${json}")
-                serdesJson.decodeFromString(json)
-            }
+            RServer.now.prepareRequest<RAccount.Dto>(false, "player-info", listOf("uid" to uid)).data?: RAccount.DEFAULT.dto
         } catch (e: Exception) {
             lgr.warn("获取玩家信息失败",e)
-            RAccount.Dto(ObjectId(), "未知", RAccount.Cloth())
+            RAccount.DEFAULT.dto
         }
     }
 

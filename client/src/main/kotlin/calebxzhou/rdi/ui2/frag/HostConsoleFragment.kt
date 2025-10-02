@@ -5,7 +5,6 @@ import calebxzhou.rdi.net.body
 import calebxzhou.rdi.ui2.Fonts
 import calebxzhou.rdi.ui2.MaterialColor
 import calebxzhou.rdi.ui2.component.confirm
-import calebxzhou.rdi.ui2.dp
 import calebxzhou.rdi.ui2.fctx
 import calebxzhou.rdi.ui2.go
 import calebxzhou.rdi.ui2.toast
@@ -25,7 +24,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-class ServerFragment() : RFragment("服务端") {
+class HostConsoleFragment() : RFragment("主机后台") {
     val server= RServer.now
     lateinit var console: TextView
     private lateinit var scrollView: ScrollView
@@ -371,7 +370,7 @@ class ServerFragment() : RFragment("服务端") {
     }
 
     suspend fun getLog(page: Int = 0): String {
-        val resp = server.prepareRequest(false, "room/log?page=$page")
-        return resp.body
+        val resp = server.prepareRequest<String>(false, "room/log?page=$page")
+        return resp.data?:""
     }
 }

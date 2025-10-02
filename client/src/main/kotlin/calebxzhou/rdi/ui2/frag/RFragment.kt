@@ -91,7 +91,7 @@ abstract class RFragment(var title: String = "") : Fragment() {
         val sizeDims = when (fragSize) {
             FragmentSize.FULL -> null
             FragmentSize.SMALL -> 480f to 320f
-            FragmentSize.MEDIUM -> 640f to 480f
+            FragmentSize.MEDIUM -> 720f to 576f
             FragmentSize.LARGE -> 1280f to 720f
         }
         // Create new content view - use FrameLayout as root to allow bottom positioning

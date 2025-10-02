@@ -5,6 +5,7 @@ import calebxzhou.rdi.net.body
 import calebxzhou.rdi.net.success
 import calebxzhou.rdi.service.PlayerService
 import calebxzhou.rdi.service.playerLogin
+import calebxzhou.rdi.ui2.FragmentSize
 import calebxzhou.rdi.ui2.MaterialColor
 import calebxzhou.rdi.ui2.component.REditPassword
 import calebxzhou.rdi.ui2.editPwd
@@ -24,7 +25,9 @@ class RegisterFragment : RFragment("注册新账号") {
     private lateinit var qqInput: RTextField
     private lateinit var passwordInput: RTextField
     private lateinit var passwordInput2: RTextField
-
+    override var fragSize: FragmentSize
+        get() = FragmentSize.MEDIUM
+        set(value) {}
     override fun initContent() {
         contentLayout.apply {
             this.gravity = Gravity.CENTER_HORIZONTAL
@@ -42,23 +45,11 @@ class RegisterFragment : RFragment("注册新账号") {
 
 
     private fun onRegisterClicked() {
-        val usr = usernameInput.txt.toString()
-        val qq = qqInput.txt.toString()
-        val pwd = passwordInput.txt.toString()
-        val pwd2 = passwordInput2.txt.toString()
-        val usrSize = usr.toByteArray(Charsets.UTF_8).size
-        if(usrSize !in 3..24){
-            alertErr("昵称须在3~24个字节，当前为$usrSize（1个汉字=3字节）")
-            return
-        }
-        if(qq.length !in 5..10 || !qq.all { it.isDigit() }) {
-            alertErr("QQ号格式不正确")
-            return
-        }
-        if(pwd.length !in 6..16) {
-            alertErr("密码长度须在6~16个字符")
-            return
-        }
+        val usr = usernameInput.txt
+        val qq = qqInput.txt
+        val pwd = passwordInput.txt
+        val pwd2 = passwordInput2.txt
+
         if(pwd != pwd2) {
             alertErr("两次输入的密码不一致")
             return
@@ -66,7 +57,6 @@ class RegisterFragment : RFragment("注册新账号") {
         RServer.now.hqRequest(true,"register", params =
             listOf("name" to usr, "qq" to qq, "pwd" to pwd) ){
             uiThread {
-                playerLogin(qq,pwd)
                 toast("注册成功 点击登录开玩")
             }
         }

@@ -7,7 +7,7 @@ import net.minecraft.world.level.block.Block
 
 object RoomService {
 
-    suspend fun create(): HttpResponse<String>? {
+   /* suspend fun create(): HttpResponse<String>? {
         //准备所有的方块状态
         val bstates = Block.BLOCK_STATE_REGISTRY.mapIndexed { id, bs ->
             val name = bs.blockHolder.registeredName
@@ -21,5 +21,5 @@ object RoomService {
         }
         val resp = RServer.now?.prepareRequest(true, "room/create", listOf("bstates" to bstates))
             return resp
-    }
+    }*/
 }

@@ -16,28 +16,20 @@ class RGameProfileRepo : GameProfileRepository {
         callback: ProfileLookupCallback
     ) {
         val names = _names.filter { it.isNotBlank() }.toTypedArray()
-        ioScope.launch {
-            val resp = RServer.now?.prepareRequest(
-                false,
-                "player-info-by-names",
-                params = listOf("names" to names.joinToString("\n"))
-            )
-                ?: return@launch callback.onProfileLookupFailed(
-                    names.firstOrNull() ?: "",
-                    IllegalStateException("当前没有连接到服务器 无法获取profile")
+        RServer.now.hqRequestT<List<RAccount.Dto>>(
+            false,
+            "player-info-by-names",
+            params = listOf("names" to names.joinToString("\n")),
+            onErr = {
+                callback.onProfileLookupFailed(
+                    names.firstOrNull() ?: "未知",
+                    IllegalStateException("无法获取profile")
                 )
-            try {
-                val body = resp.body
-                lgr.info("批量获取profile: $body")
-                val infos = serdesJson.decodeFromString<List<RAccount.Dto>>(body)
-
-                infos.forEach { callback.onProfileLookupSucceeded(it.mcProfile) }
-
-            } catch (e: Exception) {
-                callback.onProfileLookupFailed("解析profile失败",e)
+            },
+            onOk = { resp ->
+                resp.data?.forEach { callback.onProfileLookupSucceeded(it.mcProfile) }
             }
+        )
 
-
-        }
     }
 }

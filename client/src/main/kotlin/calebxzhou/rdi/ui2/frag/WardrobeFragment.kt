@@ -314,7 +314,7 @@ class WardrobeFragment : RFragment("衣柜") {
         }
 
         server.hqRequest(true, "skin", params = params) { response ->
-            if (response.success) {
+            if (response.ok) {
                 account.updateCloth(cloth)
                 uiThread {
                     goto(ProfileFragment())
@@ -322,7 +322,7 @@ class WardrobeFragment : RFragment("衣柜") {
                 }
             } else {
                 uiThread {
-                    alertErr("皮肤设置失败,${response.body} ")
+                    alertErr("皮肤设置失败,${response.msg} ")
                 }
             }
         }
