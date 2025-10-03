@@ -152,7 +152,7 @@ class RServer(
         params: List<Pair<String, Any>> = listOf(),
         onErr: (Response<*>) -> Unit = { alertErr(it.msg) },
         onOk: (Response<*>) -> Unit
-    ) = hqRequestT<Any>(post, path, showLoading, params, onErr = onErr, onOk = onOk)
+    ) = hqRequestT<Unit>(post, path, showLoading, params, onErr = onErr, onOk = onOk)
 
     inline fun <reified T> hqRequestT(
         post: Boolean = false,

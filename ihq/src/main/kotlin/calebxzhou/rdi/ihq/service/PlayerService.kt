@@ -121,10 +121,7 @@ object PlayerService {
     suspend fun getById(id: ObjectId): RAccount? = accountCol.find(equalById(id)).firstOrNull()
 
     suspend fun has(id: ObjectId): Boolean = accountCol
-        .find(equalById(id))
-        .projection(org.bson.Document("_id", 1))
-        .limit(1)
-        .firstOrNull() != null
+        .countDocuments(equalById(id)) > 0
 
     suspend fun validate(usr: String, pwd: String): RAccount? {
         val account = get(usr)

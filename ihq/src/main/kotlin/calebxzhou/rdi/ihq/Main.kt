@@ -81,7 +81,8 @@ fun startHttp(){
 
             //其他内部错误
             exception<Throwable> { call, cause ->
-                call.response<Unit>(false, cause.message ?: "未知错误",null)
+                cause.printStackTrace()
+                call.response<Unit>(-500, cause.message ?: "未知错误",null)
             }
         }
         install(ContentNegotiation) {

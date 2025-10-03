@@ -74,8 +74,11 @@ suspend inline fun <reified T> RoutingContext.response(ok:Boolean=true, msg: Str
     call.response(ok,msg,data)
 }
 suspend inline fun <reified T> ApplicationCall.response(ok:Boolean=true, msg: String="", data: T? = null) {
+    response(if(ok) 0 else -1 ,msg,data)
+}
+suspend inline fun <reified T> ApplicationCall.response(code: Int, msg: String="", data: T? = null) {
     respondText(
-        serdesJson.encodeToString(Response(if(ok) 0 else -1 ,msg,data)),
+        serdesJson.encodeToString(Response(code ,msg,data)),
         ContentType.Application.Json,
         HttpStatusCode.OK
     )
