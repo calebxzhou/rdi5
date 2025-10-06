@@ -16,8 +16,8 @@ class ChangeProfileFragment: RFragment("修改信息") {
     private lateinit var nameEdit: RTextField
     private lateinit var qqEdit: REditText
     private lateinit var pwdEdit: REditPassword
-    override fun initContent() {
-        contentLayout.apply {
+    init {
+        contentLayoutInit = {
             nameEdit = editText("昵称") {
                 setText(account.name)
             }

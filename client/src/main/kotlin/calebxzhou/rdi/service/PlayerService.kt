@@ -60,9 +60,6 @@ fun playerLogin(usr: String, pwd: String){
 object PlayerService {
 
 
-    suspend fun RServer.sendLoginRecord(account: RAccount) {
-
-    }
 
     @JvmStatic
     fun getPackedTextures(profile: GameProfile): Property? {

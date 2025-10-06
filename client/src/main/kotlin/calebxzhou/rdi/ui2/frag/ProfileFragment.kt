@@ -26,25 +26,7 @@ class ProfileFragment : RFragment("我的信息") {
         bottomOptionsConfig = {
             "👚 衣柜" colored MaterialColor.PINK_800 with { goto(WardrobeFragment()) }
             "▶ 进入团队" colored MaterialColor.GREEN_900 with {
-                server.hqRequestT<Team>(false, "team/my", true, onErr = {
-                    confirm(
-                        "你还没有加入团队，你可以：",
-                        yesText = "创建自己的团队",
-                        noText = "等朋友拉我",
-                        onYes = {
-                            server.hqRequest(
-                                true, "team/create", true, params = listOf(
-                                    "name" to "${account.name}的团队",
-                                    "info" to ""
-                                )){
-                                    toast("创建成功 可以进入团队了")
-                                }
-                        }
-                    )
-
-                }) { resp ->
-                    resp.data?.let { TeamFragment(it).go() }
-                }
+                goto(TeamFragment())
             }
             /*"🏠 团队" colored MaterialColor.LIGHT_GREEN_900 with {
                 server.hqRequest(false, "room/my", false) {

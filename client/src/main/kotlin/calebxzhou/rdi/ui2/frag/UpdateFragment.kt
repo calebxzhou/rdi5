@@ -2,7 +2,6 @@ package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.lgr
 import calebxzhou.rdi.net.RServer
-import calebxzhou.rdi.net.body
 import calebxzhou.rdi.net.downloadFileWithProgress
 import calebxzhou.rdi.net.formatBytes
 import calebxzhou.rdi.net.formatSpeed
@@ -53,8 +52,8 @@ class UpdateFragment(val server: RServer) : RFragment("正在检查更新") {
         }
     }
     
-    override fun initContent() {
-        contentLayout.apply {
+    init {
+        contentLayoutInit = {
             iconButton("next", "跳过更新，一会再说",{
                 layoutParams = linearLayoutParam(SELF, SELF)
             }) {
@@ -69,49 +68,50 @@ class UpdateFragment(val server: RServer) : RFragment("正在检查更新") {
                     paddingDp(16)
                 }
             }
-        }
-        ioTask {
-            val modsToUpdate = server.checkUpdate(modDir)
-            if (modsToUpdate.isEmpty()) {
-                lgr.info("没有需要更新的mod")
-                close()
-                goto(LoginFragment())
-                return@ioTask
-            }
-            uiThread {
-                scrollContent.apply {
-                    textView("这些mod需要更新：\n${modsToUpdate.map { it.key }.joinToString(",")}") {
-                        layoutParams = linearLayoutParam(PARENT, SELF).apply {
-                            setMargins(0, 0, 0, dp(16f))
-                        }
-                    }
-                    iconButton("success", "立刻更新", init = {
-                        layoutParams = linearLayoutParam(SELF, SELF).apply {
-                            setMargins(0, 0, 0, dp(8f))
-                        }
-                    }, onClick = { button ->
-                        // Immediately disable button and update UI
-                        button.isEnabled = false
-                        button.text = "正在准备下载..."
-                        
-                        // Immediately show preparation message
-                        scrollContent.removeAllViews()
-                        scrollContent.textView("正在准备下载更新，请稍候...") {
+
+            ioTask {
+                val modsToUpdate = server.checkUpdate(modDir)
+                if (modsToUpdate.isEmpty()) {
+                    lgr.info("没有需要更新的mod")
+                    close()
+                    goto(LoginFragment())
+                    return@ioTask
+                }
+                uiThread {
+                    scrollContent.apply {
+                        textView("这些mod需要更新：\n${modsToUpdate.map { it.key }.joinToString(",")}") {
                             layoutParams = linearLayoutParam(PARENT, SELF).apply {
                                 setMargins(0, 0, 0, dp(16f))
                             }
                         }
-                        scrollToBottom()
-                        
-                        // Start download process asynchronously
-                        ioTask {
-                            // Get server SHA-1 checksums for verification
-                            val modlistResponse = server.prepareRequest<String>(false, "update/mod-list")
-                            val serverIdSha1: Map<String, String> = serdesJson.decodeFromString(modlistResponse.data!!)
-                            server.downloadMods(modsToUpdate, serverIdSha1, this@UpdateFragment)
-                        }
-                    })
+                        iconButton("success", "立刻更新", init = {
+                            layoutParams = linearLayoutParam(SELF, SELF).apply {
+                                setMargins(0, 0, 0, dp(8f))
+                            }
+                        }, onClick = { button ->
+                            // Immediately disable button and update UI
+                            button.isEnabled = false
+                            button.text = "正在准备下载..."
+                            
+                            // Immediately show preparation message
+                            scrollContent.removeAllViews()
+                            scrollContent.textView("正在准备下载更新，请稍候...") {
+                                layoutParams = linearLayoutParam(PARENT, SELF).apply {
+                                    setMargins(0, 0, 0, dp(16f))
+                                }
+                            }
+                            scrollToBottom()
+                            
+                            // Start download process asynchronously
+                            ioTask {
+                                // Get server SHA-1 checksums for verification
+                                val modlistResponse = server.prepareRequest<String>(false, "update/mod-list")
+                                val serverIdSha1: Map<String, String> = serdesJson.decodeFromString(modlistResponse.data!!)
+                                server.downloadMods(modsToUpdate, serverIdSha1, this@UpdateFragment)
+                            }
+                        })
 
+                    }
                 }
             }
         }

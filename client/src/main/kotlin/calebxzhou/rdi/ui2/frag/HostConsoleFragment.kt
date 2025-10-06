@@ -1,7 +1,6 @@
 package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.net.RServer
-import calebxzhou.rdi.net.body
 import calebxzhou.rdi.ui2.Fonts
 import calebxzhou.rdi.ui2.MaterialColor
 import calebxzhou.rdi.ui2.component.confirm
@@ -66,8 +65,8 @@ class HostConsoleFragment() : RFragment("主机后台") {
         }
     }
 
-    override fun initContent() {
-        contentLayout.apply {
+    init {
+        contentLayoutInit = {
             gravity = Gravity.CENTER
             scrollView = ScrollView(fctx).apply {
                 layoutParams = LinearLayout.LayoutParams(
@@ -96,12 +95,13 @@ class HostConsoleFragment() : RFragment("主机后台") {
                 }
             }
             addView(scrollView)
-        }
-        // Start SSE real-time streaming immediately (no initial paged load to avoid duplication with tail lines)
-        if(!realTime){
-            toggleRealTime()
-            // SSE tail supplies last ~100 lines; skip pages 0 and 1 when loading older history later
-            currentPage = 1
+
+            // Start SSE real-time streaming immediately (no initial paged load to avoid duplication with tail lines)
+            if(!realTime){
+                toggleRealTime()
+                // SSE tail supplies last ~100 lines; skip pages 0 and 1 when loading older history later
+                currentPage = 1
+            }
         }
     }
 

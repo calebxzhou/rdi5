@@ -24,8 +24,8 @@ class FovFragment : RFragment("视野") {
         }
     }
 
-    override fun initContent() {
-        contentLayout.apply {
+    init {
+        contentLayoutInit = {
             bar = SeekBar(context).apply {
                 max = 120
                 progress = fovOption.get()
@@ -59,8 +59,8 @@ class FovFragment : RFragment("视野") {
                 button("超长焦") { bar.progress = 6 }
                 button("超超长焦") { bar.progress = 2 }
             }
+            updateFocusDisp()
         }
-        updateFocusDisp()
     }
 
     fun updateFocusDisp() {

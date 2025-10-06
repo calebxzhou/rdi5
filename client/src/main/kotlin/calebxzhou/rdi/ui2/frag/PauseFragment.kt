@@ -10,8 +10,8 @@ import icyllis.modernui.widget.LinearLayout
 class PauseFragment : RFragment("暂停") {
     val lookingBlockState = mc.player?.lookingAtBlock
 
-    override fun initContent() {
-        contentLayout.apply {
+    init {
+        contentLayoutInit = {
             linearLayout {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
@@ -62,7 +62,7 @@ class PauseFragment : RFragment("暂停") {
                             }
                         }
                     }
-0                }
+                }
             }
         }
     }

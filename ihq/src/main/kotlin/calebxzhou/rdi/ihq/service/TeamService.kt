@@ -114,14 +114,17 @@ object TeamService {
 
     suspend fun delete(uid: ObjectId) {
         val team = getOwn(uid) ?: throw RequestError("无团队")
+        team.hostIds.forEach { HostService.delete(uid,it) }
+        team.worldIds.forEach { WorldService.delete(uid,it) }
         dbcl.deleteOne(eq("_id", team._id))
+
     }
 
     suspend fun invite(uid: ObjectId, targetQQ: String) {
         val team = getOwn(uid) ?: throw RequestError("无团队")
         val target = PlayerService.getByQQ(targetQQ) ?: throw RequestError("无此账号")
         if (hasJoinedTeam(target._id)) throw RequestError("对方已有团队")
-        HostService.dbcl.updateOne(
+        dbcl.updateOne(
             eq("_id", team._id),
             Updates.push("members", Team.Member(target._id, Team.Role.MEMBER))
         )

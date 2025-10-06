@@ -16,7 +16,7 @@ import calebxzhou.rdi.ui2.showOver
 
 class RoomFragment() : RFragment("我的房间") {
     val server = RServer.now
-    val room = Room.now?:Room.DEFAULT
+    val room = Room.now
     init {
         bottomOptionsConfig = {
             "▶ 开玩" colored MaterialColor.GREEN_900 init {

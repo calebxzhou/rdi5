@@ -17,14 +17,13 @@ class LoginFragment : RFragment("登录") {
     private lateinit var qqInput: RTextField
     private lateinit var passwordInput: RTextField
     override var fragSize = FragmentSize.SMALL
-    override fun initContent() {
-        val creds = localCreds
-        val loginInfos = creds.loginInfos
-        contentLayout.apply {
-            // Center children
-            this.gravity = Gravity.CENTER_HORIZONTAL
+    init {
+        contentLayoutInit = {
+            val creds = localCreds
+            val loginInfos = creds.loginInfos
+            gravity = Gravity.CENTER_HORIZONTAL
 
-            qqInput = editText("QQ号"){
+            qqInput = editText("QQ号") {
                 padding8dp()
             }
             passwordInput = editText("密码") {
@@ -54,7 +53,6 @@ class LoginFragment : RFragment("登录") {
                 "注册" colored MaterialColor.GREEN_900 with { RegisterFragment().go() }
             }
         }
-
     }
 
     private fun onClicked() {

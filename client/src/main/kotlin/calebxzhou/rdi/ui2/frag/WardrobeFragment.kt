@@ -68,8 +68,8 @@ class WardrobeFragment : RFragment("衣柜") {
     private lateinit var skinContainer: LinearLayout
     private lateinit var scrollView: ScrollView
 
-    override fun initContent() {
-        contentLayout.apply {
+    init {
+        contentLayoutInit = {
             orientation = LinearLayout.VERTICAL
 
             // Search and cape toggle section
@@ -117,9 +117,9 @@ class WardrobeFragment : RFragment("衣柜") {
                     }
                 }
             }
-        }
 
-        refreshSkins()
+            refreshSkins()
+        }
     }
 
     private fun loadMoreSkins(view1: ScrollView) {

@@ -19,7 +19,6 @@ import icyllis.modernui.widget.LinearLayout
 class TitleFragment : RFragment() {
     override var closable = false
     override var showTitle = false
-    override fun initContent() {}
 
     init {
         RAccount.now=null

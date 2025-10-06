@@ -2,7 +2,6 @@ package calebxzhou.rdi.ui2.component
 
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.frag.RFragment
-import calebxzhou.rdi.util.*
 import icyllis.modernui.core.Context
 import icyllis.modernui.graphics.Canvas
 import icyllis.modernui.graphics.Paint
@@ -33,12 +32,18 @@ fun alertOk(msg: String, parent: RFragment? = nowFragment) {
     }
 }
 
-fun confirm(msg: String, parent: RFragment? = nowFragment,  noText: String = "❎ 否",
-             yesText: String = "✅ 是", onYes: () -> Unit = {}) {
+fun confirm(
+    msg: String,
+    parent: RFragment? = nowFragment,
+    noText: String = "❎ 否",
+    yesText: String = "✅ 是",
+    onNo: () -> Unit = {},
+    onYes: () -> Unit = {}
+) {
     if (parent != null) {
         uiThread {
             DialogView(parent.fctx, msg,type = RDialogType.CONFIRM,
-                noText = noText, yesText = yesText, onNo = {},onYes=onYes).showOver(parent)
+                noText = noText, yesText = yesText, onNo = onNo,onYes=onYes).showOver(parent)
         }
     }
 }
@@ -174,7 +179,7 @@ class DialogView(
     }
 
     // Back-compat API: show over our custom RFragment by delegating to the generic view-based overload
-    fun showOver(parent: RFragment) = showOver(parent.contentLayout)
+    fun showOver(parent: RFragment) = showOver(parent.mainLayout)
 
     // New API: show over any ModernUI Fragment
     fun showOver(fragment: Fragment) {

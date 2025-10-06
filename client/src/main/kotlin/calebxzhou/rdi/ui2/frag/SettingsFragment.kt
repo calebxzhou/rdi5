@@ -47,8 +47,8 @@ class SettingsFragment : RFragment("设置") {
         }
     }
 
-    override fun initContent() {
-        contentLayout.apply {
+    init {
+        contentLayoutInit = {
             linearLayout {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER

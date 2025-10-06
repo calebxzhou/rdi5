@@ -24,22 +24,25 @@ import kotlin.jvm.javaClass
 var prevFragment: Fragment? = null
 val nowFragment
     get() =
-        if(isMcStarted)
+        if (isMcStarted)
             mc.fragment
-            else
-        FRAG_CTRL.fragmentManager.findFragmentById(FRAG_CONTAINER_ID) as? RFragment
+        else
+            FRAG_CTRL.fragmentManager.findFragmentById(FRAG_CONTAINER_ID) as? RFragment
+
 /**
  * @see icyllis.modernui.ModernUI.fragment_container
  */
 val FRAG_CONTAINER_ID = 0x01020007
 val FRAG_CTRL
-    get() = ModernUI::class.java.getDeclaredField("mFragmentController").also { it.isAccessible=true }.get(ModernUI.getInstance()) as FragmentController
+    get() = ModernUI::class.java.getDeclaredField("mFragmentController").also { it.isAccessible = true }
+        .get(ModernUI.getInstance()) as FragmentController
 val SCREEN_CALLBACK = object : ScreenCallback {
     override fun shouldClose(): Boolean = false
 }
-fun Fragment.go()= goto(this)
-fun Fragment.showOver(parent: RFragment,w:Float=640f,h:Float=480f) = parent.showChildFragmentOver(this,w,h)
-fun Fragment.refresh(){
+
+fun Fragment.go() = goto(this)
+fun Fragment.showOver(parent: RFragment, w: Float = 640f, h: Float = 480f) = parent.showChildFragmentOver(this, w, h)
+fun Fragment.refresh() {
     if (isMcStarted) {
         // In MC, rebuild the MuiScreen for this fragment
         val screen: Screen = MuiForgeApi.get().createScreen(this, SCREEN_CALLBACK, mc.screen)
@@ -66,22 +69,24 @@ fun Fragment.refresh(){
         }
     }
 }
-fun goto(fragment: Fragment) {
+
+//changePrev 记录上个fragment false则不记录（刷新当前frag用）
+fun goto(fragment: Fragment, changePrev: Boolean = true) {
     if (isMcStarted) {
-        prevFragment = mc.fragment
+        if (changePrev)
+            prevFragment = mc.fragment
         val screen: Screen = MuiForgeApi.get().createScreen(fragment, SCREEN_CALLBACK, mc.screen)
         mc set screen
-    }else{/*
-        prevFragment = (ModernUI::class.java.getDeclaredField("mFragmentContainerView").also { it.isAccessible = true }
-            .get(ModernUI.getInstance()) as FragmentContainerView).*/
-        FRAG_CTRL.fragmentManager.transaction{
-            replace(FRAG_CONTAINER_ID,fragment,"main")
+    } else {
+        FRAG_CTRL.fragmentManager.transaction {
+            replace(FRAG_CONTAINER_ID, fragment, "main")
             setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
-            addToBackStack("main")
+            if (changePrev)
+                addToBackStack("main")
         }
     }
-
 }
+
 fun RFragment.goBack() {
     if (isMcStarted) {
         (mc.screen as? MuiScreen)?.let { mc set it.previousScreen }

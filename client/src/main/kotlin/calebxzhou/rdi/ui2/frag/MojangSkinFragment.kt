@@ -3,7 +3,6 @@ package calebxzhou.rdi.ui2.frag
 import calebxzhou.rdi.auth.MojangApi
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.net.RServer
-import calebxzhou.rdi.net.success
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.RTextField
 import calebxzhou.rdi.ui2.component.alertErr
@@ -20,8 +19,8 @@ class MojangSkinFragment : RFragment("导入正版皮肤") {
     private lateinit var skinCheckBox: CheckBox
     private lateinit var capeCheckBox: CheckBox
 
-    override fun initContent() {
-        contentLayout.apply {
+    init {
+        contentLayoutInit = {
             orientation = LinearLayout.VERTICAL
 
             textView {

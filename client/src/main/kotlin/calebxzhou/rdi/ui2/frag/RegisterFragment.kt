@@ -1,24 +1,14 @@
 package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.net.RServer
-import calebxzhou.rdi.net.body
-import calebxzhou.rdi.net.success
-import calebxzhou.rdi.service.PlayerService
-import calebxzhou.rdi.service.playerLogin
 import calebxzhou.rdi.ui2.FragmentSize
 import calebxzhou.rdi.ui2.MaterialColor
-import calebxzhou.rdi.ui2.component.REditPassword
-import calebxzhou.rdi.ui2.editPwd
 import calebxzhou.rdi.ui2.editText
-import calebxzhou.rdi.ui2.button
 import calebxzhou.rdi.ui2.component.RTextField
 import calebxzhou.rdi.ui2.component.alertErr
-import calebxzhou.rdi.ui2.component.alertOk
 import calebxzhou.rdi.ui2.toast
 import calebxzhou.rdi.ui2.uiThread
-import calebxzhou.rdi.util.ioScope
 import icyllis.modernui.view.Gravity
-import kotlinx.coroutines.launch
 
 class RegisterFragment : RFragment("注册新账号") {
     private lateinit var usernameInput: RTextField
@@ -28,9 +18,9 @@ class RegisterFragment : RFragment("注册新账号") {
     override var fragSize: FragmentSize
         get() = FragmentSize.MEDIUM
         set(value) {}
-    override fun initContent() {
-        contentLayout.apply {
-            this.gravity = Gravity.CENTER_HORIZONTAL
+    init {
+        contentLayoutInit = {
+            gravity = Gravity.CENTER_HORIZONTAL
             usernameInput = editText("昵称 支持中文")
             qqInput = editText("QQ号")
             passwordInput = editText("密码"){isPassword=true}
@@ -39,7 +29,6 @@ class RegisterFragment : RFragment("注册新账号") {
                 "注册" colored MaterialColor.BLUE_800 with {onRegisterClicked()}
             }
         }
-
     }
 
 

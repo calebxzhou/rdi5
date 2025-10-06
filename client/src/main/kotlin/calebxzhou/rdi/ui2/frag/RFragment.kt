@@ -3,16 +3,10 @@ package calebxzhou.rdi.ui2.frag
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.FragmentSize
 import calebxzhou.rdi.ui2.component.RButton
-import calebxzhou.rdi.util.mc
-import calebxzhou.rdi.util.set
-import com.ibm.icu.text.UTF16.bounds
 import icyllis.modernui.ModernUI
-import icyllis.modernui.R.attr.gravity
 import icyllis.modernui.fragment.Fragment
 import icyllis.modernui.graphics.Paint
 import icyllis.modernui.graphics.drawable.ColorDrawable
-import icyllis.modernui.mc.MuiScreen
-import icyllis.modernui.mc.UIManager
 import icyllis.modernui.util.DataSet
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.view.KeyEvent
@@ -22,18 +16,31 @@ import icyllis.modernui.view.ViewGroup
 import icyllis.modernui.widget.Button
 import icyllis.modernui.widget.FrameLayout
 import icyllis.modernui.widget.LinearLayout
-import net.minecraft.client.Minecraft
+import icyllis.modernui.widget.TextView
 
-abstract class RFragment(var title: String = "") : Fragment() {
+abstract class RFragment(initialTitle: String = "") : Fragment() {
+    var title: String = initialTitle
+        set(value) {
+            field = value
+            if (!showTitle) return
+            val titleView = view?.findViewById<TextView>(titleViewId)
+                ?: _mainView?.findViewById<TextView>(titleViewId)
+                ?: if (this::mainLayout.isInitialized) mainLayout.findViewById<TextView>(titleViewId) else null
+            titleView?.text = value
+        }
     open var showTitle = true
     open var closable = true
     open var showCloseButton = closable
     open var fragSize: FragmentSize = FragmentSize.FULL
-    val contentViewId = 666
+    val mainViewId = 666
+    val titleViewId = 667
+
     //true则缓存content view布局，fragment切换时，保存状态不重新计算，false反之
-    open var contentViewCache = true
+    open var mainViewCache = true
+    lateinit var mainLayout: LinearLayout
     lateinit var contentLayout: LinearLayout
-    private var _contentView: View? = null
+    private var _mainView: View? = null
+    open var contentLayoutInit: LinearLayout.() -> Unit = {}
 
     // If this fragment is displayed as an overlay child, this remover will be set so close() dismisses only the overlay.
     internal var overlayRemover: (() -> Unit)? = null
@@ -85,8 +92,8 @@ abstract class RFragment(var title: String = "") : Fragment() {
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: DataSet?): View {
         // If caching is enabled and we have a cached view, return it
-        if (contentViewCache && _contentView != null) {
-            return _contentView!!
+        if (mainViewCache && _mainView != null) {
+            return _mainView!!
         }
         val sizeDims = when (fragSize) {
             FragmentSize.FULL -> null
@@ -102,7 +109,7 @@ abstract class RFragment(var title: String = "") : Fragment() {
 
             // Main content in a LinearLayout
             linearLayout {
-                id = contentViewId
+                id = mainViewId
                 orientation = LinearLayout.VERTICAL
                 layoutParams = sizeDims?.let { (width, height) ->
                     frameLayoutParam(dp(width), dp(height)) {
@@ -137,6 +144,7 @@ abstract class RFragment(var title: String = "") : Fragment() {
                         // Title (add first to be in the background)
                         if (showTitle) {
                             textView {
+                                id = titleViewId
                                 setTextColor(0xffffffff.toInt())
                                 text = title
                                 textSize = 20f
@@ -164,7 +172,16 @@ abstract class RFragment(var title: String = "") : Fragment() {
                     initHeader()
                 }
 
-                contentLayout = this
+                mainLayout = this
+
+                contentLayout = linearLayout {
+                    orientation = LinearLayout.VERTICAL
+                    layoutParams = linearLayoutParam(PARENT, 0) {
+                        weight = 1f
+                    }
+                    gravity = Gravity.CENTER_HORIZONTAL
+                }
+
                 initContent()
                 contentLayout.apply {
                     contentLayoutInit()
@@ -187,8 +204,8 @@ abstract class RFragment(var title: String = "") : Fragment() {
             keyAction { }
         }
         // Store the view in cache if caching is enabled
-        if (contentViewCache) {
-            _contentView = root
+        if (mainViewCache) {
+            _mainView = root
         }
 
 
@@ -196,7 +213,7 @@ abstract class RFragment(var title: String = "") : Fragment() {
     }
 
     // Make this a var so inheritors can either override it or assign in init {}
-    open var contentLayoutInit: LinearLayout.() -> Unit = {}
+
     fun close() {
         // If this fragment is being shown as an overlay child, prefer dismissing the overlay.
         overlayRemover?.let { remover ->
@@ -284,7 +301,7 @@ abstract class RFragment(var title: String = "") : Fragment() {
     ): () -> Unit {
         val root = (view as? ViewGroup) ?: return {}
         // Fullscreen dim overlay to sit above our content
-        val overlay = FrameLayout(contentLayout.context).apply {
+        val overlay = FrameLayout(mainLayout.context).apply {
             layoutParams = frameLayoutParam(PARENT, PARENT)
             // Dim the background so the child stands out
             background = ColorDrawable(0xBB000000.toInt()) // ~55% opacity black
@@ -293,7 +310,7 @@ abstract class RFragment(var title: String = "") : Fragment() {
         }
 
         // Container for the child fragment's view, centered with fixed dp size
-        val childContainer = FrameLayout(contentLayout.context).apply {
+        val childContainer = FrameLayout(mainLayout.context).apply {
             layoutParams = frameLayoutParam(dp(widthDp), dp(heightDp)) {
                 gravity = Gravity.CENTER
             }
