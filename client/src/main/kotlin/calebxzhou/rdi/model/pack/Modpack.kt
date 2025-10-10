@@ -1,4 +1,4 @@
-package calebxzhou.rdi.ihq.model.pack
+package calebxzhou.rdi.model.pack
 
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
@@ -8,9 +8,9 @@ import org.bson.types.ObjectId
 data class Modpack(
     @Contextual val _id: ObjectId = ObjectId(),
     val name: String,
-    @Contextual
-    val authorId: ObjectId,
     val icon: ByteArray,
+    @Contextual
+    val authorId: ObjectId= ObjectId(),
     val info: String,
     val modloader: String,
     val mcVer: String,

@@ -1,6 +1,5 @@
 package calebxzhou.rdi.util
 
-import ca.weblite.objc.RuntimeUtils.msg
 import calebxzhou.rdi.model.Response
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode

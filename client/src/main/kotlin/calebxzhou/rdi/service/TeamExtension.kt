@@ -1,5 +1,6 @@
 package calebxzhou.rdi.service
 
+import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.model.Team
 import org.bson.types.ObjectId
 
@@ -11,7 +12,7 @@ fun Team.hasMember(id: ObjectId): Boolean {
 }
 val Team.owner
     get() =  members.find { it.role== Team.Role.OWNER }
-
+fun Team.isOwner(acc: RAccount) = owner?.id == acc._id
 // Check whether a user is OWNER or ADMIN of this team
 fun Team.isOwnerOrAdmin(uid: ObjectId): Boolean =
     members.any { it.id == uid && (it.role == Team.Role.OWNER || it.role == Team.Role.ADMIN) }

@@ -48,8 +48,16 @@ fun Route.roomRoutes() = route("/host") {
     get("/log/stream") {
         val hostId = ObjectId(param("hostId"))
         call.response.cacheControl(CacheControl.NoCache(null))
-        call.respondBytesWriter(contentType = ContentType.Text.EventStream, producer =  HostService.listenLogs(uid, hostId))
+        call.respondBytesWriter(
+            contentType = ContentType.Text.EventStream,
+            producer = HostService.listenLogs(uid, hostId)
+        )
 
+    }
+    get("/my") {
+        TeamService.get(uid)
+            ?.let { HostService.listByTeam(it._id) }
+            ?.let { response(data = it) }
     }
     get("/list") {
         response(data = HostService.dbcl.find().map { it._id.toString() to it.name }.toList())
@@ -126,13 +134,13 @@ object HostService {
         val team = TeamService.getOwn(uid) ?: throw RequestError("你不是队长")
         if (!team.hasHost(hostId)) throw RequestError("此主机不属于你的团队")
         val host = getById(hostId) ?: throw RequestError("无此主机")
-    dbcl.deleteOne(eq("_id", hostId))
-    team.delHost(hostId)
-    DockerService.deleteContainer(hostId.str)
+        dbcl.deleteOne(eq("_id", hostId))
+        team.delHost(hostId)
+        DockerService.deleteContainer(hostId.str)
     }
 
 
-    suspend fun update(uid: ObjectId, hostId: ObjectId, modpackId: ObjectId, packVer: String,) {
+    suspend fun update(uid: ObjectId, hostId: ObjectId, modpackId: ObjectId, packVer: String) {
         val team = TeamService.getOwn(uid) ?: throw RequestError("你不是队长")
         if (!team.hasHost(hostId)) throw RequestError("此主机不属于你的团队")
         val host = getById(hostId) ?: throw RequestError("无此主机")
@@ -141,15 +149,17 @@ object HostService {
             DockerService.stop(hostId.str)
         }
         DockerService.deleteContainer(hostId.str)
-    val worldId = host.worldId
-    DockerService.createContainer(host.port, hostId.str, worldId.str, "${modpackId.str}:$packVer")
+        val worldId = host.worldId
+        DockerService.createContainer(host.port, hostId.str, worldId.str, "${modpackId.str}:$packVer")
         if (running) {
             DockerService.start(hostId.str)
         }
-        dbcl.updateOne(eq("_id", host._id), combine(
-            set(Host::packVer.name, packVer),
-            set(Host::modpackId.name, modpackId)
-        ))
+        dbcl.updateOne(
+            eq("_id", host._id), combine(
+                set(Host::packVer.name, packVer),
+                set(Host::modpackId.name, modpackId)
+            )
+        )
     }
 
     suspend fun start(uid: ObjectId, hostId: ObjectId) {
@@ -175,18 +185,19 @@ object HostService {
             )
         } ?: ServerStatus.UNKNOWN
     }
+
     // Get logs by range: [startLine, endLine), 0 means newest line
     suspend fun getLog(uid: ObjectId, hostId: ObjectId, startLine: Int, needLines: Int): String {
-        if(needLines>50) throw RequestError("行数太多")
+        if (needLines > 50) throw RequestError("行数太多")
         val host = getById(hostId) ?: throw RequestError("无此主机")
         val team = TeamService.get(host.teamId) ?: throw RequestError("无此团队")
         if (!team.hasHost(hostId)) throw RequestError("此主机不属于你的团队")
         if (!team.isOwnerOrAdmin(uid)) throw RequestError("无权限")
-        return DockerService.getLog(hostId.str, startLine, startLine+needLines)
+        return DockerService.getLog(hostId.str, startLine, startLine + needLines)
     }
 
     // ---------- Streaming Helper (still needs ApplicationCall for SSE) ----------
-    suspend fun listenLogs(uid: ObjectId,hostId: ObjectId) :  suspend ByteWriteChannel.() -> Unit {
+    suspend fun listenLogs(uid: ObjectId, hostId: ObjectId): suspend ByteWriteChannel.() -> Unit {
         val host = getById(hostId) ?: throw RequestError("无此主机")
         val team = TeamService.get(host.teamId) ?: throw RequestError("无此团队")
         if (!team.hasHost(hostId)) throw RequestError("此主机不属于你的团队")
@@ -234,6 +245,7 @@ object HostService {
     // List all hosts belonging to a team
     suspend fun listByTeam(teamId: ObjectId): List<Host> =
         dbcl.find(eq("teamId", teamId)).toList()
+
     suspend fun belongsToTeam(hostId: ObjectId, teamId: ObjectId): Boolean =
         dbcl.find(and(eq("_id", hostId), eq("teamId", teamId)))
             .projection(org.bson.Document("_id", 1))

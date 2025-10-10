@@ -4,6 +4,7 @@ import calebxzhou.rdi.ui2.MaterialColor
 import calebxzhou.rdi.ui2.dp
 import calebxzhou.rdi.ui2.paddingDp
 import icyllis.modernui.R
+import icyllis.modernui.core.Clipboard.setText
 import icyllis.modernui.core.Context
 import icyllis.modernui.graphics.Canvas
 import icyllis.modernui.graphics.Paint
@@ -304,11 +305,16 @@ class RTextField(
         }
     }
 
-    fun setText(value: String) {
+    var text
+        get() = edit.text.toString()
+        set(value) {
+            edit.setText(value); updateLabelAndClear()
+        }
+    /*fun setText(value: String) {
         edit.setText(value); updateLabelAndClear()
     }
 
-    fun getText(): String = edit.text?.toString() ?: ""
+    fun getText(): String = edit.text.toString()*/
 
     fun setErrorEnabled(enabled: Boolean) {
         md3Error = enabled; updateLabelAndClear(); invalidate()

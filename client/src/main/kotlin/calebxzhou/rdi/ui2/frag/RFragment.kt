@@ -308,7 +308,6 @@ abstract class RFragment(initialTitle: String = "") : Fragment() {
             isClickable = true   // intercept clicks behind
             isFocusable = true
         }
-
         // Container for the child fragment's view, centered with fixed dp size
         val childContainer = FrameLayout(mainLayout.context).apply {
             layoutParams = frameLayoutParam(dp(widthDp), dp(heightDp)) {

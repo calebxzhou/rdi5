@@ -7,6 +7,6 @@ data class Response<T>(
     val code: Int,
     val msg: String,
     val data: T? = null
-) {
+)  {
     val ok = code == 0
 }

@@ -164,12 +164,8 @@ object TeamService {
             ),
             UpdateOptions().arrayFilters(
                 listOf(
-                    org.bson.Document(
-                        "arrayFilters", listOf(
-                            org.bson.Document("elem1.id", uid2),
-                            org.bson.Document("elem2.id", uid),
-                        )
-                    )
+                    org.bson.Document("elem1.id", uid2),
+                    org.bson.Document("elem2.id", uid)
                 )
             )
         )
@@ -185,11 +181,7 @@ object TeamService {
             Updates.set("members.$[elem].role", role),
             UpdateOptions().arrayFilters(
                 listOf(
-                    org.bson.Document(
-                        "arrayFilters", listOf(
-                            org.bson.Document("elem.id", uid2),
-                        )
-                    )
+                    org.bson.Document("elem.id", uid2)
                 )
             )
         )
