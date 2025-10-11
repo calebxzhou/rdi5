@@ -1,6 +1,7 @@
 package calebxzhou.rdi.ui2.component
 
 import calebxzhou.rdi.lgr
+import calebxzhou.rdi.net.humanSize
 import calebxzhou.rdi.ui2.MaterialColor
 import calebxzhou.rdi.ui2.PARENT
 import calebxzhou.rdi.ui2.SELF
@@ -8,7 +9,6 @@ import calebxzhou.rdi.ui2.dp
 import calebxzhou.rdi.ui2.frameLayout
 import calebxzhou.rdi.ui2.frameLayoutParam
 import calebxzhou.rdi.ui2.iconDrawable
-import calebxzhou.rdi.ui2.linearLayout
 import calebxzhou.rdi.ui2.linearLayoutParam
 import calebxzhou.rdi.ui2.paddingDp
 import calebxzhou.rdi.ui2.textView
@@ -16,7 +16,10 @@ import calebxzhou.rdi.ui2.toast
 import calebxzhou.rdi.ui2.uiThread
 import calebxzhou.rdi.util.ioScope
 import icyllis.modernui.core.Context
+import icyllis.modernui.graphics.Canvas
+import icyllis.modernui.graphics.Paint
 import icyllis.modernui.graphics.drawable.ColorDrawable
+import icyllis.modernui.graphics.drawable.Drawable
 import icyllis.modernui.graphics.drawable.ImageDrawable
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.view.View
@@ -24,33 +27,38 @@ import icyllis.modernui.widget.FrameLayout
 import icyllis.modernui.widget.ImageView
 import icyllis.modernui.widget.LinearLayout
 import icyllis.modernui.widget.TextView
+import icyllis.modernui.text.TextUtils
 import kotlinx.coroutines.launch
 import org.lwjgl.util.tinyfd.TinyFileDialogs
 import java.io.ByteArrayInputStream
 import java.io.File
-import java.util.Locale
+import kotlin.math.min
 
+data class ImageSelection(
+    val bytes: ByteArray,
+    val file: File? = null,
+    val displayName: String? = null,
+) {
+    val name: String
+        get() = displayName ?: file?.name ?: "自定义图片"
+}
 class ImagePicker(context: Context) : LinearLayout(context) {
 
-	data class Selection(
-		val bytes: ByteArray,
-		val file: File? = null,
-		val displayName: String? = null,
-	) {
-		val name: String
-			get() = displayName ?: file?.name ?: "自定义图片"
+
+	private val previewImage: ImageView
+	private val clearButton: ImageView
+	private val statusLabel: TextView
+	private val placeholderOverlay: View
+
+	companion object {
+		private const val MAX_DIMENSION = 512
+		private const val MAX_FILE_SIZE = 256 * 1024 // 256 KB
 	}
 
-	private val placeholderDrawable = iconDrawable("camera")
-	private val previewImage: ImageView
-	private val placeholderLabel: TextView
-	private val fileNameLabel: TextView
-	private val chooseButton: RButton
-	private val clearButton: RButton
+	private var currentSelection: ImageSelection? = null
 
-	private var currentSelection: Selection? = null
-
-	var onSelectionChanged: ((Selection?) -> Unit)? = null
+	var onSelectionChanged: ((ImageSelection?) -> Unit)? = null
+	var validator: ((ImageSelection) -> Boolean)? = null
 
 	val selectedBytes: ByteArray?
 		get() = currentSelection?.bytes
@@ -63,64 +71,61 @@ class ImagePicker(context: Context) : LinearLayout(context) {
 
 	init {
 		orientation = VERTICAL
-		paddingDp(12, 12, 12, 12)
-		background = ColorDrawable(0x22181818)
+		paddingDp(8)
 
 		val previewContainer = frameLayout {
-			layoutParams = linearLayoutParam(PARENT, context.dp(180f)) {
-				bottomMargin = context.dp(8f)
-			}
-			background = ColorDrawable(0x33222222)
+			layoutParams = linearLayoutParam(PARENT, context.dp(180f))
+			background = dottedBorderDrawable()
+			isClickable = true
+			isFocusable = true
+			setOnClickListener { openImageChooser() }
 		}
 
 		previewImage = ImageView(context).apply {
-			scaleType = ImageView.ScaleType.CENTER
+			scaleType = ImageView.ScaleType.CENTER_INSIDE
 		}
 		previewContainer.addView(previewImage, frameLayoutParam(PARENT, PARENT))
 
-		placeholderLabel = TextView(context).apply {
-			text = "点击下方按钮选择图片"
-			setTextColor(MaterialColor.GRAY_300.colorValue)
-			textSize = 14f
-			gravity = Gravity.CENTER
-			background = null
+		placeholderOverlay = FrameLayout(context).apply {
+			isClickable = false
+			addView(ImageView(context).apply {
+				setImageDrawable(iconDrawable("plus"))
+				layoutParams = FrameLayout.LayoutParams(context.dp(48f), context.dp(48f)).apply {
+					gravity = Gravity.CENTER
+				}
+			})
 		}
-		previewContainer.addView(placeholderLabel, frameLayoutParam(PARENT, PARENT) {
-			gravity = Gravity.CENTER
-		})
+		previewContainer.addView(placeholderOverlay, frameLayoutParam(PARENT, PARENT))
 
-		fileNameLabel = textView("未选择图片") {
-			setTextColor(MaterialColor.GRAY_200.colorValue)
-			textSize = 13f
-			gravity = Gravity.START
-			layoutParams = linearLayoutParam(PARENT, SELF) {
-				bottomMargin = context.dp(8f)
+		clearButton = ImageView(context).apply {
+			background = ColorDrawable(0xAA000000.toInt())
+			setImageDrawable(iconDrawable("error"))
+			paddingDp(0)
+			isClickable = true
+			visibility = View.GONE
+			contentDescription = "清除所选图片"
+			setOnClickListener {
+				clearSelection()
+				it.visibility = View.GONE
 			}
 		}
-
-		val buttonRow = linearLayout {
-			orientation = LinearLayout.HORIZONTAL
-			layoutParams = linearLayoutParam(PARENT, SELF)
-		}
-
-		chooseButton = RButton(context, color = MaterialColor.BLUE_600) {
-			openImageChooser()
-		}.apply {
-			text = "选择图片"
-		}
-		buttonRow.addView(chooseButton, linearLayoutParam(0, SELF) {
-			weight = 1f
+		previewContainer.addView(clearButton, frameLayoutParam(context.dp(32f), context.dp(32f)) {
+			gravity = Gravity.TOP or Gravity.END
+			topMargin = context.dp(6f)
+			rightMargin = context.dp(6f)
 		})
 
-		clearButton = RButton(context, color = MaterialColor.GRAY_700) {
-			clearSelection()
-		}.apply {
-			text = "清除"
+
+		statusLabel = textView("未选择图片") {
+			setTextColor(MaterialColor.GRAY_300.colorValue)
+			textSize = 13f
+			gravity = Gravity.START
+			ellipsize = TextUtils.TruncateAt.END
+			maxLines = 1
+			layoutParams = linearLayoutParam(PARENT, SELF) {
+				topMargin = context.dp(8f)
+			}
 		}
-		buttonRow.addView(clearButton, linearLayoutParam(0, SELF) {
-			weight = 1f
-			leftMargin = context.dp(8f)
-		})
 
 		updatePlaceholder()
 	}
@@ -144,7 +149,7 @@ class ImagePicker(context: Context) : LinearLayout(context) {
 			try {
 				val bytes = file.readBytes()
 				uiThread {
-					applySelection(Selection(bytes, file = file))
+					applySelection(ImageSelection(bytes, file = file))
 				}
 			} catch (e: Exception) {
 				lgr.warn("读取图片失败: ${e.message}")
@@ -162,14 +167,20 @@ class ImagePicker(context: Context) : LinearLayout(context) {
 	}
 
 	fun setImage(bytes: ByteArray, displayName: String? = null, triggerCallback: Boolean = true) {
-		applySelection(Selection(bytes, displayName = displayName), triggerCallback)
+		applySelection(ImageSelection(bytes, displayName = displayName), triggerCallback)
 	}
 
-	private fun applySelection(selection: Selection?, triggerCallback: Boolean = true) {
+	private fun applySelection(selection: ImageSelection?, triggerCallback: Boolean = true) {
 		if (selection == null) {
 			clearSelection(triggerCallback)
 			return
 		}
+
+        validator?.invoke(selection)?.let {
+            if (!it) {
+                return
+            }
+        }
 
 		if (renderSelection(selection)) {
 			currentSelection = selection
@@ -182,13 +193,14 @@ class ImagePicker(context: Context) : LinearLayout(context) {
 		}
 	}
 
-	private fun renderSelection(selection: Selection): Boolean {
+	private fun renderSelection(selection: ImageSelection): Boolean {
 		return try {
 			val drawable = ImageDrawable(ByteArrayInputStream(selection.bytes))
 			previewImage.setImageDrawable(drawable)
 			previewImage.scaleType = ImageView.ScaleType.CENTER_CROP
-			placeholderLabel.visibility = View.GONE
-			fileNameLabel.text = "${selection.name} (${formatSize(selection.bytes.size)})"
+			clearButton.visibility = View.VISIBLE
+			placeholderOverlay.visibility = View.GONE
+			statusLabel.text = selectionStatusText(selection)
 			true
 		} catch (e: Exception) {
 			lgr.warn("解码图片失败: ${e.message}")
@@ -196,21 +208,59 @@ class ImagePicker(context: Context) : LinearLayout(context) {
 		}
 	}
 
-	private fun updatePlaceholder() {
-		previewImage.setImageDrawable(placeholderDrawable)
-		previewImage.scaleType = ImageView.ScaleType.CENTER
-		placeholderLabel.visibility = View.VISIBLE
-		placeholderLabel.text = "点击下方按钮选择图片"
-		fileNameLabel.text = "未选择图片"
+
+
+	private fun selectionStatusText(selection: ImageSelection): String {
+		val size = selection.bytes.size.toLong().humanSize
+		return "${selection.name} · $size"
 	}
 
-	private fun formatSize(bytes: Int): String {
-		if (bytes < 1024) return "$bytes B"
-		val kb = bytes / 1024.0
-		if (kb < 1024) return String.format(Locale.getDefault(), "%.1f KB", kb)
-		val mb = kb / 1024.0
-		if (mb < 1024) return String.format(Locale.getDefault(), "%.2f MB", mb)
-		val gb = mb / 1024.0
-		return String.format(Locale.getDefault(), "%.2f GB", gb)
+	private fun updatePlaceholder() {
+		previewImage.setImageDrawable(null)
+		previewImage.scaleType = ImageView.ScaleType.CENTER_INSIDE
+		clearButton.visibility = View.GONE
+		placeholderOverlay.visibility = View.VISIBLE
+		statusLabel.text = "未选择图片"
 	}
+
+	private fun dottedBorderDrawable(): Drawable = object : Drawable() {
+		private val paint = Paint()
+		private val strokeWidth = context.dp(2f).toFloat()
+		private val dashLength = context.dp(12f).toFloat()
+		private val gapLength = context.dp(6f).toFloat()
+
+		override fun draw(canvas: Canvas) {
+			val rect = bounds
+			if (rect.width() <= 0 || rect.height() <= 0) return
+
+			paint.setRGBA(200, 200, 200, 180)
+			paint.style = Paint.Style.FILL.ordinal
+
+			val halfStroke = strokeWidth / 2f
+			val left = rect.left.toFloat() + halfStroke
+			val right = rect.right.toFloat() - halfStroke
+			val top = rect.top.toFloat() + halfStroke
+			val bottom = rect.bottom.toFloat() - halfStroke
+
+			var x = left
+			while (x < right) {
+				val endX = min(x + dashLength, right)
+				canvas.drawRect(x, top - halfStroke, endX, top + halfStroke, paint)
+				canvas.drawRect(x, bottom - halfStroke, endX, bottom + halfStroke, paint)
+				x = endX + gapLength
+			}
+
+			var y = top
+			while (y < bottom) {
+				val endY = min(y + dashLength, bottom)
+				canvas.drawRect(left - halfStroke, y, left + halfStroke, endY, paint)
+				canvas.drawRect(right - halfStroke, y, right + halfStroke, endY, paint)
+				y = endY + gapLength
+			}
+		}
+
+		override fun setAlpha(alpha: Int) {}
+	}
+
+
 }

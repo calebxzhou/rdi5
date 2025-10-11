@@ -35,7 +35,7 @@ class LoginFragment : RFragment("登录") {
                 qqInput.dropdownItems = storedAccounts.map { it.key.toHexString() }
                 qqInput.onDropdownItemSelected = { selected ->
                     accountLookup[selected]?.let { info ->
-                        passwordInput.setText(info.pwd)
+                        passwordInput.text = info.pwd
                     }
                 }
                 qqInput.edit.setOnLongClickListener {
@@ -44,8 +44,8 @@ class LoginFragment : RFragment("登录") {
                 }
                 creds.lastLogged?.let { last ->
                     val lastId = last.qq
-                    qqInput.setText(lastId)
-                    passwordInput.setText(last.pwd)
+                    qqInput.text = lastId
+                    passwordInput.text = last.pwd
                 }
             }
             bottomOptionsConfig = {

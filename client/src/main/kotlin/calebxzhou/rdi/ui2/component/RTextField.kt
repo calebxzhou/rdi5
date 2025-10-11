@@ -282,7 +282,7 @@ class RTextField(
         val popup = PopupMenu(context, this)
         dropdownItems.forEachIndexed { index, item ->
             popup.menu.add(0, index, index, item).setOnMenuItemClickListener {
-                setText(item)
+                text = item
                 onDropdownItemSelected?.invoke(item)
                 true
             }
@@ -310,11 +310,6 @@ class RTextField(
         set(value) {
             edit.setText(value); updateLabelAndClear()
         }
-    /*fun setText(value: String) {
-        edit.setText(value); updateLabelAndClear()
-    }
-
-    fun getText(): String = edit.text.toString()*/
 
     fun setErrorEnabled(enabled: Boolean) {
         md3Error = enabled; updateLabelAndClear(); invalidate()

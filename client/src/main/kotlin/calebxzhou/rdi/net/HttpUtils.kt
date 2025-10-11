@@ -249,7 +249,8 @@ fun formatBytes(bytes: Long): String {
     val gb = mb / 1024.0
     return "%.1fGB".format(gb)
 }
-
+val Long.humanSize: String
+    get() = formatBytes(this)
 // Format speed to human readable format
 fun formatSpeed(bytesPerSecond: Double): String {
     if (bytesPerSecond < 1024) return "%.0fB/s".format(bytesPerSecond)

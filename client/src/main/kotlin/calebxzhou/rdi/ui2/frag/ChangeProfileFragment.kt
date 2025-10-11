@@ -19,11 +19,11 @@ class ChangeProfileFragment: RFragment("修改信息") {
     init {
         contentLayoutInit = {
             nameEdit = editText("昵称") {
-                setText(account.name)
+                text = account.name
             }
             pwdEdit = editPwd("新密码 留空则不修改")
             /*qqEdit = editText("QQ号") {
-                setText(account.qq)
+                text = account.qq
             }*/
             button("修改"){onChangeClicked()}
         }
