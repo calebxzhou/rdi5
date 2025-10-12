@@ -1,21 +1,20 @@
-package calebxzhou.rdi.ui2.frag
+package calebxzhou.rdi.ui2.frag.pack
 
 import calebxzhou.rdi.model.pack.Modpack
 import calebxzhou.rdi.ui2.MaterialColor
 import calebxzhou.rdi.ui2.PARENT
 import calebxzhou.rdi.ui2.SELF
-import calebxzhou.rdi.ui2.dp
 import calebxzhou.rdi.ui2.linearLayout
 import calebxzhou.rdi.ui2.linearLayoutParam
 import calebxzhou.rdi.ui2.paddingDp
 import calebxzhou.rdi.ui2.scrollView
 import calebxzhou.rdi.ui2.textView
 import calebxzhou.rdi.ui2.component.ModpackCard
+import calebxzhou.rdi.ui2.frag.RFragment
 import calebxzhou.rdi.ui2.horizontal
 import calebxzhou.rdi.ui2.vertical
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.view.View
-import icyllis.modernui.widget.LinearLayout
 
 class ModpackMarketFragment: RFragment("整合包市场") {
     private val mockModpacks: List<Modpack> = listOf(

@@ -2,11 +2,7 @@ package calebxzhou.rdi.ui2
 
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.model.Room
-import calebxzhou.rdi.ui2.frag.LoginFragment
-import calebxzhou.rdi.ui2.frag.ModpackCreateFragment
-import calebxzhou.rdi.ui2.frag.ProfileFragment
-import calebxzhou.rdi.ui2.frag.RegisterFragment
-import calebxzhou.rdi.ui2.frag.TeamFragment
+import calebxzhou.rdi.ui2.frag.pack.ModpackCreateFragment
 import calebxzhou.rdi.util.serdesJson
 import icyllis.modernui.ModernUI
 import icyllis.modernui.R

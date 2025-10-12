@@ -71,6 +71,7 @@ suspend inline fun <reified T> httpRequest(
     headers: List<Pair<String, String>> = emptyList()
 ): HttpResponse<T> = withContext(Dispatchers.IO) {
     System.setProperty("jdk.httpclient.allowRestrictedHeaders", "host,connection,content-length,expect,upgrade,via")
+
     // Filter out parameters with null values
     val filteredParams = params.filter { it.second != null }
 
@@ -115,7 +116,9 @@ suspend inline fun <reified T> httpRequest(
     headers.forEach { (key, value) ->
         requestBuilder.header(key, value)
     }
-
+    if(url.contains("api.curseforge.com")){
+        requestBuilder.header("x-api-key", Const.CF_AKEY)
+    }
     // Set timeout and build request
     val request = requestBuilder
         .timeout(Duration.ofSeconds(60))

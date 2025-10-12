@@ -111,11 +111,11 @@ class RServer(
     }
     fun connect() {
 
-        if (!noUpdate && isMcStarted) {
+     /*   if (!noUpdate && isMcStarted) {
             goto(UpdateFragment(this))
-        } else {
+        } else {*/
             goto(LoginFragment())
-        }
+      //  }
     }
     fun disconnectGhq() {
         channelFuture?.channel()?.close()

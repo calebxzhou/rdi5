@@ -150,6 +150,8 @@ object HostService {
         }
         DockerService.deleteContainer(hostId.str)
         val worldId = host.worldId
+        //TODO 暂时不支持自定义整合包 只能用官方的
+
         DockerService.createContainer(host.port, hostId.str, worldId.str, "${modpackId.str}:$packVer")
         if (running) {
             DockerService.start(hostId.str)

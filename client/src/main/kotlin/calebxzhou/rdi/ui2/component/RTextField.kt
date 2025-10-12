@@ -63,7 +63,11 @@ class RTextField(
         set(value) {
             field = value; invalidate()
         }
-
+    var multiLine: Boolean = false
+        set(value) {
+            field = value
+            edit.setSingleLine(!value)
+        }
     private var isFocusedState = false
     private var isHoveredState = false
     private var constructed = false
