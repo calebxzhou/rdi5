@@ -1,14 +1,18 @@
 package calebxzhou.rdi.ui2.frag.pack
 
+import calebxzhou.rdi.lgr
 import calebxzhou.rdi.net.humanSize
+import calebxzhou.rdi.service.ModService
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.ImageSelection
 import calebxzhou.rdi.ui2.component.RTextField
 import calebxzhou.rdi.ui2.component.alertErr
 import calebxzhou.rdi.ui2.frag.RFragment
 import calebxzhou.rdi.util.ioScope
+import calebxzhou.rdi.util.json
 import icyllis.modernui.graphics.BitmapFactory
 import icyllis.modernui.widget.LinearLayout
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class ModpackCreateFragment: RFragment("制作整合包1") {

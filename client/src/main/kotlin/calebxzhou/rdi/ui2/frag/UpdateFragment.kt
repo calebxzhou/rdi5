@@ -5,19 +5,17 @@ import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.net.downloadFileWithProgress
 import calebxzhou.rdi.net.formatBytes
 import calebxzhou.rdi.net.formatSpeed
+import calebxzhou.rdi.service.ModService
 import calebxzhou.rdi.service.ModService.MOD_DIR
-import calebxzhou.rdi.service.ModService.gatherModIdFile
-import calebxzhou.rdi.service.ModService.gatherModIdSha1
 import calebxzhou.rdi.ui2.*
-import calebxzhou.rdi.util.*
-import com.electronwill.nightconfig.core.Config
-import com.electronwill.nightconfig.toml.TomlFormat
+import calebxzhou.rdi.util.ioTask
+import calebxzhou.rdi.util.notifyOs
+import calebxzhou.rdi.util.serdesJson
+import calebxzhou.rdi.util.sha1
 import icyllis.modernui.view.View
 import icyllis.modernui.widget.LinearLayout
 import icyllis.modernui.widget.ScrollView
 import java.io.File
-import java.security.MessageDigest
-import java.util.jar.JarFile
 import kotlin.system.exitProcess
 
 class UpdateFragment(val server: RServer) : RFragment("正在检查更新") {
@@ -124,8 +122,8 @@ class UpdateFragment(val server: RServer) : RFragment("正在检查更新") {
 
     //返回需要更新的mod列表
     suspend fun RServer.checkUpdate(modsDir: File): Map<String, File> {
-        val clientIdFile = gatherModIdFile(modsDir)
-        val clientIdSha1 = gatherModIdSha1(modsDir)
+        val clientIdFile = ModService.idMods
+        val clientIdSha1 = ModService.idSha1s
         val modlist = prepareRequest<String>(false, "update/mod-list").data
 
         val modsUpdate = hashMapOf<String, File>()

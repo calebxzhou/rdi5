@@ -59,8 +59,9 @@ suspend fun httpStringRequest(
     post: Boolean = false,
     url: String,
     params: List<Pair<String, Any?>> = emptyList(),
-    headers: List<Pair<String, String>> = emptyList()
-): HttpResponse<String> = httpRequest<String>(post, url, params, headers)
+    headers: List<Pair<String, String>> = emptyList(),
+    jsonBody: String? = null
+): HttpResponse<String> = httpRequest(post, url, params, headers, jsonBody)
 
 // Generic function that chooses appropriate body handler based on type T
 // Note: For file downloads, consider using downloadFile() function instead
@@ -68,7 +69,8 @@ suspend inline fun <reified T> httpRequest(
     post: Boolean = false,
     url: String,
     params: List<Pair<String, Any?>> = emptyList(),
-    headers: List<Pair<String, String>> = emptyList()
+    headers: List<Pair<String, String>> = emptyList(),
+    jsonBody: String? = null
 ): HttpResponse<T> = withContext(Dispatchers.IO) {
     System.setProperty("jdk.httpclient.allowRestrictedHeaders", "host,connection,content-length,expect,upgrade,via")
 
@@ -84,18 +86,30 @@ suspend inline fun <reified T> httpRequest(
     // Create JDK HTTP client
     val client = HttpClient.newBuilder()
         .connectTimeout(Duration.ofSeconds(30))
+        .followRedirects(HttpClient.Redirect.NORMAL)
         .build()
 
     val requestBuilder = if (post) {
-        // For POST, create form data body
-        val formData = filteredParams.joinToString("&") { (key, value) ->
-            "${URLEncoder.encode(key, StandardCharsets.UTF_8)}=${URLEncoder.encode(value.toString(), StandardCharsets.UTF_8)}"
+        if (jsonBody != null) {
+            val builder = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .POST(HttpRequest.BodyPublishers.ofString(jsonBody, StandardCharsets.UTF_8))
+
+            if (headers.none { it.first.equals("Content-Type", ignoreCase = true) }) {
+                builder.header("Content-Type", "application/json; charset=UTF-8")
+            }
+            builder
+        } else {
+            // For POST, create form data body
+            val formData = filteredParams.joinToString("&") { (key, value) ->
+                "${URLEncoder.encode(key, StandardCharsets.UTF_8)}=${URLEncoder.encode(value.toString(), StandardCharsets.UTF_8)}"
+            }
+
+            HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
+                .POST(HttpRequest.BodyPublishers.ofString(formData, StandardCharsets.UTF_8))
         }
-        
-        HttpRequest.newBuilder()
-            .uri(URI.create(url))
-            .header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
-            .POST(HttpRequest.BodyPublishers.ofString(formData, StandardCharsets.UTF_8))
     } else {
         // For GET, add URL parameters
         val urlWithParams = if (filteredParams.isNotEmpty()) {
@@ -152,6 +166,7 @@ suspend fun downloadFile(
     // Create JDK HTTP client
     val client = HttpClient.newBuilder()
         .connectTimeout(Duration.ofSeconds(30))
+        .followRedirects(HttpClient.Redirect.NORMAL)
         .build()
 
     val requestBuilder = HttpRequest.newBuilder()
