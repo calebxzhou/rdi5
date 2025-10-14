@@ -4,6 +4,7 @@ import calebxzhou.rdi.Const
 import calebxzhou.rdi.lgr
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.net.ProxySelector
 import java.net.URI
 import java.net.URLEncoder
 import java.net.http.HttpClient
@@ -49,6 +50,14 @@ private fun HttpRequest.Builder.forceHeader(name: String, value: String): HttpRe
         }
     }
 }
+
+@PublishedApi
+internal fun applySystemProxy(builder: HttpClient.Builder) {
+
+    runCatching { ProxySelector.getDefault() }
+        .getOrNull()
+        ?.let { selector -> builder.proxy(selector) }
+}
 val <T> HttpResponse<T>.success
     get() = this.statusCode() in 200..299
 val HttpResponse<String>.body
@@ -85,8 +94,9 @@ suspend inline fun <reified T> httpRequest(
 
     // Create JDK HTTP client
     val client = HttpClient.newBuilder()
-        .connectTimeout(Duration.ofSeconds(30))
+        .connectTimeout(Duration.ofSeconds(10))
         .followRedirects(HttpClient.Redirect.NORMAL)
+        .apply { applySystemProxy(this) }
         .build()
 
     val requestBuilder = if (post) {
@@ -167,6 +177,7 @@ suspend fun downloadFile(
     val client = HttpClient.newBuilder()
         .connectTimeout(Duration.ofSeconds(30))
         .followRedirects(HttpClient.Redirect.NORMAL)
+        .apply { applySystemProxy(this) }
         .build()
 
     val requestBuilder = HttpRequest.newBuilder()
@@ -202,6 +213,7 @@ suspend fun downloadFileWithProgress(
     try {
         val client = HttpClient.newBuilder()
             .connectTimeout(java.time.Duration.ofSeconds(30))
+            .apply { applySystemProxy(this) }
             .build()
 
         val request = java.net.http.HttpRequest.newBuilder()

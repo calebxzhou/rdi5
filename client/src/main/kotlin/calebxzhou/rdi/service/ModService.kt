@@ -1,38 +1,42 @@
 package calebxzhou.rdi.service
 
-import calebxzhou.rdi.auth.LocalCredentials.Companion.file
+import calebxzhou.rdi.RDI
 import calebxzhou.rdi.lgr
-import calebxzhou.rdi.model.McmodInfo
-import calebxzhou.rdi.model.ModAuthor
 import calebxzhou.rdi.net.httpStringRequest
 import calebxzhou.rdi.net.success
 import calebxzhou.rdi.model.ModrinthVersionInfo
 import calebxzhou.rdi.model.ModrinthVersionLookupRequest
-import calebxzhou.rdi.net.body
-import calebxzhou.rdi.service.ModService.MOD_DIR
-import calebxzhou.rdi.service.ModService.mcmodHeader
-import calebxzhou.rdi.service.ModService.mcmodSearchUrl
-import calebxzhou.rdi.service.ModService.mods
 import calebxzhou.rdi.util.json
 import calebxzhou.rdi.util.serdesJson
 import calebxzhou.rdi.util.sha1
-import calebxzhou.rdi.util.urlEncoded
 import com.electronwill.nightconfig.core.CommentedConfig
 import com.electronwill.nightconfig.core.Config
 import com.electronwill.nightconfig.toml.TomlFormat
 import java.io.File
 import java.net.URI
 import java.util.jar.JarFile
-import org.jsoup.Jsoup
 import kotlin.collections.contains
 import kotlin.collections.firstOrNull
-import kotlin.collections.plusAssign
 
 
 object ModService {
     const val NEOFORGE_CONFIG_PATH = "META-INF/neoforge.mods.toml"
     const val FABRIC_CONFIG_PATH = "fabric.mod.json"
     const val FORGE_CONFIG_PATH = "META-INF/mods.toml"
+
+    private const val MCMOD_CACHE_TTL_MS = 7L * 24 * 60 * 60 * 1000
+    private val mcmodCacheRoot by lazy { File(File(RDI.DIR, "cache"), "mcmod").apply { mkdirs() } }
+
+    private fun mcmodCacheFile(url: String): File? {
+        val path = runCatching { URI(url).path }.getOrNull()?.trimStart('/') ?: return null
+        val safeSegments = path.split('/')
+            .filter { it.isNotBlank() && it != "." && it != ".." }
+        if (safeSegments.isEmpty()) {
+            return null
+        }
+        val relativePath = safeSegments.joinToString(File.separator)
+        return File(mcmodCacheRoot, relativePath)
+    }
 
     private fun JarFile.readNeoForgeConfig(): CommentedConfig? {
         return getJarEntry(NEOFORGE_CONFIG_PATH)?.let { modsTomlEntry ->
@@ -155,35 +159,72 @@ Priority: u=0, i
         return decoded
     }
 
-    suspend fun getInfoMcmod(keyword: String): McmodInfo? {
+    /*suspend fun getInfoMcmod(modId: String,modName: String): McmodInfo? {
 
-        val modUrl = httpStringRequest(url = "${mcmodSearchUrl}${keyword.urlEncoded}", headers = mcmodHeader).body
+        val modUrl = httpStringRequest(url = "${mcmodSearchUrl}${"$modId $modName".urlEncoded}", headers = mcmodHeader).body
             .let { Jsoup.parse(it) }
             .select(".result-item>.head>a").firstOrNull()
             ?.attr("href")
             ?: let {
-                lgr.warn("mcmod未找到mod信息，关键词：$keyword")
+                lgr.warn("mcmod未找到mod信息，关键词：$modId $modName")
                 return null
             }
-        val modHost = runCatching { URI(modUrl).host }.getOrNull()
-        val detailHeaders = if (modHost.isNullOrBlank()) {
-            mcmodHeader
+        val cacheFile = mcmodCacheFile(modUrl)
+        val cachedBody = cacheFile?.takeIf { it.exists() }?.let { file ->
+            runCatching { file.readText(StandardCharsets.UTF_8) }
+                .onFailure { err -> lgr.warn("读取mcmod缓存失败: ${file.absolutePath}", err) }
+                .getOrNull()
+        }
+        val cacheExpired = cacheFile?.let { !it.exists() || System.currentTimeMillis() - it.lastModified() > MCMOD_CACHE_TTL_MS } ?: true
+
+        val modBody = if (!cacheExpired && !cachedBody.isNullOrBlank()) {
+            cachedBody
         } else {
-            mcmodHeader.map { (key, value) ->
-                if (key.equals("Host", ignoreCase = true)) key to modHost else key to value
+            val modHost = runCatching { URI(modUrl).host }.getOrNull()
+            val detailHeaders = if (modHost.isNullOrBlank()) {
+                mcmodHeader
+            } else {
+                mcmodHeader.map { (key, value) ->
+                    if (key.equals("Host", ignoreCase = true)) key to modHost else key to value
+                }
+            }
+
+            val modResponse = httpStringRequest(url = modUrl, headers = detailHeaders)
+
+            if (!modResponse.success) {
+                if (!cachedBody.isNullOrBlank()) {
+                    lgr.warn("mcmod详情页请求失败: HTTP ${modResponse.statusCode()} url=$modUrl，使用本地缓存")
+                    cachedBody
+                } else {
+                    lgr.warn("mcmod详情页请求失败: HTTP ${modResponse.statusCode()} url=$modUrl")
+                    return null
+                }
+            } else {
+                val networkBody = modResponse.body()
+                if (networkBody.isNullOrBlank()) {
+                    if (!cachedBody.isNullOrBlank()) {
+                        lgr.warn("mcmod详情页返回空内容，url=$modUrl，使用本地缓存")
+                        cachedBody
+                    } else {
+                        lgr.warn("mcmod详情页返回空内容，url=$modUrl")
+                        return null
+                    }
+                } else {
+                    cacheFile?.let { file ->
+                        runCatching {
+                            file.parentFile?.mkdirs()
+                            file.writeText(networkBody, StandardCharsets.UTF_8)
+                        }.onFailure { err ->
+                            lgr.warn("mcmod详情页缓存写入失败: ${file.absolutePath}", err)
+                        }
+                    }
+                    networkBody
+                }
             }
         }
 
-        val modResponse = httpStringRequest(url = modUrl, headers = detailHeaders)
-
-        if (!modResponse.success) {
-            lgr.warn("mcmod详情页请求失败: HTTP ${modResponse.statusCode()} url=$modUrl")
-            return null
-        }
-
-        val modBody = modResponse.body()
         if (modBody.isNullOrBlank()) {
-            lgr.warn("mcmod详情页返回空内容，url=$modUrl")
+            lgr.warn("mcmod详情页内容为空，url=$modUrl")
             return null
         }
 
@@ -235,12 +276,15 @@ Priority: u=0, i
         return McmodInfo(
             pageUrl = modUrl,
             logoUrl = logoUrl,
-            name = resolvedName.ifBlank { keyword },
-            nameCn = nameCn.ifBlank { resolvedName.ifBlank { keyword } },
+            name = resolvedName.ifBlank { modName },
+            nameCn = nameCn.ifBlank { resolvedName.ifBlank { modName } },
             categories = categories,
             intro = intro,
             authors = authors
         )
+
+    }*/
+    fun readPCLModData(){
 
     }
 
