@@ -1,11 +1,16 @@
 package calebxzhou.rdi.model
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class ModBriefInfo(
     //页面id  /class/{id}.html
     val mcmodId: Int,
     val logoUrl: String,
     val name:String,
-    val nameCn: String?,
+    val nameCn: String?=null,
+    //一句话介绍
+    val intro: String,
     // mod通名
     val curseforgeSlugs: List<String>,
     val modrinthSlugs: List<String>,

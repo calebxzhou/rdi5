@@ -24,7 +24,8 @@ val module = SerializersModule {
 }
 
 // Use the module with JSON configuration
-val serdesJson = Json { serializersModule = module
+val serdesJson = Json {
+    serializersModule = module
     ignoreUnknownKeys = true
     isLenient = true // Allows parsing of malformed JSON
     coerceInputValues = true // Helps with default values and nulls

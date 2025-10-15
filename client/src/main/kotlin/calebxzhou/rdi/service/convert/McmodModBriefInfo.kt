@@ -10,7 +10,7 @@ data class McmodModBriefInfo(
     val logoUrl: String,
     val name:String,
     //中文名
-    val nameCn: String?,
+    val nameCn: String?=null,
     //一句话介绍
     val intro: String,
 )

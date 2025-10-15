@@ -1,11 +1,199 @@
 package calebxzhou.rdi.ui2.component
 
-import calebxzhou.rdi.model.ModVo
+import calebxzhou.rdi.model.ModBriefVo
+import calebxzhou.rdi.net.httpRequest
+import calebxzhou.rdi.net.success
+import calebxzhou.rdi.ui2.Fonts
+import calebxzhou.rdi.ui2.MaterialColor
+import calebxzhou.rdi.ui2.PARENT
+import calebxzhou.rdi.ui2.SELF
+import calebxzhou.rdi.ui2.dp
+import calebxzhou.rdi.ui2.drawable
+import calebxzhou.rdi.ui2.linearLayoutParam
+import calebxzhou.rdi.ui2.uiThread
+import calebxzhou.rdi.util.ioScope
 import icyllis.modernui.core.Context
+import icyllis.modernui.graphics.Paint
+import icyllis.modernui.graphics.drawable.Drawable
+import icyllis.modernui.graphics.drawable.ImageDrawable
+import icyllis.modernui.text.TextUtils
+import icyllis.modernui.view.Gravity
+import icyllis.modernui.view.View
+import icyllis.modernui.widget.ImageView
+import icyllis.modernui.widget.LinearLayout
+import icyllis.modernui.widget.TextView
+import kotlinx.coroutines.launch
+import java.io.ByteArrayInputStream
 
 class ModCard(
     context: Context,
-    val vo: ModVo
-) {
+    val vo: ModBriefVo
+): LinearLayout(context) {
+
+    private val iconView: ImageView
+    private val primaryTitleView: TextView
+    private val secondaryTitleView: TextView
+    private val introView: TextView
+
+    init {
+        orientation = HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        background = cardBackground()
+        setPadding(context.dp(12f), context.dp(12f), context.dp(12f), context.dp(12f))
+        layoutParams = linearLayoutParam(PARENT, SELF) {
+            bottomMargin = context.dp(8f)
+        }
+
+        iconView = ImageView(context).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            background = iconBackground()
+        }
+        addView(iconView, linearLayoutParam(context.dp(56f), context.dp(56f)) {
+            rightMargin = context.dp(16f)
+        })
+
+        val textColumn = LinearLayout(context).apply {
+            orientation = VERTICAL
+            gravity = Gravity.START
+        }
+        addView(textColumn, linearLayoutParam(0, SELF) {
+            weight = 1f
+        })
+
+        val titleRow = LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        textColumn.addView(titleRow, linearLayoutParam(PARENT, SELF))
+
+        primaryTitleView = TextView(context).apply {
+            textSize = 18f
+            typeface = Fonts.UI.typeface
+            setTextColor(MaterialColor.GRAY_900.colorValue)
+        }
+        titleRow.addView(primaryTitleView, linearLayoutParam(0, SELF) {
+            weight = 1f
+        })
+
+        secondaryTitleView = TextView(context).apply {
+            textSize = 14f
+            typeface = Fonts.UI.typeface
+            setTextColor(MaterialColor.BLUE_600.colorValue)
+        }
+        titleRow.addView(secondaryTitleView, linearLayoutParam(SELF, SELF) {
+            leftMargin = context.dp(8f)
+        })
+
+        introView = TextView(context).apply {
+            textSize = 13f
+            typeface = Fonts.UI.typeface
+            setTextColor(MaterialColor.GRAY_700.colorValue)
+            maxLines = 2
+            ellipsize = TextUtils.TruncateAt.END
+            setLineSpacing(0f, 1.2f)
+        }
+        textColumn.addView(introView, linearLayoutParam(PARENT, SELF) {
+            topMargin = context.dp(6f)
+        })
+
+        bindData()
+    }
+
+    private fun bindData() {
+        val hasChineseName = !vo.nameCn.isNullOrBlank()
+        if (hasChineseName) {
+            primaryTitleView.text = vo.nameCn
+            secondaryTitleView.text = vo.name
+            secondaryTitleView.visibility = View.VISIBLE
+        } else {
+            primaryTitleView.text = vo.name
+            secondaryTitleView.visibility = View.GONE
+        }
+
+        introView.text = vo.intro.ifBlank { "暂无简介" }
+
+        loadIcon()
+    }
+
+    private fun loadIcon() {
+        val data = vo.iconData
+        if (data != null && data.isNotEmpty()) {
+            val drawable = runCatching { ImageDrawable(ByteArrayInputStream(data)) }.getOrNull()
+            if (drawable != null) {
+                iconView.setImageDrawable(drawable)
+                iconView.visibility = View.VISIBLE
+                return
+            }
+        }
+
+        val urlsToTry = vo.iconUrls.filter { it.isNotBlank() }.take(2)
+        if (urlsToTry.isEmpty()) {
+            iconView.setImageDrawable(null)
+            iconView.visibility = View.GONE
+            return
+        }
+
+        iconView.visibility = View.INVISIBLE
+        ioScope.launch {
+            val stream = fetchDrawable(urlsToTry).use {
+
+                uiThread {
+                    val drawable = ImageDrawable(it)
+                    if (drawable != null) {
+                        iconView.setImageDrawable(drawable)
+                        iconView.visibility = View.VISIBLE
+                    } else {
+                        iconView.setImageDrawable(null)
+                        iconView.visibility = View.GONE
+                    }
+                }
+            }
+        }
+    }
+
+    private suspend fun fetchDrawable(urls: List<String>): ByteArrayInputStream? {
+        for (url in urls) {
+            val response = runCatching { httpRequest<ByteArray>(url = url) }.getOrNull() ?: continue
+            if (!response.success) continue
+            val bytes = response.body()
+            if (bytes.isEmpty()) continue
+            return (ByteArrayInputStream(bytes))
+
+
+        }
+        return null
+    }
+
+    private fun cardBackground(): Drawable = drawable { canvas ->
+        val paint = Paint.obtain()
+        paint.setRGBA(255, 255, 255, 235)
+        paint.style = Paint.Style.FILL.ordinal
+        val radius = context.dp(16f).toFloat()
+        canvas.drawRoundRect(
+            bounds.left.toFloat(),
+            bounds.top.toFloat(),
+            bounds.right.toFloat(),
+            bounds.bottom.toFloat(),
+            radius,
+            paint
+        )
+        paint.recycle()
+    }
+
+    private fun iconBackground(): Drawable = drawable { canvas ->
+        val paint = Paint.obtain()
+        paint.setRGBA(240, 240, 240, 255)
+        paint.style = Paint.Style.FILL.ordinal
+        val radius = context.dp(12f).toFloat()
+        canvas.drawRoundRect(
+            bounds.left.toFloat(),
+            bounds.top.toFloat(),
+            bounds.right.toFloat(),
+            bounds.bottom.toFloat(),
+            radius,
+            paint
+        )
+        paint.recycle()
+    }
 
 }

@@ -1,10 +1,13 @@
 package calebxzhou.rdi.ui2.frag.pack
 
 import calebxzhou.rdi.lgr
+import calebxzhou.rdi.model.ModBriefInfo
+import calebxzhou.rdi.model.ModBriefVo
 import calebxzhou.rdi.net.humanSize
 import calebxzhou.rdi.service.ModService
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.ImageSelection
+import calebxzhou.rdi.ui2.component.ModCard
 import calebxzhou.rdi.ui2.component.RTextField
 import calebxzhou.rdi.ui2.component.alertErr
 import calebxzhou.rdi.ui2.frag.RFragment
@@ -83,6 +86,27 @@ class ModpackCreate2Fragment(val params: List<Pair<String,String>>): RFragment("
         }
     }
     private fun loadMods(contentLayout: LinearLayout) = ioScope.launch {
-
+        ModService.getFingerprintsCurseForge()?.exactMatches?.map { it.id }
+            ?.let { ModService.getInfosCurseForge(it) }
+            ?.forEach { match ->
+                ModService.cfSlugBriefInfo[match.slug]?.let { info ->
+                    uiThread {
+                        contentLayout += ModCard(
+                            contentLayout.context,
+                            info.toVo()
+                        )
+                    }
+                }
+            }
     }
+
+private fun ModBriefInfo.toVo() = ModBriefVo(
+    name = name,
+    nameCn = nameCn,
+    intro = intro,
+    iconData = null,
+    iconUrls = buildList {
+        if (logoUrl.isNotBlank()) add(logoUrl)
+    }
+)
 }

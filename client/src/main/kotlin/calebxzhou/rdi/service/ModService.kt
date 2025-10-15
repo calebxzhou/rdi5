@@ -2,11 +2,19 @@ package calebxzhou.rdi.service
 
 import calebxzhou.rdi.RDI
 import calebxzhou.rdi.lgr
+import calebxzhou.rdi.model.CurseForgeFingerprintData
+import calebxzhou.rdi.model.CurseForgeFingerprintRequest
+import calebxzhou.rdi.model.CurseForgeFingerprintResponse
+import calebxzhou.rdi.model.CurseForgeMod
+import calebxzhou.rdi.model.CurseForgeModsRequest
+import calebxzhou.rdi.model.CurseForgeModsResponse
+import calebxzhou.rdi.model.ModBriefInfo
 import calebxzhou.rdi.net.httpStringRequest
 import calebxzhou.rdi.net.success
 import calebxzhou.rdi.model.ModrinthVersionInfo
 import calebxzhou.rdi.model.ModrinthVersionLookupRequest
 import calebxzhou.rdi.util.json
+import calebxzhou.rdi.util.murmur2
 import calebxzhou.rdi.util.serdesJson
 import calebxzhou.rdi.util.sha1
 import com.electronwill.nightconfig.core.CommentedConfig
@@ -23,6 +31,9 @@ object ModService {
     const val NEOFORGE_CONFIG_PATH = "META-INF/neoforge.mods.toml"
     const val FABRIC_CONFIG_PATH = "fabric.mod.json"
     const val FORGE_CONFIG_PATH = "META-INF/mods.toml"
+    val briefInfo: List<ModBriefInfo> by lazy { loadBriefInfo() }
+    val cfSlugBriefInfo: Map<String, ModBriefInfo> by lazy { buildSlugMap(briefInfo) { it.curseforgeSlugs } }
+    val mrSlugBriefInfo: Map<String, ModBriefInfo> by lazy { buildSlugMap(briefInfo) { it.modrinthSlugs } }
 
     private const val MCMOD_CACHE_TTL_MS = 7L * 24 * 60 * 60 * 1000
     private val mcmodCacheRoot by lazy { File(File(RDI.DIR, "cache"), "mcmod").apply { mkdirs() } }
@@ -36,6 +47,45 @@ object ModService {
         }
         val relativePath = safeSegments.joinToString(File.separator)
         return File(mcmodCacheRoot, relativePath)
+    }
+
+    private fun loadBriefInfo(): List<ModBriefInfo> {
+        val resourcePath = "mod_brief_info.json"
+        val raw = runCatching {
+            ModService::class.java.classLoader.getResourceAsStream(resourcePath)?.bufferedReader()?.use { it.readText() }
+        }.onFailure {
+            lgr.error("Failed to read $resourcePath", it)
+        }.getOrNull()
+
+        if (raw.isNullOrBlank()) {
+            lgr.warn("mod_brief_info.json is missing or empty; fallback to empty brief info list")
+            return emptyList()
+        }
+
+        return runCatching { serdesJson.decodeFromString<List<ModBriefInfo>>(raw) }
+            .onFailure { err -> lgr.error("Failed to decode mod_brief_info.json", err) }
+            .getOrElse { emptyList() }
+    }
+
+    private fun buildSlugMap(
+        data: List<ModBriefInfo>,
+        slugSelector: (ModBriefInfo) -> List<String>
+    ): Map<String, ModBriefInfo> {
+        val map = linkedMapOf<String, ModBriefInfo>()
+        data.forEach { info ->
+            slugSelector(info)
+                .asSequence()
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+                .forEach { slug ->
+                    val normalized = slug.lowercase()
+                    val previous = map.put(normalized, info)
+                    if (previous != null && previous !== info) {
+                        lgr.debug("Duplicated slug '$slug' now mapped to ${info.mcmodId}, previously ${previous.mcmodId}")
+                    }
+                }
+        }
+        return map
     }
 
     private fun JarFile.readNeoForgeConfig(): CommentedConfig? {
@@ -115,7 +165,100 @@ Priority: u=0, i
                 }
         }.toMap()
 
+    suspend fun getFingerprintsCurseForge(): CurseForgeFingerprintData? {
 
+        if (mods.isEmpty()) {
+            lgr.info("CurseForge lookup skipped: no mods found in ${MOD_DIR.absolutePath}")
+            return null
+        }
+
+        val fingerprints = mods.map { it.murmur2 }
+        if (fingerprints.isEmpty()) {
+            lgr.info("CurseForge lookup skipped: no fingerprints generated")
+            return null
+        }
+
+        val requestPayload = CurseForgeFingerprintRequest(fingerprints = fingerprints)
+
+        val response = httpStringRequest(
+            post = true,
+            url = "https://api.curseforge.com/v1/fingerprints/432",
+            jsonBody = requestPayload.json
+        )
+
+        if (!response.success) {
+            lgr.warn("CurseForge lookup failed: HTTP ${response.statusCode()} ${response.body()}")
+            return null
+        }
+
+        val body = response.body()
+        if (body.isNullOrBlank()) {
+            lgr.warn("CurseForge lookup returned empty body")
+            return null
+        }
+
+        val decoded = runCatching {
+            serdesJson.decodeFromString<CurseForgeFingerprintResponse>(body)
+        }.onFailure { err ->
+            lgr.error("Failed to parse CurseForge response", err)
+        }.getOrNull() ?: return null
+
+        val data = decoded.data
+        if (data == null) {
+            lgr.warn("CurseForge response missing data field")
+            return null
+        }
+
+        lgr.info(
+            "CurseForge: ${data.exactMatches.size} exact matches, ${data.partialMatches.size} partial matches, ${data.unmatchedFingerprints.size} unmatched"
+        )
+
+        return data
+    }
+    suspend fun getInfosCurseForge(cfModIds: List<Long>): List<CurseForgeMod> {
+
+        if (cfModIds.isEmpty()) {
+            lgr.info("CurseForge mod lookup skipped: empty mod ID list")
+            return emptyList()
+        }
+
+        val requestPayload = CurseForgeModsRequest(
+            modIds = cfModIds,
+            filterPcOnly = true
+        )
+
+        val response = httpStringRequest(
+            post = true,
+            url = "https://api.curseforge.com/v1/mods",
+            jsonBody = requestPayload.json
+        )
+
+        if (!response.success) {
+            lgr.warn("CurseForge mod lookup failed: HTTP ${response.statusCode()} ${response.body()}")
+            return emptyList()
+        }
+
+        val body = response.body()
+        if (body.isNullOrBlank()) {
+            lgr.warn("CurseForge mod lookup returned empty body")
+            return emptyList()
+        }
+
+        val decoded = runCatching {
+            serdesJson.decodeFromString<CurseForgeModsResponse>(body)
+        }.onFailure { err ->
+            lgr.error("Failed to parse CurseForge mods response", err)
+        }.getOrNull()
+
+        val mods = decoded?.data
+        if (mods == null) {
+            lgr.warn("CurseForge mods response missing data field")
+            return emptyList()
+        }
+
+        lgr.info("CurseForge: fetched ${mods.size} mods for ${cfModIds.size} requested IDs")
+        return mods
+    }
     suspend fun getInfosModrinth(): Map<String, ModrinthVersionInfo> {
 
         if (mods.isEmpty()) {
