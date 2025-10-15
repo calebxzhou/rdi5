@@ -1,5 +1,7 @@
 package calebxzhou.rdi.util
 
+import calebxzhou.rdi.RDI
+import calebxzhou.rdi.service.ModService
 import calebxzhou.rdi.util.murmur2
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
@@ -12,6 +14,7 @@ import java.net.URLEncoder
 import java.nio.ByteBuffer
 import java.security.MessageDigest
 import java.util.*
+import kotlin.jvm.java
 
 /**
  * calebxzhou @ 2025-04-16 12:23
@@ -158,4 +161,4 @@ fun Byte.isWhitespaceCharacter(): Boolean {
     }
 }
 
-
+fun jarResource(path: String) = RDI::class.java.classLoader.getResourceAsStream(path)

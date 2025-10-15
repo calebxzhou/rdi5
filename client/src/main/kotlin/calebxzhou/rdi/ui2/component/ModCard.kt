@@ -3,20 +3,14 @@ package calebxzhou.rdi.ui2.component
 import calebxzhou.rdi.model.ModBriefVo
 import calebxzhou.rdi.net.httpRequest
 import calebxzhou.rdi.net.success
-import calebxzhou.rdi.ui2.Fonts
-import calebxzhou.rdi.ui2.MaterialColor
-import calebxzhou.rdi.ui2.PARENT
-import calebxzhou.rdi.ui2.SELF
-import calebxzhou.rdi.ui2.dp
-import calebxzhou.rdi.ui2.drawable
-import calebxzhou.rdi.ui2.linearLayoutParam
-import calebxzhou.rdi.ui2.uiThread
+import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.util.ioScope
 import icyllis.modernui.core.Context
 import icyllis.modernui.graphics.Paint
 import icyllis.modernui.graphics.drawable.Drawable
 import icyllis.modernui.graphics.drawable.ImageDrawable
 import icyllis.modernui.text.TextUtils
+import icyllis.modernui.text.Typeface
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.view.View
 import icyllis.modernui.widget.ImageView
@@ -67,9 +61,11 @@ class ModCard(
         textColumn.addView(titleRow, linearLayoutParam(PARENT, SELF))
 
         primaryTitleView = TextView(context).apply {
-            textSize = 18f
-            typeface = Fonts.UI.typeface
+            textSize = 16f
             setTextColor(MaterialColor.GRAY_900.colorValue)
+            textStyle = Typeface.BOLD
+            ellipsize = TextUtils.TruncateAt.END
+            maxLines = 1
         }
         titleRow.addView(primaryTitleView, linearLayoutParam(0, SELF) {
             weight = 1f
@@ -77,8 +73,10 @@ class ModCard(
 
         secondaryTitleView = TextView(context).apply {
             textSize = 14f
-            typeface = Fonts.UI.typeface
             setTextColor(MaterialColor.BLUE_600.colorValue)
+            textStyle = Typeface.ITALIC
+            ellipsize = TextUtils.TruncateAt.END
+            maxLines = 1
         }
         titleRow.addView(secondaryTitleView, linearLayoutParam(SELF, SELF) {
             leftMargin = context.dp(8f)
@@ -86,7 +84,6 @@ class ModCard(
 
         introView = TextView(context).apply {
             textSize = 13f
-            typeface = Fonts.UI.typeface
             setTextColor(MaterialColor.GRAY_700.colorValue)
             maxLines = 2
             ellipsize = TextUtils.TruncateAt.END
@@ -101,18 +98,32 @@ class ModCard(
 
     private fun bindData() {
         val hasChineseName = !vo.nameCn.isNullOrBlank()
+        val primaryText = if (hasChineseName) vo.nameCn?.trim().orEmpty() else vo.name.trim()
+
         if (hasChineseName) {
-            primaryTitleView.text = vo.nameCn
-            secondaryTitleView.text = vo.name
-            secondaryTitleView.visibility = View.VISIBLE
+            val secondaryTrimmed = vo.name.trim()
+            val shortened = shortenName(secondaryTrimmed, maxChars = 22)
+            if (shortened.isNotEmpty()) {
+                secondaryTitleView.text = shortened
+                secondaryTitleView.visibility = View.VISIBLE
+            } else {
+                secondaryTitleView.visibility = View.GONE
+            }
         } else {
-            primaryTitleView.text = vo.name
             secondaryTitleView.visibility = View.GONE
         }
 
+        primaryTitleView.text = primaryText.ifBlank { vo.name.trim() }
         introView.text = vo.intro.ifBlank { "暂无简介" }
 
         loadIcon()
+    }
+
+    private fun shortenName(text: String, maxChars: Int): String {
+        val trimmed = text.trim()
+        if (trimmed.length <= maxChars) return trimmed
+        if (maxChars <= 1) return "…"
+        return trimmed.take(maxChars - 1) + "…"
     }
 
     private fun loadIcon() {

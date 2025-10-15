@@ -3,14 +3,17 @@ package calebxzhou.rdi.ui2
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.model.Room
 import calebxzhou.rdi.ui2.frag.pack.ModpackCreate2Fragment
-import calebxzhou.rdi.ui2.frag.pack.ModpackCreateFragment
 import calebxzhou.rdi.util.serdesJson
 import icyllis.modernui.ModernUI
 import icyllis.modernui.R
 import icyllis.modernui.audio.AudioManager
+import icyllis.modernui.graphics.text.FontFamily
+import icyllis.modernui.text.Typeface
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.core.config.Configurator
 import org.bson.types.ObjectId
+import java.io.File
+import kotlin.io.path.Path
 
 /**
  * calebxzhou @ 8/23/2025 2:46 PM
@@ -18,6 +21,7 @@ import org.bson.types.ObjectId
 
 //public static SpectrumGraph sSpectrumGraph;
 fun main() {
+    val fontsDir = "./resourcepacks/fonts/assets/modernui/font/"
     System.setProperty("java.awt.headless", "true")
     System.setProperty("rdi.debug", "true")
     System.setProperty("rdi.modDir", "C:\\Users\\calebxzhou\\Documents\\RDI5sea-Ref\\.minecraft\\versions\\ATM10 To the Sky\\mods")
@@ -29,11 +33,17 @@ fun main() {
         //SelectAccountFragment(RServer.now)
         //ServerFragment()
         //RoomFragment(room)
+
     val mui = ModernUI().apply {
+
 
         setTheme(R.style.Theme_Material3_Dark)
         theme.applyStyle(R.style.ThemeOverlay_Material3_Dark_Rust, true)
     }
+    val fontFamilies=File(fontsDir).listFiles { it.extension.matches(Regex("([to])tf")) }.map {
+        FontFamily.createFamily(it,false).let { Typeface.createTypeface(it) }
+    }
+    mui::class.java.getDeclaredField("mDefaultTypeface").apply { isAccessible=true }.set(mui, Fonts.UI.typeface)
     mui.run(frag)
     AudioManager.getInstance().close()
     System.gc()

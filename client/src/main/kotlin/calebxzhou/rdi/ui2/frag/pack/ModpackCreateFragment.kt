@@ -15,6 +15,8 @@ import calebxzhou.rdi.util.ioScope
 import calebxzhou.rdi.util.json
 import icyllis.modernui.graphics.BitmapFactory
 import icyllis.modernui.widget.LinearLayout
+import icyllis.modernui.view.Gravity
+import icyllis.modernui.widget.TextView
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -74,10 +76,26 @@ class ModpackCreateFragment: RFragment("制作整合包1") {
 }
 class ModpackCreate2Fragment(val params: List<Pair<String,String>>): RFragment("制作整合包2") {
     override var fragSize=FragmentSize.LARGE
+    private lateinit var modsGrid: LinearLayout
+    private lateinit var loadingTv: TextView
     init {
         contentLayoutInit = {
             textView("将使用以下这些Mod：")
-            loadMods(this)
+            scrollView {
+                layoutParams = linearLayoutParam(PARENT, 0) {
+                    weight = 1f
+                    topMargin = context.dp(12f)
+                }
+                modsGrid = linearLayout {
+                    vertical()
+                }
+                loadingTv = modsGrid.textView("正在读取已经安装的mod…") {
+                    gravity = Gravity.CENTER_HORIZONTAL
+                    setTextColor(MaterialColor.GRAY_500.colorValue)
+                    setPadding(0, context.dp(8f), 0, context.dp(8f))
+                }
+            }
+            loadMods()
         }
         bottomOptionsConfig = {
             "下一步" colored MaterialColor.GREEN_900 with {
@@ -85,19 +103,75 @@ class ModpackCreate2Fragment(val params: List<Pair<String,String>>): RFragment("
             }
         }
     }
-    private fun loadMods(contentLayout: LinearLayout) = ioScope.launch {
-        ModService.getFingerprintsCurseForge()?.exactMatches?.map { it.id }
-            ?.let { ModService.getInfosCurseForge(it) }
-            ?.forEach { match ->
-                ModService.cfSlugBriefInfo[match.slug]?.let { info ->
-                    uiThread {
-                        contentLayout += ModCard(
-                            contentLayout.context,
-                            info.toVo()
-                        )
-                    }
-                }
+    private fun loadMods() = ioScope.launch {
+        val fingerprintData = runCatching { ModService.getFingerprintsCurseForge() }.getOrNull()
+        val modIds = fingerprintData?.exactMatches
+            ?.map { it.id }
+            ?.distinct()
+            ?: emptyList()
+
+        if (modIds.isEmpty()) {
+            uiThread { showEmptyState("未识别到可匹配的Mod") }
+            return@launch
+        }
+        uiThread {
+
+            loadingTv.text = "识别到${modIds.size}个Mod，正在载入数据…"
+        }
+        val mods = runCatching { ModService.getInfosCurseForge(modIds) }.getOrElse { err ->
+            lgr.warn("加载CurseForge Mod信息失败", err)
+            uiThread { showEmptyState("加载CurseForge数据失败") }
+            return@launch
+        }
+
+        if (mods.isEmpty()) {
+            uiThread { showEmptyState("CurseForge未返回相关Mod信息") }
+            return@launch
+        }
+
+        val seenSlugs = mutableSetOf<String>()
+        val cards = mods.mapNotNull { mod ->
+            val slug = mod.slug?.lowercase() ?: return@mapNotNull null
+            if (!seenSlugs.add(slug)) return@mapNotNull null
+            val info = ModService.cfSlugBriefInfo[slug] ?: return@mapNotNull null
+            ModCard(modsGrid.context, info.toVo())
+        }
+
+        uiThread {
+            modsGrid.removeAllViews()
+            if (cards.isEmpty()) {
+                showEmptyState("暂无可展示的Mod")
+                return@uiThread
             }
+
+            cards.chunked(3).forEach { rowItems ->
+                val rowContext = modsGrid.context
+                val row = LinearLayout(rowContext).apply {
+                    horizontal()
+                    gravity = Gravity.TOP
+                }
+                rowItems.forEachIndexed { index, card ->
+                    row.addView(card, linearLayoutParam(0, SELF) {
+                        weight = 1f
+                        if (index < rowItems.lastIndex) {
+                            rightMargin = rowContext.dp(12f)
+                        }
+                    })
+                }
+                modsGrid.addView(row, linearLayoutParam(PARENT, SELF) {
+                    bottomMargin = rowContext.dp(12f)
+                })
+            }
+        }
+    }
+
+    private fun showEmptyState(message: String) {
+        modsGrid.removeAllViews()
+        modsGrid.textView(message) {
+            gravity = Gravity.CENTER_HORIZONTAL
+            setTextColor(MaterialColor.GRAY_500.colorValue)
+            setPadding(0, context.dp(16f), 0, context.dp(16f))
+        }
     }
 
 private fun ModBriefInfo.toVo() = ModBriefVo(

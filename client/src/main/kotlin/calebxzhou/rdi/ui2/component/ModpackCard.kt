@@ -69,7 +69,6 @@ class ModpackCard(
                 nameView = textView {
                     text = modpack.name
                     textSize = 18f
-                    typeface = Fonts.UI.typeface
                     setTextColor(MaterialColor.WHITE.colorValue)
                 }
                 authorView = textView {
