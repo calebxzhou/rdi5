@@ -3,7 +3,7 @@ package calebxzhou.rdi.ui2.frag
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.net.body
-import calebxzhou.rdi.net.httpStringRequest
+import calebxzhou.rdi.net.httpStringRequest_
 import calebxzhou.rdi.net.success
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.RTextField
@@ -176,7 +176,7 @@ class WardrobeFragment : RFragment("衣柜") {
         for (subpage in 0..1) {
             val currentPage = startPage + subpage
             try {
-                val response = httpStringRequest(
+                val response = httpStringRequest_(
                     false,
                     "$urlPrefix/skinlib/list?filter=${if (cape) "cape" else "skin"}&sort=likes&page=$currentPage&keyword=${keyword}"
                 )
@@ -282,7 +282,7 @@ class WardrobeFragment : RFragment("衣柜") {
     private fun updateCloth(skinData: SkinData) {
         ioScope.launch {
             try {
-                val response = httpStringRequest(false, "$urlPrefix/texture/${skinData.tid}")
+                val response = httpStringRequest_(false, "$urlPrefix/texture/${skinData.tid}")
                 if (response.success) {
                     val skin = serdesJson.decodeFromString<Skin>(response.body)
                     val newCloth = account.cloth.copy()

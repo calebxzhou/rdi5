@@ -4,7 +4,6 @@ import calebxzhou.rdi.Const
 import calebxzhou.rdi.lgr
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.model.Response
-import calebxzhou.rdi.ui2.frag.UpdateFragment
 import calebxzhou.rdi.ui2.component.alertErr
 import calebxzhou.rdi.ui2.component.closeLoading
 import calebxzhou.rdi.ui2.component.showLoading
@@ -13,7 +12,6 @@ import calebxzhou.rdi.ui2.goto
 import calebxzhou.rdi.ui2.nowFragment
 import calebxzhou.rdi.util.encodeBase64
 import calebxzhou.rdi.util.ioScope
-import calebxzhou.rdi.util.isMcStarted
 import calebxzhou.rdi.util.serdesJson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -31,13 +29,13 @@ import io.netty.channel.socket.nio.NioSocketChannel
 import io.netty.handler.flow.FlowControlHandler
 import io.netty.util.concurrent.DefaultThreadFactory
 import net.minecraft.client.multiplayer.ServerData
-import java.net.http.HttpResponse
-import java.io.BufferedReader
-import java.io.InputStreamReader
+import io.ktor.client.plugins.timeout
+import io.ktor.client.request.get
+import io.ktor.client.request.header
+import io.ktor.client.statement.bodyAsChannel
+import io.ktor.http.HttpHeaders
+import io.ktor.utils.io.jvm.javaio.toInputStream
 import java.nio.charset.StandardCharsets
-import java.net.http.HttpClient
-import java.net.http.HttpRequest
-import java.net.URI
 import java.util.concurrent.atomic.AtomicBoolean
 
 class RServer(
@@ -137,7 +135,7 @@ class RServer(
             listOf("Authorization" to "Basic ${"${it._id}:${it.pwd}".encodeBase64}")
         } ?: listOf()
         val resp =
-            httpStringRequest(post, fullUrl, params, headers)
+            httpStringRequest_(post, fullUrl, params, headers)
         val body = resp.body
         if(Const.DEBUG) lgr.info(resp.statusCode().toString()+" "+ body)
         return serdesJson.decodeFromString<Response<T>>(body)
@@ -198,22 +196,27 @@ class RServer(
     ): () -> Unit {
         val authHeader = RAccount.now?.let { "Basic ${"${it._id}:${it.pwd}".encodeBase64}" }
         val url = "http://${ip}:${hqPort}/room/log/stream"
-        val client = HttpClient.newBuilder().build()
-        val reqBuilder = HttpRequest.newBuilder()
-            .uri(URI.create(url))
-            .header("Accept", "text/event-stream")
-            .header("Cache-Control", "no-cache")
-            .GET()
-        if (authHeader != null) reqBuilder.header("Authorization", authHeader)
-        val request = reqBuilder.build()
         val cancelled = AtomicBoolean(false)
         val job: Job = ioScope.launch(Dispatchers.IO) {
+            var response: io.ktor.client.statement.HttpResponse? = null
             try {
-                val resp = client.send(request, HttpResponse.BodyHandlers.ofInputStream())
-                if (resp.statusCode() !in 200..299) {
-                    onError(IllegalStateException("SSE HTTP ${resp.statusCode()}")); return@launch
+                response = ktorHttpClient.get(url) {
+                    header(HttpHeaders.Accept, "text/event-stream")
+                    header(HttpHeaders.CacheControl, "no-cache")
+                    header(HttpHeaders.UserAgent, WEB_USER_AGENT)
+                    if (authHeader != null) {
+                        header(HttpHeaders.Authorization, authHeader)
+                    }
+                    timeout {
+                        requestTimeoutMillis = 0
+                        socketTimeoutMillis = 0
+                    }
                 }
-                BufferedReader(InputStreamReader(resp.body(), StandardCharsets.UTF_8)).use { reader ->
+                if (response.status.value !in 200..299) {
+                    onError(IllegalStateException("SSE HTTP ${response.status.value}")); return@launch
+                }
+                val channel = response.bodyAsChannel()
+                channel.toInputStream().bufferedReader(StandardCharsets.UTF_8).use { reader ->
                     var event: String? = null
                     val dataBuf = StringBuilder()
                     fun dispatch() {
@@ -225,10 +228,13 @@ class RServer(
                     }
                     while (!cancelled.get()) {
                         val line = reader.readLine() ?: break
-                        if (line.isEmpty()) { dispatch(); continue }
+                        if (line.isEmpty()) {
+                            dispatch()
+                            continue
+                        }
                         when {
                             line.startsWith("event:") -> event = line.substring(6).trim()
-                            line.startsWith(":") -> { /* comment / heartbeat */ }
+                            line.startsWith(":") -> Unit
                             line.startsWith("data:") -> dataBuf.append(line.substring(5).trim()).append('\n')
                         }
                     }
@@ -236,7 +242,9 @@ class RServer(
                 }
             } catch (e: Exception) {
                 if (!cancelled.get()) onError(e)
-            } finally { onClosed() }
+            } finally {
+                onClosed()
+            }
         }
         return {
             cancelled.set(true)

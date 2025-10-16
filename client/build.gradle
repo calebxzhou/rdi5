@@ -2,7 +2,7 @@ plugins {
     id 'java-library'
     id 'maven-publish'
     id 'idea'
-    id 'net.neoforged.moddev' version '2.0.107'
+    id 'net.neoforged.moddev' version '2.0.115'
     // Adds the Kotlin Gradle plugin
     id 'org.jetbrains.kotlin.jvm' version "${kotlin_version}"
     // OPTIONAL Kotlin Serialization plugin
@@ -195,13 +195,17 @@ allprojects {
 def mcLibs = [
 // https://mvnrepository.com/artifact/org.jsoup/jsoup
 //添加三方库别忘了jar jarJar reobfJarJar genIntellijRuns 不然找不到class
+"io.ktor:ktor-client-okhttp:$ktor_version",
+"io.ktor:ktor-client-core:$ktor_version",
 'org.jsoup:jsoup:1.19.1',
 'org.mongodb:bson:5.1.0',
 // https://mvnrepository.com/artifact/com.github.ben-manes.caffeine/caffeine
 'com.github.ben-manes.caffeine:caffeine:3.2.2',
- "io.ktor:ktor-server-core:$ktor_version",
- "io.ktor:ktor-server-cio:$ktor_version",
-'org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0'
+"io.ktor:ktor-server-core:$ktor_version",
+"io.ktor:ktor-server-jetty-jakarta:$ktor_version",
+'org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0',
+"io.ktor:ktor-client-content-negotiation:$ktor_version",
+"io.ktor:ktor-serialization-kotlinx-json:$ktor_version"
 ]
 def mcLibExportOnly = [
 ]
@@ -262,7 +266,11 @@ dependencies {
     }
     implementation('org.hotswapagent:hotswap-agent-core:2.0.1')
     //implementation 'thedarkcolour:kotlinforforge-neoforge:5.7.0:slim'
-    implementation 'thedarkcolour:kotlinforforge-neoforge:5.7.0:slim'
+    //implementation 'thedarkcolour:kotlinforforge-neoforge:5.10.0'
+    implementation 'thedarkcolour:kfflang-neoforge:5.10.0'
+    implementation 'thedarkcolour:kfflib-neoforge:5.10.0'
+    implementation 'thedarkcolour:kffmod-neoforge:5.10.0'
+    //mui
     implementation 'icyllis.modernui:ModernUI-Core:3.12.0'
     testImplementation 'icyllis.modernui:ModernUI-Core:3.12.0'
     additionalRuntimeClasspath 'icyllis.modernui:ModernUI-Core:3.12.0'
@@ -270,15 +278,23 @@ dependencies {
     implementation "icyllis.modernui:ModernUI-Markflow:3.12.0"
     additionalRuntimeClasspath "icyllis.modernui:ModernUI-Markflow:3.12.0"
     testImplementation "icyllis.modernui:ModernUI-Markflow:3.12.0"
+
     // compile against the JEI API but do not include it at runtime
     compileOnly("mezz.jei:jei-${minecraft_version}-neoforge-api:${jei_version}")
     // at runtime, use the full JEI jar for NeoForge
     runtimeOnly("mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}")
     //循环添加deps
     def jarJarVisited = new LinkedHashSet<String>()
+    //mc已经自带了 不需要重复导出
     def jarJarExcludeCoords = [
             'org.slf4j:slf4j-api',
-            'com.google.errorprone:error_prone_annotations'
+            'com.google.errorprone:error_prone_annotations',
+
+            'org.ow2.asm:asm',
+            'org.ow2.asm:asm-commons',
+            'org.ow2.asm:asm-tree',
+            'org.ow2.asm:asm-analysis',
+            'org.ow2.asm:asm-util',
     ] as Set
     def includeJarJarTransitives
     includeJarJarTransitives = { String notation ->

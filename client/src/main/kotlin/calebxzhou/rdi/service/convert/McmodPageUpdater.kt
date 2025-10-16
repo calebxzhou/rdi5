@@ -1,7 +1,7 @@
 package calebxzhou.rdi.service.convert
 
 import calebxzhou.rdi.lgr
-import calebxzhou.rdi.net.httpStringRequest
+import calebxzhou.rdi.net.httpStringRequest_
 import calebxzhou.rdi.net.success
 import calebxzhou.rdi.service.ModService
 import calebxzhou.rdi.util.json
@@ -75,7 +75,7 @@ private fun buildPageUrl(baseUrl: String, page: Int?): String {
 
 private suspend fun loadPageDocument(url: String): Document? {
     val headers = headersForUrl(url)
-    val response = httpStringRequest(url = url, headers = headers)
+    val response = httpStringRequest_(url = url, headers = headers)
     if (!response.success) {
         lgr.warn("请求mcmod列表页失败: HTTP ${response.statusCode()} url=$url")
         return null

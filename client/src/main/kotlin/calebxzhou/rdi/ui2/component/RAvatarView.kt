@@ -1,6 +1,6 @@
 package calebxzhou.rdi.ui2.component
 
-import calebxzhou.rdi.net.httpRequest
+import calebxzhou.rdi.net.httpRequest_
 import calebxzhou.rdi.net.success
 import calebxzhou.rdi.service.PlayerInfoCache
 import calebxzhou.rdi.ui2.paddingDp
@@ -147,7 +147,7 @@ class RAvatarView(
             try {
                 val data = PlayerInfoCache[uid]
                 val skinUrl = data.cloth.skin
-                val skinResp = httpRequest<ByteArray>(false, skinUrl)
+                val skinResp = httpRequest_<ByteArray>(false, skinUrl)
 
                 uiThread {
                     text = data.name

@@ -18,11 +18,9 @@ data class ServerConfig(
 )
 
 @Serializable
-data class McsmConfig(
+data class ProxyConfig(
     val host: String = "127.0.0.1",
     val port: Int = 23333,
-    val apiKey: String = "c1354eff4a604de39e67b550df6ed607",
-    val daemonId: String = "87f1a66a45ec4326a7ad85bebebc77ea",
 )
 
 @Serializable
@@ -36,13 +34,18 @@ data class DockerConfig(
     val caPath: String = "",
     val apiVersion: String = "1.41"
 )
+@Serializable
+data class ApiKeyConfig(
+    val curseforge: String = "",
 
+)
 @Serializable
 data class AppConfig(
     val database: DatabaseConfig = DatabaseConfig(),
     val server: ServerConfig = ServerConfig(),
-    val mcsm: McsmConfig = McsmConfig(),
+    val proxy: ProxyConfig = ProxyConfig(),
     val docker: DockerConfig = DockerConfig(),
+    val apiKey: ApiKeyConfig = ApiKeyConfig(),
 ) {
     companion object {
         private val configFile = File("config.toml")

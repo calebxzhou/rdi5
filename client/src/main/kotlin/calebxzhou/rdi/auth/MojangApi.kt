@@ -3,7 +3,7 @@ package calebxzhou.rdi.auth
 import calebxzhou.rdi.lgr
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.net.body
-import calebxzhou.rdi.net.httpStringRequest
+import calebxzhou.rdi.net.httpStringRequest_
 import calebxzhou.rdi.net.success
 import calebxzhou.rdi.util.decodeBase64
 import calebxzhou.rdi.util.serdesJson
@@ -20,7 +20,7 @@ import java.util.*
 object MojangApi {
     suspend fun getUuidFromName(name: String): String? {
         try {
-            val resp = httpStringRequest(false, "https://api.mojang.com/users/profiles/minecraft/${name}")
+            val resp = httpStringRequest_(false, "https://api.mojang.com/users/profiles/minecraft/${name}")
             if (resp.success) {
                 val body = resp.body
                 lgr.info("查询结果: $body")
@@ -36,7 +36,7 @@ object MojangApi {
 
     suspend fun getCloth(uuid: String): RAccount.Cloth? {
         try {
-            val resp = httpStringRequest(false, "https://sessionserver.mojang.com/session/minecraft/profile/$uuid")
+            val resp = httpStringRequest_(false, "https://sessionserver.mojang.com/session/minecraft/profile/$uuid")
             if (resp.success) {
                 val body = resp.body
                 lgr.info(body)

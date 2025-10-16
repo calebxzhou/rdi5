@@ -2,7 +2,7 @@ package calebxzhou.rdi.ui2.component
 
 import calebxzhou.rdi.RDI
 import calebxzhou.rdi.lgr
-import calebxzhou.rdi.net.httpRequest
+import calebxzhou.rdi.net.httpRequest_
 import calebxzhou.rdi.net.success
 import calebxzhou.rdi.ui2.iconDrawable
 import calebxzhou.rdi.util.ioScope
@@ -73,7 +73,7 @@ class HttpImageView(context: Context, val imgUrl: String) : ImageView(context) {
 
     private suspend fun fetchAndCache(url: String, cacheFile: File) {
         try {
-            val response = httpRequest<ByteArray>(false, url)
+            val response = httpRequest_<ByteArray>(false, url)
             if (response.success) {
                 val bytes = response.body()
                 // Save to disk

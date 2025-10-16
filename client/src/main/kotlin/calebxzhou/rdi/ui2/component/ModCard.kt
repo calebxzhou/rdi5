@@ -1,7 +1,7 @@
 package calebxzhou.rdi.ui2.component
 
 import calebxzhou.rdi.model.ModBriefVo
-import calebxzhou.rdi.net.httpRequest
+import calebxzhou.rdi.net.httpRequest_
 import calebxzhou.rdi.net.success
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.util.ioScope
@@ -98,7 +98,7 @@ class ModCard(
 
     private fun bindData() {
         val hasChineseName = !vo.nameCn.isNullOrBlank()
-        val primaryText = if (hasChineseName) vo.nameCn?.trim().orEmpty() else vo.name.trim()
+        val primaryText = if (hasChineseName) vo.nameCn.trim() else vo.name.trim()
 
         if (hasChineseName) {
             val secondaryTrimmed = vo.name.trim()
@@ -164,7 +164,7 @@ class ModCard(
 
     private suspend fun fetchDrawable(urls: List<String>): ByteArrayInputStream? {
         for (url in urls) {
-            val response = runCatching { httpRequest<ByteArray>(url = url) }.getOrNull() ?: continue
+            val response = runCatching { httpRequest_<ByteArray>(url = url) }.getOrNull() ?: continue
             if (!response.success) continue
             val bytes = response.body()
             if (bytes.isEmpty()) continue

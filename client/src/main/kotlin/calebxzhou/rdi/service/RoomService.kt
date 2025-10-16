@@ -2,7 +2,6 @@ package calebxzhou.rdi.service
 
 import calebxzhou.rdi.model.RBlockState
 import calebxzhou.rdi.net.RServer
-import java.net.http.HttpResponse
 import net.minecraft.world.level.block.Block
 
 object RoomService {

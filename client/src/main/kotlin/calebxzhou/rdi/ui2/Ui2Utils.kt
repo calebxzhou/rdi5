@@ -274,6 +274,9 @@ val WINDOW_HANDLE = if(isMcStarted)McWindowHandle else ModernUI.getInstance().wi
 fun copyToClipboard(s: String) {
     GLFW.glfwSetClipboardString(WINDOW_HANDLE, s)
 }
+fun <T> Result<T>.failAlertPrint(): Result<T> {
+     return onFailure { alertErr(it.toString());it.printStackTrace() }
+}
 /*
 
 fun Context.showContextMenu(anchor: View, items: List<Pair<String, () -> Unit>>, x: Float = Float.NaN, y: Float = Float.NaN) {

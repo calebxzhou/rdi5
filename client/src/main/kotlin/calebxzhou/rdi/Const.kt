@@ -13,8 +13,13 @@ object Const {
     val SEED = 1145141919810L
     //显示版本
     const val VERSION_NUMBER = "5.1.1"
-    //curseforge api(from pcl)
-    const val CF_AKEY = $$"$2a$10$bL4bIL5p3A.a1164D5l19u17wM32a106509652d5a.e1a1d59325c"
+
+    val CF_AKEY = byteArrayOf(
+        36, 50, 97, 36, 49, 48, 36, 55, 87, 87, 86, 49, 87, 69, 76, 99, 119, 88, 56, 88,
+        112, 55, 100, 54, 56, 77, 72, 115, 46, 53, 103, 114, 84, 121, 90, 86, 97, 54,
+        83, 121, 110, 121, 101, 83, 121, 77, 104, 49, 114, 115, 69, 56, 57, 110, 73,
+        97, 48, 57, 122, 79
+    ).let { String(it) }
     @JvmStatic
     val VERSION_DISP = "RDI5skyPro ${if(DEBUG)"DEBUG" else ""} $VERSION_NUMBER"
     const val VERSION_STR = "5.0"

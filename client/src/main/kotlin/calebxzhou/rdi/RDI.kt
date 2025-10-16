@@ -6,11 +6,13 @@ import calebxzhou.rdi.service.LevelService
 import calebxzhou.rdi.service.Mcmod
 import calebxzhou.rdi.util.devRoutes
 import calebxzhou.rdi.util.ioScope
-import io.ktor.server.cio.*
+import io.ktor.client.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
 import io.ktor.server.engine.*
+import io.ktor.server.jetty.jakarta.*
 import io.ktor.server.routing.*
 import kotlinx.coroutines.launch
-import net.minecraft.util.HttpUtil
 import net.neoforged.fml.common.Mod
 import org.apache.logging.log4j.LogManager
 import java.io.File
@@ -44,14 +46,16 @@ class RDI {
             }else{
                 localCreds.apply { carrier=1 }.save()
             }*/
+            //HttpClient().get("https://www.baidu.com").bodyAsText().let { lgr.info(it) }
         }
 
         lgr.info("rdi核心连接码：$LOCAL_PORT")
-        embeddedServer(CIO,host="127.0.0.1",port=LOCAL_PORT){
+        embeddedServer(Jetty,host="127.0.0.1",port=LOCAL_PORT){
             routing {
                 devRoutes()
                 mainRoutes()
             }
         }.start(wait = false)
+
     }
 }
