@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class CurseForgeFingerprintRequest(
-    val fingerprints: List<Int>
+    val fingerprints: List<Long>
 )
 
 @Serializable
