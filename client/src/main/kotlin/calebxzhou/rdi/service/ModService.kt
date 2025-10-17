@@ -47,26 +47,6 @@ object ModService {
     val cfSlugBriefInfo: Map<String, ModBriefInfo> by lazy { buildSlugMap(briefInfo) { it.curseforgeSlugs } }
     val mrSlugBriefInfo: Map<String, ModBriefInfo> by lazy { buildSlugMap(briefInfo) { it.modrinthSlugs } }
 
-    private data class FileFingerprint(val path: String, val length: Long, val lastModified: Long)
-
-    private data class HashCacheEntry(
-        val lastModified: Long,
-        val length: Long,
-        val sha1: String? = null,
-        val murmur2: Int? = null
-    )
-
-    private val hashCacheLock = Any()
-    private val hashCache = mutableMapOf<String, HashCacheEntry>()
-
-    private val sha1Lock = Any()
-    @Volatile private var cachedSha1Snapshot: List<FileFingerprint>? = null
-    @Volatile private var cachedSha1Map: Map<String, File> = emptyMap()
-
-    private val murmur2Lock = Any()
-    @Volatile private var cachedMurmur2Snapshot: List<FileFingerprint>? = null
-    @Volatile private var cachedMurmur2Map: Map<Int, File> = emptyMap()
-
     private const val MCMOD_CACHE_TTL_MS = 7L * 24 * 60 * 60 * 1000
     private val mcmodCacheRoot by lazy { File(File(RDI.DIR, "cache"), "mcmod").apply { mkdirs() } }
 
@@ -84,7 +64,8 @@ object ModService {
     private fun loadBriefInfo(): List<ModBriefInfo> {
         val resourcePath = "mod_brief_info.json"
         val raw = runCatching {
-            ModService::class.java.classLoader.getResourceAsStream(resourcePath)?.bufferedReader()?.use { it.readText() }
+            ModService::class.java.classLoader.getResourceAsStream(resourcePath)?.bufferedReader()
+                ?.use { it.readText() }
         }.onFailure {
             lgr.error("Failed to read $resourcePath", it)
         }.getOrNull()
@@ -120,77 +101,8 @@ object ModService {
         return map
     }
 
-    private fun List<File>.toSnapshot(): List<FileFingerprint> = map {
-        FileFingerprint(it.absolutePath, it.length(), it.lastModified())
-    }.sortedBy { it.path }
 
-    private fun cleanupHashCache(currentFiles: List<File>) {
-        val activeKeys = currentFiles.mapTo(hashSetOf()) { it.absolutePath }
-        synchronized(hashCacheLock) {
-            val iterator = hashCache.entries.iterator()
-            while (iterator.hasNext()) {
-                if (iterator.next().key !in activeKeys) {
-                    iterator.remove()
-                }
-            }
-        }
-    }
-
-    private fun File.cachedSha1(): String {
-        val key = absolutePath
-        val currentModified = lastModified()
-        val currentLength = length()
-
-        synchronized(hashCacheLock) {
-            val cached = hashCache[key]
-            if (cached != null && cached.lastModified == currentModified && cached.length == currentLength && cached.sha1 != null) {
-                return cached.sha1
-            }
-        }
-
-        val computed = sha1
-
-        synchronized(hashCacheLock) {
-            val existing = hashCache[key]
-            val entry = if (existing != null && existing.lastModified == currentModified && existing.length == currentLength) {
-                existing.copy(sha1 = computed)
-            } else {
-                HashCacheEntry(currentModified, currentLength, sha1 = computed, murmur2 = existing?.murmur2)
-            }
-            hashCache[key] = entry
-        }
-
-        return computed
-    }
-
-    private fun File.cachedMurmur2(): Int {
-        val key = absolutePath
-        val currentModified = lastModified()
-        val currentLength = length()
-
-        synchronized(hashCacheLock) {
-            val cached = hashCache[key]
-            if (cached != null && cached.lastModified == currentModified && cached.length == currentLength && cached.murmur2 != null) {
-                return cached.murmur2
-            }
-        }
-
-        val computed = murmur2
-
-        synchronized(hashCacheLock) {
-            val existing = hashCache[key]
-            val entry = if (existing != null && existing.lastModified == currentModified && existing.length == currentLength) {
-                existing.copy(murmur2 = computed)
-            } else {
-                HashCacheEntry(currentModified, currentLength, sha1 = existing?.sha1, murmur2 = computed)
-            }
-            hashCache[key] = entry
-        }
-
-        return computed
-    }
-
-    private fun JarFile.readNeoForgeConfig(): CommentedConfig? {
+    fun JarFile.readNeoForgeConfig(): CommentedConfig? {
         return getJarEntry(NEOFORGE_CONFIG_PATH)?.let { modsTomlEntry ->
             getInputStream(modsTomlEntry).bufferedReader().use { reader ->
                 val parsed = TomlFormat.instance()
@@ -200,15 +112,18 @@ object ModService {
             }
         }
     }
+
     val JarFile.logo
         get() =
-         getJarEntry("logo.png")?.let { logoEntry ->
-             getInputStream(logoEntry).readBytes()
-         }
+            getJarEntry("logo.png")?.let { logoEntry ->
+                getInputStream(logoEntry).readBytes()
+            }
 
 
-    private val CommentedConfig.modId
+     val CommentedConfig.modId
         get() = get<List<Config>>("mods").firstOrNull()?.get<String>("modId")!!
+     val CommentedConfig.modDescription
+        get() = get<List<Config>>("mods").firstOrNull()?.get<String>("description")!!
 
     val MOD_DIR
         get() = System.getProperty("rdi.modDir")?.let { File(it) } ?: File("mods")
@@ -245,109 +160,53 @@ Priority: u=0, i
 
     val mods
         get() = MOD_DIR.listFiles { it.extension == "jar" }?.toList() ?: listOf()
-    val sha1Mods: Map<String, File>
-        get() {
-            val files = mods
-            if (files.isEmpty()) {
-                synchronized(sha1Lock) {
-                    cachedSha1Snapshot = emptyList()
-                    cachedSha1Map = emptyMap()
-                }
-                cleanupHashCache(files)
-                return emptyMap()
-            }
+    val sha1Mods
+        get() = mods.associateBy { it.sha1 }
 
-            val snapshot = files.toSnapshot()
-            synchronized(sha1Lock) {
-                if (snapshot == cachedSha1Snapshot) {
-                    return cachedSha1Map
-                }
-            }
-
-            val computed = files.associateBy { it.cachedSha1() }
-            cleanupHashCache(files)
-
-            synchronized(sha1Lock) {
-                cachedSha1Snapshot = snapshot
-                cachedSha1Map = computed
-            }
-
-            return computed
-        }
-
-    val murmur2Mods: Map<Int, File>
-        get() {
-            val files = mods
-            if (files.isEmpty()) {
-                synchronized(murmur2Lock) {
-                    cachedMurmur2Snapshot = emptyList()
-                    cachedMurmur2Map = emptyMap()
-                }
-                cleanupHashCache(files)
-                return emptyMap()
-            }
-
-            val snapshot = files.toSnapshot()
-            synchronized(murmur2Lock) {
-                if (snapshot == cachedMurmur2Snapshot) {
-                    return cachedMurmur2Map
-                }
-            }
-
-            val computed = files.associateBy { it.cachedMurmur2() }
-            cleanupHashCache(files)
-
-            synchronized(murmur2Lock) {
-                cachedMurmur2Snapshot = snapshot
-                cachedMurmur2Map = computed
-            }
-
-            return computed
-        }
+    val murmur2Mods
+        get() = mods.associateBy { it.murmur2 }
     val idMods
         get() = mods.mapNotNull { file ->
-                JarFile(file).use { jar ->
-                    jar.readNeoForgeConfig()?.let { conf ->
-                        conf.modId to file
-                    }
+            JarFile(file).use { jar ->
+                jar.readNeoForgeConfig()?.let { conf ->
+                    conf.modId to file
                 }
+            }
 
         }.toMap()
     val idSha1s
         get() = mods.mapNotNull { file ->
-                JarFile(file).use { jar ->
-                    jar.readNeoForgeConfig()?.let { conf ->
-                        conf.modId to file.sha1
-                    }
+            JarFile(file).use { jar ->
+                jar.readNeoForgeConfig()?.let { conf ->
+                    conf.modId to file.sha1
                 }
+            }
         }.toMap()
     val idNames
         get() = mods.mapNotNull { file ->
-                JarFile(file).use { jar ->
-                    jar.readNeoForgeConfig()?.let { conf ->
-                        conf.modId to conf.get<List<Config>>("mods").firstOrNull()?.get<String>("displayName")!!
-                    }
+            JarFile(file).use { jar ->
+                jar.readNeoForgeConfig()?.let { conf ->
+                    conf.modId to conf.get<List<Config>>("mods").firstOrNull()?.get<String>("displayName")!!
                 }
+            }
         }.toMap()
-
     suspend fun getFingerprintsCurseForge(): CurseForgeFingerprintData {
-    val fingerprints = mods.map { it.cachedMurmur2() }
-
+        val fingerprints = mods.map { it.murmur2 }
         val response = httpRequest {
             url("https://api.curseforge.com/v1/fingerprints/432")
-            method= HttpMethod.Post
+            method = HttpMethod.Post
             json()
             setBody(CurseForgeFingerprintRequest(fingerprints = fingerprints))
             header("x-api-key", Const.CF_AKEY)
         }.body<CurseForgeFingerprintResponse>()
-
-        val data = response.data?: CurseForgeFingerprintData()
+        val data = response.data ?: CurseForgeFingerprintData()
         lgr.info(
             "CurseForge: ${data.exactMatches.size} exact matches, ${data.partialMatches.size} partial matches, ${data.unmatchedFingerprints.size} unmatched"
         )
 
         return data
     }
+
     suspend fun getInfosCurseForge(cfModIds: List<Long>): List<CurseForgeMod> {
 
         if (cfModIds.isEmpty()) {
@@ -355,35 +214,19 @@ Priority: u=0, i
             return emptyList()
         }
 
-        val requestPayload = CurseForgeModsRequest(
-            modIds = cfModIds,
-            filterPcOnly = true
-        )
 
-        val response = httpStringRequest_(
-            post = true,
-            url = "https://api.curseforge.com/v1/mods",
-            jsonBody = requestPayload.json
-        )
-
-        if (!response.success) {
-            lgr.warn("CurseForge mod lookup failed: HTTP ${response.statusCode()} ${response.body()}")
-            return emptyList()
-        }
-
-        val body = response.body()
-        if (body.isNullOrBlank()) {
-            lgr.warn("CurseForge mod lookup returned empty body")
-            return emptyList()
-        }
-
-        val decoded = runCatching {
-            serdesJson.decodeFromString<CurseForgeModsResponse>(body)
-        }.onFailure { err ->
-            lgr.error("Failed to parse CurseForge mods response", err)
-        }.getOrNull()
-
-        val mods = decoded?.data
+        val mods = httpRequest {
+            method = HttpMethod.Post
+            json()
+            url("https://api.curseforge.com/v1/mods")
+            header("x-api-key", Const.CF_AKEY)
+            setBody(
+                CurseForgeModsRequest(
+                    modIds = cfModIds,
+                    filterPcOnly = true
+                )
+            )
+        }.body<CurseForgeModsResponse>().data
         if (mods == null) {
             lgr.warn("CurseForge mods response missing data field")
             return emptyList()
@@ -392,6 +235,7 @@ Priority: u=0, i
         lgr.info("CurseForge: fetched ${mods.size} mods for ${cfModIds.size} requested IDs")
         return mods
     }
+
     suspend fun getVersionsModrinth(): Map<String, ModrinthVersionInfo> {
 
         if (mods.isEmpty()) {
@@ -399,12 +243,12 @@ Priority: u=0, i
             return emptyMap()
         }
 
-    val hashes = mods.map { it.cachedSha1() }
+        val hashes = mods.map { it.sha1 }
         val requestPayload = ModrinthVersionLookupRequest(hashes = hashes, algorithm = "sha1")
 
-        val response = httpRequest{
+        val response = httpRequest {
             url("https://api.modrinth.com/v2/version_files")
-            method= HttpMethod.Post
+            method = HttpMethod.Post
             json()
             setBody(requestPayload)
         }.body<Map<String, ModrinthVersionInfo>>()
@@ -418,6 +262,7 @@ Priority: u=0, i
 
         return response
     }
+
     suspend fun getProjectsModrinth(ids: List<String>): List<ModrinthProject> {
 
         val normalizedIds = ids.asSequence()
@@ -589,7 +434,7 @@ Priority: u=0, i
         )
 
     }*/
-    fun readPCLModData(){
+    fun readPCLModData() {
 
     }
 

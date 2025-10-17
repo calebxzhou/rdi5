@@ -21,12 +21,14 @@ import icyllis.modernui.widget.TextView
 abstract class RFragment(initialTitle: String = "") : Fragment() {
     var title: String = initialTitle
         set(value) {
-            field = value
-            if (!showTitle) return
-            val titleView = view?.findViewById<TextView>(titleViewId)
-                ?: _mainView?.findViewById<TextView>(titleViewId)
-                ?: if (this::mainLayout.isInitialized) mainLayout.findViewById<TextView>(titleViewId) else null
-            titleView?.text = value
+            uiThread {
+                field = value
+                if (!showTitle) return@uiThread
+                val titleView = view?.findViewById<TextView>(titleViewId)
+                    ?: _mainView?.findViewById<TextView>(titleViewId)
+                    ?: if (this::mainLayout.isInitialized) mainLayout.findViewById<TextView>(titleViewId) else null
+                titleView?.text = value
+            }
         }
     open var showTitle = true
     open var closable = true
