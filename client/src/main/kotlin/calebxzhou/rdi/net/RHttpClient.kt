@@ -1,5 +1,6 @@
 package calebxzhou.rdi.net
 
+import calebxzhou.rdi.RDI
 import calebxzhou.rdi.util.serdesJson
 import io.ktor.client.*
 import io.ktor.client.engine.okhttp.*
@@ -9,11 +10,18 @@ import io.ktor.client.request.*
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
+import okhttp3.Cache
 import java.net.ProxySelector
 import java.util.concurrent.TimeUnit
 
 suspend fun httpRequest(builder: HttpRequestBuilder.() -> Unit) = ktorClient.request(builder)
 fun HttpRequestBuilder.json() = contentType(ContentType.Application.Json)
+private val httpCacheDirectory by lazy {
+    java.io.File(java.io.File(RDI.DIR, "cache"), "http").apply { mkdirs() }
+}
+
+private const val HTTP_CACHE_SIZE_BYTES = 50L * 1024 * 1024 // 50 MB
+
 val ktorClient
     get() =
         HttpClient(OkHttp) {
@@ -24,6 +32,7 @@ val ktorClient
                     connectTimeout(10, TimeUnit.SECONDS)
                     readTimeout(0, TimeUnit.SECONDS)
                     ProxySelector.getDefault()?.let { proxySelector(it) }
+                    cache(Cache(httpCacheDirectory, HTTP_CACHE_SIZE_BYTES))
                 }
             }
             BrowserUserAgent()
