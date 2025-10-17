@@ -93,7 +93,7 @@ val File.md5: String
     get() = digest("MD5")
 val File.sha512: String
     get() = digest("SHA-512")
-val File.murmur2: Int
+val File.murmur2: Long
     get() {
         val multiplex = 1540483477u
         val normalizedLength = computeNormalizedLength()
@@ -133,7 +133,7 @@ val File.murmur2: Int
 
         var num6 = (num2 xor (num2 shr 13)) * multiplex
         num6 = num6 xor (num6 shr 15)
-        return num6.toInt()
+        return num6.toLong()
     }
 
 fun File.computeNormalizedLength(): UInt {
