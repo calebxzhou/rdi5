@@ -4,6 +4,7 @@ import calebxzhou.rdi.lgr
 import calebxzhou.rdi.model.CurseForgeMod
 import calebxzhou.rdi.model.ModBriefInfo
 import calebxzhou.rdi.model.ModBriefVo
+import calebxzhou.rdi.model.pack.Mod
 import calebxzhou.rdi.service.ModService
 import calebxzhou.rdi.service.ModService.logo
 import calebxzhou.rdi.service.ModService.modDescription
@@ -17,6 +18,7 @@ import calebxzhou.rdi.ui2.component.ModCard
 import calebxzhou.rdi.ui2.dp
 import calebxzhou.rdi.ui2.failAlertPrint
 import calebxzhou.rdi.ui2.frag.RFragment
+import calebxzhou.rdi.ui2.go
 import calebxzhou.rdi.ui2.horizontal
 import calebxzhou.rdi.ui2.linearLayout
 import calebxzhou.rdi.ui2.linearLayoutParam
@@ -39,14 +41,14 @@ import kotlin.collections.orEmpty
  * calebxzhou @ 2025-10-17 13:50
  */
 
-class ModpackCreate2Fragment(val params: List<Pair<String, String>>) : RFragment("制作整合包2") {
+class ModpackCreate2Fragment(val name: String) : RFragment("制作整合包2") {
     override var fragSize = FragmentSize.LARGE
     private lateinit var modsGrid: LinearLayout
     private lateinit var loadingTv: TextView
 
     init {
         contentLayoutInit = {
-            textView("将使用以下这些Mod：")
+            textView("将使用以下这些Mod，请翻到最下面")
             scrollView {
                 layoutParams = linearLayoutParam(PARENT, 0) {
                     weight = 1f
@@ -62,11 +64,6 @@ class ModpackCreate2Fragment(val params: List<Pair<String, String>>) : RFragment
                 }
             }
             loadMods()
-        }
-        bottomOptionsConfig = {
-            "下一步" colored MaterialColor.GREEN_900 with {
-
-            }
         }
     }
 
@@ -96,6 +93,13 @@ class ModpackCreate2Fragment(val params: List<Pair<String, String>>) : RFragment
         val foundCount = briefs.size
         title += "（$foundCount 个Mod）"
         renderCards(briefs)
+        uiThread {
+            modsGrid.bottomOptions{
+                "下一步" colored MaterialColor.GREEN_900 with {
+                    ModpackCreate3Fragment(name,curseForgeResult.mods).go()
+                }
+            }
+        }
     }
 
     private suspend fun fetchCurseForgeCards(): SourceResult {
@@ -104,14 +108,17 @@ class ModpackCreate2Fragment(val params: List<Pair<String, String>>) : RFragment
             val fingerprintToFile = murmur2Mods
 
             val modIdToFiles: MutableMap<Long, MutableList<File>> = mutableMapOf()
+            val mods = arrayListOf<Mod>()
             fingerprintData.exactMatches.forEach { match ->
-                val modId = match.id
-                if (modId > 0) {
-                    val fingerprint = match.file?.fileFingerprint ?: match.latestFiles.firstOrNull()?.fileFingerprint
+                val projectId = match.id
+                val fileId = match.file.id
+                if (projectId > 0) {
+                    val fingerprint = match.file.fileFingerprint ?: match.latestFiles.firstOrNull()?.fileFingerprint
                     if (fingerprint != null) {
                         val localFile = fingerprintToFile[fingerprint]
                         if (localFile != null) {
-                            modIdToFiles.getOrPut(modId) { mutableListOf<File>() }.add(localFile)
+                            modIdToFiles.getOrPut(projectId) { mutableListOf<File>() }.add(localFile)
+                           mods += Mod("cf",projectId.toString(),fileId.toString())
                         }
                     }
                 }
@@ -120,9 +127,9 @@ class ModpackCreate2Fragment(val params: List<Pair<String, String>>) : RFragment
             val modIds = modIdToFiles.keys.distinct()
             if (modIds.isEmpty()) return@runCatching SourceResult()
 
-            val mods = ModService.getInfosCurseForge(modIds)
+            val cfMods = ModService.getInfosCurseForge(modIds)
             val matchedFiles = mutableSetOf<File>()
-            val cards = mods.mapNotNull { mod ->
+            val cards = cfMods.mapNotNull { mod ->
                 val slug = mod.slug.trim()
                 if (slug.isEmpty()) return@mapNotNull null
                 val normalizedSlug = slug.lowercase()
@@ -138,13 +145,14 @@ class ModpackCreate2Fragment(val params: List<Pair<String, String>>) : RFragment
                 }
                 SourceCard(normalizedSlug, brief)
             }
-            SourceResult(cards, matchedFiles)
+            SourceResult(cards, matchedFiles,mods)
         }.failAlertPrint().getOrElse { SourceResult() }
     }
 
     private data class SourceResult(
         val cards: List<SourceCard> = emptyList(),
-        val matchedFiles: Set<File> = emptySet()
+        val matchedFiles: Set<File> = emptySet(),
+        val mods: List<Mod> = emptyList()
     )
     private data class SourceCard(val slug: String, val brief: ModBriefVo)
 
@@ -214,6 +222,7 @@ class ModpackCreate2Fragment(val params: List<Pair<String, String>>) : RFragment
                 bottomMargin = rowContext.dp(12f)
             })
         }
+
 
     }
 

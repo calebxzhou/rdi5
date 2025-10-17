@@ -1,6 +1,7 @@
 package calebxzhou.rdi.ui2.component
 
 import calebxzhou.rdi.model.ModBriefVo
+import calebxzhou.rdi.net.httpRequest
 import calebxzhou.rdi.net.httpRequest_
 import calebxzhou.rdi.net.success
 import calebxzhou.rdi.ui2.*
@@ -16,6 +17,8 @@ import icyllis.modernui.view.View
 import icyllis.modernui.widget.ImageView
 import icyllis.modernui.widget.LinearLayout
 import icyllis.modernui.widget.TextView
+import io.ktor.client.request.url
+import io.ktor.client.statement.bodyAsBytes
 import kotlinx.coroutines.launch
 import java.io.ByteArrayInputStream
 
@@ -164,11 +167,9 @@ class ModCard(
 
     private suspend fun fetchDrawable(urls: List<String>): ByteArrayInputStream? {
         for (url in urls) {
-            val response = runCatching { httpRequest_<ByteArray>(url = url) }.getOrNull() ?: continue
-            if (!response.success) continue
-            val bytes = response.body()
-            if (bytes.isEmpty()) continue
-            return (ByteArrayInputStream(bytes))
+            val response = runCatching { httpRequest { url(url) }.bodyAsBytes() }.getOrNull() ?: continue
+            if (response.isEmpty()) continue
+            return (ByteArrayInputStream(response))
 
 
         }

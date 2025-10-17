@@ -96,7 +96,7 @@ class ModpackCard(
 	private fun bindData() {
 		// Icon
 		val iconBytes = modpack.icon
-		val packIcon = if (iconBytes.isNotEmpty()) {
+		val packIcon = if (iconBytes!=null&&iconBytes.isNotEmpty()) {
 			try {
 				ImageDrawable(ByteArrayInputStream(iconBytes))
 			} catch (_: Exception) {

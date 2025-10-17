@@ -5,10 +5,10 @@ import kotlinx.serialization.Serializable
 import org.bson.types.ObjectId
 
 @Serializable
-data class Modpack(
+class Modpack(
     @Contextual val _id: ObjectId = ObjectId(),
     val name: String,
-    val icon: ByteArray,
+    val icon: ByteArray?,
     @Contextual
     val authorId: ObjectId= ObjectId(),
     val info: String,
@@ -18,9 +18,12 @@ data class Modpack(
 ) {
     @Serializable
     data class Version(
+        //1.0 1.1 1.2 etc 初次create作pack name用
         val name: String,
         val changelog: String,
         val mods: List<Mod>,
-        val configs: List<ModConfig>,
+        val configs: List<PackFile>,
+        val kjs: List<PackFile>,
     )
+
 }

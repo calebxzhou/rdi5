@@ -26,7 +26,7 @@ data class CurseForgeFingerprintData(
 @Serializable
 data class CurseForgeFingerprintMatch(
     val id: Long = 0,
-    val file: CurseForgeFile? = null,
+    val file: CurseForgeFile,
     val latestFiles: List<CurseForgeFile> = emptyList()
 )
 

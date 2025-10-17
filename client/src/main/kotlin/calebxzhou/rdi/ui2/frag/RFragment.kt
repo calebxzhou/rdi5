@@ -242,7 +242,7 @@ abstract class RFragment(initialTitle: String = "") : Fragment() {
     }
 
     //底部一堆按钮 - 使用connected button styling
-    private fun ViewGroup.bottomOptions(
+    fun ViewGroup.bottomOptions(
         config: BottomOptionsBuilder.() -> Unit
     ) {
         val builder = BottomOptionsBuilder()

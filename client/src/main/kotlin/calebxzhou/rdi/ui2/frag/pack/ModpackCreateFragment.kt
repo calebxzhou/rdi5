@@ -47,12 +47,12 @@ class ModpackCreateFragment : RFragment("制作整合包1") {
         bottomOptionsConfig = {
             "下一步" colored MaterialColor.GREEN_900 with {
                 // val image = picker.selectedBytes
-                val params = buildList {
-                    add("name" to nameInput.text)
+               // val params = buildList {
+                 //   add("name" to nameInput.text)
                     // add("info" to infoInput.text)
                     // image?.let { add("image" to it.encodeBase64()) }
-                }
-                ModpackCreate2Fragment(params).go()
+              //  }
+                ModpackCreate2Fragment(nameInput.text).go()
             }
         }
     }
