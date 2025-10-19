@@ -13,36 +13,32 @@ import calebxzhou.rdi.ui2.nowFragment
 import calebxzhou.rdi.util.encodeBase64
 import calebxzhou.rdi.util.ioScope
 import calebxzhou.rdi.util.serdesJson
+import io.ktor.client.call.body
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import io.netty.bootstrap.Bootstrap
-import io.netty.channel.Channel
-import io.netty.channel.ChannelFuture
-import io.netty.channel.ChannelInitializer
-import io.netty.channel.ChannelOption
-import io.netty.channel.epoll.Epoll
-import io.netty.channel.epoll.EpollEventLoopGroup
-import io.netty.channel.epoll.EpollSocketChannel
-import io.netty.channel.nio.NioEventLoopGroup
-import io.netty.channel.socket.nio.NioSocketChannel
-import io.netty.handler.flow.FlowControlHandler
-import io.netty.util.concurrent.DefaultThreadFactory
 import net.minecraft.client.multiplayer.ServerData
 import io.ktor.client.plugins.timeout
+import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.request.url
+import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpMethod
 import io.ktor.utils.io.jvm.javaio.toInputStream
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.atomic.AtomicBoolean
+
+val server
+    get() = RServer.now
 
 class RServer(
     val ip: String,
     val bgpIp: String,
     val hqPort: Int,
-    var gamePort : Int,
+    var gamePort: Int,
 ) {
     val noUpdate = System.getProperty("rdi.noUpdate").toBoolean()
     val mcData
@@ -54,75 +50,93 @@ class RServer(
             )
         }
     val hqUrl = "http://${ip}:${hqPort}/"
-    val channel = if(Epoll.isAvailable()) EpollSocketChannel::class.java else NioSocketChannel::class.java
-    val eventGroup = if(Epoll.isAvailable())
-        EpollEventLoopGroup(0, DefaultThreadFactory("RDI-Epoll"))
-    else
-        NioEventLoopGroup(0, DefaultThreadFactory("RDI-Nio"))
-    var channelFuture: ChannelFuture? = null
-    companion object {
 
+    companion object {
         val OFFICIAL_DEBUG = RServer(
-            "127.0.0.1", "127.0.0.1",65231,65230
+            "127.0.0.1", "127.0.0.1", 65231, 65230
         )
         val OFFICIAL_NNG = RServer(
-            "rdi.calebxzhou.cn", "b5rdi.calebxzhou.cn",65231,65230
+            "rdi.calebxzhou.cn", "b5rdi.calebxzhou.cn", 65231, 65230
         )
-        var now: RServer = if(Const.DEBUG) OFFICIAL_DEBUG else OFFICIAL_NNG
+        var now: RServer = if (Const.DEBUG) OFFICIAL_DEBUG else OFFICIAL_NNG
     }
 
-    fun connectGhq(){
-        val chafu = Bootstrap()
-            .group(eventGroup)
-            .channel(channel)
-            .option(ChannelOption.TCP_NODELAY, true)
-            .handler(object : ChannelInitializer<Channel>() {
-                override fun initChannel(ch: Channel) {
 
-                    ch.pipeline().apply {
-                        //addLast("timeout", ReadTimeoutHandler(15))
-                        addLast("splitter", RFrameDecoder())
-                        addLast(FlowControlHandler())
-                        addLast("decoder", RPacketDecoder())
-                        addLast("prepender", RFrameEncoder())   // First frame the bytes
-                        addLast("encoder", RPacketEncoder())    // Then encode packet
-                        addLast("packet_handler", RPacketReceiver())
-                    }
-                }
-            })
-            .connect(ip,gamePort)
-        chafu.addListener { future ->
-            if (future.isSuccess) {
-                lgr.info ("Successfully connected  ")
-                /*if (Const.DEBUG) {
-                    val account = RAccount.TESTS[System.getProperty("rdi.testAccount").toInt()]
-                    GameNetClient.send(SMeLoginPacket(account.qq,account.pwd))
-                }*/
-                // mc go RLoginScreen(this)
-            } else {
-                lgr.error ("Failed to connect ")
-                future.cause()?.printStackTrace()
-            }
-        }
-        chafu.sync()
-        channelFuture = chafu
-    }
     fun connect() {
 
-     /*   if (!noUpdate && isMcStarted) {
-            goto(UpdateFragment(this))
-        } else {*/
-            goto(LoginFragment())
-      //  }
+        /*   if (!noUpdate && isMcStarted) {
+               goto(UpdateFragment(this))
+           } else {*/
+        goto(LoginFragment())
+        //  }
     }
-    fun disconnectGhq() {
-        channelFuture?.channel()?.close()
-        // eventGroup.shutdownGracefully()
-        channelFuture = null
+
+    suspend inline fun createRequest(
+        path: String,
+        method: HttpMethod,
+        params: Map<String, Any> = mapOf(),
+        crossinline builder: HttpRequestBuilder.() -> Unit={}
+    ): HttpResponse {
+        return httpRequest {
+            url("$hqUrl/${path}")
+            this.method = method
+            RAccount.now?.let {
+                header("Authorization", "Basic ${"${it._id}:${it.pwd}".encodeBase64}")
+            }
+            builder()
+        }
     }
-    fun sendGhq(packet: SPacket){
-        channelFuture?.channel()?.writeAndFlush(packet)
+
+    suspend inline fun <reified T> request(
+        path: String,
+        method: HttpMethod = HttpMethod.Get,
+        params: Map<String, Any> = mapOf(),
+        crossinline builder: HttpRequestBuilder.() -> Unit={}
+    ): Response<T> {
+        return createRequest(path, method, params,builder).body<Response<T>>()
     }
+    inline fun requestU(
+        path: String,
+        method: HttpMethod = HttpMethod.Get,
+        params: Map<String, Any> = mapOf(),
+        showLoading: Boolean,
+        crossinline onErr: (Response<Unit>) -> Unit = { alertErr(it.msg) },
+        crossinline onOk: (Response<Unit>) -> Unit,
+    ) = request<Unit>(path,method,params,showLoading,onErr,onOk)
+
+    inline fun <reified T> request(
+        path: String,
+        method: HttpMethod = HttpMethod.Get,
+        params: Map<String, Any> = mapOf(),
+        showLoading: Boolean,
+        crossinline onErr: (Response<T>) -> Unit = { alertErr(it.msg) },
+        crossinline onOk: (Response<T>) -> Unit,
+    ) {
+        if (showLoading) {
+            nowFragment?.showLoading()
+        }
+        ioScope.launch {
+            try {
+                val req = request<T>(path, method, params)
+                if (showLoading)
+                    nowFragment?.closeLoading()
+                if (req.ok) {
+                    onOk(req)
+                } else {
+                    onErr(req)
+                    lgr.error("req error ${req.msg}")
+                }
+            } catch (e: Exception) {
+                if (showLoading)
+                    nowFragment?.closeLoading()
+                alertErr("请求失败: ${e.message}")
+                e.printStackTrace()
+            }
+
+
+        }
+    }
+
 
 
     suspend inline fun <reified T> prepareRequest(
@@ -137,12 +151,12 @@ class RServer(
         val resp =
             httpStringRequest_(post, fullUrl, params, headers)
         val body = resp.body
-        if(Const.DEBUG) lgr.info(resp.statusCode().toString()+" "+ body)
+        if (Const.DEBUG) lgr.info(resp.statusCode().toString() + " " + body)
         return serdesJson.decodeFromString<Response<T>>(body)
 
 
     }
-
+    @Deprecated("use request instead")
     fun hqRequest(
         post: Boolean = false,
         path: String,
@@ -151,7 +165,7 @@ class RServer(
         onErr: (Response<*>) -> Unit = { alertErr(it.msg) },
         onOk: (Response<*>) -> Unit
     ) = hqRequestT<Unit>(post, path, showLoading, params, onErr = onErr, onOk = onOk)
-
+    @Deprecated("use request instead")
     inline fun <reified T> hqRequestT(
         post: Boolean = false,
         path: String,
@@ -166,16 +180,16 @@ class RServer(
         ioScope.launch {
             try {
                 val req = prepareRequest<T>(post, path, params)
-                if(showLoading)
+                if (showLoading)
                     nowFragment?.closeLoading()
                 if (req.ok) {
                     onOk(req)
-                }else{
+                } else {
                     onErr(req)
                     lgr.error("req error ${req.msg}")
                 }
             } catch (e: Exception) {
-                if(showLoading)
+                if (showLoading)
                     nowFragment?.closeLoading()
                 alertErr("请求失败: ${e.message}")
                 e.printStackTrace()
@@ -261,7 +275,9 @@ class RServer(
         if (ev == "error") {
             onError(IllegalStateException(data)); return@openLogSse
         }
-        if (ev == "done") { return@openLogSse }
+        if (ev == "done") {
+            return@openLogSse
+        }
         if (data == "💓" || ev == "hello") return@openLogSse
         // Multi-line payload possible
         data.lines().filter { it.isNotBlank() }.forEach { onLine(it) }

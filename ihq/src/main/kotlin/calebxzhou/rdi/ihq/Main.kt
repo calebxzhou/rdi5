@@ -3,14 +3,14 @@ package calebxzhou.rdi.ihq
 import calebxzhou.rdi.ihq.exception.AuthError
 import calebxzhou.rdi.ihq.exception.ParamError
 import calebxzhou.rdi.ihq.exception.RequestError
-import calebxzhou.rdi.ihq.net.err
 import calebxzhou.rdi.ihq.net.response
 import calebxzhou.rdi.ihq.service.PlayerService
 import calebxzhou.rdi.ihq.service.PlayerService.accountCol
 import calebxzhou.rdi.ihq.service.UpdateService
 import calebxzhou.rdi.ihq.service.playerRoutes
-import calebxzhou.rdi.ihq.service.roomRoutes
+import calebxzhou.rdi.ihq.service.hostRoutes
 import calebxzhou.rdi.ihq.service.teamRoutes
+import calebxzhou.rdi.ihq.service.worldRoutes
 import calebxzhou.rdi.ihq.util.serdesJson
 import com.mongodb.MongoClientSettings
 import com.mongodb.ServerAddress
@@ -26,7 +26,6 @@ import io.ktor.server.netty.*
 import io.ktor.server.plugins.compression.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.statuspages.*
-import io.ktor.server.response.respondText
 import io.ktor.server.routing.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -122,7 +121,9 @@ fun startHttp(){
             }*/
             authenticate("auth-basic") {
                 teamRoutes()
-                roomRoutes()
+                hostRoutes()
+                worldRoutes()
+                //modpackRoutes()
             }
         }
     }.start(wait = true)

@@ -22,36 +22,36 @@ fun Route.teamRoutes() = route("/team") {
         } ?: err("无此团队")
         ok()
     }
-    get("/my") {
+    get("/") {
         TeamService.getJoinedTeam(uid)
             ?.let { response(data = it) }
             ?: throw RequestError("无团队")
     }
-    post("/create") {
+    post("/") {
         TeamService.create(
             uid,
-            param("name"),
-            param("info")
+            paramNull("name"),
+            paramNull("info")
         )
         ok()
     }
-    post("/delete") {
+    delete("/") {
         TeamService.delete(uid)
         ok()
     }
-    post("/invite") {
+    post("/member/{qq}") {
         TeamService.invite(uid, param("qq"))
         ok()
     }
-    post("/kick") {
+    delete("/member/{uid2}") {
         TeamService.kick(uid, ObjectId(param("uid2")))
         ok()
     }
-    post("/transfer") {
+    post("/transfer/{uid2}") {
         TeamService.transferOwnership(uid, ObjectId(param("uid2")))
         ok()
     }
-    post("/role") {
+    put("/role/{uid2}/{role}") {
         TeamService.setRole(uid, ObjectId(param("uid2")), Team.Role.valueOf(param("role")))
         ok()
     }
@@ -94,9 +94,11 @@ object TeamService {
 
     suspend fun get(id: ObjectId) = dbcl.find(eq("_id", id)).firstOrNull()
     suspend fun has(id: ObjectId) = get(id) != null
-    suspend fun create(uid: ObjectId, name: String, info: String) {
+    suspend fun create(uid: ObjectId, name: String?, info: String?) {
+        val account = PlayerService.getById(uid) ?: throw RequestError("无此账号")
+        val info = info ?: "无"
+        val name = name?: "${account.name}"
         if (hasJoinedTeam(uid)) throw RequestError("已有团队")
-        if (!PlayerService.has(uid)) throw RequestError("无此账号")
         if (name.displayLength > 32) throw RequestError("团队名称显示长度>32")
         if (info.displayLength > 512) throw RequestError("团队简介显示长度>512")
         val team = Team(

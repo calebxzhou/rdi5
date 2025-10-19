@@ -17,12 +17,18 @@ import io.ktor.server.auth.UserIdPrincipal
 import io.ktor.server.auth.principal
 import io.ktor.server.plugins.origin
 import io.ktor.server.request.receiveParameters
+import io.ktor.server.request.receiveText
+import io.ktor.server.request.contentType
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.RoutingContext
 import io.ktor.util.AttributeKey
 import org.bson.types.ObjectId
 import java.net.ServerSocket
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
 
 /**
  * calebxzhou @ 2025-05-26 12:25
@@ -101,8 +107,11 @@ val RoutingContext.uid
 // These helpers search in that order and cache form parameters so the body is only consumed once.
 
 private val FormParamsKey = AttributeKey<Parameters>("cachedFormParams")
+private data class JsonBodyCache(val value: JsonObject?)
+private val JsonBodyKey = AttributeKey<JsonBodyCache>("cachedJsonBody")
 
 private suspend fun ApplicationCall.cachedFormParameters(): Parameters {
+    if (!isFormLikeContent()) return Parameters.Empty
     return if (attributes.contains(FormParamsKey)) {
         attributes[FormParamsKey]
     } else {
@@ -111,6 +120,29 @@ private suspend fun ApplicationCall.cachedFormParameters(): Parameters {
         attributes.put(FormParamsKey, p)
         p
     }
+}
+
+private suspend fun ApplicationCall.cachedJsonBody(): JsonObject? {
+    if (!isJsonContent()) return null
+    if (attributes.contains(JsonBodyKey)) {
+        return attributes[JsonBodyKey].value
+    }
+    val text = try { receiveText() } catch (_: Throwable) { null }
+    val json = text?.takeIf { it.isNotBlank() }?.let {
+        runCatching { serdesJson.parseToJsonElement(it) }.getOrNull()
+    }?.jsonObject
+    attributes.put(JsonBodyKey, JsonBodyCache(json))
+    return json
+}
+
+private fun ApplicationCall.isJsonContent(): Boolean {
+    val ct = request.contentType()
+    return ct.matches(ContentType.Application.Json)
+}
+
+private fun ApplicationCall.isFormLikeContent(): Boolean {
+    val ct = request.contentType()
+    return ct.matches(ContentType.Application.FormUrlEncoded) || ct.matches(ContentType.MultiPart.FormData)
 }
 
 /**
@@ -129,8 +161,10 @@ suspend fun ApplicationCall.paramNull(name: String): String? {
     // Query
     request.queryParameters[name]?.let { return it }
     // Form (cached)
-    val form = cachedFormParameters()
-    return form[name]
+    cachedFormParameters()[name]?.let { return it }
+    // JSON body
+    val json = cachedJsonBody()
+    return json?.get(name)?.asString()
 }
 
 /** Try multiple alternative names, return the first found or throw. */
@@ -166,3 +200,16 @@ val ApplicationCall.clientIp
 
 val randomPort: Int
     get() = ServerSocket(0).use { it.localPort }
+
+private fun JsonElement.asString(): String? = when (this) {
+    is JsonPrimitive -> when {
+        this.isString -> content
+        else -> content
+    }
+    else -> this.toString()
+}
+
+private fun ContentType.matches(other: ContentType): Boolean {
+    return contentType.equals(other.contentType, ignoreCase = true) &&
+            contentSubtype.equals(other.contentSubtype, ignoreCase = true)
+}

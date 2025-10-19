@@ -5,17 +5,21 @@ import calebxzhou.rdi.ihq.lgr
 import calebxzhou.rdi.ihq.model.ServerStatus
 import com.github.dockerjava.api.async.ResultCallback.Adapter
 import com.github.dockerjava.api.model.Bind
+import com.github.dockerjava.api.model.BuildResponseItem
 import com.github.dockerjava.api.model.ExposedPort
 import com.github.dockerjava.api.model.Frame
 import com.github.dockerjava.api.model.HostConfig
 import com.github.dockerjava.api.model.PortBinding.parse
 import com.github.dockerjava.core.DefaultDockerClientConfig
 import com.github.dockerjava.core.DockerClientBuilder
+import com.github.dockerjava.core.command.BuildImageResultCallback
 import com.github.dockerjava.httpclient5.ApacheDockerHttpClient
 import com.github.dockerjava.transport.DockerHttpClient
 import java.io.Closeable
 import java.time.Duration
 import com.github.dockerjava.api.exception.NotFoundException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 object DockerService {
     private val client by lazy {
@@ -328,7 +332,51 @@ object DockerService {
             ServerStatus.UNKNOWN
         }
     }
+    suspend fun buildImage(name: String, contextPath: String,onLine: (String) -> Unit,
+                   onError: (Throwable) -> Unit = {},
+                   onFinished: () -> Unit = {}): String {
+        return withContext(Dispatchers.IO) {
+            try {
+                val buildResponse = client.buildImageCmd()
+                    .withDockerfile(java.io.File(contextPath).resolve("Dockerfile"))
+                    .withBaseDirectory(java.io.File(contextPath))
+                    .withTags(setOf(name))
+                    .exec(object : com.github.dockerjava.api.command.BuildImageResultCallback() {
+                        override fun onNext(item: BuildResponseItem) {
+                            val logLine = item.stream?.trim() ?: item.errorDetail?.message?.trim().orEmpty()
+                            if (logLine.isNotEmpty()) {
+                                try {
+                                    onLine(logLine)
+                                } catch (_: Throwable) {
+                                }
+                            }
+                            super.onNext(item)
+                        }
+                        override fun onError(throwable: Throwable) {
+                            try {
+                                onError(throwable)
+                            } catch (_: Throwable) {
+                            }
+                            super.onError(throwable)
+                        }
 
+                        override fun onComplete() {
+                            try {
+                                onFinished()
+                            } catch (_: Throwable) {
+                            }
+                            super.onComplete()
+                        }
+                    })
+                    .awaitImageId()
+
+                buildResponse ?: throw RequestError("镜像构建失败")
+            } catch (e: Exception) {
+                lgr.warn { "Error building image $name: ${e.message}" }
+                throw RequestError("镜像构建失败: ${e.message}")
+            }
+        }
+    }
     /*fun Room.getVolumeSize(): Long {
         return try {
             // Check if container is running first

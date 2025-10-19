@@ -18,7 +18,7 @@ class ModpackCreate4Fragment(name: String, mods: List<Mod>, conf: Map<String, By
         }
         bottomOptionsConfig = {
             "完成" colored calebxzhou.rdi.ui2.MaterialColor.GREEN_900 with {
-                //todo
+                //todo 提交到服务器 开始build image
             }
         }
     }

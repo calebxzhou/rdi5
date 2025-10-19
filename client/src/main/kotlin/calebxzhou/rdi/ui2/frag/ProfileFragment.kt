@@ -22,7 +22,7 @@ class ProfileFragment : RFragment("我的信息") {
 
     init {
         bottomOptionsConfig = {
-            "\uEB29 整合包" colored MaterialColor.ORANGE_800 with { ModpackMarketFragment().go() }
+            //"\uEB29 整合包" colored MaterialColor.ORANGE_800 with { ModpackMarketFragment().go() }
             "👚 衣柜" colored MaterialColor.PINK_800 with { goto(WardrobeFragment()) }
             "▶ 进入团队" colored MaterialColor.GREEN_900 with {
                 goto(TeamFragment())

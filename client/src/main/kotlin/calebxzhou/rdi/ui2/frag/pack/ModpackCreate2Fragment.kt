@@ -118,7 +118,7 @@ class ModpackCreate2Fragment(val name: String) : RFragment("制作整合包2") {
                         val localFile = fingerprintToFile[fingerprint]
                         if (localFile != null) {
                             modIdToFiles.getOrPut(projectId) { mutableListOf<File>() }.add(localFile)
-                           mods += Mod("cf",projectId.toString(),fileId.toString())
+                           mods += Mod("cf",projectId.toString(),fileId.toString(),fingerprint.toString())
                         }
                     }
                 }

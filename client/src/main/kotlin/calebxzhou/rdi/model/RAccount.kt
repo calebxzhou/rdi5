@@ -1,5 +1,6 @@
 package calebxzhou.rdi.model
 
+import calebxzhou.rdi.lgr
 import calebxzhou.rdi.util.serdesGson
 import calebxzhou.rdi.util.toUUID
 import com.google.common.hash.Hashing
@@ -14,6 +15,8 @@ import net.minecraft.resources.ResourceLocation
 import org.bson.types.ObjectId
 import java.util.*
 
+val account
+    get() = RAccount.now ?: RAccount.DEFAULT.also { lgr.warn("用户未登录 使用默认账号") }
 @Serializable
 data class RAccount(
     @Contextual

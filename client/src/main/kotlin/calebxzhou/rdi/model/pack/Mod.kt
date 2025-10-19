@@ -7,5 +7,6 @@ data class Mod(
     val platform: String,//cf / mr
     val projectId: String,
     val fileId: String,
+    val hash: String,
 ) {
 }

@@ -1,5 +1,7 @@
 package calebxzhou.rdi
 
+import org.bson.types.ObjectId
+
 object Const {
 
     const val MODID = "rdi"
@@ -11,6 +13,7 @@ object Const {
     const val VERSION = 0x500
     const val IHQ_VERSION = 0x500
     val SEED = 1145141919810L
+    val DEFAULT_MODPACK_ID = ObjectId("abcdefabcdefabcdefabcdef")
     //显示版本
     const val VERSION_NUMBER = "5.1.1"
 

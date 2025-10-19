@@ -1,6 +1,7 @@
 package calebxzhou.rdi.ihq.service
 
 import calebxzhou.rdi.ihq.DB
+import calebxzhou.rdi.ihq.DEFAULT_MODPACK_ID
 import calebxzhou.rdi.ihq.exception.RequestError
 import calebxzhou.rdi.ihq.model.Host
 import calebxzhou.rdi.ihq.model.imageRef
@@ -17,7 +18,6 @@ import com.mongodb.client.model.Updates.combine
 import com.mongodb.client.model.Updates.set
 import io.ktor.http.CacheControl
 import io.ktor.http.ContentType
-import io.ktor.server.request.receiveParameters
 import io.ktor.server.response.cacheControl
 import io.ktor.server.response.respondBytesWriter
 import io.ktor.server.routing.*
@@ -30,22 +30,31 @@ import org.bson.types.ObjectId
 import java.util.concurrent.ConcurrentLinkedQueue
 
 // ---------- Routing DSL (mirrors teamRoutes style) ----------
-fun Route.roomRoutes() = route("/host") {
-    post("/create") {
-        HostService.create(uid, ObjectId(param("modpackId")), param("packVer"), ObjectId(param("worldId")))
+fun Route.hostRoutes() = route("/host") {
+    post("/") {
+        HostService.create(
+            uid,
+            //todo 内测阶段只支持默认整合包
+            //ObjectId(param("modpackId")),
+            DEFAULT_MODPACK_ID,
+            //todo 内测阶段只支持最新版
+            "latest",
+            //param("packVer"),
+            ObjectId(param("worldId"))
+        )
         ok()
     }
-    post("/delete") {
+    post("/{hostId}") {
         HostService.delete(uid, ObjectId(param("hostId")))
         ok()
     }
-    get("/log") {
+    get("/{hostId}/log") {
         val hostId = ObjectId(param("hostId"))
         val startLine = param("startLine").toInt()
         val lines = param("lines").toInt()
         response(data = HostService.getLog(uid, hostId, startLine, lines))
     }
-    get("/log/stream") {
+    get("/{hostId}/log/stream") {
         val hostId = ObjectId(param("hostId"))
         call.response.cacheControl(CacheControl.NoCache(null))
         call.respondBytesWriter(
@@ -54,28 +63,29 @@ fun Route.roomRoutes() = route("/host") {
         )
 
     }
-    get("/my") {
+    get("/") {
         TeamService.get(uid)
             ?.let { HostService.listByTeam(it._id) }
             ?.let { response(data = it) }
     }
-    get("/list") {
+    /* todo 以后再支持 for 自由选择host
+    get("/all") {
         response(data = HostService.dbcl.find().map { it._id.toString() to it.name }.toList())
-    }
-    get("/status") {
+    }*/
+    get("/{hostId}/status") {
         response(
             data = HostService.getServerStatus(ObjectId(param("hostId"))).toString()
         )
     }
-    post("/start") {
+    post("/{hostId}/start") {
         HostService.start(uid, ObjectId(param("hostId")))
         ok()
     }
-    post("/stop") {
+    post("/{hostId}/stop") {
         HostService.stop(uid, ObjectId(param("hostId")))
         ok()
     }
-    post("/update") {
+    post("/{hostId}/update") {
 
         HostService.update(
             uid,
