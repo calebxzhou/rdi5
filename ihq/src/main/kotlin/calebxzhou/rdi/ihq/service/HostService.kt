@@ -8,6 +8,7 @@ import calebxzhou.rdi.ihq.model.imageRef
 import calebxzhou.rdi.ihq.model.ServerStatus
 import calebxzhou.rdi.ihq.net.ok
 import calebxzhou.rdi.ihq.net.param
+import calebxzhou.rdi.ihq.net.paramNull
 import calebxzhou.rdi.ihq.net.response
 import calebxzhou.rdi.ihq.net.uid
 import calebxzhou.rdi.ihq.service.TeamService.addHost
@@ -40,11 +41,11 @@ fun Route.hostRoutes() = route("/host") {
             //todo 内测阶段只支持最新版
             "latest",
             //param("packVer"),
-            ObjectId(param("worldId"))
+            paramNull("worldId")?.let {  ObjectId(it)}
         )
         ok()
     }
-    post("/{hostId}") {
+    delete("/{hostId}") {
         HostService.delete(uid, ObjectId(param("hostId")))
         ok()
     }
@@ -64,9 +65,10 @@ fun Route.hostRoutes() = route("/host") {
 
     }
     get("/") {
-        TeamService.get(uid)
+        TeamService.getJoinedTeam(uid)
             ?.let { HostService.listByTeam(it._id) }
             ?.let { response(data = it) }
+            ?:response(data = emptyList<Host>())
     }
     /* todo 以后再支持 for 自由选择host
     get("/all") {
@@ -118,26 +120,30 @@ object HostService {
 
     // ---------- Core Logic (no ApplicationCall side-effects) ----------
 
-    suspend fun create(uid: ObjectId, modpackId: ObjectId, packVer: String, worldId: ObjectId) {
+    suspend fun create(uid: ObjectId, modpackId: ObjectId, packVer: String, worldId: ObjectId?) {
         val player = PlayerService.getById(uid) ?: throw RequestError("玩家未注册")
         val team = TeamService.getOwn(uid) ?: throw RequestError("你不是队长")
         if (team.hosts().size > 3) throw RequestError("主机最多3个")
-        val world = WorldService.getById(worldId) ?: throw RequestError("存档不存在")
+        val world = worldId?.let {
+            if (findByWorld(it) != null) throw RequestError("此存档已被其他主机占用")
+
+            WorldService.getById(it) ?: throw RequestError("无此存档")
+        }?: WorldService.create(uid,null,modpackId)
         if (world.teamId != team._id) throw RequestError("存档不属于你的团队")
-        if (findByWorld(worldId) != null) throw RequestError("此存档已被其他主机占用")
+
         val port = allocateRoomPort()
         val host = Host(
-            name = player.name + "的房间",
+            name = team.name + "的主机"+ (team.hosts().size+1),
             teamId = team._id,
             modpackId = modpackId,
-            worldId = worldId,
+            worldId = world._id,
             port = port,
             packVer = packVer
         )
         dbcl.insertOne(host)
         team.addHost(host._id)
-        DockerService.createContainer(port, host._id.str, worldId.str, host.imageRef())
-        DockerService.start(host._id.str)
+        DockerService.createContainer(port, host._id.str, world._id.str, host.imageRef())
+       DockerService.start(host._id.str)
     }
 
     suspend fun delete(uid: ObjectId, hostId: ObjectId) {

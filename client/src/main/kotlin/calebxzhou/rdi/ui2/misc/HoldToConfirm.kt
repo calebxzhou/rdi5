@@ -1,5 +1,7 @@
-package calebxzhou.rdi.ui2
+package calebxzhou.rdi.ui2.misc
 
+import calebxzhou.rdi.ui2.iconDrawable
+import calebxzhou.rdi.ui2.uiThread
 import icyllis.modernui.graphics.Canvas
 import icyllis.modernui.graphics.Paint
 import icyllis.modernui.graphics.drawable.Drawable

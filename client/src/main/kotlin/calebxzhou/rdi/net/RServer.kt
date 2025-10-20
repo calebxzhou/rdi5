@@ -22,12 +22,18 @@ import io.ktor.client.plugins.timeout
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.request.parameter
+import io.ktor.client.request.setBody
 import io.ktor.client.request.url
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.utils.io.jvm.javaio.toInputStream
+import kotlinx.serialization.builtins.MapSerializer
+import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -80,6 +86,18 @@ class RServer(
         return httpRequest {
             url("$hqUrl/${path}")
             this.method = method
+            if (method != HttpMethod.Get && params.isNotEmpty()) {
+                json()
+                setBody(serdesJson.encodeToString(MapSerializer(String.serializer(), JsonElement.serializer()),
+                    params.mapValues {
+                        JsonPrimitive(it.value.toString())
+                    }
+                ))
+            } else if (method == HttpMethod.Get && params.isNotEmpty()) {
+                params.forEach {
+                    parameter(it.key, it.value)
+                }
+            }
             RAccount.now?.let {
                 header("Authorization", "Basic ${"${it._id}:${it.pwd}".encodeBase64}")
             }
@@ -87,7 +105,7 @@ class RServer(
         }
     }
 
-    suspend inline fun <reified T> request(
+    suspend inline fun <reified T> makeRequest(
         path: String,
         method: HttpMethod = HttpMethod.Get,
         params: Map<String, Any> = mapOf(),
@@ -99,7 +117,7 @@ class RServer(
         path: String,
         method: HttpMethod = HttpMethod.Get,
         params: Map<String, Any> = mapOf(),
-        showLoading: Boolean,
+        showLoading: Boolean = true,
         crossinline onErr: (Response<Unit>) -> Unit = { alertErr(it.msg) },
         crossinline onOk: (Response<Unit>) -> Unit,
     ) = request<Unit>(path,method,params,showLoading,onErr,onOk)
@@ -108,7 +126,7 @@ class RServer(
         path: String,
         method: HttpMethod = HttpMethod.Get,
         params: Map<String, Any> = mapOf(),
-        showLoading: Boolean,
+        showLoading: Boolean = true,
         crossinline onErr: (Response<T>) -> Unit = { alertErr(it.msg) },
         crossinline onOk: (Response<T>) -> Unit,
     ) {
@@ -117,7 +135,7 @@ class RServer(
         }
         ioScope.launch {
             try {
-                val req = request<T>(path, method, params)
+                val req = makeRequest<T>(path, method, params)
                 if (showLoading)
                     nowFragment?.closeLoading()
                 if (req.ok) {
@@ -138,7 +156,7 @@ class RServer(
     }
 
 
-
+    @Deprecated("use request instead")
     suspend inline fun <reified T> prepareRequest(
         post: Boolean = false,
         path: String,

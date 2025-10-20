@@ -1,9 +1,5 @@
 package calebxzhou.rdi.ui2.component
 
-import calebxzhou.rdi.ui2.HoldToConfirm.clearHoldToConfirm
-import calebxzhou.rdi.ui2.HoldToConfirm.holdTooltipEnabled
-import calebxzhou.rdi.ui2.HoldToConfirm.holdTooltipFormatter
-import calebxzhou.rdi.ui2.HoldToConfirm.onLongPress
 import calebxzhou.rdi.ui2.MaterialColor
 import calebxzhou.rdi.ui2.paddingDp
 import icyllis.modernui.R
@@ -11,9 +7,6 @@ import icyllis.modernui.core.Context
 import icyllis.modernui.graphics.Canvas
 import icyllis.modernui.graphics.Paint
 import icyllis.modernui.graphics.drawable.Drawable
-import icyllis.modernui.view.ContextMenu
-import icyllis.modernui.view.Menu
-import icyllis.modernui.view.MotionEvent
 import icyllis.modernui.widget.Button
  
 

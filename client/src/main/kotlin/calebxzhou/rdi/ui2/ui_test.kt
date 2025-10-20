@@ -2,6 +2,8 @@ package calebxzhou.rdi.ui2
 
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.model.Room
+import calebxzhou.rdi.ui2.frag.HostListFragment
+import calebxzhou.rdi.ui2.frag.TeamFragment
 import calebxzhou.rdi.ui2.frag.pack.ModpackCreate2Fragment
 import calebxzhou.rdi.ui2.frag.pack.ModpackCreate3Fragment
 import calebxzhou.rdi.ui2.frag.pack.ModpackCreateFragment
@@ -31,7 +33,7 @@ fun main() {
     Room.now= serdesJson.decodeFromString<Room>("{\"_id\":\"68babf210ffd4cd84117a8d9\",\"name\":\"123123的房间\",\"containerId\":\"55b0d72dc93a4e4bf604b6abdc0707c910c7552063f5db8a9749fcdf408fa75b\",\"score\":0,\"centerPos\":{\"data\":[0,64,0]},\"members\":[{\"id\":\"68b314bbadaf52ddab96b5ed\",\"isOwner\":true}],\"port\":0}")
     RAccount.now = RAccount(ObjectId("68b314bbadaf52ddab96b5ed"),"123123","123123","123123")
 
-    val frag = ModpackCreateFragment()
+    val frag = TeamFragment()
         //SelectAccountFragment(RServer.now)
         //ServerFragment()
         //RoomFragment(room)

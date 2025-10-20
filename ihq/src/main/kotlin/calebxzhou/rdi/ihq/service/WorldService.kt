@@ -1,7 +1,9 @@
 package calebxzhou.rdi.ihq.service
 
 import calebxzhou.rdi.ihq.DB
+import calebxzhou.rdi.ihq.DEFAULT_MODPACK_ID
 import calebxzhou.rdi.ihq.exception.RequestError
+import calebxzhou.rdi.ihq.lgr
 import calebxzhou.rdi.ihq.model.World
 import calebxzhou.rdi.ihq.net.ok
 import calebxzhou.rdi.ihq.net.param
@@ -20,7 +22,6 @@ import io.ktor.server.routing.route
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.toList
 import org.bson.types.ObjectId
-import javax.ws.rs.core.Response.ok
 
 fun Route.worldRoutes() = route("/world") {
     get("/") {
@@ -28,10 +29,8 @@ fun Route.worldRoutes() = route("/world") {
         response(data = WorldService.listByTeam(team._id))
     }
     post("/") {
-        //todo 内测阶段只能默认存档名
-        //val name = param("name")
-        val modpackId = ObjectId(param("modpackId"))
-        val world = WorldService.create(uid,  modpackId)
+        val modpackId = paramNull("modpackId")?.let { ObjectId(it) } ?: DEFAULT_MODPACK_ID
+        val world = WorldService.create(uid, paramNull("name"), modpackId)
         response(data = world)
     }
     post("/duplicate/{worldId}") {
@@ -69,14 +68,16 @@ object WorldService {
         }
     }
 
-    suspend fun create(uid: ObjectId,modpackId: ObjectId): World {
-        //if (name.displayLength > 64) throw RequestError("名称过长")
+    suspend fun create(uid: ObjectId, name: String?, modpackId: ObjectId): World {
         val team = requireManageableTeam(uid)
+        val name = name ?: "存档${listByTeam(team._id).size + 1}"
+        if (name.displayLength > 32) throw RequestError("名称过长")
         ensureCapacity(team._id)
-        val world = World(name = "存档${listByTeam(team._id).size+1}", teamId = team._id, modpackId = modpackId)
+        val world = World(name = name, teamId = team._id, modpackId = modpackId)
         try {
             DockerService.createVolume(world._id.toHexString())
         } catch (e: Exception) {
+            lgr.error(e) { "{}" }
             throw RequestError("创建存档失败:${e.message}")
         }
         dbcl.insertOne(world)
@@ -86,7 +87,7 @@ object WorldService {
 
     suspend fun duplicate(uid: ObjectId, worldId: ObjectId, newName: String?): World {
         val source = getById(worldId) ?: throw RequestError("存档不存在")
-        val newName = newName?:source.name
+        val newName = newName ?: source.name
         val team = TeamService.get(source.teamId) ?: throw RequestError("无此团队")
         if (!team.isOwnerOrAdmin(uid)) throw RequestError("无权限")
         ensureCapacity(team._id)

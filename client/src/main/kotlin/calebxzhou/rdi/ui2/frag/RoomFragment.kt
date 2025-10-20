@@ -3,10 +3,10 @@ package calebxzhou.rdi.ui2.frag
 import calebxzhou.rdi.auth.LocalCredentials
 import calebxzhou.rdi.model.Room
 import calebxzhou.rdi.net.RServer
-import calebxzhou.rdi.ui2.HoldToConfirm.onLongPress
+import calebxzhou.rdi.ui2.misc.HoldToConfirm.onLongPress
 import calebxzhou.rdi.ui2.MaterialColor
 import calebxzhou.rdi.ui2.center
-import calebxzhou.rdi.ui2.contextMenu
+import calebxzhou.rdi.ui2.misc.contextMenu
 import calebxzhou.rdi.ui2.goto
 import calebxzhou.rdi.ui2.headButton
 import calebxzhou.rdi.ui2.iconButton

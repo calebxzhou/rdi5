@@ -1,4 +1,4 @@
-package calebxzhou.rdi.ui2
+package calebxzhou.rdi.ui2.misc
 
 object RMouseCursor {
     @JvmField

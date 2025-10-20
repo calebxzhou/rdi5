@@ -165,7 +165,13 @@ fun ViewGroup.textView(
 fun ViewGroup.imageView(
     init: ImageView.() -> Unit = {}
 ) = ImageView(this.context).apply(init).also { this += it }
-
+fun ViewGroup.spinner(
+    entries: List<String>,
+    init: Spinner.() -> Unit = {}
+) = Spinner(this.context).apply{
+    adapter= ArrayAdapter(context,entries)
+    init()
+}.also { this += it }
 
 fun ViewGroup.button(
     msg: String,
@@ -233,23 +239,23 @@ fun ViewGroup.iconButton(
 fun ViewGroup.scrollView(
     init: ScrollView.() -> Unit = {}
 ) = ScrollView(this.context).apply(init).also { this += it }
-fun View.center(){
+fun View.center(width: Int = SELF, height: Int = SELF) {
     layoutParams = when (this) {
         is LinearLayout -> {
-            linearLayoutParam(SELF, SELF) {
+            linearLayoutParam(width, height) {
                 gravity = Gravity.CENTER_HORIZONTAL
             }
         }
 
         is FrameLayout -> {
-            frameLayoutParam(SELF, SELF) {
+            frameLayoutParam(width, height) {
                 gravity = Gravity.CENTER_HORIZONTAL
             }
         }
 
         else -> {
             lgr.warn("尝试默认居中 $this")
-            linearLayoutParam(SELF, SELF) {
+            linearLayoutParam(width, height) {
                 gravity = Gravity.CENTER_HORIZONTAL
             }
         }

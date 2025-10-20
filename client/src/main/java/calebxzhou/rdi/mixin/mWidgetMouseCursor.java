@@ -1,6 +1,6 @@
 package calebxzhou.rdi.mixin;
 
-import calebxzhou.rdi.ui2.RMouseCursor;
+import calebxzhou.rdi.ui2.misc.RMouseCursor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;

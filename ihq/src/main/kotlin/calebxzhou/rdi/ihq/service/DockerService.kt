@@ -50,8 +50,8 @@ object DockerService {
     fun createContainer(port: Int, containerName: String, volumeName: String?, image: String): String {
         val hostConfig = HostConfig.newHostConfig()
             .withPortBindings(parse("$port:65232"))
-            .withCpuCount(2L)  // Limit to 2 CPUs
-            .withMemory(2L * 1024 * 1024 * 1024)  // 2GB RAM limit
+            .withCpuCount(4L)  // Limit to 2 CPUs
+            .withMemory(4L * 1024 * 1024 * 1024)  // 2GB RAM limit
         volumeName?.let { hostConfig.withBinds(Bind.parse("$it:/data")) }
 
         return client.createContainerCmd(image)

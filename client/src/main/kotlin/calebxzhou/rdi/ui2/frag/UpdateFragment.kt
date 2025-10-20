@@ -124,7 +124,7 @@ class UpdateFragment(val server: RServer) : RFragment("正在检查更新") {
     suspend fun RServer.checkUpdate(modsDir: File): Map<String, File> {
         val clientIdFile = ModService.idMods
         val clientIdSha1 = ModService.idSha1s
-        val modlist = prepareRequest<String>(false, "update/mod-list").data
+        val modlist = makeRequest<String>("update/mod-list").data
 
         val modsUpdate = hashMapOf<String, File>()
         if(modlist == null) {
@@ -133,7 +133,7 @@ class UpdateFragment(val server: RServer) : RFragment("正在检查更新") {
         }
         //服务端
     val serverIdSha1: Map<String, String> = serdesJson.decodeFromString(modlist)
-        serverIdSha1.forEach { id, serverSha1 ->
+        serverIdSha1.forEach { (id, serverSha1) ->
             clientIdFile[id]?.let { file ->
                 val clientSha1 = clientIdSha1[id]
                 if (clientSha1 != serverSha1) {
@@ -203,11 +203,11 @@ class UpdateFragment(val server: RServer) : RFragment("正在检查更新") {
                                 val downloadedStr = formatBytes(bytesDownloaded)
                                 val totalStr = formatBytes(totalBytes)
                                 val speedStr = formatSpeed(speed)
-                                "$progressText 下载中 ${id} - $percentage% ($downloadedStr/$totalStr) $speedStr"
+                                "$progressText 下载中 $id - $percentage% ($downloadedStr/$totalStr) $speedStr"
                             } else {
                                 val downloadedStr = formatBytes(bytesDownloaded)
                                 val speedStr = formatSpeed(speed)
-                                "$progressText 下载中 ${id} - $downloadedStr $speedStr"
+                                "$progressText 下载中 $id - $downloadedStr $speedStr"
                             }
                             textView.text = progressInfo
                         }

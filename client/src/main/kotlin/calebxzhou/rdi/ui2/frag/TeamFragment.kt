@@ -1,6 +1,5 @@
 package calebxzhou.rdi.ui2.frag
 
-import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.model.Team
 import calebxzhou.rdi.model.account
 import calebxzhou.rdi.net.server
@@ -17,7 +16,7 @@ import calebxzhou.rdi.ui2.component.RTextField
 import calebxzhou.rdi.ui2.component.alertErr
 import calebxzhou.rdi.ui2.component.alertOk
 import calebxzhou.rdi.ui2.component.confirm
-import calebxzhou.rdi.ui2.contextMenu
+import calebxzhou.rdi.ui2.misc.contextMenu
 import calebxzhou.rdi.ui2.editText
 import calebxzhou.rdi.ui2.fctx
 import calebxzhou.rdi.ui2.headButton
