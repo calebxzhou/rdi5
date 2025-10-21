@@ -21,7 +21,7 @@ abstract class mLoginProtocol1 {
 
     @ModifyConstant(method = "<init>(Lnet/minecraft/network/FriendlyByteBuf;)V",constant = @Constant(intValue = 16))
     private static int RDI$AllowChineseName(int constant){
-        return 32;
+        return 64;
     }
 
 }

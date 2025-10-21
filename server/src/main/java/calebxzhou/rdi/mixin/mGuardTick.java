@@ -2,7 +2,6 @@ package calebxzhou.rdi.mixin;
 
 import calebxzhou.rdi.RDI;
 import calebxzhou.rdi.service.EntityTicker;
-import calebxzhou.rdi.service.RMobSpawner;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.RegistryAccess;
@@ -14,16 +13,11 @@ import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.NaturalSpawner;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.level.storage.WritableLevelData;
-import net.minecraft.world.ticks.LevelChunkTicks;
 import net.minecraft.world.ticks.LevelTicks;
-import net.minecraft.world.ticks.SavedTick;
-import net.minecraft.world.ticks.ScheduledTick;
 import org.spongepowered.asm.mixin.*;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -31,8 +25,6 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.List;
-import java.util.Queue;
-import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
@@ -73,13 +65,6 @@ class mTickInvertServer {
         } catch (Throwable throwable) {
             throwable.printStackTrace();
         }
-    }
-}
-@Mixin(ServerChunkCache.class)
-class mTickInvertMobSpawn{
-    @Redirect(method = "tickChunks",at= @At(value = "INVOKE", target = "Lnet/minecraft/world/level/NaturalSpawner;spawnForChunk(Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/level/chunk/LevelChunk;Lnet/minecraft/world/level/NaturalSpawner$SpawnState;ZZZ)V"))
-    private void RDI$spawnMobForChunk(ServerLevel lvl, LevelChunk chunk, NaturalSpawner.SpawnState state, boolean spawnFriendlies, boolean spawnMonsters, boolean forceDespawn){
-        RMobSpawner.spawnForChunk(lvl,chunk,state,spawnFriendlies,spawnMonsters,forceDespawn);
     }
 }
 @Mixin(Level.class)
@@ -201,48 +186,6 @@ class mGuardLevelTick {
     }
 }
 
-@Mixin(LevelChunkTicks.class)
-abstract
-class mGuardLevelTick2 {
-    @Mutable
-    @Shadow
-    @Final
-    private Set<ScheduledTick<?>> ticksPerPosition;
-
-    @Shadow
-    protected abstract void scheduleUnchecked(ScheduledTick tick);
-
-    @Mutable
-    @Shadow
-    @Final
-    private Queue<ScheduledTick> tickQueue;
-
-    @Shadow
-    private List<SavedTick> pendingTicks;
-
-    /*@Overwrite
-    public void schedule(ScheduledTick tick) {
-        try {
-            if(ticksPerPosition == null){
-                ticksPerPosition = new ObjectOpenCustomHashSet<>(ScheduledTick.UNIQUE_TICK_HASH);
-            }
-            if(tickQueue == null){
-                tickQueue =  new PriorityQueue(ScheduledTick.DRAIN_ORDER);
-            }
-            if(pendingTicks == null){
-                pendingTicks = new ArrayList<>();
-            }
-            if (this.ticksPerPosition.add(tick)) {
-                this.scheduleUnchecked(tick);
-            }
-        } catch (Exception e) {
-            RDI.log().warn(e.getLocalizedMessage());
-            ticksPerPosition = new ObjectOpenCustomHashSet<>(ScheduledTick.UNIQUE_TICK_HASH);
-            tickQueue =  new PriorityQueue(ScheduledTick.DRAIN_ORDER);
-            pendingTicks = new ArrayList<>();
-        }
-    }*/
-}
 @Mixin(Animal.class)
 class mAnimalAi{
     //卡顿时停止动物ai

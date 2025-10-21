@@ -4,7 +4,6 @@ import net.neoforged.fml.common.Mod
 import org.apache.logging.log4j.LogManager
 
 val lgr = LogManager.getLogger("rdi")
-var TOTAL_TICK_DELTA = 0f
 @Mod("rdi")
 class RDI {
     companion object{
