@@ -182,6 +182,7 @@ abstract class RFragment(initialTitle: String = "") : Fragment() {
                         weight = 1f
                     }
                     gravity = Gravity.CENTER_HORIZONTAL
+                    minimumWidth=dp(400f)
                 }
 
                 initContent()

@@ -36,14 +36,13 @@ object DebugCommand {
                 .executes { ctx ->
                     ioScope.launch {
                         mc.player?.let { player ->
-                            RServer.now?.hqRequest(
-                                true,
+                            RServer.now?.requestU(
                                 "room/section/add",
-                                false,
-                                listOf(
+                                showLoading = false,
+                                params = mapOf(
                                     "dimension" to player.level().dimensionName,
-                                    "chunkPos" to ""+player.chunkPosition().asInt,
-                                            "sectionY" to ""+player.blockY/16
+                                    "chunkPos" to player.chunkPosition().asInt.toString(),
+                                    "sectionY" to (player.blockY/16).toString()
                                 )){
 
                                 }

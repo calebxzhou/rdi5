@@ -2,9 +2,7 @@ package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.net.RServer
-import calebxzhou.rdi.net.body
-import calebxzhou.rdi.net.httpStringRequest_
-import calebxzhou.rdi.net.success
+import calebxzhou.rdi.net.httpRequest
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.RTextField
 import calebxzhou.rdi.ui2.component.SkinItemView
@@ -16,6 +14,8 @@ import icyllis.modernui.view.Gravity
 import icyllis.modernui.widget.CheckBox
 import icyllis.modernui.widget.LinearLayout
 import icyllis.modernui.widget.ScrollView
+import io.ktor.client.request.url
+import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
@@ -176,13 +176,13 @@ class WardrobeFragment : RFragment("衣柜") {
         for (subpage in 0..1) {
             val currentPage = startPage + subpage
             try {
-                val response = httpStringRequest_(
-                    false,
-                    "$urlPrefix/skinlib/list?filter=${if (cape) "cape" else "skin"}&sort=likes&page=$currentPage&keyword=${keyword}"
-                )
+                val response = calebxzhou.rdi.net.httpRequest {
+                    url("$urlPrefix/skinlib/list?filter=${if (cape) "cape" else "skin"}&sort=likes&page=$currentPage&keyword=${keyword}")
+                    method = io.ktor.http.HttpMethod.Get
+                }
 
-                if (response.success) {
-                    val body = response.body
+                if (response.status.value in 200..299) {
+                    val body = response.bodyAsText()
                     val skinData = serdesJson.decodeFromString<ApiResponse>(body).data
                     datas.addAll(skinData)
                 }
@@ -282,9 +282,12 @@ class WardrobeFragment : RFragment("衣柜") {
     private fun updateCloth(skinData: SkinData) {
         ioScope.launch {
             try {
-                val response = httpStringRequest_(false, "$urlPrefix/texture/${skinData.tid}")
-                if (response.success) {
-                    val skin = serdesJson.decodeFromString<Skin>(response.body)
+                val response = calebxzhou.rdi.net.httpRequest {
+                    url("$urlPrefix/texture/${skinData.tid}")
+                    method = io.ktor.http.HttpMethod.Get
+                }
+                if (response.status.value in 200..299) {
+                    val skin = serdesJson.decodeFromString<Skin>(response.bodyAsText())
                     val newCloth = account.cloth.copy()
 
                     if (skinData.isCape) {
@@ -306,14 +309,14 @@ class WardrobeFragment : RFragment("衣柜") {
     }
 
     private fun setCloth(cloth: RAccount.Cloth) {
-        val params = mutableListOf<Pair<String, Any>>()
-        params += "isSlim" to cloth.isSlim.toString()
-        params += "skin" to cloth.skin
+        val params = mutableMapOf<String, Any>()
+        params["isSlim"] = cloth.isSlim.toString()
+        params["skin"] = cloth.skin
         cloth.cape?.let {
-            params += "cape" to it
+            params["cape"] = it
         }
 
-        server.hqRequest(true, "skin", params = params) { response ->
+        server.requestU("skin", params = params) { response ->
             if (response.ok) {
                 account.updateCloth(cloth)
                 uiThread {

@@ -28,7 +28,7 @@ class ProfileFragment : RFragment("我的信息") {
                 goto(TeamFragment())
             }
             /*"🏠 团队" colored MaterialColor.LIGHT_GREEN_900 with {
-                server.hqRequest(false, "room/my", false) {
+                server.request<String>("room/my", method = io.ktor.http.HttpMethod.Get, showLoading = false) {
                     val body = it.data
                     if (body == "0") {
                         confirm(
@@ -36,14 +36,14 @@ class ProfileFragment : RFragment("我的信息") {
                             yesText = "创建自己的房间",
                             noText = "等朋友邀请我加入他的",
                         ) {
-                            server.hqRequest(true, "room/create") { resp ->
-                                Room.now= serdesJson.decodeFromString<Room>(resp.data)
+                            server.requestU("room/create") { resp ->
+                                Room.now= serdesJson.decodeFromString<Room>(resp.data!!)
                                 goto(RoomFragment( ))
                             }
                         }
-                        return@hqRequest
+                        return@request
                     } else {
-                        Room.now=serdesJson.decodeFromString<Room>(body)
+                        Room.now=serdesJson.decodeFromString<Room>(body!!)
                         goto(RoomFragment( ))
                     }
                 }

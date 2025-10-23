@@ -24,7 +24,6 @@ class RoomFragment() : RFragment("我的房间") {
                     "\uEF09 选择节点" with { CarrierFragment().showOver(this@RoomFragment) }
                 }
             } with { start() }
-            "\uEB50  管理" colored MaterialColor.BLUE_500 with { goto( HostConsoleFragment( )) }
             "❌ 删除房间" colored MaterialColor.RED_900 init {
                 onLongPress(2000){
                     ConfirmDeleteRoomFragment( ).showOver(this@RoomFragment)
@@ -52,10 +51,10 @@ class RoomFragment() : RFragment("我的房间") {
     fun start( ) {
         //电信以外全bgp
         val bgp = LocalCredentials.read().carrier!=0
-        server.hqRequest(false,"/room/server/status"){
-            /*if(it.body != "STARTED"){
+        server.request<String>("/room/server/status", method = io.ktor.http.HttpMethod.Get){
+            /*if(it.data != "STARTED"){
                 alertErr("请先启动房间的服务端")
-                return@hqRequest
+                return@request
             }
             renderThread {
                 ConnectScreen.startConnecting(

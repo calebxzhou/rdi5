@@ -5,6 +5,10 @@ import calebxzhou.rdi.net.WEB_USER_AGENT
 import calebxzhou.rdi.net.body
 import calebxzhou.rdi.net.httpStringRequest_
 import calebxzhou.rdi.util.serdesJson
+import io.ktor.client.call.body
+import io.ktor.client.request.header
+import io.ktor.client.request.url
+import io.ktor.client.statement.bodyAsText
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -35,15 +39,17 @@ data class GeoLocation(
         )
         var now = DEFAULT
         suspend fun get(): GeoLocation {
-            val resp = httpStringRequest_(false,"https://qifu.baidu.com/ip/local/geo/v1/district", headers = listOf(
-                "Referer" to "https://qifu.baidu.com/?activeKey=SEARCH_IP&trace=apistore_ip_aladdin&activeId=SEARCH_IP_ADDRESS&ip=",
-                "User-Agent" to WEB_USER_AGENT,
-                "Host" to "qifu.baidu.com",
-                "Content-Type" to "application/json",
-            ))
+            val resp = calebxzhou.rdi.net.httpRequest {
+                url("https://qifu.baidu.com/ip/local/geo/v1/district")
+                method = io.ktor.http.HttpMethod.Get
+                header("Referer", "https://qifu.baidu.com/?activeKey=SEARCH_IP&trace=apistore_ip_aladdin&activeId=SEARCH_IP_ADDRESS&ip=")
+                header("User-Agent", WEB_USER_AGENT)
+                header("Host", "qifu.baidu.com")
+                header("Content-Type", "application/json")
+            }
             try {
                 // Parse JSON response without creating classes
-                val jsonElement = serdesJson.parseToJsonElement(resp.body)
+                val jsonElement = serdesJson.parseToJsonElement(resp.bodyAsText())
                 val jsonObject = jsonElement.jsonObject
 
                 val dataElement = jsonObject["data"]
@@ -55,7 +61,7 @@ data class GeoLocation(
                 return serdesJson.decodeFromString<GeoLocation>(dataElement.jsonPrimitive.content).also { now=it }
             } catch (e: Exception) {
                 lgr.error("无法获取位置信息 ${e.message}")
-                lgr.error(resp.body)
+                lgr.error(resp.bodyAsText())
                 return DEFAULT
             }
         }

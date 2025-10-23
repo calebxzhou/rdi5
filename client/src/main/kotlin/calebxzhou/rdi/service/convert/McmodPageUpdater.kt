@@ -1,10 +1,12 @@
 package calebxzhou.rdi.service.convert
 
 import calebxzhou.rdi.lgr
-import calebxzhou.rdi.net.httpStringRequest_
-import calebxzhou.rdi.net.success
+import calebxzhou.rdi.net.httpRequest
 import calebxzhou.rdi.service.ModService
 import calebxzhou.rdi.util.json
+import io.ktor.client.request.header
+import io.ktor.client.request.url
+import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.apache.logging.log4j.Level
@@ -75,13 +77,17 @@ private fun buildPageUrl(baseUrl: String, page: Int?): String {
 
 private suspend fun loadPageDocument(url: String): Document? {
     val headers = headersForUrl(url)
-    val response = httpStringRequest_(url = url, headers = headers)
-    if (!response.success) {
-        lgr.warn("请求mcmod列表页失败: HTTP ${response.statusCode()} url=$url")
+    val response = calebxzhou.rdi.net.httpRequest {
+        url(url)
+        method = io.ktor.http.HttpMethod.Get
+        headers.forEach { (name, value) -> header(name, value) }
+    }
+    if (response.status.value !in 200..299) {
+        lgr.warn("请求mcmod列表页失败: HTTP ${response.status.value} url=$url")
         return null
     }
-    val body = response.body()
-    if (body.isNullOrBlank()) {
+    val body = response.bodyAsText()
+    if (body.isBlank()) {
         lgr.warn("mcmod列表页返回空内容，url=$url")
         return null
     }

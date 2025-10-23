@@ -18,6 +18,7 @@ import com.mongodb.client.model.IndexOptions
 import com.mongodb.client.model.Indexes
 import com.mongodb.kotlin.client.coroutine.MongoClient
 import io.github.oshai.kotlinlogging.KotlinLogging
+import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
@@ -26,7 +27,9 @@ import io.ktor.server.netty.*
 import io.ktor.server.plugins.compression.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.statuspages.*
+import io.ktor.server.response.respondText
 import io.ktor.server.routing.*
+import io.ktor.server.sse.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.bson.UuidRepresentation
@@ -65,6 +68,9 @@ fun main(): Unit =runBlocking {
 fun startHttp(){
     embeddedServer(Netty, host = "::", port = CONF.server.port){
         install(StatusPages) {
+            status(HttpStatusCode.NotFound) { call, status ->
+                call.response<Unit>(false, "找不到请求的内容",null)
+            }
             //参数不全/有问题
             exception<ParamError> { call, cause ->
                 call.response<Unit>(false, cause.message ?: "参数错误",null)
@@ -102,6 +108,7 @@ fun startHttp(){
             gzip()
             deflate()
         }
+        install(SSE)
         routing {
             playerRoutes()
             /*get("/sponsors") {

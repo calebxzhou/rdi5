@@ -87,28 +87,28 @@ object WorldService {
 
     suspend fun duplicate(uid: ObjectId, worldId: ObjectId, newName: String?): World {
         val source = getById(worldId) ?: throw RequestError("存档不存在")
-        val newName = newName ?: source.name
+        val newName = newName ?: (source.name+"副本")
         val team = TeamService.get(source.teamId) ?: throw RequestError("无此团队")
         if (!team.isOwnerOrAdmin(uid)) throw RequestError("无权限")
         ensureCapacity(team._id)
         if (newName.displayLength > 64) throw RequestError("名称过长")
-        val world = World(name = newName, teamId = team._id, modpackId = source.modpackId)
+        val newWorld = World(name = newName, teamId = team._id, modpackId = source.modpackId)
         try {
-            DockerService.cloneVolume(source._id.toHexString(), world._id.toHexString())
+            DockerService.cloneVolume(source._id.toHexString(), newWorld._id.toHexString())
         } catch (e: Exception) {
-            DockerService.deleteVolume(world._id.toHexString())
+            DockerService.deleteVolume(newWorld._id.toHexString())
             throw e
         }
-        dbcl.insertOne(world)
-        team.addWorld(world._id)
-        return world
+        dbcl.insertOne(newWorld)
+        team.addWorld(newWorld._id)
+        return newWorld
     }
 
     suspend fun delete(uid: ObjectId, worldId: ObjectId) {
         val world = getById(worldId) ?: throw RequestError("存档不存在")
         val team = TeamService.get(world.teamId) ?: throw RequestError("无此团队")
         if (!team.isOwnerOrAdmin(uid)) throw RequestError("无权限")
-        HostService.findByWorld(worldId)?.let { throw RequestError("存档正在被主机使用") }
+        HostService.findByWorld(worldId)?.let { throw RequestError("存档已被放入主机“${it.name}”中使用，要删除存档，先关闭主机并拔出存档") }
         dbcl.deleteOne(eq("_id", worldId))
         team.delWorld(worldId)
         DockerService.deleteVolume(world._id.toHexString())

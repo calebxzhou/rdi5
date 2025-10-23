@@ -1,25 +1,29 @@
 package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.model.Host
+import calebxzhou.rdi.model.Team
 import calebxzhou.rdi.model.World
-import calebxzhou.rdi.net.RServer
+import calebxzhou.rdi.model.account
 import calebxzhou.rdi.net.server
+import calebxzhou.rdi.service.isOwnerOrAdmin
 import calebxzhou.rdi.ui2.FragmentSize
 import calebxzhou.rdi.ui2.MaterialColor
 import calebxzhou.rdi.ui2.button
 import calebxzhou.rdi.ui2.center
+import calebxzhou.rdi.ui2.component.alertErr
+import calebxzhou.rdi.ui2.component.confirm
 import calebxzhou.rdi.ui2.go
-import calebxzhou.rdi.ui2.iconButton
 import calebxzhou.rdi.ui2.linearLayout
+import calebxzhou.rdi.ui2.misc.contextMenu
+import calebxzhou.rdi.ui2.padding8dp
 import calebxzhou.rdi.ui2.spinner
 import calebxzhou.rdi.ui2.textView
 import calebxzhou.rdi.ui2.toast
 import calebxzhou.rdi.ui2.uiThread
-import calebxzhou.rdi.util.ioTask
 import icyllis.modernui.widget.Spinner
 import io.ktor.http.HttpMethod
 
-class HostListFragment : RFragment("选择主机") {
+class HostListFragment(val team: Team) : RFragment("选择主机") {
     override var fragSize = FragmentSize.SMALL
 
     init {
@@ -42,8 +46,44 @@ class HostListFragment : RFragment("选择主机") {
     fun render(hosts: List<Host>) = uiThread{
         contentLayout.removeAllViews()
         contentLayout.apply {
-            hosts.forEach {
-                button("\uF233 ${it.name}")
+            linearLayout {
+                padding8dp()
+                textView("🖱点击开始游玩")
+                if(team.isOwnerOrAdmin(account)){
+                    textView("，右键进行管理")
+                }
+            }
+            hosts.forEach { host->
+                button("\uF233 ${host.name}",init={
+                    if(team.isOwnerOrAdmin(account)){
+                        contextMenu {
+                            "删除" with {
+                                confirm("要删除主机“${host.name}”吗？\n（存档会被保留）"){
+                                    server.request<Unit>("host/${host._id}", HttpMethod.Delete, showLoading = true){
+                                        toast("已删除")
+                                        load()
+                                    }
+                                }
+                            }
+                            "后台" with {
+                                HostConsoleFragment(host).go()
+                            }
+                            "切换存档" with{
+                                alertErr("没开发完呢")
+                            }
+                            "更新整合包" with {
+                                confirm("将更新主机“${host.name}”的整合包到最新版本。\n（存档会被保留）"){
+                                    server.request<Unit>("host/${host._id}/update", HttpMethod.Post, showLoading = true){
+                                        toast("已更新到最新版")
+                                        load()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }, onClick = {
+
+                })
             }
             if(hosts.isEmpty()){
                 textView("没有主机，请点击创建按钮")
@@ -89,7 +129,7 @@ class HostListFragment : RFragment("选择主机") {
                         contentLayout.bottomOptions{
                             "创建" colored MaterialColor.GREEN_900 with {
                                 val selectedWorld = worlds.getOrNull(worldSpinner.selectedItemPosition)
-                                val params = selectedWorld?.let {  mapOf("worldId" to it) } ?: emptyMap<String, Any>()
+                                val params = selectedWorld?.let {  mapOf("worldId" to it._id) } ?: emptyMap<String, Any>()
                                 server.requestU("host/", HttpMethod.Post,params ){
                                     close()
                                     toast("创建成功")
@@ -104,7 +144,5 @@ class HostListFragment : RFragment("选择主机") {
                 }
             )
         }
-
-
     }
 }

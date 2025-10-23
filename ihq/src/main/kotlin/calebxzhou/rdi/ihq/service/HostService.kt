@@ -18,20 +18,47 @@ import com.mongodb.client.model.Filters.*
 import com.mongodb.client.model.Updates.combine
 import com.mongodb.client.model.Updates.set
 import io.ktor.http.CacheControl
-import io.ktor.http.ContentType
 import io.ktor.server.response.cacheControl
-import io.ktor.server.response.respondBytesWriter
 import io.ktor.server.routing.*
-import io.ktor.utils.io.*
-import kotlinx.coroutines.delay
+import io.ktor.server.sse.*
+import io.ktor.sse.ServerSentEvent
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable.cancel
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.toList
+import kotlin.time.Duration.Companion.seconds
 import org.bson.types.ObjectId
-import java.util.concurrent.ConcurrentLinkedQueue
 
 // ---------- Routing DSL (mirrors teamRoutes style) ----------
 fun Route.hostRoutes() = route("/host") {
+    get("/{hostId}/status") {
+        response(
+            data = HostService.getServerStatus(ObjectId(param("hostId"))).toString()
+        )
+    }
+    post("/{hostId}/start") {
+        HostService.start(uid, ObjectId(param("hostId")))
+        ok()
+    }
+    post("/{hostId}/stop") {
+        HostService.stop(uid, ObjectId(param("hostId")))
+        ok()
+    }
+    post("/{hostId}/restart") {
+        HostService.restart(uid, ObjectId(param("hostId")))
+        ok()
+    }
+    post("/{hostId}/update") {
+
+        HostService.update(
+            uid,
+            ObjectId(param("hostId")),
+            paramNull("packVer")
+        )
+        ok()
+    }
     post("/") {
         HostService.create(
             uid,
@@ -49,20 +76,14 @@ fun Route.hostRoutes() = route("/host") {
         HostService.delete(uid, ObjectId(param("hostId")))
         ok()
     }
-    get("/{hostId}/log") {
+    get("/{hostId}/log/{lines}") {
         val hostId = ObjectId(param("hostId"))
-        val startLine = param("startLine").toInt()
         val lines = param("lines").toInt()
-        response(data = HostService.getLog(uid, hostId, startLine, lines))
+        response(data = HostService.getLog(uid, hostId, paramNull("startLine")?.toInt()?:0, lines))
     }
-    get("/{hostId}/log/stream") {
-        val hostId = ObjectId(param("hostId"))
-        call.response.cacheControl(CacheControl.NoCache(null))
-        call.respondBytesWriter(
-            contentType = ContentType.Text.EventStream,
-            producer = HostService.listenLogs(uid, hostId)
-        )
-
+    sse("/{hostId}/log/stream") {
+        val hostId = ObjectId(call.param("hostId"))
+        HostService.listenLogs(call.uid, hostId, this)
     }
     get("/") {
         TeamService.getJoinedTeam(uid)
@@ -74,28 +95,7 @@ fun Route.hostRoutes() = route("/host") {
     get("/all") {
         response(data = HostService.dbcl.find().map { it._id.toString() to it.name }.toList())
     }*/
-    get("/{hostId}/status") {
-        response(
-            data = HostService.getServerStatus(ObjectId(param("hostId"))).toString()
-        )
-    }
-    post("/{hostId}/start") {
-        HostService.start(uid, ObjectId(param("hostId")))
-        ok()
-    }
-    post("/{hostId}/stop") {
-        HostService.stop(uid, ObjectId(param("hostId")))
-        ok()
-    }
-    post("/{hostId}/update") {
 
-        HostService.update(
-            uid,
-            ObjectId(param("hostId")),
-            ObjectId(param("modpackId")), param("packVer")
-        )
-        ok()
-    }
 }
 
 object HostService {
@@ -123,7 +123,7 @@ object HostService {
     suspend fun create(uid: ObjectId, modpackId: ObjectId, packVer: String, worldId: ObjectId?) {
         val player = PlayerService.getById(uid) ?: throw RequestError("玩家未注册")
         val team = TeamService.getOwn(uid) ?: throw RequestError("你不是队长")
-        if (team.hosts().size > 3) throw RequestError("主机最多3个")
+        if (team.hosts().size > 1) throw RequestError("内测阶段只能有一个主机")
         val world = worldId?.let {
             if (findByWorld(it) != null) throw RequestError("此存档已被其他主机占用")
 
@@ -156,7 +156,8 @@ object HostService {
     }
 
 
-    suspend fun update(uid: ObjectId, hostId: ObjectId, modpackId: ObjectId, packVer: String) {
+    suspend fun update(uid: ObjectId, hostId: ObjectId,  packVer: String?) {
+        val packVer = packVer?:"latest"
         val team = TeamService.getOwn(uid) ?: throw RequestError("你不是队长")
         if (!team.hasHost(hostId)) throw RequestError("此主机不属于你的团队")
         val host = getById(hostId) ?: throw RequestError("无此主机")
@@ -167,15 +168,13 @@ object HostService {
         DockerService.deleteContainer(hostId.str)
         val worldId = host.worldId
         //TODO 暂时不支持自定义整合包 只能用官方的
-
-        DockerService.createContainer(host.port, hostId.str, worldId.str, "${modpackId.str}:$packVer")
+        DockerService.createContainer(host.port, hostId.str, worldId.str, "${host.modpackId.str}:$packVer")
         if (running) {
             DockerService.start(hostId.str)
         }
         dbcl.updateOne(
             eq("_id", host._id), combine(
                 set(Host::packVer.name, packVer),
-                set(Host::modpackId.name, modpackId)
             )
         )
     }
@@ -195,6 +194,13 @@ object HostService {
         if (!team.isOwnerOrAdmin(uid)) throw RequestError("无权限")
         DockerService.stop(hostId.str)
     }
+    suspend fun restart(uid: ObjectId, hostId: ObjectId) {
+        val host = getById(hostId) ?: throw RequestError("无此主机")
+        val team = TeamService.get(host.teamId) ?: throw RequestError("无此团队")
+        if (!team.hasHost(hostId)) throw RequestError("此主机不属于你的团队")
+        if (!team.isOwnerOrAdmin(uid)) throw RequestError("无权限")
+        DockerService.restart(hostId.str)
+    }
 
     suspend fun getServerStatus(hostId: ObjectId): ServerStatus {
         return getById(hostId)?._id?.let {
@@ -205,8 +211,8 @@ object HostService {
     }
 
     // Get logs by range: [startLine, endLine), 0 means newest line
-    suspend fun getLog(uid: ObjectId, hostId: ObjectId, startLine: Int, needLines: Int): String {
-        if (needLines > 50) throw RequestError("行数太多")
+    suspend fun getLog(uid: ObjectId, hostId: ObjectId, startLine: Int = 0, needLines: Int): String {
+        if (needLines > 200) throw RequestError("行数太多")
         val host = getById(hostId) ?: throw RequestError("无此主机")
         val team = TeamService.get(host.teamId) ?: throw RequestError("无此团队")
         if (!team.hasHost(hostId)) throw RequestError("此主机不属于你的团队")
@@ -215,48 +221,43 @@ object HostService {
     }
 
     // ---------- Streaming Helper (still needs ApplicationCall for SSE) ----------
-    suspend fun listenLogs(uid: ObjectId, hostId: ObjectId): suspend ByteWriteChannel.() -> Unit {
+    suspend fun listenLogs(uid: ObjectId, hostId: ObjectId, session: ServerSSESession) {
         val host = getById(hostId) ?: throw RequestError("无此主机")
         val team = TeamService.get(host.teamId) ?: throw RequestError("无此团队")
         if (!team.hasHost(hostId)) throw RequestError("此主机不属于你的团队")
         if (!team.isOwnerOrAdmin(uid)) throw RequestError("无权限")
 
-        return {
-            val writer = this
-            val pending = ConcurrentLinkedQueue<String>()
-            fun enqueue(event: String? = null, data: String) {
-                val sb = StringBuilder()
-                if (event != null) sb.append("event: ").append(event).append('\n')
-                data.lines().forEach { line -> sb.append("data: ").append(line).append('\n') }
-                sb.append('\n')
-                pending.add(sb.toString())
+        val containerName = hostId.str
+        val lines = Channel<String>(capacity = Channel.BUFFERED)
+        val subscription = DockerService.listenLog(
+            containerName,
+            onLine = { lines.trySend(it).isSuccess },
+            onError = { lines.close(it) },
+            onFinished = { lines.close() }
+        )
+
+        session.heartbeat {
+            period = 15.seconds
+            event = ServerSentEvent(event = "heartbeat", data = "ping")
+        }
+
+    try {
+            for (payload in lines) {
+                payload.lineSequence()
+                    .map { it.trimEnd('\r') }
+                    .filter { it.isNotEmpty() }
+                    .forEach { session.send(ServerSentEvent(data = it)) }
             }
-            enqueue("hello", "start streaming")
-            DockerService.listenLog(
-                hostId.str,
-                tail = 100,
-                onLine = { line -> enqueue(data = line) },
-                onError = { t -> enqueue("error", t.message ?: "error") },
-                onFinished = { enqueue("done", "finished") }
-            ).use {
-                var lastHeartbeat = System.currentTimeMillis()
-                while (true) {
-                    var wrote = false
-                    while (true) {
-                        val msg = pending.poll() ?: break
-                        writer.writeFully(msg.toByteArray())
-                        wrote = true
-                    }
-                    val now = System.currentTimeMillis()
-                    if (now - lastHeartbeat > 15000) {
-                        writer.writeFully("data: 💓\n\n".toByteArray())
-                        lastHeartbeat = now
-                        wrote = true
-                    }
-                    if (wrote) flush()
-                    delay(500)
-                }
+        } catch (cancel: CancellationException) {
+            throw cancel
+        } catch (t: Throwable) {
+            try {
+                session.send(ServerSentEvent(event = "error", data = t.message ?: "unknown"))
+            } catch (_: Throwable) {
             }
+        } finally {
+            runCatching { subscription.close() }
+            lines.cancel()
         }
     }
 
@@ -264,11 +265,6 @@ object HostService {
     suspend fun listByTeam(teamId: ObjectId): List<Host> =
         dbcl.find(eq("teamId", teamId)).toList()
 
-    suspend fun belongsToTeam(hostId: ObjectId, teamId: ObjectId): Boolean =
-        dbcl.find(and(eq("_id", hostId), eq("teamId", teamId)))
-            .projection(org.bson.Document("_id", 1))
-            .limit(1)
-            .firstOrNull() != null
 
     suspend fun findByWorld(worldId: ObjectId): Host? =
         dbcl.find(eq("worldId", worldId)).firstOrNull()

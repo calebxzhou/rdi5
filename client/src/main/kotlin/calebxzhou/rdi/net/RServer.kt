@@ -12,30 +12,23 @@ import calebxzhou.rdi.ui2.goto
 import calebxzhou.rdi.ui2.nowFragment
 import calebxzhou.rdi.util.encodeBase64
 import calebxzhou.rdi.util.ioScope
+import calebxzhou.rdi.util.ioTask
 import calebxzhou.rdi.util.serdesJson
-import io.ktor.client.call.body
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
+import dev.latvian.mods.kubejs.neoforge.NativeEventWrapper.onEvent
+import io.ktor.client.call.*
+import io.ktor.client.plugins.compression.compress
+import io.ktor.client.plugins.sse.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import io.ktor.http.*
+import io.ktor.sse.*
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
-import net.minecraft.client.multiplayer.ServerData
-import io.ktor.client.plugins.timeout
-import io.ktor.client.request.HttpRequestBuilder
-import io.ktor.client.request.get
-import io.ktor.client.request.header
-import io.ktor.client.request.parameter
-import io.ktor.client.request.setBody
-import io.ktor.client.request.url
-import io.ktor.client.statement.HttpResponse
-import io.ktor.client.statement.bodyAsChannel
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpMethod
-import io.ktor.utils.io.jvm.javaio.toInputStream
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
-import java.nio.charset.StandardCharsets
-import java.util.concurrent.atomic.AtomicBoolean
+import net.minecraft.client.multiplayer.ServerData
 
 val server
     get() = RServer.now
@@ -55,7 +48,7 @@ class RServer(
                 ServerData.Type.OTHER
             )
         }
-    val hqUrl = "http://${ip}:${hqPort}/"
+    val hqUrl = "http://${ip}:${hqPort}"
 
     companion object {
         val OFFICIAL_DEBUG = RServer(
@@ -93,14 +86,13 @@ class RServer(
                         JsonPrimitive(it.value.toString())
                     }
                 ))
+                compress("deflate")
             } else if (method == HttpMethod.Get && params.isNotEmpty()) {
                 params.forEach {
                     parameter(it.key, it.value)
                 }
             }
-            RAccount.now?.let {
-                header("Authorization", "Basic ${"${it._id}:${it.pwd}".encodeBase64}")
-            }
+            accountAuthHeader()
             builder()
         }
     }
@@ -111,11 +103,25 @@ class RServer(
         params: Map<String, Any> = mapOf(),
         crossinline builder: HttpRequestBuilder.() -> Unit={}
     ): Response<T> {
-        return createRequest(path, method, params,builder).body<Response<T>>()
+        if (Const.DEBUG) {
+            val paramsStr = if (params.isEmpty()) "{}" else params.entries.joinToString(", ", "{", "}") { "${it.key}=${it.value}" }
+            lgr.info("[HQ REQ] ${method.value} /$path $paramsStr")
+        }
+        val response = createRequest(path, method, params,builder).body<Response<T>>()
+        if (Const.DEBUG) {
+            val dataStr = when (val data = response.data) {
+                null -> "null"
+                is String -> if (data.length > 200) data.take(200) + "..." else data
+                is Collection<*> -> "[${data.size} items]"
+                else -> data.toString().let { if (it.length > 200) it.take(200) + "..." else it }
+            }
+            lgr.info("[HQ RSP] code=${response.code} msg=${response.msg} data=$dataStr")
+        }
+        return response
     }
     inline fun requestU(
         path: String,
-        method: HttpMethod = HttpMethod.Get,
+        method: HttpMethod = HttpMethod.Post,
         params: Map<String, Any> = mapOf(),
         showLoading: Boolean = true,
         crossinline onErr: (Response<Unit>) -> Unit = { alertErr(it.msg) },
@@ -166,138 +172,67 @@ class RServer(
         val headers = RAccount.now?.let {
             listOf("Authorization" to "Basic ${"${it._id}:${it.pwd}".encodeBase64}")
         } ?: listOf()
+        if (Const.DEBUG) {
+            val paramsStr = if (params.isEmpty()) "[]" else params.joinToString(", ", "[", "]") { "${it.first}=${it.second}" }
+
+        }
         val resp =
             httpStringRequest_(post, fullUrl, params, headers)
         val body = resp.body
-        if (Const.DEBUG) lgr.info(resp.statusCode().toString() + " " + body)
+        if (Const.DEBUG) {
+            val bodyPreview = if (body.length > 300) body.take(300) + "..." else body
+            lgr.info("[HQ LEGACY RSP] status=${resp.statusCode()} body=$bodyPreview")
+        }
         return serdesJson.decodeFromString<Response<T>>(body)
 
 
     }
-    @Deprecated("use request instead")
-    fun hqRequest(
-        post: Boolean = false,
+
+    fun sse(
         path: String,
-        showLoading: Boolean = true,
-        params: List<Pair<String, Any>> = listOf(),
-        onErr: (Response<*>) -> Unit = { alertErr(it.msg) },
-        onOk: (Response<*>) -> Unit
-    ) = hqRequestT<Unit>(post, path, showLoading, params, onErr = onErr, onOk = onOk)
-    @Deprecated("use request instead")
-    inline fun <reified T> hqRequestT(
-        post: Boolean = false,
-        path: String,
-        showLoading: Boolean = true,
-        params: List<Pair<String, Any>> = listOf(),
-        crossinline onErr: (Response<T>) -> Unit = { alertErr(it.msg) },
-        crossinline onOk: (Response<T>) -> Unit,
-    ) {
-        if (showLoading) {
-            nowFragment?.showLoading()
+        params: Map<String, Any?> = emptyMap(),
+        bufferPolicy: SSEBufferPolicy? = null,
+        configureRequest: HttpRequestBuilder.() -> Unit = {},
+        onError: (Throwable) -> Unit = { throwable ->
+            lgr.error(throwable)
+        },
+        onClosed: suspend () -> Unit = {},
+        onEvent: suspend (ServerSentEvent) -> Unit,
+    )= ioTask {
+        val urlString = if (path.startsWith("http", ignoreCase = true)) {
+            path
+        } else {
+            "$hqUrl/${path.trimStart('/')}"
         }
-        ioScope.launch {
-            try {
-                val req = prepareRequest<T>(post, path, params)
-                if (showLoading)
-                    nowFragment?.closeLoading()
-                if (req.ok) {
-                    onOk(req)
-                } else {
-                    onErr(req)
-                    lgr.error("req error ${req.msg}")
+
+        try {
+            ktorHttpClient.sse(urlString, {
+                accountAuthHeader()
+                params.forEach { (key, value) ->
+                    when (value) {
+                        null -> Unit
+                        is Iterable<*> -> value.forEach { element -> element?.let { parameter(key, it) } }
+                        is Array<*> -> value.forEach { element -> element?.let { parameter(key, it) } }
+                        else -> parameter(key, value)
+                    }
                 }
-            } catch (e: Exception) {
-                if (showLoading)
-                    nowFragment?.closeLoading()
-                alertErr("请求失败: ${e.message}")
-                e.printStackTrace()
+                bufferPolicy?.let { bufferPolicy(it) }
+                configureRequest()
+            }) {
+                try {
+                    incoming.collect { event -> onEvent(event) }
+                } finally {
+                    onClosed()
+                }
             }
-
-
+        } catch (cancel: CancellationException) {
+            throw cancel
+        } catch (t: Throwable) {
+            onError(t)
+            throw t
         }
     }
 
-    /**
-     * Open a Server-Sent Events stream to /room/log/stream.
-     * Returns a close function to terminate the stream.
-     */
-    fun openLogSse(
-        onEvent: (event: String?, data: String) -> Unit,
-        onError: (Throwable) -> Unit = {},
-        onClosed: () -> Unit = {}
-    ): () -> Unit {
-        val authHeader = RAccount.now?.let { "Basic ${"${it._id}:${it.pwd}".encodeBase64}" }
-        val url = "http://${ip}:${hqPort}/room/log/stream"
-        val cancelled = AtomicBoolean(false)
-        val job: Job = ioScope.launch(Dispatchers.IO) {
-            var response: io.ktor.client.statement.HttpResponse? = null
-            try {
-                response = ktorHttpClient.get(url) {
-                    header(HttpHeaders.Accept, "text/event-stream")
-                    header(HttpHeaders.CacheControl, "no-cache")
-                    header(HttpHeaders.UserAgent, WEB_USER_AGENT)
-                    if (authHeader != null) {
-                        header(HttpHeaders.Authorization, authHeader)
-                    }
-                    timeout {
-                        requestTimeoutMillis = 0
-                        socketTimeoutMillis = 0
-                    }
-                }
-                if (response.status.value !in 200..299) {
-                    onError(IllegalStateException("SSE HTTP ${response.status.value}")); return@launch
-                }
-                val channel = response.bodyAsChannel()
-                channel.toInputStream().bufferedReader(StandardCharsets.UTF_8).use { reader ->
-                    var event: String? = null
-                    val dataBuf = StringBuilder()
-                    fun dispatch() {
-                        if (dataBuf.isNotEmpty()) {
-                            onEvent(event, dataBuf.toString().trimEnd())
-                            dataBuf.setLength(0)
-                            event = null
-                        }
-                    }
-                    while (!cancelled.get()) {
-                        val line = reader.readLine() ?: break
-                        if (line.isEmpty()) {
-                            dispatch()
-                            continue
-                        }
-                        when {
-                            line.startsWith("event:") -> event = line.substring(6).trim()
-                            line.startsWith(":") -> Unit
-                            line.startsWith("data:") -> dataBuf.append(line.substring(5).trim()).append('\n')
-                        }
-                    }
-                    dispatch()
-                }
-            } catch (e: Exception) {
-                if (!cancelled.get()) onError(e)
-            } finally {
-                onClosed()
-            }
-        }
-        return {
-            cancelled.set(true)
-            job.cancel()
-        }
-    }
 
-    /** Convenience wrapper to consume only log lines (ignores control events). */
-    fun openLogLineStream(
-        onLine: (String) -> Unit,
-        onError: (Throwable) -> Unit = {},
-        onClosed: () -> Unit = {}
-    ): () -> Unit = openLogSse(onEvent = { ev, data ->
-        if (ev == "error") {
-            onError(IllegalStateException(data)); return@openLogSse
-        }
-        if (ev == "done") {
-            return@openLogSse
-        }
-        if (data == "💓" || ev == "hello") return@openLogSse
-        // Multi-line payload possible
-        data.lines().filter { it.isNotBlank() }.forEach { onLine(it) }
-    }, onError = onError, onClosed = onClosed)
+
 }

@@ -16,10 +16,9 @@ class RGameProfileRepo : GameProfileRepository {
         callback: ProfileLookupCallback
     ) {
         val names = _names.filter { it.isNotBlank() }.toTypedArray()
-        RServer.now.hqRequestT<List<RAccount.Dto>>(
-            false,
+        _root_ide_package_.calebxzhou.rdi.net.server.request<List<RAccount.Dto>>(
             "player-info-by-names",
-            params = listOf("names" to names.joinToString("\n")),
+            params = mapOf("names" to names.joinToString("\n")),
             onErr = {
                 callback.onProfileLookupFailed(
                     names.firstOrNull() ?: "未知",

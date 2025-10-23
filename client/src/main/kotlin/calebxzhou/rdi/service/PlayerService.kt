@@ -7,6 +7,7 @@ import calebxzhou.rdi.mixin.AMinecraft
 import calebxzhou.rdi.model.HwSpec
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.net.RServer
+import calebxzhou.rdi.net.server
 import calebxzhou.rdi.service.PlayerService.getPlayerInfo
 import calebxzhou.rdi.ui2.frag.ProfileFragment
 import calebxzhou.rdi.ui2.go
@@ -19,6 +20,7 @@ import com.github.benmanes.caffeine.cache.AsyncLoadingCache
 import com.github.benmanes.caffeine.cache.Caffeine
 import com.mojang.authlib.GameProfile
 import com.mojang.authlib.properties.Property
+import io.ktor.http.HttpMethod
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket
@@ -42,10 +44,10 @@ object PlayerInfoCache {
 fun playerLogin(usr: String, pwd: String){
     val creds = LocalCredentials.read()
     val spec = serdesJson.encodeToString<HwSpec>(HwSpec.now)
-    RServer.now.hqRequestT<RAccount>(
+    server.request<RAccount>(
         path = "login",
-        post = true,
-        params = listOf("usr" to usr, "pwd" to pwd, "spec" to spec)
+        method = HttpMethod.Post,
+        params = mapOf("usr" to usr, "pwd" to pwd, "spec" to spec)
     ){
         val account = it.data!!
         creds.loginInfos += account._id to LoginInfo(account.qq,account.pwd)
@@ -71,7 +73,7 @@ object PlayerService {
 
     suspend fun getPlayerInfo(uid: ObjectId): RAccount.Dto {
         return try {
-            RServer.now.prepareRequest<RAccount.Dto>(false, "player-info", listOf("uid" to uid)).data?: RAccount.DEFAULT.dto
+            server.makeRequest<RAccount.Dto>( "player-info/${uid}").data?: RAccount.DEFAULT.dto
         } catch (e: Exception) {
             lgr.warn("获取玩家信息失败",e)
             RAccount.DEFAULT.dto

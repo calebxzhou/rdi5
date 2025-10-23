@@ -2,14 +2,15 @@ package calebxzhou.rdi.ui2.component
 
 import calebxzhou.rdi.RDI
 import calebxzhou.rdi.lgr
-import calebxzhou.rdi.net.httpRequest_
-import calebxzhou.rdi.net.success
+import calebxzhou.rdi.net.httpRequest
 import calebxzhou.rdi.ui2.iconDrawable
 import calebxzhou.rdi.util.ioScope
 import calebxzhou.rdi.ui2.uiThread
 import icyllis.modernui.core.Context
 import icyllis.modernui.graphics.drawable.ImageDrawable
 import icyllis.modernui.widget.ImageView
+import io.ktor.client.request.url
+import io.ktor.client.statement.bodyAsBytes
 import kotlinx.coroutines.launch
 import java.io.ByteArrayInputStream
 import java.io.File
@@ -73,9 +74,12 @@ class HttpImageView(context: Context, val imgUrl: String) : ImageView(context) {
 
     private suspend fun fetchAndCache(url: String, cacheFile: File) {
         try {
-            val response = httpRequest_<ByteArray>(false, url)
-            if (response.success) {
-                val bytes = response.body()
+            val response = calebxzhou.rdi.net.httpRequest {
+                url(url)
+                method = io.ktor.http.HttpMethod.Get
+            }
+            if (response.status.value in 200..299) {
+                val bytes = response.bodyAsBytes()
                 // Save to disk
                 try {
                     FileOutputStream(cacheFile).use { it.write(bytes) }
@@ -94,7 +98,7 @@ class HttpImageView(context: Context, val imgUrl: String) : ImageView(context) {
                     }
                 }
             } else {
-                lgr.warn("HTTP ${response.statusCode()} loading image: $url")
+                lgr.warn("HTTP ${response.status} loading image: $url")
                 uiThread { setImageDrawable(failLoadImg) }
             }
         } catch (e: Exception) {

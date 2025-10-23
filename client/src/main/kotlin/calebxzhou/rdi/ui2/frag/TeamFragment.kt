@@ -33,10 +33,7 @@ class TeamFragment : RFragment("我的团队") {
 
     init {
 
-        bottomOptionsConfig = {
-            "▶ 游玩主机" colored MaterialColor.GREEN_900 with { HostListFragment().go() }
-            "💾 管理存档" colored MaterialColor.BLUE_900 with { WorldListFragment().go() }
-        }
+
         contentLayoutInit = {
             load()
         }
@@ -147,13 +144,18 @@ class TeamFragment : RFragment("我的团队") {
                 })
             }
             if (team.owner?.id == account._id) {
-                button("＋", width = 40, init = {
+                button("＋", init = {
                     textSize = 24f
                     paddingDp(0, 0, 0, 4)
                 }) {
                     Invite(::load).go()
                 }
             }
+        }
+        contentLayout.bottomOptions {
+                "▶ 游玩主机" colored MaterialColor.GREEN_900 with { HostListFragment(team).go() }
+                "💾 管理存档" colored MaterialColor.BLUE_900 with { WorldListFragment().go() }
+
         }
 
 

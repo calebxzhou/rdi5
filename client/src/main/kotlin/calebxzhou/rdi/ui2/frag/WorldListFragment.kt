@@ -6,6 +6,7 @@ import calebxzhou.rdi.ui2.FragmentSize
 import calebxzhou.rdi.ui2.button
 import calebxzhou.rdi.ui2.component.confirm
 import calebxzhou.rdi.ui2.misc.contextMenu
+import calebxzhou.rdi.ui2.padding8dp
 import calebxzhou.rdi.ui2.textView
 import calebxzhou.rdi.ui2.toast
 import calebxzhou.rdi.ui2.uiThread
@@ -26,11 +27,12 @@ class WorldListFragment: RFragment("选择存档") {
     private fun render(worlds: List<World>) = uiThread{
         contentLayout.removeAllViews()
         contentLayout.apply {
+            textView("右键可进行删除或复制等操作。"){ padding8dp()}
             worlds.forEach { world->
                 button("💾 ${world.name} ",init={
                     contextMenu {
                         "删除" with {
-                            confirm("要永久删除此存档吗？无法恢复！"){
+                            confirm("要永久删除存档”${world.name}“吗？无法恢复！"){
                                 server.request<Unit>("world/${world._id}", HttpMethod.Delete, showLoading = true){
                                     toast("已删除")
                                     load()
@@ -38,7 +40,7 @@ class WorldListFragment: RFragment("选择存档") {
                             }
                         }
                         "复制" with{
-                            confirm("要复制一份一模一样的存档吗？"){
+                            confirm("要给存档”${world.name}“复制一份一模一样的吗？"){
                                 server.request<Unit>("world/duplicate/${world._id}", HttpMethod.Post, showLoading = true){
                                     toast("已复制")
                                     load()
@@ -47,9 +49,7 @@ class WorldListFragment: RFragment("选择存档") {
 
                         }
                     }
-                }){
-
-                }
+                })
             }
                 if(worlds.isEmpty()){
                     textView("没有存档，请在创建主机时选择新建存档")

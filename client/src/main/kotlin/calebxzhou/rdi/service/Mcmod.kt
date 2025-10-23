@@ -2,11 +2,11 @@ package calebxzhou.rdi.service
 
 import calebxzhou.rdi.integrate.jei.RJeiPlugin
 import calebxzhou.rdi.lgr
-import calebxzhou.rdi.net.body
-import calebxzhou.rdi.net.httpStringRequest_
 import calebxzhou.rdi.ui2.component.alertOk
 import calebxzhou.rdi.ui2.uiThread
 import calebxzhou.rdi.util.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
 import kotlinx.coroutines.launch
 import mezz.jei.api.constants.VanillaTypes
 import mezz.jei.api.ingredients.ITypedIngredient
@@ -45,8 +45,11 @@ Priority: u=0, i
 
 
     suspend fun search(id: ResourceLocation, name: String): String? {
-        val resp =
-            httpStringRequest_(url = searchUrl + "${id.namespace} $name".urlEncoded, headers = headers).body
+        val resp = calebxzhou.rdi.net.httpRequest {
+            url(searchUrl + "${id.namespace} $name".urlEncoded)
+            method = io.ktor.http.HttpMethod.Get
+            Mcmod.headers.forEach { (name, value) -> header(name, value) }
+        }.bodyAsText()
         val resultItems = Jsoup.parse(resp).select(".result-item")
         lgr.info("搜到了${resultItems.size}个")
         // Variable to store the first href
@@ -69,7 +72,11 @@ Priority: u=0, i
     }
 
     fun getServerInfo() = ioScope.launch{
-        httpStringRequest_(false, SERVER_PAGE, headers = headers)
+        calebxzhou.rdi.net.httpRequest {
+            url(SERVER_PAGE)
+            method = io.ktor.http.HttpMethod.Get
+            Mcmod.headers.forEach { (name, value) -> header(name, value) }
+        }
     }
     fun searchItemOpen(item: Item){
         ioScope.launch {

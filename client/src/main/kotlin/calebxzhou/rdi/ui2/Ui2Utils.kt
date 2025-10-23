@@ -176,11 +176,10 @@ fun ViewGroup.spinner(
 fun ViewGroup.button(
     msg: String,
     color: MaterialColor = MaterialColor.WHITE,
-    width: Int = 100,
     init: RButton.() -> Unit = {},
     onClick: (RButton) -> Unit = {},
 ) = RButton(this.context,color,onClick = onClick).apply{
-    layoutParams = linearLayoutParam(context.dp(width.toFloat()), SELF)
+    layoutParams = linearLayoutParam(SELF, SELF)
     text=msg
 
     init()

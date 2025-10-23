@@ -1,5 +1,6 @@
 package calebxzhou.rdi.ui2.component
 
+import calebxzhou.rdi.net.httpRequest
 import calebxzhou.rdi.net.httpRequest_
 import calebxzhou.rdi.net.success
 import calebxzhou.rdi.service.PlayerInfoCache
@@ -14,8 +15,12 @@ import icyllis.modernui.graphics.Paint
 import icyllis.modernui.graphics.drawable.ImageDrawable
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.widget.TextView
+import io.ktor.client.call.body
+import io.ktor.client.request.url
+import io.ktor.client.statement.bodyAsBytes
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import net.neoforged.coremod.api.ASMAPI.loadData
 import org.bson.types.ObjectId
 
 class RAvatarView(
@@ -147,13 +152,14 @@ class RAvatarView(
             try {
                 val data = PlayerInfoCache[uid]
                 val skinUrl = data.cloth.skin
-                val skinResp = httpRequest_<ByteArray>(false, skinUrl)
+                val skinResp = httpRequest{
+                    url(skinUrl)
+                }
 
                 uiThread {
                     text = data.name
-                    if (skinResp.success) {
                         runBlocking {
-                            val responseBytes = skinResp.body()
+                            val responseBytes = skinResp.bodyAsBytes()
                             val bitmap = BitmapFactory.decodeByteArray(responseBytes, 0, responseBytes.size)
                             if (bitmap != null) {
                                 // Process legacy skin if needed
@@ -167,7 +173,7 @@ class RAvatarView(
                                 bitmap.recycle()
                             }
                         }
-                    }
+
                 }
             } catch (e: Exception) {
                 uiThread {

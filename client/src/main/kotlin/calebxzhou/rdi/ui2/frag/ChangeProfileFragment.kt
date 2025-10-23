@@ -45,12 +45,12 @@ class ChangeProfileFragment: RFragment("修改信息") {
             alertErr("密码长度须在6~16个字符")
             return
         }
-        val params = arrayListOf<Pair<String, String>>()
-        if (name != account.name) params += "name" to name
+        val params = mutableMapOf<String, Any>()
+        if (name != account.name) params["name"] = name
         // Only add password to params if it's not empty
-        if (pwd.isNotEmpty() && pwd != account.pwd) params += "pwd" to pwd
-        //if (qq != account.qq) params + "qq" to qq
-        RServer.now?.hqRequest(post=true,path = "profile", params = params) {
+        if (pwd.isNotEmpty() && pwd != account.pwd) params["pwd"] = pwd
+        //if (qq != account.qq) params["qq"] = qq
+        RServer.now?.requestU("profile", params = params) {
             // Use existing password if new password is empty
             val finalPwd = pwd.ifEmpty { account.pwd }
             val newAccount = RAccount(account._id, name, finalPwd, account.qq, account.score, account.cloth)

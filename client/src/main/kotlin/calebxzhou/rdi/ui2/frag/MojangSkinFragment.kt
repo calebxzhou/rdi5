@@ -92,14 +92,14 @@ class MojangSkinFragment : RFragment("导入正版皮肤") {
                             newCloth.cape = cloth.cape
                         }
 
-                        val params = mutableListOf<Pair<String, Any>>()
-                        params += "isSlim" to newCloth.isSlim.toString()
-                        params += "skin" to newCloth.skin
+                        val params = mutableMapOf<String, Any>()
+                        params["isSlim"] = newCloth.isSlim.toString()
+                        params["skin"] = newCloth.skin
                         newCloth.cape?.let {
-                            params += "cape" to it
+                            params["cape"] = it
                         }
 
-                        server.hqRequest(true, "skin", params = params) { response ->
+                        server.requestU("skin", params = params) { response ->
                             if (response.ok) {
                                 account.updateCloth(newCloth)
                                 uiThread {

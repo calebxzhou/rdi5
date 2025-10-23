@@ -2,10 +2,15 @@ package calebxzhou.rdi.net
 
 import calebxzhou.rdi.Const
 import calebxzhou.rdi.lgr
+import calebxzhou.rdi.model.RAccount
+import calebxzhou.rdi.util.encodeBase64
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.timeout
+import io.ktor.client.plugins.sse.SSE
+import io.ktor.client.plugins.sse.SSEBufferPolicy
+import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.request
@@ -22,6 +27,7 @@ import io.ktor.http.contentType
 import io.ktor.utils.io.jvm.javaio.toInputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlin.time.Duration.Companion.seconds
 import java.net.ProxySelector
 import java.net.URI
 import java.net.URLEncoder
@@ -63,6 +69,11 @@ internal val ktorHttpClient: HttpClient by lazy(LazyThreadSafetyMode.SYNCHRONIZE
             connectTimeoutMillis = 10_000
             socketTimeoutMillis = 60_000
         }
+        install(SSE) {
+            maxReconnectionAttempts = 4
+            reconnectionTime = 2.seconds
+            bufferPolicy = SSEBufferPolicy.LastEvents(10)
+        }
     }
 }
 
@@ -89,8 +100,12 @@ val <T> HttpResponse<T>.success
     get() = this.statusCode() in 200..299
 val HttpResponse<String>.body
     get() = this.body()
-typealias StringHttpResponse = HttpResponse<String>
 
+fun HttpRequestBuilder.accountAuthHeader(){
+    RAccount.now?.let {
+        header(HttpHeaders.Authorization, "Basic ${"${it._id}:${it.pwd}".encodeBase64}")
+    }
+}
 suspend fun httpStringRequest_(
     post: Boolean = false,
     url: String,

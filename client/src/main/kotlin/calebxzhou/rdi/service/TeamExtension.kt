@@ -14,5 +14,6 @@ val Team.owner
     get() =  members.find { it.role== Team.Role.OWNER }
 fun Team.isOwner(acc: RAccount) = owner?.id == acc._id
 // Check whether a user is OWNER or ADMIN of this team
+fun Team.isOwnerOrAdmin(acc: RAccount): Boolean = isOwnerOrAdmin(acc._id)
 fun Team.isOwnerOrAdmin(uid: ObjectId): Boolean =
     members.any { it.id == uid && (it.role == Team.Role.OWNER || it.role == Team.Role.ADMIN) }

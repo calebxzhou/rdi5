@@ -12,7 +12,6 @@ import com.github.dockerjava.api.model.HostConfig
 import com.github.dockerjava.api.model.PortBinding.parse
 import com.github.dockerjava.core.DefaultDockerClientConfig
 import com.github.dockerjava.core.DockerClientBuilder
-import com.github.dockerjava.core.command.BuildImageResultCallback
 import com.github.dockerjava.httpclient5.ApacheDockerHttpClient
 import com.github.dockerjava.transport.DockerHttpClient
 import java.io.Closeable
@@ -193,8 +192,8 @@ object DockerService {
 
     fun start(containerName: String) {
         val container = findContainer(containerName) ?: throw RequestError("找不到此容器")
-        client.startContainerCmd(container.id).exec()
 
+        client.startContainerCmd(container.id).exec()
     }
 
     fun stop(containerName: String) {
@@ -203,15 +202,19 @@ object DockerService {
         // Only stop if the container is actually running
         if (container.state.equals("running", ignoreCase = true)) {
             client.stopContainerCmd(container.id).exec()
-            lgr.info { "Successfully stopped container $containerName" }
         } else {
             throw RequestError("早就停了")
         }
 
     }
+    fun restart(containerName: String) {
+        // Check if container exists first
+        val container = findContainer(containerName) ?: throw RequestError("找不到此容器")
+        client.restartContainerCmd(container.id).exec()
+    }
     // startLine/endLine are indices from the newest line (0 = newest), slicing [startLine, endLine)
     // 两个参数都是“从后往前”的行号：0 表示最新一行，返回区间为 [startLine, endLine)
-    fun getLog(containerName: String, startLine: Int, endLine: Int): String {
+    fun getLog(containerName: String, startLine: Int =0, endLine: Int): String {
         return try {
             val callback = object : Adapter<Frame>() {
                 val logs = mutableListOf<String>()
@@ -256,7 +259,6 @@ object DockerService {
      */
     fun listenLog(
         containerName: String,
-        tail: Int = 50,
         onLine: (String) -> Unit,
         onError: (Throwable) -> Unit = {},
         onFinished: () -> Unit = {}
@@ -292,7 +294,7 @@ object DockerService {
             .withStdOut(true)
             .withStdErr(true)
             .withFollowStream(true)
-            .withTail(tail)
+            .withTail(0)
             .exec(callback)
         return callback
     }

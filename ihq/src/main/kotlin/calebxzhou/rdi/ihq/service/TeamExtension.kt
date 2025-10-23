@@ -20,4 +20,4 @@ val Team.owner
 // Check whether a user is OWNER or ADMIN of this team
 fun Team.isOwnerOrAdmin(uid: ObjectId): Boolean =
     members.any { it.id == uid && (it.role == Role.OWNER || it.role == Role.ADMIN) }
-suspend fun Team.hasHost(hostId: ObjectId )= HostService.belongsToTeam(hostId,_id)
+suspend fun Team.hasHost(hostId: ObjectId )= HostService.listByTeam(_id).find { it._id == hostId } != null

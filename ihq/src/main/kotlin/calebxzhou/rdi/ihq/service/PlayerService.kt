@@ -31,12 +31,7 @@ import java.io.File
 import kotlin.text.toByteArray
 
 fun Route.playerRoutes() {
-    get("/playerInfo") {
-        val uid = ObjectId(param("uid"))
-        val info = PlayerService.getInfo(uid)
-        response(data=(info))
-    }
-    get("/player-info") {
+    get("/player-info/{uid}") {
         val uid = ObjectId(param("uid"))
         val info = PlayerService.getInfo(uid)
         response(data=(info))
@@ -46,12 +41,12 @@ fun Route.playerRoutes() {
         val infos = PlayerService.getInfoByNames(names)
         response(data=(infos))
     }
-    get("/name") {
+    get("/name/{uid}") {
         val uid = ObjectId(param("uid"))
         val name = PlayerService.getName(uid) ?: "【玩家不存在】"
         response(data=name)
     }
-    get("/skin") {
+    get("/skin/{uid}") {
         val uidParam = param("uid")
         val uid = ObjectId(uidParam)
         val cloth = PlayerService.getSkin(uid)
