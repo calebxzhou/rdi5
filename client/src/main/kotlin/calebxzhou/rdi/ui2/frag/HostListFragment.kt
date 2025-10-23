@@ -73,7 +73,7 @@ class HostListFragment(val team: Team) : RFragment("选择主机") {
                             }
                             "更新整合包" with {
                                 confirm("将更新主机“${host.name}”的整合包到最新版本。\n（存档会被保留）"){
-                                    server.request<Unit>("host/${host._id}/update", HttpMethod.Post, showLoading = true){
+                                    server.requestU("host/${host._id}/update", HttpMethod.Post, showLoading = true){
                                         toast("已更新到最新版")
                                         load()
                                     }

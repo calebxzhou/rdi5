@@ -14,9 +14,6 @@
     "mChinesePlayerName",
     "mDedicatedServer",
     "mEula",
-    "mGuardChunkTick",
-    "mGuardLevelTick",
-    "mGuardServerLevelTick",
     "mLoginProtocol1",
     "mNoChunkLoad",
     "mNoVersionCheck",
@@ -25,8 +22,6 @@
     "mSaveBandwidth",
     "mServerLoginPacketListener",
     "mServerProps",
-    "mServerProps2",
-    "mTickingEntity",
-    "mTickInvertServer"
+    "mServerProps2"
   ]
 }
