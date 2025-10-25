@@ -49,8 +49,10 @@ object DockerService {
     fun createContainer(port: Int, containerName: String, volumeName: String?, image: String): String {
         val hostConfig = HostConfig.newHostConfig()
             .withPortBindings(parse("$port:65232"))
-            .withCpuCount(4L)  // Limit to 2 CPUs
-            .withMemory(4L * 1024 * 1024 * 1024)  // 2GB RAM limit
+            .withCpuCount(2L)  // Limit to 2 CPUs
+            .withMemory(2L * 1024 * 1024 * 1024)  // 2GB RAM limit
+            .withMemorySwap(4L * 1024 * 1024 * 1024)  //4G swap
+            
         volumeName?.let { hostConfig.withBinds(Bind.parse("$it:/data")) }
 
         return client.createContainerCmd(image)
@@ -58,6 +60,11 @@ object DockerService {
             .withEnv(listOf("EULA=TRUE"))
             .withExposedPorts(ExposedPort(65232))
             .withHostConfig(hostConfig)
+            .withTty(true)
+            .withStdinOpen(true)
+            .withAttachStdin(true)
+            .withAttachStdout(true)
+            .withAttachStderr(true)
             .exec().id
     }
 
@@ -192,8 +199,8 @@ object DockerService {
 
     fun start(containerName: String) {
         val container = findContainer(containerName) ?: throw RequestError("找不到此容器")
-
-        client.startContainerCmd(container.id).exec()
+        client.startContainerCmd(container.id)
+            .exec()
     }
 
     fun stop(containerName: String) {

@@ -7,7 +7,7 @@ import java.net.Proxy
 class RAuthService: YggdrasilAuthenticationService(Proxy.NO_PROXY) {
     override fun createMinecraftSessionService() = RSessionService()
 
-    override fun createProfileRepository(): GameProfileRepository? {
+    override fun createProfileRepository(): GameProfileRepository {
        return RGameProfileRepo()
     }
 }

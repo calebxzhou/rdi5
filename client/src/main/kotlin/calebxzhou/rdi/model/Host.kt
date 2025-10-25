@@ -18,4 +18,8 @@ data class Host(
     @Contextual
     val worldId: ObjectId,
     var port: Int,
-)
+){
+    companion object{
+        var now : Host?=null
+    }
+}

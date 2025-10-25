@@ -72,25 +72,22 @@ class RGameEvents {
         @SubscribeEvent
         @JvmStatic
         fun onKeyBind(e: RegisterKeyMappingsEvent) {
-            e.register(RKeyBinds.HOME)
             e.register(RKeyBinds.MCMOD)
         }
         @SubscribeEvent
         @JvmStatic
         fun onClientTick(e: ClientTickEvent.Post) {
-            if (RKeyBinds.HOME.consumeClick()) {
-                mc.sendCommand("ftbteambases home")
-            }else if(RKeyBinds.MCMOD.consumeClick()){
+            if(RKeyBinds.MCMOD.consumeClick()){
                 Mcmod. onKeyPressIngame()
             }
         }
-        @SubscribeEvent
+        /*@SubscribeEvent
         @JvmStatic
         fun registerNetworkHandler(e: RegisterPayloadHandlersEvent) {
             e.registrar("1").playBidirectional(RGamePayload.TYPE, RGamePayload.CODEC, DirectionalPayloadHandler(
                 RGamePayload::handleData,
                 {a,b->}))
-        }
+        }*/
     }
 
 

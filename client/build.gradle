@@ -422,3 +422,8 @@ tasks.register('出core', Copy) {
     from(layout.buildDirectory.file("libs/rdi-${version}.jar"))
     into("${System.getProperty('user.home')}\\Documents\\RDI5sea-Ref\\.minecraft\\versions\\RDI5.5\\mods")
 }
+tasks.register('出core-rel', Copy) {
+    dependsOn(tasks.named('build'))
+    from(layout.buildDirectory.file("libs/rdi-${version}.jar"))
+    into("${System.getProperty('user.home')}\\Documents\\RDI5sea-Ref\\.minecraft\\versions\\rdi55a10\\mods")
+}

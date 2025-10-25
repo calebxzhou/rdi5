@@ -4,6 +4,7 @@ import calebxzhou.rdi.lgr
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.net.body
+import calebxzhou.rdi.net.server
 import calebxzhou.rdi.util.ioScope
 import calebxzhou.rdi.util.serdesJson
 import com.mojang.authlib.GameProfileRepository
@@ -16,7 +17,7 @@ class RGameProfileRepo : GameProfileRepository {
         callback: ProfileLookupCallback
     ) {
         val names = _names.filter { it.isNotBlank() }.toTypedArray()
-        _root_ide_package_.calebxzhou.rdi.net.server.request<List<RAccount.Dto>>(
+        server.request<List<RAccount.Dto>>(
             "player-info-by-names",
             params = mapOf("names" to names.joinToString("\n")),
             onErr = {

@@ -8,6 +8,7 @@ import calebxzhou.rdi.ui2.goto
 import calebxzhou.rdi.ui2.mcScreen
 import calebxzhou.rdi.util.go
 import calebxzhou.rdi.util.mc
+import calebxzhou.rdi.util.renderThread
 import net.minecraft.world.Difficulty
 import net.minecraft.world.level.GameRules
 import net.minecraft.world.level.GameType
@@ -43,7 +44,7 @@ object LevelService {
             )
         }
     }
-      fun openFlatLevel() {
+      fun openFlatLevel()  = renderThread{
         val levelName = "rdi_creative"
         if (mc.levelSource.levelExists(levelName)) {
             mc.createWorldOpenFlows().openWorld( levelName){
@@ -66,7 +67,7 @@ object LevelService {
             mc.createWorldOpenFlows().createFreshLevel(
                 levelName,
                 levelSettings,
-                WorldOptions(Const.SEED, true, true),WorldPresets::createNormalWorldDimensions, ProfileFragment().mcScreen
+                WorldOptions(Const.SEED, true, true),WorldPresets::createNormalWorldDimensions, TitleFragment().mcScreen
             )
         }
     }

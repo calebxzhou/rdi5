@@ -19,6 +19,5 @@ public class mScreenBg {
     @Overwrite
     public void renderPanorama(GuiGraphics guiGraphics, float partialTick) {
         guiGraphics.blit(Ui2UtilsKt.getBG_IMAGE_MC(), 0, 0, 0f, 0f, width,height,width,height);
-
     }
 }

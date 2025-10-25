@@ -5,6 +5,7 @@
   "compatibilityLevel": "JAVA_21",
   "client": [
     "AClientPacketListener",
+    "AConnectScreen",
     "AEditBox",
     "AMinecraft",
     "mChat",
@@ -17,14 +18,13 @@
     "mOptions",
     "mPauseScreen",
     "mPlayerTabOverlay",
-    "mProxyPortChanger",
     "mRAuth",
     "mScreenBg",
     "mScreenTransition",
     "mSkin",
     "mTitleScreen",
-    "mWidgetMouseCursor",
-    "mWindowTitle"
+    "mWindowTitle",
+    "gameplay.mAutoRespawn"
   ],
   "injectors": {
     "defaultRequire": 1
@@ -35,17 +35,15 @@
     "mAllowChineseArgument",
     "mAllowChineseName",
     "mAlwaysOfflineMode",
-    "mLocalServerNoWaitStop",
     "mNetMetrics",
     "mNetMetrics2",
     "mPlayerInfoUpdate",
-    "mProxySerializer",
+    "mProxyConnect",
     "mServerboundHelloPacket",
     "mServiceKeyInfo",
     "mTextureUrlChecker",
     "mTooltipGuard",
-    "event.mOnChangeBlockState",
-    "event.mOnPacketSent",
+    "gameplay.mPlayer",
     "jade.mNoDisplayModName",
     "mui.mNoBlur"
   ]
