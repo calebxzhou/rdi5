@@ -8,15 +8,17 @@ import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.SocketChannel
 import io.netty.channel.socket.nio.NioServerSocketChannel
 import io.netty.channel.socket.nio.NioSocketChannel
+import io.netty.handler.codec.ByteToMessageDecoder
+import io.netty.handler.codec.MessageToByteEncoder
 import io.netty.handler.logging.LogLevel
 import io.netty.handler.logging.LoggingHandler
 import io.netty.util.CharsetUtil
 
 /**
  * TCP Reverse Proxy using Netty with dynamic backend switching
- * Routes incoming connections to backend servers based on binary control packets
+ * Routes incoming connections to backend servers based on port in first 2 bytes
  *
- * Binary packet format: 0x01 02 03 04 AA BB CC DD + 2 bytes port (big-endian)
+ * Connection flow: Client sends 2 bytes (big-endian port), then forwards all data
  */
 class TcpReverseProxy {
 
@@ -47,7 +49,7 @@ class TcpReverseProxy {
 
             lgr.info { "TCP Reverse Proxy started on $bindHost:$bindPort" }
             lgr.info { "Default backend: $defaultBackendHost:$defaultBackendPort" }
-            lgr.info { "Send binary control packet (0x01020304AABBCCDD + port) to redirect to 127.0.0.1:<port>" }
+            lgr.info { "Client protocol: Send 2 bytes (big-endian port 50000-59999) at start, then forward data" }
 
             // Wait until the server socket is closed
             future.channel().closeFuture().sync()
@@ -77,16 +79,22 @@ class ProxyServerInitializer(
 ) : ChannelInitializer<SocketChannel>() {
 
     override fun initChannel(ch: SocketChannel) {
+        ch.config().setOption(ChannelOption.TCP_NODELAY, true)
+        ch.config().setOption(ChannelOption.SO_KEEPALIVE, true)
+        if(Const.DEBUG){
+            //记录包的内容
+            ch.pipeline().addLast(LoggingHandler(LogLevel.INFO))
+        }
         ch.pipeline().addLast(
-            // 启用包数据的日志记录
-           //  LoggingHandler(LogLevel.INFO),
+            // Port extraction happens first, then Minecraft framing is added dynamically
             DynamicProxyFrontendHandler(defaultBackendHost, defaultBackendPort, backendGroup)
         )
     }
 }
 
 /**
- * Enhanced handler for frontend connections that supports dynamic backend switching
+ * Enhanced handler for frontend connections with simplified port-based routing
+ * Client sends 2 bytes (big-endian port) at connection start, then all data is forwarded
  */
 class DynamicProxyFrontendHandler(
     private val defaultBackendHost: String,
@@ -98,141 +106,55 @@ class DynamicProxyFrontendHandler(
     private var currentBackendHost: String = defaultBackendHost
     private var currentBackendPort: Int = defaultBackendPort
     private val pendingBuffer = mutableListOf<Any>()
-    private var controlBuf: ByteBuf? = null
-
-    // Parse exactly 10-byte control packet: magic(8) + port(2, big-endian).
-    // On success, the 10 bytes are consumed from the buffer; returns target port.
-    // On failure, reader index is reset and null is returned.
-    private fun parseControlPort(buffer: ByteBuf): Int? {
-        if (buffer.readableBytes() != 10) return null
-        buffer.markReaderIndex()
-        val b1 = buffer.readByte()
-        val b2 = buffer.readByte()
-        val b3 = buffer.readByte()
-        val b4 = buffer.readByte()
-        val b5 = buffer.readByte()
-        val b6 = buffer.readByte()
-        val b7 = buffer.readByte()
-        val b8 = buffer.readByte()
-        val isMagic =
-            (b1 == 0x01.toByte() && b2 == 0x02.toByte() && b3 == 0x03.toByte() && b4 == 0x04.toByte() &&
-             b5 == 0xAA.toByte() && b6 == 0xBB.toByte() && b7 == 0xCC.toByte() && b8 == 0xDD.toByte())
-        if (!isMagic) {
-            buffer.resetReaderIndex()
-            return null
-        }
-        val port = buffer.readUnsignedShort()
-        if (port !in 50000..59999) {
-            buffer.resetReaderIndex()
-            return null
-        }
-        return port
-    }
-
-    // Find the start index of the 8-byte magic header within the buffer, or -1 if not found.
-    private fun findMagicIndex(buf: ByteBuf): Int {
-        val start = buf.readerIndex()
-        val end = buf.readerIndex() + buf.readableBytes() - 8
-        if (end < start) return -1
-        val m = byteArrayOf(0x01,0x02,0x03,0x04,0xAA.toByte(),0xBB.toByte(),0xCC.toByte(),0xDD.toByte())
-        var i = start
-        while (i <= end) {
-            var j = 0
-            while (j < 8 && buf.getByte(i + j) == m[j]) j++
-            if (j == 8) return i
-            i++
-        }
-        return -1
-    }
+    private var portReceived = false
 
     override fun channelActive(ctx: ChannelHandlerContext) {
-        // Do NOT connect immediately. Wait for client to send control packet indicating target port.
-        lgr.info { "Client connected, waiting for control packet (0x01020304AABBCCDD + port)" }
+        lgr.info { "Client connected, waiting for 2-byte port" }
     }
 
     override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
-        // Before backend selection, we must accumulate until we get at least the 10-byte control header
-        if (backendChannel == null) {
-            val incoming = msg as ByteBuf
-            val cb = controlBuf ?: run {
-                controlBuf = ctx.alloc().buffer(16)
-                controlBuf!!
-            }
-            cb.writeBytes(incoming)
-            io.netty.util.ReferenceCountUtil.release(incoming)
-
-            if (cb.readableBytes() >= 10) {
-                // Search for magic header anywhere in the accumulated buffer
-                val magicIdx = findMagicIndex(cb)
-                if (magicIdx >= 0 && (cb.readerIndex() + cb.readableBytes()) >= magicIdx + 10) {
-                    // Extract data before magic to forward later
-                    var preData: ByteBuf? = null
-                    val preLen = magicIdx - cb.readerIndex()
-                    if (preLen > 0) {
-                        preData = cb.readRetainedSlice(preLen)
+        // First message must be exactly 2 bytes containing the target port
+        if (!portReceived) {
+            val buffer = msg as ByteBuf
+            if (buffer.readableBytes() >= 2) {
+                val port = buffer.readUnsignedShort()
+                portReceived = true
+                
+                if (port in 50000..59999) {
+                    lgr.info { "Port received: $port, connecting to backend 127.0.0.1:$port" }
+                    currentBackendHost = "127.0.0.1"
+                    currentBackendPort = port
+                    
+                    // Now add Minecraft frame decoder AFTER port is extracted
+                    ctx.pipeline().addBefore(ctx.name(), "minecraftDecoder", MinecraftFrameDecoder())
+                    lgr.info { "Added Minecraft frame decoder to pipeline" }
+                    
+                    connectToBackend(ctx)
+                    
+                    // If there's remaining data in this packet, forward it
+                    if (buffer.readableBytes() > 0) {
+                        val remainingData = buffer.readRetainedSlice(buffer.readableBytes())
+                        // Re-fire the remaining data through the pipeline so it gets decoded
+                        ctx.fireChannelRead(remainingData)
+                        io.netty.util.ReferenceCountUtil.release(msg)
+                        return
                     }
-                    // Extract and parse the 10-byte header
-                    val header = cb.readRetainedSlice(10)
-                    val newPort = parseControlPort(header)
-                    if (newPort != null) {
-                        header.release()
-                        // Remaining data after header to forward later
-                        var postData: ByteBuf? = null
-                        if (cb.readableBytes() > 0) {
-                            postData = cb.readRetainedSlice(cb.readableBytes())
-                        }
-                        cb.release()
-                        controlBuf = null
-                        lgr.info { "Control received (embedded): connecting backend 127.0.0.1:$newPort" }
-                        switchBackend(ctx, "127.0.0.1", newPort)
-                        // Forward original payload (without the control header) in order
-                        if (preData != null) forwardToBackend(ctx, preData)
-                        if (postData != null) forwardToBackend(ctx, postData)
-                    } else {
-                        // Header bytes did not validate; release and keep accumulating (do not close immediately)
-                        header.release()
-                        // Put back preData into pending or release it; safer to keep accumulating and release
-                        preData?.release()
-                    }
+                } else {
+                    lgr.info { "Invalid port $port (must be 50000-59999), closing connection" }
+                    ctx.channel().close()
                 }
+                
+                io.netty.util.ReferenceCountUtil.release(msg)
+            } else {
+                lgr.info { "First packet too small (${buffer.readableBytes()} bytes), expected at least 2" }
+                io.netty.util.ReferenceCountUtil.release(msg)
+                ctx.channel().close()
             }
             return
         }
 
-        // After backend is chosen, still allow dynamic control packets (e.g., switching)
-        val controlResult = checkForControlPacket(ctx, msg)
-        if (!controlResult) {
-            forwardToBackend(ctx, msg)
-        }
-    }
-
-    private fun checkForControlPacket(ctx: ChannelHandlerContext, msg: Any): Boolean {
-        val buffer = msg as ByteBuf
-        if (buffer.readableBytes() != 10) return false
-        val newPort = parseControlPort(buffer)
-        return if (newPort != null) {
-            lgr.info { "Binary port switching: connecting backend 127.0.0.1:$newPort" }
-            switchBackend(ctx, "127.0.0.1", newPort)
-            io.netty.util.ReferenceCountUtil.release(msg)
-            true
-        } else {
-            false
-        }
-    }
-
-    private fun switchBackend(ctx: ChannelHandlerContext, newHost: String, newPort: Int) {
-        // Close existing backend connection if active
-        if (backendChannel?.isActive == true) {
-            lgr.info { "Closing existing backend connection to $currentBackendHost:$currentBackendPort" }
-            backendChannel?.close()
-        }
-
-        // Update backend details
-        currentBackendHost = newHost
-        currentBackendPort = newPort
-
-        // Connect to new backend
-        connectToBackend(ctx)
+        // After port is received, forward all data normally
+        forwardToBackend(ctx, msg)
     }
 
     private fun connectToBackend(ctx: ChannelHandlerContext) {
@@ -248,7 +170,9 @@ class DynamicProxyFrontendHandler(
         val bootstrap = Bootstrap()
         bootstrap.group(backendGroup)
             .channel(NioSocketChannel::class.java)
-            .option(ChannelOption.AUTO_READ, false)
+            .option(ChannelOption.AUTO_READ, true)
+            .option(ChannelOption.TCP_NODELAY, true)
+            .option(ChannelOption.SO_KEEPALIVE, true)
             .handler(ProxyBackendHandler(frontendChannel))
 
         val future = bootstrap.connect(currentBackendHost, currentBackendPort)
@@ -270,15 +194,23 @@ class DynamicProxyFrontendHandler(
             }
 
             if (connectFuture.isSuccess) {
-                // Connection established, start reading from frontend
-                frontendChannel.config().isAutoRead = true
                 lgr.info { "Connected to backend: $currentBackendHost:$currentBackendPort" }
 
-                // Send any pending buffered data
-                pendingBuffer.forEach { bufferedMsg ->
-                    forwardToBackend(ctx, bufferedMsg)
+                // Send any pending buffered data immediately
+                if (pendingBuffer.isNotEmpty()) {
+                    val compositeBuf = ctx.alloc().compositeBuffer(pendingBuffer.size)
+                    pendingBuffer.forEach { bufferedMsg ->
+                        if (bufferedMsg is ByteBuf) {
+                            compositeBuf.addComponent(true, bufferedMsg)
+                        }
+                    }
+                    pendingBuffer.clear()
+                    if (compositeBuf.isReadable) {
+                        future.channel().writeAndFlush(compositeBuf)
+                    } else {
+                        compositeBuf.release()
+                    }
                 }
-                pendingBuffer.clear()
             } else {
                 // Connection failed, close frontend
                 lgr.info { "Failed to connect to backend: ${connectFuture.cause()?.message}" }
@@ -304,15 +236,11 @@ class DynamicProxyFrontendHandler(
         }
 
         if (backendChannel?.isActive == true) {
-            // Forward data to backend
+            // Forward data to backend immediately with flush
             backendChannel?.writeAndFlush(msg)?.addListener { future ->
-                if (future.isSuccess) {
-                    // Continue reading from frontend only if still active
-                    if (frontendChannel.isActive) {
-                        ctx.channel().read()
-                    }
-                } else {
+                if (!future.isSuccess) {
                     // Write failed, close connection
+                    lgr.info { "Failed to write to backend: ${future.cause()?.message}" }
                     ctx.channel().close()
                 }
             }
@@ -331,10 +259,6 @@ class DynamicProxyFrontendHandler(
             io.netty.util.ReferenceCountUtil.release(bufferedMsg)
         }
         pendingBuffer.clear()
-        controlBuf?.let {
-            it.release()
-            controlBuf = null
-        }
     }
 
     override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
@@ -358,18 +282,15 @@ class ProxyBackendHandler(
 ) : ChannelInboundHandlerAdapter() {
 
     override fun channelActive(ctx: ChannelHandlerContext) {
-        // Start reading from backend
-        ctx.read()
+        // Backend is ready, connection established
     }
 
     override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
-        // Forward data to frontend
+        // Forward data to frontend immediately with flush
         frontendChannel.writeAndFlush(msg).addListener { future ->
-            if (future.isSuccess) {
-                // Continue reading from backend
-                ctx.channel().read()
-            } else {
+            if (!future.isSuccess) {
                 // Write failed, close connection
+                lgr.info { "Failed to write to frontend: ${future.cause()?.message}" }
                 ctx.channel().close()
             }
         }
@@ -388,6 +309,73 @@ class ProxyBackendHandler(
         if (ch.isActive) {
             ch.writeAndFlush(io.netty.buffer.Unpooled.EMPTY_BUFFER)
                 .addListener(ChannelFutureListener.CLOSE)
+        }
+    }
+}
+
+// Minecraft VarInt frame decoder - decodes packet length from VarInt prefix
+class MinecraftFrameDecoder : ByteToMessageDecoder() {
+    override fun decode(ctx: ChannelHandlerContext, buffer: ByteBuf, out: MutableList<Any>) {
+        val frameStartIndex = buffer.readerIndex()
+        buffer.markReaderIndex()
+
+        // Read VarInt length
+        val length = readVarInt(buffer)
+        if (length == -1) {
+            buffer.readerIndex(frameStartIndex)
+            return // Not enough bytes to read VarInt
+        }
+
+        val frameHeaderEndIndex = buffer.readerIndex()
+
+        // Check if full packet is available
+        if (buffer.readableBytes() < length) {
+            buffer.readerIndex(frameStartIndex)
+            return // Wait for more data
+        }
+
+        val totalFrameLength = frameHeaderEndIndex - frameStartIndex + length
+        buffer.readerIndex(frameStartIndex)
+        out.add(buffer.readRetainedSlice(totalFrameLength))
+    }
+    
+    private fun readVarInt(buffer: ByteBuf): Int {
+        var value = 0
+        var position = 0
+        
+        while (true) {
+            if (!buffer.isReadable) return -1
+            
+            val currentByte = buffer.readByte().toInt()
+            value = value or ((currentByte and 0x7F) shl position)
+            
+            if ((currentByte and 0x80) == 0) break
+            
+            position += 7
+            if (position >= 21) throw RuntimeException("VarInt too big")
+        }
+        
+        return value
+    }
+}
+
+// Minecraft VarInt frame encoder - prepends packet length as VarInt
+class MinecraftFrameEncoder : MessageToByteEncoder<ByteBuf>() {
+    override fun encode(ctx: ChannelHandlerContext, msg: ByteBuf, out: ByteBuf) {
+        val length = msg.readableBytes()
+        writeVarInt(length, out)
+        out.writeBytes(msg)
+    }
+    
+    private fun writeVarInt(value: Int, buffer: ByteBuf) {
+        var v = value
+        while (true) {
+            if ((v and 0x7F.inv()) == 0) {
+                buffer.writeByte(v)
+                return
+            }
+            buffer.writeByte((v and 0x7F) or 0x80)
+            v = v ushr 7
         }
     }
 }
