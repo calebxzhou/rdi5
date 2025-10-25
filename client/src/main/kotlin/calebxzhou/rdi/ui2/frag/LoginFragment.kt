@@ -1,15 +1,20 @@
 package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.auth.localCreds
+import calebxzhou.rdi.service.LevelService
 import calebxzhou.rdi.service.playerLogin
 import calebxzhou.rdi.ui2.FragmentSize
 import calebxzhou.rdi.ui2.MaterialColor
+import calebxzhou.rdi.ui2.center
 import calebxzhou.rdi.ui2.component.RTextField
 import calebxzhou.rdi.ui2.component.alertErr
 import calebxzhou.rdi.ui2.editText
 import calebxzhou.rdi.ui2.go
+import calebxzhou.rdi.ui2.linearLayout
 import calebxzhou.rdi.ui2.padding8dp
+import calebxzhou.rdi.ui2.textView
 import calebxzhou.rdi.util.ioScope
+import icyllis.modernui.text.Typeface
 import icyllis.modernui.view.Gravity
 import kotlinx.coroutines.launch
 
@@ -23,7 +28,7 @@ class LoginFragment : RFragment("登录") {
             val loginInfos = creds.loginInfos
             gravity = Gravity.CENTER_HORIZONTAL
 
-            qqInput = editText("QQ号") {
+            qqInput = editText("RDID/QQ号") {
                 padding8dp()
             }
             passwordInput = editText("密码") {
@@ -47,6 +52,18 @@ class LoginFragment : RFragment("登录") {
                     qqInput.text = lastId
                     passwordInput.text = last.pwd
                 }
+            }
+            linearLayout {
+                center()
+                textView("[单人创造]"){
+                    padding8dp()
+                    setOnClickListener { LevelService.openFlatLevel() }
+                }
+                textView("[设置]"){
+                    padding8dp()
+                    setOnClickListener { SettingsFragment().go() }
+                }
+
             }
             bottomOptionsConfig = {
                 "登录" colored MaterialColor.BLUE_800 with { onClicked() }

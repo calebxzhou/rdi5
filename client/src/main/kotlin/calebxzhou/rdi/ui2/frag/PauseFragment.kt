@@ -1,14 +1,19 @@
 package calebxzhou.rdi.ui2.frag
 
+import calebxzhou.rdi.lgr
 import calebxzhou.rdi.service.RKeyBinds
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.alertOk
 import calebxzhou.rdi.util.*
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.widget.LinearLayout
+import net.minecraft.client.gui.screens.GenericMessageScreen
+import net.neoforged.neoforge.client.gui.ConfigurationScreen.SAVING_LEVEL
+import java.lang.Exception
 
 class PauseFragment : RFragment("暂停") {
-    val lookingBlockState = mc.player?.lookingAtBlock
+    override var fragSize = FragmentSize.SMALL
+    override var showBg = false
 
     init {
         contentLayoutInit = {
@@ -19,8 +24,6 @@ class PauseFragment : RFragment("暂停") {
                 linearLayout {
                     gravity = Gravity.CENTER
                     paddingDp(16)
-
-
                     // First row - 3 buttons
                     iconButton("server", "顶服") {
                         "https://play.mcmod.cn/sv20188037.html".openAsUri()
@@ -32,7 +35,6 @@ class PauseFragment : RFragment("暂停") {
                     iconButton("mcmod", "MC百科") {
                         alertOk("瞄准/光标放置/手持你想搜索的物品\n按下${RKeyBinds.MCMOD.translatedKeyMessage.string}")
                     }
-                    iconButton("home", "回家")
                 }
                 linearLayout {
                     gravity = Gravity.CENTER
@@ -40,25 +42,28 @@ class PauseFragment : RFragment("暂停") {
                     /*iconButton("partner","参观"){
                         mc.sendCommand("spec")
                     }*/
-                    iconButton("island","房间中心")
-                    iconButton("camera","摄影")
-                    iconButton("settings","设置"){
+                    iconButton("settings", "设置") {
                         goto(SettingsFragment())
                     }
-                    iconButton("exit","退出"){
+                    iconButton("exit", "退出") {
                         renderThread {
-                            mc set null
-                            mc.level?.disconnect()
-                            if(mc.isLocalServer){
-                                goto(TitleFragment())
-                                mc.singleplayerServer?.let {
-                                    it.saveEverything(true,true,true)
-                                    it.runningThread.stop()
+                            mc.level!!.disconnect()
+                            mc.level=null
+                            if (mc.isLocalServer) {
+                                try {
+                                    mc.disconnect(TitleFragment().mcScreen)
+                                    mc set TitleFragment().mcScreen
+                                    mc.singleplayerServer?.let {
+                                        it.saveEverything(true, true, true)
+                                        it.runningThread.stop()
+                                    }
+                                } catch (e: Exception) {
+                                    lgr.error(e)
                                 }
 
-                            }else{
+                            } else {
                                 mc.disconnect()
-                                goto(ProfileFragment())
+                                goto(TeamFragment())
                             }
                         }
                     }

@@ -31,6 +31,7 @@ abstract class RFragment(initialTitle: String = "") : Fragment() {
             }
         }
     open var showTitle = true
+    open var showBg = true
     open var closable = true
     open var showCloseButton = closable
     open var fragSize: FragmentSize = FragmentSize.FULL
@@ -107,7 +108,9 @@ abstract class RFragment(initialTitle: String = "") : Fragment() {
         val root = FrameLayout(mui).apply {
 
             // 20% dim background for better contrast with light content
-            background = BG_IMAGE_MUI
+            if(showBg) {
+                background = BG_IMAGE_MUI
+            }
 
             // Main content in a LinearLayout
             linearLayout {

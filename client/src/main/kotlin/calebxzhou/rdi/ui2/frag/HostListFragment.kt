@@ -1,5 +1,6 @@
 package calebxzhou.rdi.ui2.frag
 
+import calebxzhou.rdi.auth.LocalCredentials
 import calebxzhou.rdi.model.Host
 import calebxzhou.rdi.model.Team
 import calebxzhou.rdi.model.World
@@ -11,17 +12,27 @@ import calebxzhou.rdi.ui2.MaterialColor
 import calebxzhou.rdi.ui2.button
 import calebxzhou.rdi.ui2.center
 import calebxzhou.rdi.ui2.component.alertErr
+import calebxzhou.rdi.ui2.component.alertOk
 import calebxzhou.rdi.ui2.component.confirm
 import calebxzhou.rdi.ui2.go
 import calebxzhou.rdi.ui2.linearLayout
+import calebxzhou.rdi.ui2.mcScreen
 import calebxzhou.rdi.ui2.misc.contextMenu
 import calebxzhou.rdi.ui2.padding8dp
+import calebxzhou.rdi.ui2.radioButton
+import calebxzhou.rdi.ui2.radioGroup
+import calebxzhou.rdi.ui2.showOver
 import calebxzhou.rdi.ui2.spinner
 import calebxzhou.rdi.ui2.textView
 import calebxzhou.rdi.ui2.toast
 import calebxzhou.rdi.ui2.uiThread
+import calebxzhou.rdi.util.mc
+import calebxzhou.rdi.util.renderThread
+import icyllis.modernui.widget.LinearLayout
 import icyllis.modernui.widget.Spinner
 import io.ktor.http.HttpMethod
+import net.minecraft.client.gui.screens.ConnectScreen
+import net.minecraft.client.multiplayer.resolver.ServerAddress
 
 class HostListFragment(val team: Team) : RFragment("选择主机") {
     override var fragSize = FragmentSize.SMALL
@@ -31,6 +42,7 @@ class HostListFragment(val team: Team) : RFragment("选择主机") {
             "＋ 创建主机" colored MaterialColor.BLUE_900 with {
                 Create(::load).go()
             }
+            "\uEF09 选择节点" with { Carrier().go() }
         }
         contentLayoutInit= {
             load()
@@ -54,7 +66,7 @@ class HostListFragment(val team: Team) : RFragment("选择主机") {
                 }
             }
             hosts.forEach { host->
-                button("\uF233 ${host.name}",init={
+                button("\uF233   ${host.name}",init={
                     if(team.isOwnerOrAdmin(account)){
                         contextMenu {
                             "删除" with {
@@ -72,9 +84,9 @@ class HostListFragment(val team: Team) : RFragment("选择主机") {
                                 alertErr("没开发完呢")
                             }
                             "更新整合包" with {
-                                confirm("将更新主机“${host.name}”的整合包到最新版本。\n（存档会被保留）"){
+                                confirm("将更新主机“${host.name}”的整合包到最新版本。\n主机会关闭，更新时间大概需要15秒（存档会被保留）"){
                                     server.requestU("host/${host._id}/update", HttpMethod.Post, showLoading = true){
-                                        toast("已更新到最新版")
+                                        toast("已更新到最新版 主机重启中")
                                         load()
                                     }
                                 }
@@ -82,7 +94,21 @@ class HostListFragment(val team: Team) : RFragment("选择主机") {
                         }
                     }
                 }, onClick = {
-
+                    //电信以外全bgp
+                    val bgp = LocalCredentials.read().carrier!=0
+                    server.request<String>("host/${host._id}/status"){
+                        if(it.data != "STARTED"){
+                            alertErr("需要队长/管理者在后台启动主机")
+                            return@request
+                        }
+                        Host.now = host
+                        renderThread {
+                            ConnectScreen.startConnecting(
+                                this@HostListFragment.mcScreen, mc,
+                                ServerAddress(if (bgp) server.bgpIp else server.ip, server.gamePort), server.mcData(bgp), false, null
+                            )
+                        }
+                    }
                 })
             }
             if(hosts.isEmpty()){
@@ -143,6 +169,26 @@ class HostListFragment(val team: Team) : RFragment("选择主机") {
                     toast("拉取存档失败: ${it.msg}")
                 }
             )
+        }
+    }
+    class Carrier : RFragment("选择运营商节点") {
+        private val creds = LocalCredentials.read()
+        private val carriers = arrayListOf("电信", "移动", "联通", "教育网", "广电")
+        override var contentLayoutInit: LinearLayout.() -> Unit = {
+            radioGroup {
+                center()
+                carriers.forEachIndexed { i, c ->
+                    radioButton(c) {
+                        id = i
+                        isSelected = creds.carrier == i
+                    }
+                }
+                check(creds.carrier)
+                setOnCheckedChangeListener { g, id ->
+                    creds.carrier = id
+                    creds.save()
+                }
+            }
         }
     }
 }

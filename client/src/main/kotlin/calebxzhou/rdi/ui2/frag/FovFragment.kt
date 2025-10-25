@@ -16,7 +16,12 @@ class FovFragment : RFragment("视野") {
         get() = mc.options.fov()
     private lateinit var bar: SeekBar
     private lateinit var focusDisp: TextView
-
+    override var fragSize: FragmentSize
+        get() = FragmentSize.MEDIUM
+        set(value) {}
+    override var showBg: Boolean
+        get() = false
+        set(value) {}
     init {
         renderThread {
 
@@ -45,19 +50,19 @@ class FovFragment : RFragment("视野") {
                 }
             }
             linearLayout {
-                orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_HORIZONTAL
-                layoutParams = linearLayoutParam {
-                    gravity = Gravity.CENTER_HORIZONTAL
+                linearLayout {
+                    button("超超广角") { bar.progress = 120 }
+                    button("超广角") { bar.progress = 103 }
+                    button("广角") { bar.progress = 81 }
                 }
-                button("超超广角") { bar.progress = 120 }
-                button("超广角") { bar.progress = 103 }
-                button("广角") { bar.progress = 81 }
                 button("标准") { bar.progress = 54 }
-                button("中焦") { bar.progress = 40 }
-                button("长焦") { bar.progress = 24 }
-                button("超长焦") { bar.progress = 6 }
-                button("超超长焦") { bar.progress = 2 }
+                linearLayout {
+                    button("中焦") { bar.progress = 40 }
+                    button("长焦") { bar.progress = 24 }
+                    button("超长焦") { bar.progress = 6 }
+                    button("超超长焦") { bar.progress = 2 }
+                }
             }
             updateFocusDisp()
         }
