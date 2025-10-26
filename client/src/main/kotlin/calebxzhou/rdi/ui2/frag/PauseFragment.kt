@@ -63,7 +63,7 @@ class PauseFragment : RFragment("暂停") {
 
                             } else {
                                 mc.disconnect()
-                                goto(TeamFragment())
+                                goto(TitleFragment())
                             }
                         }
                     }

@@ -97,7 +97,7 @@ object TeamService {
     suspend fun create(uid: ObjectId, name: String?, info: String?) {
         val account = PlayerService.getById(uid) ?: throw RequestError("无此账号")
         val info = info ?: "无"
-        val name = name?: "${account.name}"
+        val name = name?: "${account.name}的团队"
         if (hasJoinedTeam(uid)) throw RequestError("已有团队")
         if (name.displayLength > 32) throw RequestError("团队名称显示长度>32")
         if (info.displayLength > 512) throw RequestError("团队简介显示长度>512")

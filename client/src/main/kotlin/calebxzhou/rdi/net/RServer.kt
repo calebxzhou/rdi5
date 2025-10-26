@@ -1,6 +1,7 @@
 package calebxzhou.rdi.net
 
 import calebxzhou.rdi.Const
+import calebxzhou.rdi.exception.RequestError
 import calebxzhou.rdi.lgr
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.model.Response
@@ -8,11 +9,13 @@ import calebxzhou.rdi.ui2.component.alertErr
 import calebxzhou.rdi.ui2.component.closeLoading
 import calebxzhou.rdi.ui2.component.showLoading
 import calebxzhou.rdi.ui2.frag.LoginFragment
+import calebxzhou.rdi.ui2.frag.UpdateFragment
 import calebxzhou.rdi.ui2.goto
 import calebxzhou.rdi.ui2.nowFragment
 import calebxzhou.rdi.util.encodeBase64
 import calebxzhou.rdi.util.ioScope
 import calebxzhou.rdi.util.ioTask
+import calebxzhou.rdi.util.isMcStarted
 import calebxzhou.rdi.util.serdesJson
 import dev.latvian.mods.kubejs.neoforge.NativeEventWrapper.onEvent
 import io.ktor.client.call.*
@@ -63,25 +66,27 @@ class RServer(
 
     fun connect() {
 
-        /*   if (!noUpdate && isMcStarted) {
+           if (!noUpdate && isMcStarted) {
                goto(UpdateFragment(this))
-           } else {*/
+           } else {
         goto(LoginFragment())
-        //  }
+          }
     }
 
     suspend inline fun createRequest(
         path: String,
         method: HttpMethod,
         params: Map<String, Any> = mapOf(),
-        crossinline builder: HttpRequestBuilder.() -> Unit={}
+        crossinline builder: HttpRequestBuilder.() -> Unit = {}
     ): HttpResponse {
         return httpRequest {
             url("$hqUrl/${path}")
             this.method = method
             if (method != HttpMethod.Get && params.isNotEmpty()) {
                 json()
-                setBody(serdesJson.encodeToString(MapSerializer(String.serializer(), JsonElement.serializer()),
+                setBody(
+                    serdesJson.encodeToString(
+                    MapSerializer(String.serializer(), JsonElement.serializer()),
                     params.mapValues {
                         JsonPrimitive(it.value.toString())
                     }
@@ -101,13 +106,14 @@ class RServer(
         path: String,
         method: HttpMethod = HttpMethod.Get,
         params: Map<String, Any> = mapOf(),
-        crossinline builder: HttpRequestBuilder.() -> Unit={}
+        crossinline builder: HttpRequestBuilder.() -> Unit = {}
     ): Response<T> {
         if (Const.DEBUG) {
-            val paramsStr = if (params.isEmpty()) "{}" else params.entries.joinToString(", ", "{", "}") { "${it.key}=${it.value}" }
+            val paramsStr =
+                if (params.isEmpty()) "{}" else params.entries.joinToString(", ", "{", "}") { "${it.key}=${it.value}" }
             lgr.info("[HQ REQ] ${method.value} /$path $paramsStr")
         }
-        val response = createRequest(path, method, params,builder).body<Response<T>>()
+        val response = createRequest(path, method, params, builder).body<Response<T>>()
         if (Const.DEBUG) {
             val dataStr = when (val data = response.data) {
                 null -> "null"
@@ -119,6 +125,7 @@ class RServer(
         }
         return response
     }
+
     inline fun requestU(
         path: String,
         method: HttpMethod = HttpMethod.Post,
@@ -126,7 +133,7 @@ class RServer(
         showLoading: Boolean = true,
         crossinline onErr: (Response<Unit>) -> Unit = { alertErr(it.msg) },
         crossinline onOk: (Response<Unit>) -> Unit,
-    ) = request<Unit>(path,method,params,showLoading,onErr,onOk)
+    ) = request<Unit>(path, method, params, showLoading, onErr, onOk)
 
     inline fun <reified T> request(
         path: String,
@@ -173,7 +180,8 @@ class RServer(
             listOf("Authorization" to "Basic ${"${it._id}:${it.pwd}".encodeBase64}")
         } ?: listOf()
         if (Const.DEBUG) {
-            val paramsStr = if (params.isEmpty()) "[]" else params.joinToString(", ", "[", "]") { "${it.first}=${it.second}" }
+            val paramsStr =
+                if (params.isEmpty()) "[]" else params.joinToString(", ", "[", "]") { "${it.first}=${it.second}" }
 
         }
         val resp =
@@ -198,7 +206,7 @@ class RServer(
         },
         onClosed: suspend () -> Unit = {},
         onEvent: suspend (ServerSentEvent) -> Unit,
-    )= ioTask {
+    ) = ioTask {
         val urlString = if (path.startsWith("http", ignoreCase = true)) {
             path
         } else {
@@ -220,7 +228,16 @@ class RServer(
                 configureRequest()
             }) {
                 try {
-                    incoming.collect { event -> onEvent(event) }
+                    incoming.collect { event ->
+                        when (event.event) {
+                            "heartbeat" -> {
+                                lgr.info("SSE heartbeat")
+                            }
+
+                            "error" -> onError(RequestError(event.data))
+                            else -> onEvent(event)
+                        }
+                    }
                 } finally {
                     onClosed()
                 }
@@ -232,7 +249,6 @@ class RServer(
             throw t
         }
     }
-
 
 
 }

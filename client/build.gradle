@@ -220,6 +220,8 @@ def modrinthMods = [
         "sodium:mc1.21.1-0.6.13-neoforge",
         "kubejs:2101.7.1-build.181+KubeJS-1.21.1",
         "rhino:2101.2.7-build.77+Rhino-1.21",
+        "libx:1.21.1-6.0.6",
+        "skyblock-builder:21.1.18"
 ]
 def modrinthModsCompileOnly = [
 ]

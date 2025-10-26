@@ -5,6 +5,7 @@ import calebxzhou.rdi.model.Host
 import calebxzhou.rdi.model.Team
 import calebxzhou.rdi.model.World
 import calebxzhou.rdi.model.account
+import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.net.server
 import calebxzhou.rdi.service.isOwnerOrAdmin
 import calebxzhou.rdi.ui2.FragmentSize
@@ -13,7 +14,9 @@ import calebxzhou.rdi.ui2.button
 import calebxzhou.rdi.ui2.center
 import calebxzhou.rdi.ui2.component.alertErr
 import calebxzhou.rdi.ui2.component.alertOk
+import calebxzhou.rdi.ui2.component.closeLoading
 import calebxzhou.rdi.ui2.component.confirm
+import calebxzhou.rdi.ui2.component.showLoading
 import calebxzhou.rdi.ui2.go
 import calebxzhou.rdi.ui2.linearLayout
 import calebxzhou.rdi.ui2.mcScreen
@@ -26,12 +29,16 @@ import calebxzhou.rdi.ui2.spinner
 import calebxzhou.rdi.ui2.textView
 import calebxzhou.rdi.ui2.toast
 import calebxzhou.rdi.ui2.uiThread
+import calebxzhou.rdi.util.ioTask
 import calebxzhou.rdi.util.mc
 import calebxzhou.rdi.util.renderThread
 import icyllis.modernui.widget.LinearLayout
 import icyllis.modernui.widget.Spinner
 import io.ktor.http.HttpMethod
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.withTimeoutOrNull
 import net.minecraft.client.gui.screens.ConnectScreen
+import net.minecraft.client.multiplayer.ServerStatusPinger
 import net.minecraft.client.multiplayer.resolver.ServerAddress
 
 class HostListFragment(val team: Team) : RFragment("选择主机") {
@@ -97,17 +104,50 @@ class HostListFragment(val team: Team) : RFragment("选择主机") {
                     //电信以外全bgp
                     val bgp = LocalCredentials.read().carrier!=0
                     server.request<String>("host/${host._id}/status"){
+
                         if(it.data != "STARTED"){
                             alertErr("需要队长/管理者在后台启动主机")
                             return@request
                         }
                         Host.now = host
-                        renderThread {
-                            ConnectScreen.startConnecting(
-                                this@HostListFragment.mcScreen, mc,
-                                ServerAddress(if (bgp) server.bgpIp else server.ip, server.gamePort), server.mcData(bgp), false, null
-                            )
+                        showLoading()
+                        ioTask {
+                            val data = server.mcData(bgp)
+                            val completion = CompletableDeferred<Boolean>()
+                            try {
+                                ServerStatusPinger().pingServer(data, {}) {
+                                    if (!completion.isCompleted) {
+                                        completion.complete(data.protocol != 0)
+                                    }
+                                }
+                            } catch (t: Throwable) {
+                                if (!completion.isCompleted) {
+                                    completion.complete(false)
+                                }
+                            }
+
+                            val ready = withTimeoutOrNull(5_000L) {
+                                runCatching { completion.await() }.getOrElse { false }
+                            }
+
+                            if (ready == true) {
+                                renderThread {
+                                    ConnectScreen.startConnecting(
+                                        this@HostListFragment.mcScreen,
+                                        mc,
+                                        ServerAddress(if (bgp) server.bgpIp else server.ip, server.gamePort),
+                                        server.mcData(bgp),
+                                        false,
+                                        null
+                                    )
+                                }
+                            } else {
+                                Host.now=null
+                                alertErr("主机还在启动中，请稍后再试")
+                            }
+                            closeLoading()
                         }
+
                     }
                 })
             }
@@ -116,6 +156,7 @@ class HostListFragment(val team: Team) : RFragment("选择主机") {
             }
         }
     }
+
     class Create(val onOk: () -> Unit): RFragment("创建主机") {
         private lateinit var worldSpinner: Spinner
         override var fragSize = FragmentSize.SMALL

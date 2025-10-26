@@ -29,6 +29,9 @@ object UpdateService {
     val MODS_DIR = File("mods")
     val modIdSha1 = hashMapOf<String, String>()
     val modIdFile = hashMapOf<String, File>()
+    private val lenientToml = Toml {
+        ignoreUnknownKeys = true
+    }
 
     private fun calculateSha1(file: File): String {
         val digest = MessageDigest.getInstance("SHA-1")
@@ -53,7 +56,7 @@ object UpdateService {
 
                     jar.getInputStream(modsTomlEntry).bufferedReader().use { reader ->
                         try {
-                            val modsToml = Toml.decodeFromString(ModsToml.serializer(), reader.readText())
+                            val modsToml = lenientToml.decodeFromString(ModsToml.serializer(), reader.readText())
                             modsToml.mods.firstOrNull()?.let {
                                 modIdSha1[it.modId] = calculateSha1(jarFile)
                                 modIdFile[it.modId] = jarFile

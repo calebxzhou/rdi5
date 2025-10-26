@@ -11,6 +11,7 @@ import calebxzhou.rdi.ihq.service.playerRoutes
 import calebxzhou.rdi.ihq.service.hostRoutes
 import calebxzhou.rdi.ihq.service.teamRoutes
 import calebxzhou.rdi.ihq.service.worldRoutes
+import calebxzhou.rdi.ihq.service.chatRoutes
 import calebxzhou.rdi.ihq.util.serdesJson
 import com.mongodb.MongoClientSettings
 import com.mongodb.ServerAddress
@@ -130,6 +131,7 @@ fun startHttp(){
                 teamRoutes()
                 hostRoutes()
                 worldRoutes()
+                chatRoutes()
                 //modpackRoutes()
             }
         }

@@ -25,8 +25,5 @@ public abstract class mChat extends ClientCommonPacketListenerImpl {
     private boolean enforcesSecureChat() {
         return true;
     }
-    @Overwrite
-    public void sendChat(String pMessage) {
-        sendCommand("speak " + pMessage);
-    }
+
 }
