@@ -2,6 +2,7 @@ package calebxzhou.rdi
 
 import calebxzhou.rdi.cmd.DebugCommand
 import calebxzhou.rdi.model.RGamePayload
+import calebxzhou.rdi.service.ChatService
 import calebxzhou.rdi.service.EnglishStorage
 import calebxzhou.rdi.service.Mcmod
 import calebxzhou.rdi.service.RGuiHud
@@ -44,10 +45,15 @@ class RGameEvents {
 
         @SubscribeEvent
         @JvmStatic
-        fun onLocalServerStart(e: ClientPlayerNetworkEvent.LoggingIn) {
+        fun onConnect(e: ClientPlayerNetworkEvent.LoggingIn) {
             //启动局域网
-
-            mc.singleplayerServer?.publishServer(GameType.SURVIVAL, Const.DEBUG, HttpUtil.getAvailablePort())
+            //mc.singleplayerServer?.publishServer(GameType.SURVIVAL, Const.DEBUG, HttpUtil.getAvailablePort())
+            ChatService.startListen()
+        }
+        @SubscribeEvent
+        @JvmStatic
+        fun onDisconnect(e: ClientPlayerNetworkEvent.LoggingOut) {
+            ChatService.stopListen()
         }
         @SubscribeEvent
         @JvmStatic
@@ -80,6 +86,12 @@ class RGameEvents {
             if(RKeyBinds.MCMOD.consumeClick()){
                 Mcmod. onKeyPressIngame()
             }
+        }
+        @SubscribeEvent
+        @JvmStatic
+        fun onChat(e: ClientChatEvent) {
+            ChatService.sendMessage(e.message)
+            e.isCanceled=true
         }
         /*@SubscribeEvent
         @JvmStatic
