@@ -84,12 +84,6 @@ neoForge {
     // Default run configurations.
     // These can be tweaked, removed, or duplicated as needed.
     runs {
-        client {
-            client()
-
-            // Comma-separated list of namespaces to load gametests from. Empty = all namespaces.
-            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
-        }
 
         server {
             server()
@@ -99,23 +93,6 @@ neoForge {
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
 
-        // This run config launches GameTestServer and runs all registered gametests, then exits.
-        // By default, the server will crash when no gametests are provided.
-        // The gametest system is also enabled by default for other run configs under the /test command.
-        gameTestServer {
-            type = "gameTestServer"
-            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
-        }
-
-        data {
-            data()
-
-            // example of overriding the workingDirectory set in configureEach above, uncomment if you want to use it
-            // gameDirectory = project.file('run-data')
-
-            // Specify the modid for data generation, where to output the resulting resource, and where to look for existing resources.
-            programArguments.addAll '--mod', project.mod_id, '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()
-        }
 
         // applies to all the run configs above
         configureEach {
@@ -174,15 +151,29 @@ def mcLibs = [
 // https://mvnrepository.com/artifact/org.jsoup/jsoup
 //添加三方库别忘了jar jarJar reobfJarJar genIntellijRuns 不然找不到class
 // https://mvnrepository.com/artifact/io.ktor/ktor-network-tls-jvm
-
+"io.ktor:ktor-client-okhttp:$ktor_version",
+"io.ktor:ktor-client-core:$ktor_version",
+"io.ktor:ktor-client-encoding:$ktor_version",
 'org.jsoup:jsoup:1.19.1',
 'org.mongodb:bson:5.1.0',
+"io.ktor:ktor-server-core:$ktor_version",
+"io.ktor:ktor-server-jetty-jakarta:$ktor_version",
+'org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0',
+"io.ktor:ktor-client-content-negotiation:$ktor_version",
+"io.ktor:ktor-serialization-kotlinx-json:$ktor_version"
 ]
 def mcLibExportOnly = [
 ]
 def modrinthMods = [
+        "architectury-api:13.0.8+neoforge",
+        "packet-fixer:LL1w2rTw",
+        "jade:15.10.0+neoforge",
         "lithium:mc1.21.1-0.15.0-neoforge",
         "packet-fixer:LL1w2rTw",
+        "kubejs:2101.7.1-build.181+KubeJS-1.21.1",
+        "rhino:2101.2.7-build.77+Rhino-1.21",
+        "libx:1.21.1-6.0.6",
+        "skyblock-builder:21.1.18"
 ]
 dependencies {
     // Example optional mod dependency with JEI
@@ -212,14 +203,70 @@ dependencies {
     testImplementation 'io.netty:netty-all:4.1.97.Final'
 
 
-    implementation 'thedarkcolour:kotlinforforge-neoforge:5.10.0'
+    implementation 'thedarkcolour:kfflang-neoforge:5.10.0'
+    implementation 'thedarkcolour:kfflib-neoforge:5.10.0'
+    implementation 'thedarkcolour:kffmod-neoforge:5.10.0'
+
+
+
+    //循环添加deps
+    def jarJarVisited = new LinkedHashSet<String>()
+    //mc已经自带了 不需要重复导出
+    def jarJarExcludeCoords = [
+            'org.slf4j:slf4j-api',
+            'com.google.errorprone:error_prone_annotations',
+
+            'org.ow2.asm:asm',
+            'org.ow2.asm:asm-commons',
+            'org.ow2.asm:asm-tree',
+            'org.ow2.asm:asm-analysis',
+            'org.ow2.asm:asm-util',
+    ] as Set
+    def includeJarJarTransitives
+    includeJarJarTransitives = { String notation ->
+        def coordinateParts = notation.split(':')
+        def coordinateKey = coordinateParts.length >= 2 ? "${coordinateParts[0]}:${coordinateParts[1]}" : notation
+        if (jarJarExcludeCoords.iterator().findIndexOf { it == coordinateKey } >= 0) {
+
+            println(coordinateKey+"不要")
+            return
+        }
+        if (!jarJarVisited.add(notation)) {
+            println(coordinateKey+"有了")
+            return
+        }
+        println(coordinateKey+"要")
+        jarJar(notation) {
+            transitive = false
+        }
+
+        def dependency = project.dependencies.create(notation)
+        def configuration = project.configurations.detachedConfiguration(dependency)
+        configuration.transitive = true
+
+        configuration.resolvedConfiguration.resolvedArtifacts.each { artifact ->
+            if ("jar".equalsIgnoreCase(artifact.type)) {
+                def moduleId = artifact.moduleVersion.id
+                def classifierSuffix = artifact.classifier ? ":${artifact.classifier}" : ""
+                def artifactKey = "${moduleId.group}:${artifact.name}"
+                if (jarJarExcludeCoords.contains(artifactKey)) {
+                    return
+                }
+                def artifactNotation = "${moduleId.group}:${artifact.name}:${moduleId.version}${classifierSuffix}"
+                includeJarJarTransitives(artifactNotation)
+            }
+        }
+    }
+
+
+
+
+
+
     mcLibs.each { lib ->
         libraries(lib)
-        jarJar(lib)
+        includeJarJarTransitives(lib)
         additionalRuntimeClasspath lib
-    }
-    mcLibExportOnly.each { lib ->
-        jarJar(lib)
     }
     modrinthMods.each { dep ->
         implementation("maven.modrinth:$dep")
@@ -280,14 +327,4 @@ idea {
         downloadSources = true
         downloadJavadoc = true
     }
-}
-tasks.register('出core_sea', Copy) {
-    dependsOn(tasks.named('build'))
-    from(layout.buildDirectory.file("libs/rdi-${version}.jar"))
-    into("\\\\caleb\\Users\\liberatorch\\Documents\\RDI5sea-server\\mods")
-}
-tasks.register('出core_mech', Copy) {
-    dependsOn(tasks.named('build'))
-    from(layout.buildDirectory.file("libs/rdi-${version}.jar"))
-    into("\\\\caleb\\Users\\Public\\rdi5server\\mech\\game\\mods")
 }
