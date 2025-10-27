@@ -38,6 +38,7 @@ class HostConsoleFragment(val host: Host) : RFragment("主机后台") {
     private lateinit var scrollView: ScrollView
     private var lastAllLines: MutableList<String> = mutableListOf()
     private var logStreamJob: Job? = null
+    private var isFragmentActive = true
 
     // Colors for different log types
     private val GOLD_COLOR = Color.rgb(255, 215, 0)     // Gold for timestamps
@@ -96,6 +97,7 @@ class HostConsoleFragment(val host: Host) : RFragment("主机后台") {
 
     private fun startLogStream() {
         logStreamJob?.cancel()
+        isFragmentActive = true
         logStreamJob = ioScope.launch {
             try {
                 server.request<String>("host/${host._id}/log/200"){
@@ -110,6 +112,7 @@ class HostConsoleFragment(val host: Host) : RFragment("主机后台") {
                     path = "host/${host._id}/log/stream",
                     bufferPolicy = SSEBufferPolicy.LastEvents(50),
                     onEvent = { event ->
+                        if (!isFragmentActive) return@sse
                         when (event.event) {
                             "heartbeat" -> return@sse
                             "error" -> {
@@ -136,14 +139,17 @@ class HostConsoleFragment(val host: Host) : RFragment("主机后台") {
                 throw cancel
             } catch (t: Throwable) {
                 lgr.error(t)
-                uiThread {
-                    toast("日志连接断开: ${t.message ?: "未知错误"}")
+                if (isFragmentActive) {
+                    uiThread {
+                        toast("日志连接断开: ${t.message ?: "未知错误"}")
+                    }
                 }
             }
         }
     }
 
     private fun stopLogStream() {
+        isFragmentActive = false
         logStreamJob?.cancel()
         logStreamJob = null
     }
