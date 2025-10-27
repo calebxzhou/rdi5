@@ -99,20 +99,6 @@ neoForge {
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
             systemProperty 'rdi.debug', "true"
             systemProperty 'rdi.noUpdate', "true"
-            systemProperty 'rdi.pack', "RDI5sea"
-
-        }
-        client_mech {
-            client()
-            programArgument '--width'
-            programArgument '2560'
-            programArgument '--height'
-            programArgument '1440'
-            // Comma-separated list of namespaces to load gametests from. Empty = all namespaces.
-            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
-            systemProperty 'rdi.debug', "true"
-            systemProperty 'rdi.noUpdate', "true"
-            systemProperty 'rdi.pack', "RDI5mech"
 
         }
        /* server {
@@ -286,6 +272,8 @@ dependencies {
     compileOnly("mezz.jei:jei-${minecraft_version}-neoforge-api:${jei_version}")
     // at runtime, use the full JEI jar for NeoForge
     runtimeOnly("mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}")
+
+
     //循环添加deps
     def jarJarVisited = new LinkedHashSet<String>()
     //mc已经自带了 不需要重复导出
@@ -335,13 +323,11 @@ dependencies {
         }
     }
 
+
     mcLibs.each { lib ->
         libraries(lib)
         includeJarJarTransitives(lib)
         additionalRuntimeClasspath lib
-    }
-    mcLibExportOnly.each { lib ->
-        //    jarJar(lib)
     }
     modrinthMods.each { dep ->
         implementation("maven.modrinth:$dep")
