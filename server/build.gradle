@@ -199,10 +199,7 @@ dependencies {
     testImplementation 'io.netty:netty-all:4.1.97.Final'
 
 
-    implementation 'thedarkcolour:kfflang-neoforge:5.10.0'
-    implementation 'thedarkcolour:kfflib-neoforge:5.10.0'
-    implementation 'thedarkcolour:kffmod-neoforge:5.10.0'
-
+// https://mvnrepository.com/artifact/org.jetbrains.kotlin/kotlin-reflect
 
 
     //循环添加deps
@@ -321,5 +318,18 @@ idea {
     module {
         downloadSources = true
         downloadJavadoc = true
+    }
+}
+tasks.register('出imgBuild', Copy) {
+    dependsOn(tasks.named('build'))
+    notCompatibleWithConfigurationCache("Executes build.bat post copy")
+    def targetDir = new File(System.getProperty('user.home'), 'Documents\\rdi5skypro\\server_image_test')
+    from(layout.buildDirectory.file("libs/rdi-${version}.jar"))
+    into(new File(targetDir, 'mods'))
+    doLast {
+        project.exec {
+            workingDir targetDir
+            commandLine 'cmd', '/c', 'build.bat'
+        }
     }
 }
