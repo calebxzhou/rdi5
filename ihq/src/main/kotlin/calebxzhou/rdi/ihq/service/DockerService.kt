@@ -2,7 +2,7 @@ package calebxzhou.rdi.ihq.service
 
 import calebxzhou.rdi.ihq.exception.RequestError
 import calebxzhou.rdi.ihq.lgr
-import calebxzhou.rdi.ihq.model.ServerStatus
+import calebxzhou.rdi.ihq.model.HostStatus
 import com.github.dockerjava.api.async.ResultCallback.Adapter
 import com.github.dockerjava.api.model.Bind
 import com.github.dockerjava.api.model.BuildResponseItem
@@ -10,6 +10,7 @@ import com.github.dockerjava.api.model.ExposedPort
 import com.github.dockerjava.api.model.Frame
 import com.github.dockerjava.api.model.HostConfig
 import com.github.dockerjava.api.model.PortBinding.parse
+import com.github.dockerjava.api.model.StreamType
 import com.github.dockerjava.core.DefaultDockerClientConfig
 import com.github.dockerjava.core.DockerClientBuilder
 import com.github.dockerjava.httpclient5.ApacheDockerHttpClient
@@ -39,16 +40,24 @@ object DockerService {
             .withDockerHttpClient(httpClient)
             .build()
     }
-
+    private val containerEnv
+        get() = {name: String,port: Int ->
+            listOf("HOST_ID=$name","GAME_PORT=${port}")
+        }
     private fun findContainer(containerName: String, includeStopped: Boolean = true) =
         client.listContainersCmd()
             .withNameFilter(listOf(containerName))
             .withShowAll(includeStopped)
             .exec().firstOrNull()
 
+    fun listContainers(includeStopped: Boolean = true) =
+        client.listContainersCmd()
+            .withShowAll(includeStopped)
+            .exec()
+
     fun createContainer(port: Int, containerName: String, volumeName: String?, image: String): String {
         val hostConfig = HostConfig.newHostConfig()
-            .withPortBindings(parse("$port:65232"))
+            .withPortBindings(parse("$port:$port"))
             .withCpuCount(2L)  // Limit to 2 CPUs
             .withMemory(2L * 1024 * 1024 * 1024)  // 2GB RAM limit
             .withMemorySwap(4L * 1024 * 1024 * 1024)  //4G swap
@@ -57,15 +66,59 @@ object DockerService {
 
         return client.createContainerCmd(image)
             .withName(containerName)
-            .withEnv(listOf("EULA=TRUE"))
-            .withExposedPorts(ExposedPort(65232))
+            .withEnv(containerEnv(containerName,port))
+            .withExposedPorts(ExposedPort(port))
             .withHostConfig(hostConfig)
-            .withTty(true)
-            .withStdinOpen(true)
-            .withAttachStdin(true)
+            .exec().id
+    }
+
+    fun sendCommand(containerName: String, command: String) {
+        if (command.isBlank()) throw RequestError("命令不能为空")
+
+        val container = findContainer(containerName, includeStopped = false)
+            ?: throw RequestError("找不到此容器")
+
+        if (!container.state.equals("running", ignoreCase = true)) {
+            throw RequestError("主机未启动")
+        }
+
+        val sanitized = command.trimEnd().replace("'", "'\"'\"'")
+        val shellCmd = "if [ -w /proc/1/fd/0 ]; then printf '%s\\n' '$sanitized' > /proc/1/fd/0; else exit 42; fi"
+
+        val execCreate = client.execCreateCmd(container.id)
             .withAttachStdout(true)
             .withAttachStderr(true)
-            .exec().id
+            .withCmd("sh", "-c", shellCmd)
+            .exec()
+
+        val stdout = StringBuilder()
+        val stderr = StringBuilder()
+        val callback = object : Adapter<Frame>() {
+            override fun onNext(frame: Frame) {
+                val payload = String(frame.payload)
+                when (frame.streamType) {
+                    StreamType.STDERR -> stderr.append(payload)
+                    StreamType.STDOUT -> stdout.append(payload)
+                    else -> Unit
+                }
+            }
+        }
+
+        client.execStartCmd(execCreate.id)
+            .withDetach(false)
+            .exec(callback)
+            .awaitCompletion()
+
+        val exitCode = client.inspectExecCmd(execCreate.id).exec().exitCodeLong
+
+        if (exitCode != null && exitCode != 0L) {
+            val msg = stderr.toString().ifBlank { stdout.toString() }
+            throw RequestError("命令发送失败: ${msg.trim()}")
+        }
+
+        if (stderr.isNotEmpty()) {
+            lgr.warn { "Command '$command' stderr: ${stderr.toString().trim()}" }
+        }
     }
 
     fun createVolume(volumeName: String) {
@@ -130,61 +183,6 @@ object DockerService {
         }
     }
 
-    fun update(containerName: String, image: String): String {
-
-        // Inspect current container to reuse settings
-        val inspect = client.inspectContainerCmd(containerName).exec()
-        val name = inspect.name?.trim('/') ?: (inspect.id ?: containerName)
-        val hostConfig = inspect.hostConfig
-        val config = inspect.config
-
-        // Pull latest image
-        val repoTag = if (image.contains(":")) image else "$image:latest"
-
-        val hasLocal = imageExistsLocally(repoTag)
-        if (hasLocal) {
-            lgr.info { "Image $repoTag found locally; skipping pull." }
-        } else {
-            throw RequestError("找不到此整合包")
-        }
-
-        // Determine running state and stop
-        val wasRunning = isStarted(containerName)
-        if (wasRunning) {
-            try {
-                client.stopContainerCmd(containerName).exec()
-            } catch (_: Exception) {
-            }
-        }
-        // Remove old container but keep volumes
-        try {
-            client.removeContainerCmd(containerName)
-                .withForce(true)
-                .withRemoveVolumes(false)
-                .exec()
-        } catch (_: Exception) {
-        }
-
-        // Recreate container with same options
-        val createImageRef = repoTag
-        val createCmd = client.createContainerCmd(createImageRef)
-            .withName(name)
-
-        // Env
-        config?.env?.let { if (it.isNotEmpty()) createCmd.withEnv(it.toList()) }
-        // Exposed ports
-        config?.exposedPorts?.let { createCmd.withExposedPorts(*it) }
-        // Host config (ports/volumes/limits)
-        hostConfig?.let { createCmd.withHostConfig(it) }
-
-        val newId = createCmd.exec().id
-
-        if (wasRunning) {
-            client.startContainerCmd(newId).exec()
-        }
-        lgr.info { "Updated container $name to image $repoTag" }
-        return newId
-    }
 
     private fun imageExistsLocally(repoTag: String): Boolean {
         return try {
@@ -326,19 +324,19 @@ object DockerService {
         }
     }
 
-    fun getContainerStatus(containerName: String): ServerStatus {
+    fun getContainerStatus(containerName: String): HostStatus {
         return try {
-            val container = findContainer(containerName) ?: return ServerStatus.UNKNOWN
-            val state = container.state?.lowercase() ?: return ServerStatus.UNKNOWN
+            val container = findContainer(containerName) ?: return HostStatus.UNKNOWN
+            val state = container.state?.lowercase() ?: return HostStatus.UNKNOWN
             when (state) {
-                "running" -> ServerStatus.STARTED
-                "paused" -> ServerStatus.PAUSED
-                "exited", "created", "dead", "removing", "stopped" -> ServerStatus.STOPPED
-                else -> ServerStatus.UNKNOWN
+                "running" -> HostStatus.STARTED
+                "paused" -> HostStatus.PAUSED
+                "exited", "created", "dead", "removing", "stopped" -> HostStatus.STOPPED
+                else -> HostStatus.UNKNOWN
             }
         } catch (e: Exception) {
             lgr.warn { "Error getting status for container $containerName: ${e.message}" }
-            ServerStatus.UNKNOWN
+            HostStatus.UNKNOWN
         }
     }
     suspend fun buildImage(name: String, contextPath: String,onLine: (String) -> Unit,

@@ -149,20 +149,16 @@ allprojects {
 //三方库
 def mcLibs = [
 // https://mvnrepository.com/artifact/org.jsoup/jsoup
-//添加三方库别忘了jar jarJar reobfJarJar genIntellijRuns 不然找不到class
 // https://mvnrepository.com/artifact/io.ktor/ktor-network-tls-jvm
 "io.ktor:ktor-client-okhttp:$ktor_version",
 "io.ktor:ktor-client-core:$ktor_version",
 "io.ktor:ktor-client-encoding:$ktor_version",
+"io.ktor:ktor-client-websockets:$ktor_version",
 'org.jsoup:jsoup:1.19.1',
 'org.mongodb:bson:5.1.0',
-"io.ktor:ktor-server-core:$ktor_version",
-"io.ktor:ktor-server-jetty-jakarta:$ktor_version",
 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0',
 "io.ktor:ktor-client-content-negotiation:$ktor_version",
 "io.ktor:ktor-serialization-kotlinx-json:$ktor_version"
-]
-def mcLibExportOnly = [
 ]
 def modrinthMods = [
         "architectury-api:13.0.8+neoforge",
@@ -270,7 +266,6 @@ dependencies {
     }
     modrinthMods.each { dep ->
         implementation("maven.modrinth:$dep")
-
     }
 }
 

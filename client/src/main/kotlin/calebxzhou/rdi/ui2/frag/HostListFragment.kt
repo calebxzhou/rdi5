@@ -5,36 +5,20 @@ import calebxzhou.rdi.model.Host
 import calebxzhou.rdi.model.Team
 import calebxzhou.rdi.model.World
 import calebxzhou.rdi.model.account
-import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.net.server
 import calebxzhou.rdi.service.isOwnerOrAdmin
-import calebxzhou.rdi.ui2.FragmentSize
-import calebxzhou.rdi.ui2.MaterialColor
-import calebxzhou.rdi.ui2.button
-import calebxzhou.rdi.ui2.center
+import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.alertErr
-import calebxzhou.rdi.ui2.component.alertOk
 import calebxzhou.rdi.ui2.component.closeLoading
 import calebxzhou.rdi.ui2.component.confirm
 import calebxzhou.rdi.ui2.component.showLoading
-import calebxzhou.rdi.ui2.go
-import calebxzhou.rdi.ui2.linearLayout
-import calebxzhou.rdi.ui2.mcScreen
 import calebxzhou.rdi.ui2.misc.contextMenu
-import calebxzhou.rdi.ui2.padding8dp
-import calebxzhou.rdi.ui2.radioButton
-import calebxzhou.rdi.ui2.radioGroup
-import calebxzhou.rdi.ui2.showOver
-import calebxzhou.rdi.ui2.spinner
-import calebxzhou.rdi.ui2.textView
-import calebxzhou.rdi.ui2.toast
-import calebxzhou.rdi.ui2.uiThread
 import calebxzhou.rdi.util.ioTask
 import calebxzhou.rdi.util.mc
 import calebxzhou.rdi.util.renderThread
 import icyllis.modernui.widget.LinearLayout
 import icyllis.modernui.widget.Spinner
-import io.ktor.http.HttpMethod
+import io.ktor.http.*
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.withTimeoutOrNull
 import net.minecraft.client.gui.screens.ConnectScreen
@@ -91,7 +75,7 @@ class HostListFragment(val team: Team) : RFragment("选择主机") {
                                 alertErr("没开发完呢")
                             }
                             "更新整合包" with {
-                                confirm("将更新主机“${host.name}”的整合包到最新版本。\n主机会关闭，更新时间大概需要15秒（存档会被保留）"){
+                                confirm("将更新主机“${host.name}”的整合包到最新版本。\n主机会关闭，更新时间大概需要15秒\n（除存档外，所有数据会被删除，包括日志、临时Mod等）"){
                                     server.requestU("host/${host._id}/update", HttpMethod.Post, showLoading = true){
                                         toast("已更新到最新版 主机重启中")
                                         load()
@@ -106,7 +90,7 @@ class HostListFragment(val team: Team) : RFragment("选择主机") {
                     server.request<String>("host/${host._id}/status"){
 
                         if(it.data != "STARTED"){
-                            alertErr("需要队长/管理者在后台启动主机")
+                            alertErr("主机已关闭\n需要队长/管理者在后台启动主机")
                             return@request
                         }
                         Host.now = host
@@ -186,7 +170,7 @@ class HostListFragment(val team: Team) : RFragment("选择主机") {
                             center()
                             linearLayout {
                                 textView("选择整合包")
-                                spinner(listOf("默认"))
+                                spinner(listOf("默认（原版）"))
                             }
                             linearLayout {
                                 textView("选择存档")
@@ -213,6 +197,9 @@ class HostListFragment(val team: Team) : RFragment("选择主机") {
         }
     }
     class Carrier : RFragment("选择运营商节点") {
+        override var fragSize: FragmentSize
+            get() = FragmentSize.SMALL
+            set(value) {}
         private val creds = LocalCredentials.read()
         private val carriers = arrayListOf("电信", "移动", "联通", "教育网", "广电")
         override var contentLayoutInit: LinearLayout.() -> Unit = {

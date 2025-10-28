@@ -8,6 +8,7 @@ import calebxzhou.rdi.ihq.service.PlayerService
 import calebxzhou.rdi.ihq.service.PlayerService.accountCol
 import calebxzhou.rdi.ihq.service.UpdateService
 import calebxzhou.rdi.ihq.service.playerRoutes
+import calebxzhou.rdi.ihq.service.HostService
 import calebxzhou.rdi.ihq.service.hostRoutes
 import calebxzhou.rdi.ihq.service.teamRoutes
 import calebxzhou.rdi.ihq.service.worldRoutes
@@ -31,10 +32,14 @@ import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.*
 import io.ktor.server.sse.*
+import io.ktor.server.websocket.WebSockets
+import io.ktor.server.websocket.pingPeriod
+import io.ktor.server.websocket.timeout
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.bson.UuidRepresentation
 import java.io.File
+import kotlin.time.Duration.Companion.seconds
 
 val CONF = AppConfig.load()
 val lgr = KotlinLogging.logger {  }
@@ -53,6 +58,10 @@ fun main(): Unit =runBlocking {
         accountCol.createIndex(Indexes.ascending("qq"), IndexOptions().unique(true))
         accountCol.createIndex(Indexes.ascending("name"), IndexOptions().unique(true))
     UpdateService.reloadModInfo()
+    HostService.startIdleMonitor()
+    Runtime.getRuntime().addShutdownHook(Thread {
+        HostService.stopIdleMonitor()
+    })
     //5分钟重载mod  没什么用 手动重载了
    /* Timer().scheduleAtFixedRate(object : TimerTask() {
         override fun run() {
@@ -110,6 +119,12 @@ fun startHttp(){
             deflate()
         }
         install(SSE)
+        install(WebSockets){
+            pingPeriod = 15.seconds
+            timeout = 10.seconds
+            maxFrameSize = Long.MAX_VALUE
+            masking = false
+        }
         routing {
             playerRoutes()
             /*get("/sponsors") {

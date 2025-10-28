@@ -32,7 +32,7 @@ class WorldListFragment: RFragment("选择存档") {
                 button("💾 ${world.name} ",init={
                     contextMenu {
                         "删除" with {
-                            confirm("要永久删除存档”${world.name}“吗？无法恢复！"){
+                            confirm("要永久删除存档”${world.name}“及其所有的回档点吗？无法恢复！"){
                                 server.request<Unit>("world/${world._id}", HttpMethod.Delete, showLoading = true){
                                     toast("已删除")
                                     load()
@@ -46,6 +46,8 @@ class WorldListFragment: RFragment("选择存档") {
                                     load()
                                 }
                             }
+                        }
+                        "回档" with {
 
                         }
                     }
