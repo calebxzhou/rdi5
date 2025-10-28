@@ -113,6 +113,9 @@ fun Route.hostRoutes() = route("/host") {
     get("/all") {
         response(data = HostService.dbcl.find().map { it._id.toString() to it.name }.toList())
     }*/
+}
+
+fun Route.hostPlayRoutes() = route("/host") {
     webSocket("/play/{hostId}") {
         val rawHostId = call.param("hostId")
 

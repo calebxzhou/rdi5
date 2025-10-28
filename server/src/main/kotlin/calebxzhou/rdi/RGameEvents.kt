@@ -4,16 +4,23 @@ import calebxzhou.rdi.service.client
 import io.ktor.client.plugins.websocket.webSocket
 import io.ktor.websocket.Frame
 import io.ktor.websocket.readReason
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlin.coroutines.coroutineContext
 import net.neoforged.bus.api.SubscribeEvent
 import net.neoforged.fml.common.EventBusSubscriber
 import net.neoforged.neoforge.event.server.ServerStartedEvent
+import net.neoforged.neoforge.event.server.ServerStoppingEvent
 import net.neoforged.neoforge.event.tick.ServerTickEvent
 
 @EventBusSubscriber(modid = "rdi")
 class RGameEvents {
     companion object {
 
+        private var playSocketJob: Job? = null
 
 
         @SubscribeEvent
@@ -29,9 +36,16 @@ class RGameEvents {
         }
         @SubscribeEvent
         @JvmStatic
+        fun stopping(e: ServerStoppingEvent){
+            playSocketJob?.cancel()
+            playSocketJob = null
+        }
+        @SubscribeEvent
+        @JvmStatic
         fun started(e: ServerStartedEvent){
             lgr.info("====启动完成启动完成启动完成启动完成====")
-            ioTask{
+            playSocketJob?.cancel()
+            playSocketJob = ioTask{
                 val hostId = System.getenv("HOST_ID")
                 if (hostId.isNullOrBlank()) {
                     lgr.warn("未找到 HOST_ID 环境变量，无法建立玩法通道")
@@ -39,7 +53,7 @@ class RGameEvents {
                 }
 
                 val path = "/host/play/$hostId"
-                while (true) {
+                while (currentCoroutineContext().isActive) {
                     try {
                         client.webSocket(host = "host.docker.internal", port = 65231, path = path) {
                             lgr.info("已连接 IHQ /host/play WebSocket，hostId=$hostId")
@@ -57,6 +71,9 @@ class RGameEvents {
                                 }
                             }
                         }
+                    } catch (ce: CancellationException) {
+                        lgr.info("IHQ WebSocket 协程已取消，准备断开连接")
+                        break
                     } catch (t: Throwable) {
                         lgr.error("连接 IHQ WebSocket 失败，将在 5 秒后重试", t)
                         delay(5_000)

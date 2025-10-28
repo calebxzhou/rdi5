@@ -35,34 +35,34 @@ class HostListFragment(val team: Team) : RFragment("选择主机") {
             }
             "\uEF09 选择节点" with { Carrier().go() }
         }
-        contentLayoutInit= {
+        contentLayoutInit = {
             load()
         }
     }
 
-    fun load()  {
+    fun load() {
         server.request<List<Host>>("host/", showLoading = true) {
             render(it.data!!)
         }
     }
 
-    fun render(hosts: List<Host>) = uiThread{
+    fun render(hosts: List<Host>) = uiThread {
         contentLayout.removeAllViews()
         contentLayout.apply {
             linearLayout {
                 padding8dp()
                 textView("🖱点击开始游玩")
-                if(team.isOwnerOrAdmin(account)){
+                if (team.isOwnerOrAdmin(account)) {
                     textView("，右键进行管理")
                 }
             }
-            hosts.forEach { host->
-                button("\uF233   ${host.name}",init={
-                    if(team.isOwnerOrAdmin(account)){
+            hosts.forEach { host ->
+                button("\uF233   ${host.name}", init = {
+                    if (team.isOwnerOrAdmin(account)) {
                         contextMenu {
                             "删除" with {
-                                confirm("要删除主机“${host.name}”吗？\n（存档会被保留）"){
-                                    server.request<Unit>("host/${host._id}", HttpMethod.Delete, showLoading = true){
+                                confirm("要删除主机“${host.name}”吗？\n（存档会被保留）") {
+                                    server.request<Unit>("host/${host._id}", HttpMethod.Delete, showLoading = true) {
                                         toast("已删除")
                                         load()
                                     }
@@ -71,12 +71,12 @@ class HostListFragment(val team: Team) : RFragment("选择主机") {
                             "后台" with {
                                 HostConsoleFragment(host).go()
                             }
-                            "切换存档" with{
+                            "切换存档" with {
                                 alertErr("没开发完呢")
                             }
                             "更新整合包" with {
-                                confirm("将更新主机“${host.name}”的整合包到最新版本。\n主机会关闭，更新时间大概需要15秒\n（除存档外，所有数据会被删除，包括日志、临时Mod等）"){
-                                    server.requestU("host/${host._id}/update", HttpMethod.Post, showLoading = true){
+                                confirm("将更新主机“${host.name}”的整合包到最新版本。\n主机会关闭，更新时间大概需要15秒\n（除存档外，所有数据会被删除，包括日志、临时Mod等）") {
+                                    server.requestU("host/${host._id}/update", HttpMethod.Post, showLoading = true) {
                                         toast("已更新到最新版 主机重启中")
                                         load()
                                     }
@@ -86,62 +86,40 @@ class HostListFragment(val team: Team) : RFragment("选择主机") {
                     }
                 }, onClick = {
                     //电信以外全bgp
-                    val bgp = LocalCredentials.read().carrier!=0
-                    server.request<String>("host/${host._id}/status"){
+                    val bgp = LocalCredentials.read().carrier != 0
+                    server.request<String>("host/${host._id}/status") {
 
-                        if(it.data != "STARTED"){
-                            alertErr("主机已关闭\n需要队长/管理者在后台启动主机")
+                        if (it.data == "STARTED") {
+                            alertErr("主机正在载入中\n请稍等1~5分钟")
+                            return@request
+                        } else if (it.data == "STOPPED") {
+                            alertErr("需要队长/管理者在后台启动主机")
                             return@request
                         }
                         Host.now = host
-                        showLoading()
                         ioTask {
-                            val data = server.mcData(bgp)
-                            val completion = CompletableDeferred<Boolean>()
-                            try {
-                                ServerStatusPinger().pingServer(data, {}) {
-                                    if (!completion.isCompleted) {
-                                        completion.complete(data.protocol != 0)
-                                    }
-                                }
-                            } catch (t: Throwable) {
-                                if (!completion.isCompleted) {
-                                    completion.complete(false)
-                                }
+                            renderThread {
+                                ConnectScreen.startConnecting(
+                                    this@HostListFragment.mcScreen,
+                                    mc,
+                                    ServerAddress(if (bgp) server.bgpIp else server.ip, server.gamePort),
+                                    server.mcData(bgp),
+                                    false,
+                                    null
+                                )
                             }
-
-                            val ready = withTimeoutOrNull(5_000L) {
-                                runCatching { completion.await() }.getOrElse { false }
-                            }
-
-                            if (ready == true) {
-                                renderThread {
-                                    ConnectScreen.startConnecting(
-                                        this@HostListFragment.mcScreen,
-                                        mc,
-                                        ServerAddress(if (bgp) server.bgpIp else server.ip, server.gamePort),
-                                        server.mcData(bgp),
-                                        false,
-                                        null
-                                    )
-                                }
-                            } else {
-                                Host.now=null
-                                alertErr("主机还在启动中，请稍后再试")
-                            }
-                            closeLoading()
                         }
 
                     }
                 })
             }
-            if(hosts.isEmpty()){
+            if (hosts.isEmpty()) {
                 textView("没有主机，请点击创建按钮")
             }
         }
     }
 
-    class Create(val onOk: () -> Unit): RFragment("创建主机") {
+    class Create(val onOk: () -> Unit) : RFragment("创建主机") {
         private lateinit var worldSpinner: Spinner
         override var fragSize = FragmentSize.SMALL
         private var worlds: List<World> = emptyList()
@@ -177,11 +155,12 @@ class HostListFragment(val team: Team) : RFragment("选择主机") {
                                 worldSpinner = spinner(displayEntries)
                             }
                         }
-                        contentLayout.bottomOptions{
+                        contentLayout.bottomOptions {
                             "创建" colored MaterialColor.GREEN_900 with {
                                 val selectedWorld = worlds.getOrNull(worldSpinner.selectedItemPosition)
-                                val params = selectedWorld?.let {  mapOf("worldId" to it._id) } ?: emptyMap<String, Any>()
-                                server.requestU("host/", HttpMethod.Post,params ){
+                                val params =
+                                    selectedWorld?.let { mapOf("worldId" to it._id) } ?: emptyMap<String, Any>()
+                                server.requestU("host/", HttpMethod.Post, params) {
                                     close()
                                     toast("创建成功")
                                     onOk()
@@ -196,6 +175,7 @@ class HostListFragment(val team: Team) : RFragment("选择主机") {
             )
         }
     }
+
     class Carrier : RFragment("选择运营商节点") {
         override var fragSize: FragmentSize
             get() = FragmentSize.SMALL
