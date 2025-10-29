@@ -41,6 +41,7 @@ dependencies {
     // https://mvnrepository.com/artifact/com.github.docker-java/docker-java
     implementation 'com.github.docker-java:docker-java:3.6.0'
     implementation 'com.github.docker-java:docker-java-transport-httpclient5:3.6.0'
+    implementation 'org.apache.commons:commons-compress:1.27.1'
 }
 ktor {
     fatJar {

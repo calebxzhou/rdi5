@@ -15,8 +15,13 @@ import com.github.dockerjava.core.DefaultDockerClientConfig
 import com.github.dockerjava.core.DockerClientBuilder
 import com.github.dockerjava.httpclient5.ApacheDockerHttpClient
 import com.github.dockerjava.transport.DockerHttpClient
+import java.io.ByteArrayOutputStream
 import java.io.Closeable
+import java.nio.file.Files
+import java.nio.file.Path
 import java.time.Duration
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry
+import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream
 import com.github.dockerjava.api.exception.NotFoundException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -75,7 +80,7 @@ object DockerService {
     fun sendCommand(containerName: String, command: String) {
         if (command.isBlank()) throw RequestError("命令不能为空")
 
-        val container = findContainer(containerName, includeStopped = false)
+        val container = findContainer(containerName)
             ?: throw RequestError("找不到此容器")
 
         if (!container.state.equals("running", ignoreCase = true)) {
@@ -180,6 +185,41 @@ object DockerService {
         } catch (e: Exception) {
             lgr.warn { "Error removing volume $volume: ${e.message}" }
             // Volume might not exist or be in use, continue anyway
+        }
+    }
+
+    fun uploadFile(containerName: String, localFile: Path, targetFileName: String = localFile.fileName.toString()) {
+        val container = findContainer(containerName, includeStopped = false)
+            ?: throw RequestError("找不到此容器")
+
+        if (!Files.exists(localFile) || !Files.isRegularFile(localFile)) {
+            throw RequestError("本地文件不存在或不可读")
+        }
+
+        val archiveBytes = createTarArchive(localFile, targetFileName)
+
+        client.copyArchiveToContainerCmd(container.id)
+            .withRemotePath("/opt/server")
+            .withTarInputStream(archiveBytes.inputStream())
+            .exec()
+    }
+
+    private fun createTarArchive(file: Path, entryName: String): ByteArray {
+        val normalizedName = entryName.trimStart('/')
+        ByteArrayOutputStream().use { baos ->
+            TarArchiveOutputStream(baos).use { tar ->
+                tar.setLongFileMode(TarArchiveOutputStream.LONGFILE_GNU)
+                tar.putArchiveEntry(TarArchiveEntry(normalizedName).apply {
+                    size = Files.size(file)
+                    mode = 0b110_100_100 // 0644 permissions
+                })
+                Files.newInputStream(file).use { input ->
+                    input.copyTo(tar)
+                }
+                tar.closeArchiveEntry()
+                tar.finish()
+            }
+            return baos.toByteArray()
         }
     }
 
