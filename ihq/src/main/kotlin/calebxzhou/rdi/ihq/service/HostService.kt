@@ -41,7 +41,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.builtins.serializer
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Duration.Companion.minutes
@@ -59,7 +58,7 @@ fun Route.hostRoutes() = route("/host") {
         ok()
     }
     post("/{hostId}/stop") {
-        HostService.stop(uid, ObjectId(param("hostId")))
+        HostService.userStop(uid, ObjectId(param("hostId")))
         ok()
     }
     post("/{hostId}/command") {
@@ -225,19 +224,25 @@ object HostService {
         return candidates.random()
     }
 
-    suspend fun getRunnings(): List<Host> = withContext(Dispatchers.IO) {
+    suspend fun getPlayables(): List<Host> = withContext(Dispatchers.IO) {
         val runningIds = DockerService.listContainers(includeStopped = false)
             .mapNotNull { container ->
                 val containerName = container.names?.firstOrNull()?.removePrefix("/") ?: return@mapNotNull null
                 runCatching { ObjectId(containerName) }.getOrNull()
             }
             .distinct()
-        if (runningIds.isEmpty()) emptyList() else dbcl.find(`in`("_id", runningIds)).toList()
+
+        if (runningIds.isEmpty()) {
+            emptyList()
+        } else {
+            dbcl.find(`in`("_id", runningIds)).toList()
+                .filter { host -> hostStates[host._id]?.session != null }
+        }
     }
 
     suspend fun getIdles(): List<Host> {
         val result = mutableListOf<Host>()
-        for (host in getRunnings()) {
+        for (host in getPlayables()) {
             if (host.getOnlinePlayers() == 0) {
                 result += host
             }
@@ -269,7 +274,7 @@ object HostService {
 
     private suspend fun runIdleMonitorTick(forceStop: Boolean = false) {
         val runningHosts = try {
-            getRunnings()
+            getPlayables()
         } catch (cancel: CancellationException) {
             throw cancel
         } catch (t: Throwable) {
@@ -416,13 +421,12 @@ object HostService {
         clearShutFlag(hostId)
     }
 
-    suspend fun stop(uid: ObjectId, hostId: ObjectId) {
+    suspend fun userStop(uid: ObjectId, hostId: ObjectId) {
         val host = getById(hostId) ?: throw RequestError("无此主机")
         val team = TeamService.get(host.teamId) ?: throw RequestError("无此团队")
         if (!team.hasHost(hostId)) throw RequestError("此主机不属于你的团队")
         if (!team.isOwnerOrAdmin(uid)) throw RequestError("无权限")
         sendCommand(uid,hostId,"stop")
-        //DockerService.stop(hostId.str)
         clearShutFlag(hostId)
     }
 
