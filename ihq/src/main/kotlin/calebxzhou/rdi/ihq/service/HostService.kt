@@ -4,8 +4,9 @@ import calebxzhou.rdi.ihq.DB
 import calebxzhou.rdi.ihq.DEFAULT_MODPACK_ID
 import calebxzhou.rdi.ihq.exception.RequestError
 import calebxzhou.rdi.ihq.model.Host
-import calebxzhou.rdi.ihq.model.imageRef
 import calebxzhou.rdi.ihq.model.HostStatus
+import calebxzhou.rdi.ihq.model.WsMessage
+import calebxzhou.rdi.ihq.model.imageRef
 import calebxzhou.rdi.ihq.net.ok
 import calebxzhou.rdi.ihq.net.param
 import calebxzhou.rdi.ihq.net.paramNull
@@ -14,18 +15,19 @@ import calebxzhou.rdi.ihq.net.uid
 import calebxzhou.rdi.ihq.service.TeamService.addHost
 import calebxzhou.rdi.ihq.service.TeamService.delHost
 import calebxzhou.rdi.ihq.util.str
+import calebxzhou.rdi.ihq.util.serdesJson
+import calebxzhou.rdi.ihq.lgr
 import com.mongodb.client.model.Filters.*
 import com.mongodb.client.model.Updates.combine
 import com.mongodb.client.model.Updates.set
-import calebxzhou.rdi.ihq.lgr
 import io.ktor.server.routing.*
 import io.ktor.server.sse.*
 import io.ktor.server.websocket.DefaultWebSocketServerSession
 import io.ktor.server.websocket.webSocket
 import io.ktor.sse.ServerSentEvent
 import io.ktor.websocket.CloseReason
+import io.ktor.websocket.Frame
 import io.ktor.websocket.close
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -36,8 +38,10 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.builtins.serializer
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Duration.Companion.minutes
@@ -156,24 +160,56 @@ object HostService {
 
     private val idleMonitorScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var idleMonitorJob: Job? = null
-    private val hostShutFlags = ConcurrentHashMap<ObjectId, Int>()
-    private val playableHosts = ConcurrentHashMap<ObjectId, DefaultWebSocketServerSession>()
+
+    private data class HostState(
+        var shutFlag: Int = 0,
+        var session: DefaultWebSocketServerSession? = null
+    )
+
+    private val hostStates = ConcurrentHashMap<ObjectId, HostState>()
 
     fun registerPlayableSession(hostId: ObjectId, session: DefaultWebSocketServerSession): Boolean {
-        playableHosts.put(hostId, session)?.let { previous ->
-            if (previous !== session) {
-                previous.launch {
-                    runCatching { previous.close(CloseReason(CloseReason.Codes.NORMAL, "新的连接建立")) }
-                }
+        val state = hostStates.computeIfAbsent(hostId) { HostState() }
+        val previous = state.session
+        if (previous !== null && previous !== session) {
+            previous.launch {
+                runCatching { previous.close(CloseReason(CloseReason.Codes.NORMAL, "新的连接建立")) }
             }
         }
+        state.session = session
         lgr.info { "Host $hostId gameplay 通道已连接" }
         return true
     }
 
     fun unregisterPlayableSession(hostId: ObjectId, session: DefaultWebSocketServerSession) {
-        if (playableHosts.remove(hostId, session)) {
-            lgr.info { "Host $hostId gameplay 通道已断开" }
+        hostStates[hostId]?.let { state ->
+            if (state.session === session) {
+                state.session = null
+                lgr.info { "Host $hostId gameplay 通道已断开" }
+                if (state.shutFlag <= 0) {
+                    hostStates.remove(hostId, state)
+                }
+                idleMonitorScope.launch {
+                    delay(3.seconds)
+                    val currentSession = hostStates[hostId]?.session
+                    if (currentSession != null) {
+                        lgr.info { "Host $hostId 已在断开后重新连接，跳过自动停止" }
+                        return@launch
+                    }
+
+                    runCatching { DockerService.stop(hostId.str) }
+                        .onSuccess {
+                            lgr.info { "Host $hostId 容器因通道断开已停止" }
+                        }
+                        .onFailure { error ->
+                            if (error is RequestError && error.message == "早就停了") {
+                                lgr.info { "Host $hostId 容器已处于停止状态" }
+                            } else {
+                                lgr.warn(error) { "Host $hostId 通道断开后停止容器失败: ${error.message}" }
+                            }
+                        }
+                }
+            }
         }
     }
 
@@ -228,7 +264,7 @@ object HostService {
     fun stopIdleMonitor() {
         idleMonitorJob?.cancel()
         idleMonitorJob = null
-        hostShutFlags.clear()
+        hostStates.values.forEach { it.shutFlag = 0 }
     }
 
     private suspend fun runIdleMonitorTick(forceStop: Boolean = false) {
@@ -256,7 +292,8 @@ object HostService {
                     continue
                 }
 
-                val newFlag = (hostShutFlags[host._id] ?: 0) + 1
+                val current = hostStates[host._id]?.shutFlag ?: 0
+                val newFlag = current + 1
                 updateShutFlag(host._id, newFlag)
                 if (newFlag >= SHUTDOWN_THRESHOLD) {
                     stopHost(host, "idle for $newFlag consecutive minutes")
@@ -272,13 +309,19 @@ object HostService {
         if (value <= 0) {
             clearShutFlag(hostId)
         } else {
-            hostShutFlags[hostId] = value
+            val state = hostStates.computeIfAbsent(hostId) { HostState() }
+            state.shutFlag = value
             lgr.info { "upd shut flag ${hostId} ${value}" }
         }
     }
 
     private fun clearShutFlag(hostId: ObjectId) {
-        hostShutFlags.remove(hostId)
+        hostStates[hostId]?.let { state ->
+            state.shutFlag = 0
+            if (state.session == null) {
+                hostStates.remove(hostId, state)
+            }
+        }
         lgr.info { "clear shut flag $hostId" }
     }
 
@@ -378,7 +421,8 @@ object HostService {
         val team = TeamService.get(host.teamId) ?: throw RequestError("无此团队")
         if (!team.hasHost(hostId)) throw RequestError("此主机不属于你的团队")
         if (!team.isOwnerOrAdmin(uid)) throw RequestError("无权限")
-        DockerService.stop(hostId.str)
+        sendCommand(uid,hostId,"stop")
+        //DockerService.stop(hostId.str)
         clearShutFlag(hostId)
     }
 
@@ -400,13 +444,47 @@ object HostService {
         val normalized = command.trimEnd()
         if (normalized.isBlank()) throw RequestError("命令不能为空")
 
-        DockerService.sendCommand(hostId.str, normalized)
+        val session = hostStates[hostId]?.session ?: throw RequestError("主机未处于游玩状态")
+
+        val message = WsMessage(
+            channel = WsMessage.Channel.command,
+            data = normalized
+        )
+
+        val payload = serdesJson.encodeToString(
+            message
+        )
+
+        try {
+            session.send(Frame.Text(payload))
+        } catch (cancel: CancellationException) {
+            hostStates[hostId]?.let { state ->
+                if (state.session === session) {
+                    state.session = null
+                    if (state.shutFlag <= 0) {
+                        hostStates.remove(hostId, state)
+                    }
+                }
+            }
+            throw cancel
+        } catch (t: Throwable) {
+            hostStates[hostId]?.let { state ->
+                if (state.session === session) {
+                    state.session = null
+                    if (state.shutFlag <= 0) {
+                        hostStates.remove(hostId, state)
+                    }
+                }
+            }
+            lgr.warn(t) { "发送命令到 $hostId 失败: ${t.message}" }
+            throw RequestError("发送命令失败: ${t.message ?: "未知错误"}")
+        }
     }
 
     suspend fun getServerStatus(hostId: ObjectId): HostStatus {
         val host = getById(hostId) ?: return HostStatus.UNKNOWN
         val status = DockerService.getContainerStatus(host._id.str)
-        if (status == HostStatus.STARTED && playableHosts.containsKey(host._id)) {
+        if (status == HostStatus.STARTED && hostStates[host._id]?.session != null) {
             return HostStatus.PLAYABLE
         }
         return status
