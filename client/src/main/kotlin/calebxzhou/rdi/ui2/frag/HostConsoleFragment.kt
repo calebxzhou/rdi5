@@ -14,6 +14,7 @@ import calebxzhou.rdi.ui2.go
 import calebxzhou.rdi.ui2.linearLayoutParam
 import calebxzhou.rdi.ui2.textView
 import calebxzhou.rdi.ui2.toast
+import calebxzhou.rdi.util.error
 import calebxzhou.rdi.util.ioScope
 import calebxzhou.rdi.ui2.uiThread
 import icyllis.modernui.graphics.Color

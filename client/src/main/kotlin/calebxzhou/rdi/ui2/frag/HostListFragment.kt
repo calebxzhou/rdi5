@@ -57,65 +57,81 @@ class HostListFragment(val team: Team) : RFragment("选择主机") {
                 }
             }
             hosts.forEach { host ->
-                button("\uF233   ${host.name}", init = {
-                    if (team.isOwnerOrAdmin(account)) {
-                        contextMenu {
-                            "删除" with {
-                                confirm("要删除主机“${host.name}”吗？\n（存档会被保留）") {
-                                    server.request<Unit>("host/${host._id}", HttpMethod.Delete, showLoading = true) {
-                                        toast("已删除")
-                                        load()
+                button(
+                    "\uF233   ${host.name}", init = {
+                        if (team.isOwnerOrAdmin(account)) {
+                            contextMenu {
+                                "删除" with {
+                                    confirm("要删除主机“${host.name}”吗？\n（存档会被保留）") {
+                                        server.request<Unit>(
+                                            "host/${host._id}",
+                                            HttpMethod.Delete,
+                                            showLoading = true
+                                        ) {
+                                            toast("已删除")
+                                            load()
+                                        }
+                                    }
+                                }
+                                "后台" with {
+                                    HostConsoleFragment(host).go()
+                                }
+                                "临时Mod" with {
+
+                                }
+                                "切换存档" with {
+                                    alertErr("没开发完呢")
+                                }
+                                "更新整合包" with {
+                                    confirm("将更新主机“${host.name}”的整合包到最新版本。\n主机会关闭，更新时间大概需要15秒\n（除存档外，所有数据会被删除，包括日志、临时Mod等）") {
+                                        server.requestU(
+                                            "host/${host._id}/update",
+                                            HttpMethod.Post,
+                                            showLoading = true
+                                        ) {
+                                            toast("已更新到最新版 主机重启中")
+                                            load()
+                                        }
                                     }
                                 }
                             }
-                            "后台" with {
-                                HostConsoleFragment(host).go()
-                            }
-                            "切换存档" with {
-                                alertErr("没开发完呢")
-                            }
-                            "更新整合包" with {
-                                confirm("将更新主机“${host.name}”的整合包到最新版本。\n主机会关闭，更新时间大概需要15秒\n（除存档外，所有数据会被删除，包括日志、临时Mod等）") {
-                                    server.requestU("host/${host._id}/update", HttpMethod.Post, showLoading = true) {
-                                        toast("已更新到最新版 主机重启中")
-                                        load()
-                                    }
-                                }
-                            }
                         }
-                    }
-                }, onClick = {
-                    //电信以外全bgp
-                    val bgp = LocalCredentials.read().carrier != 0
-                    server.request<String>("host/${host._id}/status") {
-
-                        if (it.data == "STARTED") {
-                            alertErr("主机正在载入中\n请稍等1~5分钟")
-                            return@request
-                        } else if (it.data == "STOPPED") {
-                            alertErr("需要队长/管理者在后台启动主机")
-                            return@request
-                        }
-                        Host.now = host
-                        ioTask {
-                            renderThread {
-                                ConnectScreen.startConnecting(
-                                    this@HostListFragment.mcScreen,
-                                    mc,
-                                    ServerAddress(if (bgp) server.bgpIp else server.ip, server.gamePort),
-                                    server.mcData(bgp),
-                                    false,
-                                    null
-                                )
-                            }
-                        }
-
-                    }
-                })
+                    }, onClick =
+                        { play(host) }
+                )
             }
             if (hosts.isEmpty()) {
                 textView("没有主机，请点击创建按钮")
             }
+        }
+    }
+
+    private fun play(host: Host) {
+        //电信以外全bgp
+        val bgp = LocalCredentials.read().carrier != 0
+        server.request<String>("host/${host._id}/status") {
+
+            if (it.data == "STARTED") {
+                alertErr("主机正在载入中\n请稍等1~5分钟")
+                return@request
+            } else if (it.data == "STOPPED") {
+                alertErr("需要队长/管理者在后台启动主机")
+                return@request
+            }
+            Host.now = host
+            ioTask {
+                renderThread {
+                    ConnectScreen.startConnecting(
+                        this@HostListFragment.mcScreen,
+                        mc,
+                        ServerAddress(if (bgp) server.bgpIp else server.ip, server.gamePort),
+                        server.mcData(bgp),
+                        false,
+                        null
+                    )
+                }
+            }
+
         }
     }
 

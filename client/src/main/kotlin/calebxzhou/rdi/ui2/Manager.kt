@@ -34,8 +34,8 @@ val nowFragment
  */
 val FRAG_CONTAINER_ID = 0x01020007
 val FRAG_CTRL
-    get() = ModernUI::class.java.getDeclaredField("mFragmentController").also { it.isAccessible = true }
-        .get(ModernUI.getInstance()) as FragmentController
+    get() = RodernUI.getInstance().fragmentController  /*ModernUI::class.java.getDeclaredField("mFragmentController").also { it.isAccessible = true }
+        .get(ModernUI.getInstance()) as FragmentController*/
 val SCREEN_CALLBACK = object : ScreenCallback {
     override fun shouldClose(): Boolean = false
 }

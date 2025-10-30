@@ -32,6 +32,13 @@ class RTextField(
     var clearable: Boolean = true,
 ) : FrameLayout(context) {
 
+    var focusShowLabel: Boolean = true
+        set(value) {
+            if (field == value) return
+            field = value
+            updateLabelAndClear()
+        }
+
     var nightMode: Boolean = true
         set(value) {
             field = value
@@ -226,8 +233,8 @@ class RTextField(
     private fun updateLabelAndClear() {
         if (!constructed) return
         val hasText = edit.text?.isNotEmpty() == true
-        // Label floats on focus or when text present
-        val shouldFloat = isFocusedState || hasText
+        // Label floats on focus or when text present (if enabled)
+        val shouldFloat = focusShowLabel && (isFocusedState || hasText)
         if (shouldFloat) {
             labelTv.visibility = View.VISIBLE
             edit.hint = null

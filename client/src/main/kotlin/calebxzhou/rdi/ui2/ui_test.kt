@@ -7,6 +7,8 @@ import calebxzhou.rdi.ui2.frag.LoginFragment
 import calebxzhou.rdi.ui2.frag.PauseFragment
 import calebxzhou.rdi.ui2.frag.SettingsFragment
 import calebxzhou.rdi.ui2.frag.TeamFragment
+import calebxzhou.rdi.ui2.frag.TitleFragment
+import calebxzhou.rdi.ui2.frag.WardrobeFragment
 import calebxzhou.rdi.ui2.frag.pack.ModpackCreate2Fragment
 import calebxzhou.rdi.ui2.frag.pack.ModpackCreate3Fragment
 import calebxzhou.rdi.ui2.frag.pack.ModpackCreateFragment
@@ -28,7 +30,7 @@ import kotlin.io.path.Path
 
 //public static SpectrumGraph sSpectrumGraph;
 fun main() {
-    val fontsDir = "./resourcepacks/fonts/assets/modernui/font/"
+
     System.setProperty("java.awt.headless", "true")
     System.setProperty("rdi.debug", "true")
     System.setProperty("rdi.modDir", "C:\\Users\\calebxzhou\\Documents\\RDI5sea-Ref\\.minecraft\\versions\\ATM10 To the Sky\\mods")
@@ -36,21 +38,19 @@ fun main() {
     Room.now= serdesJson.decodeFromString<Room>("{\"_id\":\"68babf210ffd4cd84117a8d9\",\"name\":\"123123的房间\",\"containerId\":\"55b0d72dc93a4e4bf604b6abdc0707c910c7552063f5db8a9749fcdf408fa75b\",\"score\":0,\"centerPos\":{\"data\":[0,64,0]},\"members\":[{\"id\":\"68b314bbadaf52ddab96b5ed\",\"isOwner\":true}],\"port\":0}")
     RAccount.now = RAccount(ObjectId("68b314bbadaf52ddab96b5ed"),"123123","123123","123123")
 
-    val frag = TeamFragment()
+    val frag = WardrobeFragment()
         //SelectAccountFragment(RServer.now)
         //ServerFragment()
         //RoomFragment(room)
 
-    val mui = ModernUI().apply {
+    val mui =RodernUI().apply {
 
 
         setTheme(R.style.Theme_Material3_Dark)
         theme.applyStyle(R.style.ThemeOverlay_Material3_Dark_Rust, true)
     }
-    val fontFamilies=File(fontsDir).listFiles { it.extension.matches(Regex("([to])tf")) }.map {
-        FontFamily.createFamily(it,false).let { Typeface.createTypeface(it) }
-    }
-    mui::class.java.getDeclaredField("mDefaultTypeface").apply { isAccessible=true }.set(mui, Fonts.UI.typeface)
+
+   // mui::class.java.getDeclaredField("mDefaultTypeface").apply { isAccessible=true }.set(mui, Fonts.UI.typeface)
     mui.run(frag)
     AudioManager.getInstance().close()
     System.gc()

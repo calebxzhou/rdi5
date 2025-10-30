@@ -6,18 +6,18 @@ import calebxzhou.rdi.service.LevelService
 import calebxzhou.rdi.service.Mcmod
 import calebxzhou.rdi.util.devRoutes
 import calebxzhou.rdi.util.ioScope
-import io.ktor.client.*
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
 import io.ktor.server.engine.*
 import io.ktor.server.jetty.jakarta.*
 import io.ktor.server.routing.*
 import kotlinx.coroutines.launch
 import net.neoforged.fml.common.Mod
-import org.apache.logging.log4j.LogManager
+import org.slf4j.LoggerFactory
+import org.slf4j.MarkerFactory
 import java.io.File
 
-val lgr = LogManager.getLogger("rdi")
+val lgr = LoggerFactory.getLogger("rdi")
+val logMarker
+    get() = {marker: String ->  MarkerFactory.getMarker(marker)}
 var TOTAL_TICK_DELTA = 0f
 
 @Mod("rdi")

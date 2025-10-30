@@ -275,7 +275,8 @@ fun FragmentManager.transaction(handler: FragmentTransaction.() -> Unit){
     beginTransaction().apply { handler() }.commit()
 }
 val layoutInflater = object : LayoutInflater(){}
-val WINDOW_HANDLE = if(isMcStarted)McWindowHandle else ModernUI.getInstance().window.handle
+val WINDOW_HANDLE
+    get() = if(isMcStarted)McWindowHandle else ModernUI.getInstance()!!.window.handle
 fun copyToClipboard(s: String) {
     GLFW.glfwSetClipboardString(WINDOW_HANDLE, s)
 }
