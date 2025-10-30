@@ -17,6 +17,7 @@ import calebxzhou.rdi.ihq.service.TeamService.delHost
 import calebxzhou.rdi.ihq.util.str
 import calebxzhou.rdi.ihq.util.serdesJson
 import calebxzhou.rdi.ihq.lgr
+import calebxzhou.rdi.ihq.model.pack.Mod
 import com.mongodb.client.model.Filters.*
 import com.mongodb.client.model.Updates.combine
 import com.mongodb.client.model.Updates.set
@@ -575,6 +576,9 @@ object HostService {
 
     suspend fun stopIdleHosts() {
         runIdleMonitorTick(forceStop = true)
+    }
+    suspend fun addTempMods(mods: List<Mod>){
+
     }
 }
 

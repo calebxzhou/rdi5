@@ -6,6 +6,7 @@ import calebxzhou.rdi.model.ChatMsg
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.net.server
 import calebxzhou.rdi.ui2.toast
+import calebxzhou.rdi.util.error
 import calebxzhou.rdi.util.addChatMessage
 import calebxzhou.rdi.util.ioTask
 import calebxzhou.rdi.util.json
