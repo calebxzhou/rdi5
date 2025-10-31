@@ -5,7 +5,7 @@ import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.ui2.component.REditPassword
 import calebxzhou.rdi.ui2.component.REditText
 import calebxzhou.rdi.ui2.editPwd
-import calebxzhou.rdi.ui2.editText
+import calebxzhou.rdi.ui2.textField
 import calebxzhou.rdi.ui2.button
 import calebxzhou.rdi.ui2.component.RTextField
 import calebxzhou.rdi.ui2.component.alertErr
@@ -18,7 +18,7 @@ class ChangeProfileFragment: RFragment("修改信息") {
     private lateinit var pwdEdit: REditPassword
     init {
         contentLayoutInit = {
-            nameEdit = editText("昵称") {
+            nameEdit = textField("昵称") {
                 text = account.name
             }
             pwdEdit = editPwd("新密码 留空则不修改")

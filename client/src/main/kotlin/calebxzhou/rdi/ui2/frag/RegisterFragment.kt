@@ -3,7 +3,7 @@ package calebxzhou.rdi.ui2.frag
 import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.ui2.FragmentSize
 import calebxzhou.rdi.ui2.MaterialColor
-import calebxzhou.rdi.ui2.editText
+import calebxzhou.rdi.ui2.textField
 import calebxzhou.rdi.ui2.component.RTextField
 import calebxzhou.rdi.ui2.component.alertErr
 import calebxzhou.rdi.ui2.toast
@@ -21,10 +21,10 @@ class RegisterFragment : RFragment("注册新账号") {
     init {
         contentLayoutInit = {
             gravity = Gravity.CENTER_HORIZONTAL
-            usernameInput = editText("昵称 支持中文")
-            qqInput = editText("QQ号")
-            passwordInput = editText("密码"){isPassword=true}
-            passwordInput2 = editText("确认密码"){isPassword=true}
+            usernameInput = textField("昵称 支持中文")
+            qqInput = textField("QQ号")
+            passwordInput = textField("密码"){isPassword=true}
+            passwordInput2 = textField("确认密码"){isPassword=true}
             bottomOptionsConfig = {
                 "注册" colored MaterialColor.BLUE_800 with {onRegisterClicked()}
             }

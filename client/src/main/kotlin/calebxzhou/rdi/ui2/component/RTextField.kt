@@ -2,9 +2,9 @@ package calebxzhou.rdi.ui2.component
 
 import calebxzhou.rdi.ui2.MaterialColor
 import calebxzhou.rdi.ui2.dp
+import calebxzhou.rdi.ui2.linearLayout
 import calebxzhou.rdi.ui2.paddingDp
 import icyllis.modernui.R
-import icyllis.modernui.core.Clipboard.setText
 import icyllis.modernui.core.Context
 import icyllis.modernui.graphics.Canvas
 import icyllis.modernui.graphics.Paint
@@ -31,13 +31,6 @@ class RTextField(
     var widthDp: Float = 120f,
     var clearable: Boolean = true,
 ) : FrameLayout(context) {
-
-    var focusShowLabel: Boolean = true
-        set(value) {
-            if (field == value) return
-            field = value
-            updateLabelAndClear()
-        }
 
     var nightMode: Boolean = true
         set(value) {
@@ -75,6 +68,7 @@ class RTextField(
             field = value
             edit.setSingleLine(!value)
         }
+    var focusShowLabel = true
     private var isFocusedState = false
     private var isHoveredState = false
     private var constructed = false
@@ -83,7 +77,7 @@ class RTextField(
 
     // Views
     private val labelTv = TextView(context)
-    private val row = LinearLayout(context)
+    private val row : LinearLayout
     private val rowLp =
         FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
             gravity = Gravity.TOP or Gravity.START
@@ -165,14 +159,14 @@ class RTextField(
             labelTv,
             FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
                 leftMargin = context.dp(12f)
-                topMargin = context.dp(6f)
+              //  topMargin = context.dp(6f)
                 gravity = Gravity.TOP or Gravity.START
             })
-
-        // Row: icon + input + clear
-        row.orientation = LinearLayout.HORIZONTAL
-        row.gravity = Gravity.CENTER_VERTICAL
-        addView(row, rowLp)
+        row = linearLayout {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            layoutParams = rowLp
+        }
 
         // EditText styling (transparent inside; caret/hint colors)
         edit.setBackground(null)
@@ -183,7 +177,6 @@ class RTextField(
         row.addView(edit)
 
         // Trailing action (clear or eye depending on mode)
-        val clearSize = context.dp(18f)
         clearBtn.text = "❌"
         clearBtn.visibility = View.GONE
         // Keep the trailing control from increasing the row height
@@ -233,8 +226,8 @@ class RTextField(
     private fun updateLabelAndClear() {
         if (!constructed) return
         val hasText = edit.text?.isNotEmpty() == true
-        // Label floats on focus or when text present (if enabled)
-        val shouldFloat = focusShowLabel && (isFocusedState || hasText)
+        // Label floats on focus or when text present
+        val shouldFloat = isFocusedState || hasText
         if (shouldFloat) {
             labelTv.visibility = View.VISIBLE
             edit.hint = null

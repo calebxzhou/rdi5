@@ -1,5 +1,6 @@
 package calebxzhou.rdi.ui2.frag
 
+import calebxzhou.rdi.Const
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.FragmentSize
 import calebxzhou.rdi.ui2.component.RButton
@@ -57,6 +58,7 @@ abstract class RFragment(initialTitle: String = "") : Fragment() {
     fun View.keyAction(build: KeyActionBuilder.() -> Unit) {
         keyActions = KeyActionBuilder().apply(build).build()
         setOnKeyListener { v, keyCode, event ->
+
             if (closable) {
                 if (keyCode == KeyEvent.KEY_ESCAPE && event.action == KeyEvent.ACTION_UP) {
                     close()
@@ -93,6 +95,31 @@ abstract class RFragment(initialTitle: String = "") : Fragment() {
         internal fun build(): List<Pair<Int, () -> Unit>> = actions
     }
 
+    private fun reloadFragment() {
+        uiThread {
+            try {
+                onReload()
+            } catch (_: Throwable) {
+            }
+        }
+    }
+
+    /**
+     * Called when the fragment should reload its UI (debug builds via F5 by default).
+     * Default implementation rebuilds the [contentLayout] using [contentLayoutInit].
+     */
+    protected open fun onReload() {
+        if (!::contentLayout.isInitialized) {
+            return
+        }
+        contentLayout.apply {
+            removeAllViews()
+            contentLayoutInit()
+            requestLayout()
+            invalidate()
+        }
+    }
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: DataSet?): View {
         // If caching is enabled and we have a cached view, return it
         if (mainViewCache && _mainView != null) {
@@ -106,6 +133,7 @@ abstract class RFragment(initialTitle: String = "") : Fragment() {
         }
         // Create new content view - use FrameLayout as root to allow bottom positioning
         val root = FrameLayout(mui).apply {
+
 
             // 20% dim background for better contrast with light content
             if(showBg) {
@@ -157,6 +185,9 @@ abstract class RFragment(initialTitle: String = "") : Fragment() {
                                     gravity = Gravity.CENTER
                                 }
                                 gravity = Gravity.CENTER
+                                setOnClickListener {
+                                        reloadFragment()
+                                }
                             }
                         }
                         // Back button (add last to be on top)
@@ -206,8 +237,8 @@ abstract class RFragment(initialTitle: String = "") : Fragment() {
                     bottomOptions(config)
                 }
             }
+                keyAction { }
 
-            keyAction { }
         }
         // Store the view in cache if caching is enabled
         if (mainViewCache) {

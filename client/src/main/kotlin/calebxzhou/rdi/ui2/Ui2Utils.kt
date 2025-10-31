@@ -9,6 +9,7 @@ import calebxzhou.rdi.util.mc
 import calebxzhou.rdi.util.rdiAsset
 import com.mojang.blaze3d.platform.NativeImage
 import icyllis.modernui.ModernUI
+import icyllis.modernui.R
 import icyllis.modernui.core.Context
 import icyllis.modernui.core.Core
 import icyllis.modernui.fragment.Fragment
@@ -65,7 +66,6 @@ fun uiThread(run: () -> Unit) {
  * Converts density-independent pixels (dp) to actual pixels
  */
 fun Context.dp(dp: Float): Int = (dp * resources.displayMetrics.density).toInt()
-
 fun View.padding8dp() {
     setPadding(context.dp(8f), context.dp(8f), context.dp(8f), context.dp(8f))
 }
@@ -185,7 +185,7 @@ fun ViewGroup.button(
     init()
 }.also { this += it }
 
-fun ViewGroup.editText(
+fun ViewGroup.textField(
     msg: String = "",
     width: Int = 200,
     init: RTextField.() -> Unit = {}
@@ -193,6 +193,15 @@ fun ViewGroup.editText(
     init()
     padding8dp()
 
+}.also { this += it }
+fun ViewGroup.editText(
+    msg: String = "",
+    init: EditText.() -> Unit = {}
+) = EditText(this.context, null, R.attr.editTextFilledStyle).apply{
+    hint=(msg)
+    setSingleLine(true)
+    layoutParams = linearLayoutParam(PARENT, SELF)
+    init()
 }.also { this += it }
 fun ViewGroup.checkBox(
     msg: String = "",

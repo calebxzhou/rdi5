@@ -2,127 +2,106 @@ package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.auth.MojangApi
 import calebxzhou.rdi.model.RAccount
+import calebxzhou.rdi.model.account
 import calebxzhou.rdi.net.RServer
+import calebxzhou.rdi.net.server
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.RTextField
 import calebxzhou.rdi.ui2.component.alertErr
 import calebxzhou.rdi.ui2.component.alertOk
 import calebxzhou.rdi.util.ioScope
 import calebxzhou.rdi.ui2.uiThread
+import calebxzhou.rdi.util.ioTask
 import icyllis.modernui.widget.CheckBox
-import icyllis.modernui.widget.LinearLayout
+import icyllis.modernui.widget.EditText
 import kotlinx.coroutines.launch
 
 
 class MojangSkinFragment : RFragment("导入正版皮肤") {
-    private lateinit var nameInput: RTextField
+    private lateinit var nameInput: EditText
     private lateinit var skinCheckBox: CheckBox
     private lateinit var capeCheckBox: CheckBox
+    override var fragSize: FragmentSize
+        get() = FragmentSize.SMALL
+        set(value) {}
 
     init {
         contentLayoutInit = {
-            orientation = LinearLayout.VERTICAL
+            paddingDp(0,16,0,0)
+            layoutParams = linearLayoutParam(dp(200f), SELF)
+            vertical()
+            nameInput = editText("正版玩家的昵称")
 
-            textView {
-                text = "正版玩家名"
-                layoutParams = linearLayoutParam(PARENT, SELF) {
-                    bottomMargin = dp(8f)
-                }
+
+            linearLayout {
+                padding8dp()
+                center()
+                layoutParams = linearLayoutParam(SELF, SELF)
+                skinCheckBox = checkBox("导入皮肤", {
+                    isChecked = true
+                })
+                capeCheckBox = checkBox("导入披风")
             }
 
-            nameInput = editText("输入正版玩家名") {
-                layoutParams = linearLayoutParam(PARENT, SELF) {
-                    bottomMargin = dp(16f)
-                }
-            }
 
-            skinCheckBox = CheckBox(fctx).apply {
-                text = "导入皮肤"
-                isChecked = true
-                layoutParams = linearLayoutParam(PARENT, SELF) {
-                    bottomMargin = dp(8f)
-                }
-            }
-            this += skinCheckBox
-
-            capeCheckBox = CheckBox(fctx).apply {
-                text = "导入披风"
-                layoutParams = linearLayoutParam(PARENT, SELF) {
-                    bottomMargin = dp(16f)
-                }
-            }
-            this += capeCheckBox
-
-            button("导入") {
-                importMojangSkin(this)
+        }
+        bottomOptionsConfig = {
+            "导入" colored MaterialColor.GREEN_900 with {
+                importMojangSkin()
             }
         }
     }
 
-    private fun importMojangSkin(layout: LinearLayout) {
-        val name = nameInput.txt.toString().trim()
+    private fun importMojangSkin() {
+        val name = nameInput.text.toString()
         val importSkin = skinCheckBox.isChecked
         val importCape = capeCheckBox.isChecked
 
         if (name.isEmpty()) {
-            layout.toast("请输入玩家名")
+            toast("请输入玩家名")
             return
         }
 
         if (!importSkin && !importCape) {
-            layout.toast("请选择皮肤或披风")
+            toast("请选择皮肤或披风")
             return
         }
 
-        ioScope.launch {
+        ioTask {
             try {
                 val uuid = MojangApi.getUuidFromName(name)
-                if (uuid != null) {
-                    val cloth = MojangApi.getCloth(uuid)
-                    if (cloth != null) {
-                        val account = RAccount.now ?: return@launch
-                        val server = RServer.now
-
-                        val newCloth = account.cloth.copy()
-                        if (importSkin) {
-                            newCloth.skin = cloth.skin
-                            newCloth.isSlim = cloth.isSlim
-                        }
-                        if (importCape) {
-                            newCloth.cape = cloth.cape
-                        }
-
-                        val params = mutableMapOf<String, Any>()
-                        params["isSlim"] = newCloth.isSlim.toString()
-                        params["skin"] = newCloth.skin
-                        newCloth.cape?.let {
-                            params["cape"] = it
-                        }
-
-                        server.requestU("skin", params = params) { response ->
-                            if (response.ok) {
-                                account.updateCloth(newCloth)
-                                uiThread {
-                                    close()
-                                    alertOk("正版皮肤导入成功")
-                                }
-                            } else {
-                                uiThread {
-                                    close()
-                                    alertOk("皮肤设置失败")
-                                }
-                            }
-                        }
-                    } else {
-                        uiThread {
-                            alertErr("没有读取到${name}的皮肤")
-                        }
-                    }
-                } else {
-                    uiThread {
-                        alertErr("玩家${name}不存在")
-                    }
+                if (uuid == null) {
+                    alertErr("玩家${name}不存在")
+                    return@ioTask
                 }
+                val cloth = MojangApi.getCloth(uuid)
+                if (cloth == null) {
+                    alertErr("没有读取到${name}的皮肤")
+                    return@ioTask
+                }
+                val newCloth = account.cloth.copy()
+                if (importSkin) {
+                    newCloth.skin = cloth.skin
+                    newCloth.isSlim = cloth.isSlim
+                }
+                if (importCape) {
+                    newCloth.cape = cloth.cape
+                }
+                val params = mutableMapOf<String, Any>()
+                params["isSlim"] = newCloth.isSlim.toString()
+                params["skin"] = newCloth.skin
+                newCloth.cape?.let {
+                    params["cape"] = it
+                }
+
+                server.requestU("skin", params = params) {
+
+                    account.updateCloth(newCloth)
+                    alertOk("正版皮肤导入成功")
+
+                }
+
+
             } catch (e: Exception) {
                 e.printStackTrace()
                 uiThread {

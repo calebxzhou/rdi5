@@ -1,29 +1,12 @@
 package calebxzhou.rdi.ui2.frag.pack
 
-import calebxzhou.rdi.lgr
-import calebxzhou.rdi.model.CurseForgeMod
-import calebxzhou.rdi.model.ModBriefInfo
-import calebxzhou.rdi.model.ModBriefVo
 import calebxzhou.rdi.net.humanSize
-import calebxzhou.rdi.service.ModService
-import calebxzhou.rdi.service.ModService.logo
-import calebxzhou.rdi.service.ModService.modDescription
-import calebxzhou.rdi.service.ModService.murmur2Mods
-import calebxzhou.rdi.service.ModService.readNeoForgeConfig
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.ImageSelection
-import calebxzhou.rdi.ui2.component.ModCard
 import calebxzhou.rdi.ui2.component.RTextField
 import calebxzhou.rdi.ui2.component.alertErr
 import calebxzhou.rdi.ui2.frag.RFragment
-import calebxzhou.rdi.util.ioScope
 import icyllis.modernui.graphics.BitmapFactory
-import icyllis.modernui.view.Gravity
-import icyllis.modernui.widget.LinearLayout
-import icyllis.modernui.widget.TextView
-import kotlinx.coroutines.launch
-import java.io.File
-import java.util.jar.JarFile
 
 class ModpackCreateFragment : RFragment("制作整合包1") {
     private lateinit var nameInput: RTextField
@@ -38,7 +21,7 @@ class ModpackCreateFragment : RFragment("制作整合包1") {
 
     init {
         contentLayoutInit = {
-            nameInput = editText("给你的包起个名字")
+            nameInput = textField("给你的包起个名字")
             /*textView("选择一个图标（可选）")
             picker = ImagePicker(fctx).apply {
                 validator = ::validateSelection

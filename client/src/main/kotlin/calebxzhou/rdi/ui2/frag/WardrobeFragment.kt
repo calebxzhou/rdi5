@@ -2,7 +2,6 @@ package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.net.RServer
-import calebxzhou.rdi.net.httpRequest
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.RTextField
 import calebxzhou.rdi.ui2.component.SkinItemView
@@ -12,6 +11,7 @@ import calebxzhou.rdi.ui2.component.confirm
 import calebxzhou.rdi.util.*
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.widget.CheckBox
+import icyllis.modernui.widget.EditText
 import icyllis.modernui.widget.LinearLayout
 import icyllis.modernui.widget.ScrollView
 import io.ktor.client.request.url
@@ -63,7 +63,7 @@ class WardrobeFragment : RFragment("衣柜") {
     private var capeMode = false
     private var hasMoreData = true
 
-    private lateinit var searchBox: RTextField
+    private lateinit var searchBox: EditText
     private lateinit var capeBox: CheckBox
     private lateinit var skinContainer: LinearLayout
     private lateinit var scrollView: ScrollView
@@ -75,18 +75,17 @@ class WardrobeFragment : RFragment("衣柜") {
             // Search and cape toggle section
             linearLayout {
                 orientation = LinearLayout.HORIZONTAL
-                layoutParams = linearLayoutParam(PARENT, SELF) {
+                layoutParams = linearLayoutParam(dp(400f), SELF) {
                     bottomMargin = dp(8f)
                 }
                 gravity = Gravity.CENTER_HORIZONTAL
 
-                searchBox = editText("搜索...", width = 240) {
+                searchBox = editText ("搜索...") {
+                    layoutParams = linearLayoutParam(dp(240f),SELF)
                     onPressEnterKey {
                         refreshSkins()
                     }
                 }
-                button("导入正版", onClick = { mc go (MojangSkinFragment()) })
-
                 capeBox = checkBox(
                     msg = "披风",
                     onClick = { box, chk ->
@@ -95,6 +94,9 @@ class WardrobeFragment : RFragment("衣柜") {
                         }
                     },
                 )
+                button("导入正版", onClick = { (MojangSkinFragment().go()) })
+
+
             }
 
             // Skin container wrapped in ScrollView for scrolling
@@ -129,7 +131,7 @@ class WardrobeFragment : RFragment("衣柜") {
         page++
 
         ioScope.launch {
-            val newSkins = querySkins(page, searchBox.txt.toString(), capeMode)
+            val newSkins = querySkins(page, searchBox.text.toString(), capeMode)
             if (newSkins.isNotEmpty()) {
                 uiThread {
                     appendSkinWidgets(newSkins)
@@ -151,7 +153,7 @@ class WardrobeFragment : RFragment("衣柜") {
         hasMoreData = true
         skinContainer.removeAllViews()
         ioScope.launch {
-            querySkins(page, searchBox.txt.toString(),capeMode).let { skins ->
+            querySkins(page, searchBox.text.toString(),capeMode).let { skins ->
                 if (skins.isNotEmpty()) {
                     uiThread {
                         loadSkinWidgets(skins)

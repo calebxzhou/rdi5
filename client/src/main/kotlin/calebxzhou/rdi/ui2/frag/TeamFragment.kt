@@ -17,7 +17,7 @@ import calebxzhou.rdi.ui2.component.alertErr
 import calebxzhou.rdi.ui2.component.alertOk
 import calebxzhou.rdi.ui2.component.confirm
 import calebxzhou.rdi.ui2.misc.contextMenu
-import calebxzhou.rdi.ui2.editText
+import calebxzhou.rdi.ui2.textField
 import calebxzhou.rdi.ui2.fctx
 import calebxzhou.rdi.ui2.headButton
 import calebxzhou.rdi.ui2.linearLayout
@@ -169,7 +169,7 @@ class TeamFragment : RFragment("我的团队") {
         init {
             contentLayoutInit = {
                 textView("解散团队后，地图、主机数据将被清空，且无法恢复。在下方输入 确认解散", init = { center() })
-                t1 = editText("输入 确认解散")
+                t1 = textField("输入 确认解散")
             }
             bottomOptionsConfig = {
                 "确认解散" colored MaterialColor.RED_900 with {

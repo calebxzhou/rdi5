@@ -8,13 +8,12 @@ import calebxzhou.rdi.ui2.MaterialColor
 import calebxzhou.rdi.ui2.center
 import calebxzhou.rdi.ui2.component.RTextField
 import calebxzhou.rdi.ui2.component.alertErr
-import calebxzhou.rdi.ui2.editText
+import calebxzhou.rdi.ui2.textField
 import calebxzhou.rdi.ui2.go
 import calebxzhou.rdi.ui2.linearLayout
 import calebxzhou.rdi.ui2.padding8dp
 import calebxzhou.rdi.ui2.textView
 import calebxzhou.rdi.util.ioScope
-import icyllis.modernui.text.Typeface
 import icyllis.modernui.view.Gravity
 import kotlinx.coroutines.launch
 
@@ -28,10 +27,10 @@ class LoginFragment : RFragment("登录") {
             val loginInfos = creds.loginInfos
             gravity = Gravity.CENTER_HORIZONTAL
 
-            qqInput = editText("RDID/QQ号") {
+            qqInput = textField("RDID/QQ号") {
                 padding8dp()
             }
-            passwordInput = editText("密码") {
+            passwordInput = textField("密码") {
                 isPassword = true
             }
             val storedAccounts = loginInfos.entries.sortedByDescending { it.value.lastLoggedTime }

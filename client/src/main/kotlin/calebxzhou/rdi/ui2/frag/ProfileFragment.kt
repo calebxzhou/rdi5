@@ -58,23 +58,8 @@ class ProfileFragment : RFragment("我的信息") {
                 ChangeProfileFragment().showOver(this@ProfileFragment)
             })
             this += HwSpecView(context).apply { center() }
-            keyAction {
-                KeyEvent.KEY_1 to {
-                    if (Const.DEBUG)
-                        start(false)
-                }
-            }
-        }
-    }
 
-    fun start(bgp: Boolean) {
-        renderThread {
-            ConnectScreen.startConnecting(
-                mc.screen, mc,
-                ServerAddress(if (bgp) server.bgpIp else server.ip, server.gamePort), server.mcData(bgp), false, null
-            )
         }
-
     }
 
 

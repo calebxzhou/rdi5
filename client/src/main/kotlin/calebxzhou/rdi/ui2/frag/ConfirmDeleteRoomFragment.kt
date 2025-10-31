@@ -10,7 +10,7 @@ class ConfirmDeleteRoomFragment(): RFragment("确认删除房间"){
         val room = Room.now
         copyToClipboard(room._id.toString())
         contentLayoutInit = {
-            idInput = editText("输入你的房间ID ${room._id}")
+            idInput = textField("输入你的房间ID ${room._id}")
             button("删除", init = {center()})
         }
     }
