@@ -9,7 +9,7 @@ import calebxzhou.rdi.ui2.SELF
 class SponsorFragment : RFragment("赞助") {
     val img = rdiDrawable("sponsor.png")
     init {
-        contentLayoutInit = {
+        contentViewInit = {
             gravity = Gravity.CENTER
             imageView {
                 layoutParams = frameLayoutParam(SELF, SELF).apply {

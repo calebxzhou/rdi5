@@ -45,14 +45,14 @@ class ModpackCreate3Fragment(val name: String, val mods: List<Mod>) : RFragment(
     }
 
     init {
-        contentLayoutInit = {
+        contentViewInit = {
             textView("正在读取配置文件与KubeJS脚本。需要3秒左右")
             ioScope.launch {
                 readConfKjs().let { (conf, kjs) ->
                     val confSize = conf.values.sumOf { it.size }
                     val kjsSize = kjs.values.sumOf { it.size }
                     uiThread {
-                        contentLayout.apply {
+                        contentView.apply {
                             textView("读取完成！")
                             textView("配置文件${conf.size} 个，总大小：${confSize.toLong().humanSize} ")
                             textView("KubeJS脚本${kjs.size} 个，总大小：${kjsSize.toLong().humanSize} ")

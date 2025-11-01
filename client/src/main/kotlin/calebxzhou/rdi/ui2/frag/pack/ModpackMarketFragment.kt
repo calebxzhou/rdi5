@@ -49,7 +49,7 @@ class ModpackMarketFragment: RFragment("整合包市场") {
     )
 
     init {
-        contentLayoutInit = {
+        contentViewInit = {
             vertical()
             paddingDp(8, 0, 8, 12)
 

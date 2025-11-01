@@ -2,8 +2,6 @@ package calebxzhou.rdi.ui2.component
 
 import calebxzhou.rdi.model.ModBriefVo
 import calebxzhou.rdi.net.httpRequest
-import calebxzhou.rdi.net.httpRequest_
-import calebxzhou.rdi.net.success
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.util.ioScope
 import icyllis.modernui.core.Context
@@ -31,15 +29,16 @@ class ModCard(
     private val primaryTitleView: TextView
     private val secondaryTitleView: TextView
     private val introView: TextView
+    private var cardSelected = false
 
     init {
         orientation = HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
-        background = cardBackground()
         setPadding(context.dp(12f), context.dp(12f), context.dp(12f), context.dp(12f))
         layoutParams = linearLayoutParam(PARENT, SELF) {
             bottomMargin = context.dp(8f)
         }
+        updateSelectionBackground()
 
         iconView = ImageView(context).apply {
             scaleType = ImageView.ScaleType.CENTER_CROP
@@ -176,10 +175,27 @@ class ModCard(
         return null
     }
 
-    private fun cardBackground(): Drawable = drawable { canvas ->
-        val paint = Paint.obtain()
-        paint.setRGBA(255, 255, 255, 235)
-        paint.style = Paint.Style.FILL.ordinal
+    fun setSelectedState(isSelected: Boolean) {
+        if (cardSelected == isSelected) return
+        cardSelected = isSelected
+        updateSelectionBackground()
+    }
+
+    fun toggleSelectedState(): Boolean {
+        setSelectedState(!cardSelected)
+        return cardSelected
+    }
+
+    fun isCardSelected(): Boolean = cardSelected
+
+    private fun updateSelectionBackground() {
+        background = cardBackground(cardSelected)
+    }
+
+    private fun cardBackground(isSelected: Boolean): Drawable = drawable { canvas ->
+        val fillPaint = Paint.obtain()
+        fillPaint.setRGBA(255, 255, 255, 235)
+        fillPaint.style = Paint.Style.FILL.ordinal
         val radius = context.dp(16f).toFloat()
         canvas.drawRoundRect(
             bounds.left.toFloat(),
@@ -187,9 +203,25 @@ class ModCard(
             bounds.right.toFloat(),
             bounds.bottom.toFloat(),
             radius,
-            paint
+            fillPaint
         )
-        paint.recycle()
+        fillPaint.recycle()
+
+        if (isSelected) {
+            val strokePaint = Paint.obtain()
+            strokePaint.setRGBA(100, 220, 100, 255)
+            strokePaint.style = Paint.Style.STROKE.ordinal
+            strokePaint.strokeWidth = context.dp(3f).toFloat()
+            canvas.drawRoundRect(
+                bounds.left.toFloat() + strokePaint.strokeWidth / 2,
+                bounds.top.toFloat() + strokePaint.strokeWidth / 2,
+                bounds.right.toFloat() - strokePaint.strokeWidth / 2,
+                bounds.bottom.toFloat() - strokePaint.strokeWidth / 2,
+                radius,
+                strokePaint
+            )
+            strokePaint.recycle()
+        }
     }
 
     private fun iconBackground(): Drawable = drawable { canvas ->

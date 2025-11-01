@@ -1,20 +1,15 @@
 package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.auth.MojangApi
-import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.model.account
-import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.net.server
 import calebxzhou.rdi.ui2.*
-import calebxzhou.rdi.ui2.component.RTextField
 import calebxzhou.rdi.ui2.component.alertErr
 import calebxzhou.rdi.ui2.component.alertOk
-import calebxzhou.rdi.util.ioScope
 import calebxzhou.rdi.ui2.uiThread
 import calebxzhou.rdi.util.ioTask
 import icyllis.modernui.widget.CheckBox
 import icyllis.modernui.widget.EditText
-import kotlinx.coroutines.launch
 
 
 class MojangSkinFragment : RFragment("导入正版皮肤") {
@@ -26,7 +21,7 @@ class MojangSkinFragment : RFragment("导入正版皮肤") {
         set(value) {}
 
     init {
-        contentLayoutInit = {
+        contentViewInit = {
             paddingDp(0,16,0,0)
             layoutParams = linearLayoutParam(dp(200f), SELF)
             vertical()

@@ -7,8 +7,6 @@ import calebxzhou.rdi.ui2.component.alertOk
 import calebxzhou.rdi.util.*
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.widget.LinearLayout
-import net.minecraft.client.gui.screens.GenericMessageScreen
-import net.neoforged.neoforge.client.gui.ConfigurationScreen.SAVING_LEVEL
 import java.lang.Exception
 
 class PauseFragment : RFragment("暂停") {
@@ -16,7 +14,7 @@ class PauseFragment : RFragment("暂停") {
     override var showBg = false
 
     init {
-        contentLayoutInit = {
+        contentViewInit = {
             linearLayout {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER

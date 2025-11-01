@@ -10,7 +10,7 @@ class ModpackCreate4Fragment(name: String, mods: List<Mod>, conf: Map<String, By
         get() = FragmentSize.SMALL
         set(value) {}
     init {
-        contentLayoutInit = {
+        contentViewInit = {
             textView("整合包名称：$name")
             textView("包含Mod数量：${mods.size} 个")
             textView("配置文件数量：${conf.size} 个")

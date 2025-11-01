@@ -97,9 +97,9 @@ private suspend fun loadPageDocument(url: String): Document? {
 private fun headersForUrl(url: String): List<Pair<String, String>> {
     val host = runCatching { URI(url).host }.getOrNull()
     return if (host.isNullOrBlank()) {
-        ModService.mcmodHeader
+        ModService().mcmodHeader
     } else {
-        ModService.mcmodHeader.map { (key, value) ->
+        ModService().mcmodHeader.map { (key, value) ->
             if (key.equals("Host", ignoreCase = true)) key to host else key to value
         }
     }

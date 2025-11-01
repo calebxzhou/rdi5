@@ -22,7 +22,7 @@ class LoginFragment : RFragment("登录") {
     private lateinit var passwordInput: RTextField
     override var fragSize = FragmentSize.SMALL
     init {
-        contentLayoutInit = {
+        contentViewInit = {
             val creds = localCreds
             val loginInfos = creds.loginInfos
             gravity = Gravity.CENTER_HORIZONTAL

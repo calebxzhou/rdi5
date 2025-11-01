@@ -1,16 +1,9 @@
 package calebxzhou.rdi.ui2.frag
 
-import calebxzhou.rdi.Const
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.HwSpecView
-import calebxzhou.rdi.ui2.frag.pack.ModpackMarketFragment
-import calebxzhou.rdi.util.mc
-import calebxzhou.rdi.util.renderThread
-import icyllis.modernui.view.KeyEvent
-import net.minecraft.client.gui.screens.ConnectScreen
-import net.minecraft.client.multiplayer.resolver.ServerAddress
 
 class ProfileFragment : RFragment("我的信息") {
     override var closable = false
@@ -51,7 +44,7 @@ class ProfileFragment : RFragment("我的信息") {
 
             "⛔ 登出" colored MaterialColor.RED_900 with { close() }
         }
-        contentLayoutInit = {
+        contentViewInit = {
             headButton(account._id, init = {
                 center()
             }, onClick = {

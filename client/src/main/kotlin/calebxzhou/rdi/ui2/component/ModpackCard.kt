@@ -1,7 +1,6 @@
 package calebxzhou.rdi.ui2.component
 
 import calebxzhou.rdi.model.pack.Modpack
-import calebxzhou.rdi.ui2.Fonts
 import calebxzhou.rdi.ui2.MaterialColor
 import calebxzhou.rdi.ui2.PARENT
 import calebxzhou.rdi.ui2.SELF
@@ -21,12 +20,10 @@ import icyllis.modernui.graphics.drawable.ColorDrawable
 import icyllis.modernui.graphics.drawable.ImageDrawable
 import icyllis.modernui.text.TextUtils
 import icyllis.modernui.view.Gravity
-import icyllis.modernui.view.ViewGroup
 import icyllis.modernui.widget.FrameLayout
 import icyllis.modernui.widget.ImageView
 import icyllis.modernui.widget.LinearLayout
 import icyllis.modernui.widget.TextView
-import jdk.internal.vm.ThreadContainers.container
 import java.io.ByteArrayInputStream
 
 class ModpackCard(
@@ -45,8 +42,8 @@ class ModpackCard(
 		foreground = ColorDrawable(0x33FFFFFF)
 		setPadding(context.dp(16f), context.dp(16f), context.dp(16f), context.dp(16f))
 		layoutParams = linearLayoutParam(PARENT, SELF) {
-			bottomMargin = context.dp(12f)
-		}
+            bottomMargin = context.dp(12f)
+        }
 		isClickable = true
 		isFocusable = true
 
@@ -149,10 +146,10 @@ class ModpackCard(
 			}
 		}
 		if (icon != null) tv.leadingIcon(icon)
-		tagRow.addView(tv, linearLayoutParam(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT) {
-			if (tagRow.childCount > 0) leftMargin = context.dp(8f)
-			topMargin = context.dp(8f)
-		})
+		tagRow.addView(tv, linearLayoutParam(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT) {
+            if (tagRow.childCount > 0) leftMargin = context.dp(8f)
+            topMargin = context.dp(8f)
+        })
 	}
 
 	private fun circleBackground() = drawable { canvas ->

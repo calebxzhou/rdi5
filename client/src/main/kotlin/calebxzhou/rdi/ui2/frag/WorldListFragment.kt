@@ -15,7 +15,7 @@ import io.ktor.http.HttpMethod
 class WorldListFragment: RFragment("选择存档") {
     override var fragSize = FragmentSize.SMALL
     init {
-        contentLayoutInit = {
+        contentViewInit = {
             load()
         }
     }
@@ -25,8 +25,8 @@ class WorldListFragment: RFragment("选择存档") {
         }
     }
     private fun render(worlds: List<World>) = uiThread{
-        contentLayout.removeAllViews()
-        contentLayout.apply {
+        contentView.removeAllViews()
+        contentView.apply {
             textView("右键可进行删除或复制等操作。"){ padding8dp()}
             worlds.forEach { world->
                 button("💾 ${world.name} ",init={

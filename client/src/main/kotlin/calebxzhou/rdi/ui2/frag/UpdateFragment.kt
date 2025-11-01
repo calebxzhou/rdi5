@@ -6,7 +6,6 @@ import calebxzhou.rdi.net.downloadFileWithProgress
 import calebxzhou.rdi.net.formatBytes
 import calebxzhou.rdi.net.formatSpeed
 import calebxzhou.rdi.service.ModService
-import calebxzhou.rdi.service.ModService.MOD_DIR
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.util.ioTask
 import calebxzhou.rdi.util.notifyOs
@@ -54,7 +53,7 @@ class UpdateFragment(val server: RServer) : RFragment("正在检查更新") {
     }
     
     init {
-        contentLayoutInit = {
+        contentViewInit = {
             iconButton("next", "跳过更新，一会再说",{
                 layoutParams = linearLayoutParam(SELF, SELF)
             }) {
@@ -71,7 +70,7 @@ class UpdateFragment(val server: RServer) : RFragment("正在检查更新") {
             }
 
             ioTask {
-                val modsToUpdate = server.checkUpdate(MOD_DIR)
+                val modsToUpdate = server.checkUpdate( )
                 if (modsToUpdate.isEmpty()) {
                     lgr.info("没有需要更新的mod")
                     close()
@@ -121,9 +120,10 @@ class UpdateFragment(val server: RServer) : RFragment("正在检查更新") {
 
 
     //返回需要更新的mod列表
-    suspend fun RServer.checkUpdate(modsDir: File): Map<String, File> {
-        val clientIdFile = ModService.idMods
-        val clientIdSha1 = ModService.idSha1s
+    suspend fun RServer.checkUpdate( ): Map<String, File> {
+        val ms = ModService()
+        val clientIdFile = ms.idMods
+        val clientIdSha1 = ms.idSha1s
         val modlist = makeRequest<String>("update/mod-list").data
 
         val modsUpdate = hashMapOf<String, File>()
@@ -139,7 +139,7 @@ class UpdateFragment(val server: RServer) : RFragment("正在检查更新") {
                 if (clientSha1 != serverSha1) {
                     modsUpdate += id to file
                 }
-            } ?: let { modsUpdate += id to File(modsDir, "$id.jar") }
+            } ?: let { modsUpdate += id to File(ModService.MOD_DIR, "$id.jar") }
         }
         /*notifyOs(
             "以下mod需要更新:${modsStrDisp}.正在更新。"

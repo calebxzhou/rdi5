@@ -19,7 +19,7 @@ class RegisterFragment : RFragment("注册新账号") {
         get() = FragmentSize.MEDIUM
         set(value) {}
     init {
-        contentLayoutInit = {
+        contentViewInit = {
             gravity = Gravity.CENTER_HORIZONTAL
             usernameInput = textField("昵称 支持中文")
             qqInput = textField("QQ号")

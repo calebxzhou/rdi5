@@ -1,10 +1,8 @@
 package calebxzhou.rdi.ui2.frag
 
-import calebxzhou.rdi.Const
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.FragmentSize
 import calebxzhou.rdi.ui2.component.RButton
-import icyllis.modernui.ModernUI
 import icyllis.modernui.fragment.Fragment
 import icyllis.modernui.graphics.Paint
 import icyllis.modernui.graphics.drawable.ColorDrawable
@@ -14,20 +12,25 @@ import icyllis.modernui.view.KeyEvent
 import icyllis.modernui.view.LayoutInflater
 import icyllis.modernui.view.View
 import icyllis.modernui.view.ViewGroup
-import icyllis.modernui.widget.Button
 import icyllis.modernui.widget.FrameLayout
 import icyllis.modernui.widget.LinearLayout
 import icyllis.modernui.widget.TextView
 
 abstract class RFragment(initialTitle: String = "") : Fragment() {
+    companion object {
+        const val mainViewId = 66
+        const val titleViewId = 67
+        const val titleTextId = 68
+    }
+
     var title: String = initialTitle
         set(value) {
             uiThread {
                 field = value
                 if (!showTitle) return@uiThread
-                val titleView = view?.findViewById<TextView>(titleViewId)
-                    ?: _mainView?.findViewById<TextView>(titleViewId)
-                    ?: if (this::mainLayout.isInitialized) mainLayout.findViewById<TextView>(titleViewId) else null
+                val titleView = view?.findViewById<TextView>(titleTextId)
+                    ?: _mainView?.findViewById<TextView>(titleTextId)
+                    ?: if (this::mainLayout.isInitialized) mainLayout.findViewById<TextView>(titleTextId) else null
                 titleView?.text = value
             }
         }
@@ -36,21 +39,22 @@ abstract class RFragment(initialTitle: String = "") : Fragment() {
     open var closable = true
     open var showCloseButton = closable
     open var fragSize: FragmentSize = FragmentSize.FULL
-    val mainViewId = 666
-    val titleViewId = 667
+
 
     //true则缓存content view布局，fragment切换时，保存状态不重新计算，false反之
     open var mainViewCache = true
     lateinit var mainLayout: LinearLayout
-    lateinit var contentLayout: LinearLayout
+    lateinit var contentView: LinearLayout
+    lateinit var titleView: LinearLayout
     private var _mainView: View? = null
-    open var contentLayoutInit: LinearLayout.() -> Unit = {}
+    open var contentViewInit: LinearLayout.() -> Unit = {}
+    open var titleViewInit: LinearLayout.() -> Unit = {}
 
     // If this fragment is displayed as an overlay child, this remover will be set so close() dismisses only the overlay.
     internal var overlayRemover: (() -> Unit)? = null
 
     // Bottom options configuration - if null, no bottom options will be rendered
-    open var bottomOptionsConfig: (BottomOptionsBuilder.() -> Unit)? = null
+    open var bottomOptionsConfig: (QuickOptionsBuilder.() -> Unit)? = null
 
     private var keyActions: List<Pair<Int, () -> Unit>> = emptyList()
 
@@ -99,25 +103,32 @@ abstract class RFragment(initialTitle: String = "") : Fragment() {
         uiThread {
             try {
                 onReload()
-            } catch (_: Throwable) {
+            } catch (e: Throwable) {
+                e.printStackTrace()
             }
         }
     }
 
     /**
      * Called when the fragment should reload its UI (debug builds via F5 by default).
-     * Default implementation rebuilds the [contentLayout] using [contentLayoutInit].
+     * Default implementation tries to recreate the fragment instance and navigate to it without
+     * disturbing the back stack. If recreation fails (for example, due to missing no-arg
+     * constructor), it falls back to rebuilding the existing content layout.
      */
     protected open fun onReload() {
-        if (!::contentLayout.isInitialized) {
+        if (!::contentView.isInitialized) {
             return
         }
-        contentLayout.apply {
+        contentView.apply {
             removeAllViews()
-            contentLayoutInit()
+            contentViewInit()
             requestLayout()
             invalidate()
         }
+    }
+
+    protected open fun onNext() {
+
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: DataSet?): View {
@@ -136,7 +147,7 @@ abstract class RFragment(initialTitle: String = "") : Fragment() {
 
 
             // 20% dim background for better contrast with light content
-            if(showBg) {
+            if (showBg) {
                 background = BG_IMAGE_MUI
             }
 
@@ -169,59 +180,61 @@ abstract class RFragment(initialTitle: String = "") : Fragment() {
                 }
                 paddingDp(12)
                 // Create frame layout for back button and title
-                if (showTitle || showCloseButton) {
-                    frameLayout() {
-                        layoutParams = linearLayoutParam {
-                            bottomMargin = dp(8f)
+
+                 frameLayout {
+                    layoutParams = frameLayoutParam {
+                        bottomMargin = dp(4f)
+                    }
+                    linearLayout {
+                        layoutParams =  frameLayoutParam (SELF,PARENT){
+                            gravity = Gravity.START or Gravity.CENTER_VERTICAL
                         }
-                        // Title (add first to be in the background)
-                        if (showTitle) {
-                            textView {
-                                id = titleViewId
-                                setTextColor(0xffffffff.toInt())
-                                text = title
-                                textSize = 20f
-                                layoutParams = linearLayoutParam {
-                                    gravity = Gravity.CENTER
-                                }
-                                gravity = Gravity.CENTER
-                                setOnClickListener {
-                                        reloadFragment()
-                                }
-                            }
-                        }
-                        // Back button (add last to be on top)
                         if (showCloseButton) {
-                            this += Button(ModernUI.getInstance()).apply {
-                                paddingDp(4)
+                            button(init = {
                                 background = iconDrawable("back")
-                                layoutParams = linearLayoutParam(dp(32f), dp(32f)) {
-                                    gravity = Gravity.START or Gravity.CENTER_VERTICAL
+                                layoutParams = frameLayoutParam(dp(32f), dp(32f)) {
                                 }
                                 setOnClickListener {
                                     close()
                                 }
+                            })
+                        }
+                        if (showTitle) {
+                            textView {
+                                id = titleTextId
+                                setTextColor(0xffffffff.toInt())
+                                text = title
+                                textSize = 20f
+                                paddingDp(16,0,0,0)
+                                setOnClickListener {
+                                    reloadFragment()
+                                }
                             }
                         }
                     }
-                } else {
-                    initHeader()
+                     titleView = linearLayout {
+                         layoutParams = frameLayoutParam (SELF,PARENT){
+                            gravity = Gravity.END or Gravity.CENTER_VERTICAL
+                        }
+                         id = titleViewId
+
+                         titleViewInit()
+                    }
                 }
 
                 mainLayout = this
 
-                contentLayout = linearLayout {
+                contentView = linearLayout {
                     orientation = LinearLayout.VERTICAL
                     layoutParams = linearLayoutParam(PARENT, 0) {
                         weight = 1f
                     }
                     gravity = Gravity.CENTER_HORIZONTAL
-                    minimumWidth=dp(400f)
+                    minimumWidth = dp(400f)
                 }
 
-                initContent()
-                contentLayout.apply {
-                    contentLayoutInit()
+                contentView.apply {
+                    contentViewInit()
                 }
 
                 if (fragSize != FragmentSize.FULL) {
@@ -237,7 +250,7 @@ abstract class RFragment(initialTitle: String = "") : Fragment() {
                     bottomOptions(config)
                 }
             }
-                keyAction { }
+            keyAction { }
 
         }
         // Store the view in cache if caching is enabled
@@ -267,20 +280,17 @@ abstract class RFragment(initialTitle: String = "") : Fragment() {
             ?: UIManager.getInstance().onBackPressedDispatcher.onBackPressed()*/
     }
 
-    //载入标题+返回按钮 和自定义header 二选一
-    open fun initHeader() {
-
-    }
-
-    open fun initContent() {
-        //只有用到linear layout的fragment才需要写这个，否则直接override onCreateView即可
-    }
 
     //底部一堆按钮 - 使用connected button styling
     fun ViewGroup.bottomOptions(
-        config: BottomOptionsBuilder.() -> Unit
+        config: QuickOptionsBuilder.() -> Unit
+    ) = quickOptions(true,config)
+
+    fun ViewGroup.quickOptions(
+        bottom: Boolean= false,
+        config: QuickOptionsBuilder.() -> Unit
     ) {
-        val builder = BottomOptionsBuilder()
+        val builder = QuickOptionsBuilder()
         builder.config()
         val buttons = builder.getButtons()
 
@@ -289,9 +299,9 @@ abstract class RFragment(initialTitle: String = "") : Fragment() {
         val buttonRow = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_HORIZONTAL
-            layoutParams = when (this@bottomOptions) {
+            layoutParams = when (this@quickOptions) {
                 is FrameLayout -> frameLayoutParam(PARENT, SELF) {
-                    gravity = Gravity.BOTTOM
+                    if(bottom) gravity = Gravity.BOTTOM
                     bottomMargin = context.dp(16f)
                 }
 
@@ -395,7 +405,7 @@ abstract class RFragment(initialTitle: String = "") : Fragment() {
 
     // Builder class for bottom options DSL - using "with" syntax and colored options
 
-    class BottomOptionsBuilder {
+    class QuickOptionsBuilder {
         private val buttons = mutableListOf<ButtonData>()
 
         infix fun String.with(handler: () -> Unit) {
@@ -454,17 +464,3 @@ abstract class RFragment(initialTitle: String = "") : Fragment() {
     )
 
 }
-
-/*
-Example usage with "with" DSL:
-
-class MyFragment : RFragment("Title") {
-    init {
-        bottomOptionsConfig = {
-            "Save" with { saveData() }
-            "Cancel" with { close() }
-            "Settings" with { openSettings() }
-        }
-    }
-}
-*/

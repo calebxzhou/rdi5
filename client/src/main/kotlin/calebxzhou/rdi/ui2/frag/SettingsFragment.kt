@@ -1,14 +1,10 @@
 package calebxzhou.rdi.ui2.frag
 
-import calebxzhou.rdi.service.RKeyBinds
 import calebxzhou.rdi.ui2.*
-import calebxzhou.rdi.ui2.component.alertOk
 import calebxzhou.rdi.util.go
 import calebxzhou.rdi.util.mc
 import calebxzhou.rdi.util.mcComp
-import calebxzhou.rdi.util.openAsUri
 import calebxzhou.rdi.util.renderThread
-import icyllis.modernui.R.attr.gravity
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.widget.LinearLayout
 import net.caffeinemc.mods.sodium.client.gui.SodiumOptionsGUI
@@ -25,7 +21,7 @@ class SettingsFragment : RFragment("设置") {
         get() = FragmentSize.SMALL
         set(value) {}
     init {
-        contentLayoutInit = {
+        contentViewInit = {
             linearLayout {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER

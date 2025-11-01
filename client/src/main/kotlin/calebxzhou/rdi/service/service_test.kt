@@ -24,14 +24,14 @@ suspend fun main() {
     //ModpackCreate3Fragment.readConfKjs().json.let { println(it) }
 
 
-    /*ModService.getFingerprintsCurseForge().exactMatches.map { it.id }.let {
+    /*ModService().getFingerprintsCurseForge().exactMatches.map { it.id }.let {
         lgr.info("${it.size} found")
-        ModService.getInfosCurseForge(it) }.let { File("cf.json").writeText(it.json) }
+        ModService().getInfosCurseForge(it) }.let { File("cf.json").writeText(it.json) }
 */
 
-    /*  val keywords = ModService.idNames.map { it.value }.toList()
+    /*  val keywords = ModService().idNames.map { it.value }.toList()
     keywords.forEach {
-        ModService.getInfoMcmod(it).also { lgr.info(it?.json) }
+        ModService().getInfoMcmod(it).also { lgr.info(it?.json) }
         delay(300)
     }*/
 }

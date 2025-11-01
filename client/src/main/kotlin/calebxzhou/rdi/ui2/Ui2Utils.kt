@@ -129,6 +129,24 @@ fun linearLayoutParam(
 
     return LinearLayout.LayoutParams(width, height).apply(init)
 }
+fun ViewGroup.linearParam(
+    width: Int = PARENT,
+    height: Int = SELF,
+    init: LinearLayout.LayoutParams.() -> Unit = {}
+): LinearLayout.LayoutParams {
+    val params = LinearLayout.LayoutParams(width, height).apply(init)
+    layoutParams =  params
+    return params
+}
+fun ViewGroup.frameParam(
+    width: Int = PARENT,
+    height: Int = SELF,
+    init: FrameLayout.LayoutParams.() -> Unit = {}
+): FrameLayout.LayoutParams {
+    val params= FrameLayout.LayoutParams(width, height).apply(init)
+    layoutParams = params
+    return params
+}
 
 fun frameLayoutParam(
     width: Int = PARENT,
@@ -174,7 +192,7 @@ fun ViewGroup.spinner(
 }.also { this += it }
 
 fun ViewGroup.button(
-    msg: String,
+    msg: String="",
     color: MaterialColor = MaterialColor.WHITE,
     init: RButton.() -> Unit = {},
     onClick: (RButton) -> Unit = {},
@@ -292,6 +310,8 @@ fun copyToClipboard(s: String) {
 fun <T> Result<T>.failAlertPrint(): Result<T> {
      return onFailure { alertErr(it.toString());it.printStackTrace() }
 }
+operator fun View.get(id: Int): View = findViewById(id)!!
+inline fun <reified T:View> View.ofView(id: Int) = findViewById<T>(id)!!
 /*
 
 fun Context.showContextMenu(anchor: View, items: List<Pair<String, () -> Unit>>, x: Float = Float.NaN, y: Float = Float.NaN) {

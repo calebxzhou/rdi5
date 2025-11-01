@@ -10,14 +10,13 @@ import calebxzhou.rdi.model.CurseForgeMod
 import calebxzhou.rdi.model.CurseForgeModsRequest
 import calebxzhou.rdi.model.CurseForgeModsResponse
 import calebxzhou.rdi.model.ModBriefInfo
-import calebxzhou.rdi.net.httpStringRequest_
-import calebxzhou.rdi.net.success
+import calebxzhou.rdi.model.ModBriefVo
+import calebxzhou.rdi.model.pack.Mod
 import calebxzhou.rdi.model.ModrinthProject
 import calebxzhou.rdi.model.ModrinthVersionInfo
 import calebxzhou.rdi.model.ModrinthVersionLookupRequest
 import calebxzhou.rdi.net.httpRequest
 import calebxzhou.rdi.net.json
-import calebxzhou.rdi.util.json
 import calebxzhou.rdi.util.murmur2
 import calebxzhou.rdi.util.serdesJson
 import calebxzhou.rdi.util.sha1
@@ -39,15 +38,18 @@ import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 
 
-object ModService {
-    const val NEOFORGE_CONFIG_PATH = "META-INF/neoforge.mods.toml"
-    const val FABRIC_CONFIG_PATH = "fabric.mod.json"
-    const val FORGE_CONFIG_PATH = "META-INF/mods.toml"
+class ModService {
+    companion object{
+
+        const val NEOFORGE_CONFIG_PATH = "META-INF/neoforge.mods.toml"
+        const val FABRIC_CONFIG_PATH = "fabric.mod.json"
+        const val FORGE_CONFIG_PATH = "META-INF/mods.toml"
+        val MOD_DIR  = System.getProperty("rdi.modDir")?.let { File(it) } ?: File("mods")
+    }
     val briefInfo: List<ModBriefInfo> by lazy { loadBriefInfo() }
     val cfSlugBriefInfo: Map<String, ModBriefInfo> by lazy { buildSlugMap(briefInfo) { it.curseforgeSlugs } }
     val mrSlugBriefInfo: Map<String, ModBriefInfo> by lazy { buildSlugMap(briefInfo) { it.modrinthSlugs } }
 
-    private const val MCMOD_CACHE_TTL_MS = 7L * 24 * 60 * 60 * 1000
     private val mcmodCacheRoot by lazy { File(File(RDI.DIR, "cache"), "mcmod").apply { mkdirs() } }
 
     private fun mcmodCacheFile(url: String): File? {
@@ -125,8 +127,7 @@ object ModService {
      val CommentedConfig.modDescription
         get() = get<List<Config>>("mods").firstOrNull()?.get<String>("description")!!
 
-    val MOD_DIR
-        get() = System.getProperty("rdi.modDir")?.let { File(it) } ?: File("mods")
+
     val mcmodSearchUrl = "https://search.mcmod.cn/s?key="
     val mcmodHeader
         get() =
@@ -158,13 +159,9 @@ Priority: u=0, i
         }
     }
 
-    val mods
-        get() = MOD_DIR.listFiles { it.extension == "jar" }?.toList() ?: listOf()
-    val sha1Mods
-        get() = mods.associateBy { it.sha1 }
+    var mods = MOD_DIR.listFiles { it.extension == "jar" }?.toMutableList() ?: mutableListOf()
 
-    val murmur2Mods
-        get() = mods.associateBy { it.murmur2 }
+
     val idMods
         get() = mods.mapNotNull { file ->
             JarFile(file).use { jar ->
@@ -190,6 +187,28 @@ Priority: u=0, i
                 }
             }
         }.toMap()
+    fun filterServerOnlyMods(): ModService {
+        mods = mods.filterNot { file ->
+            JarFile(file).use { jar ->
+                val config = jar.readNeoForgeConfig() ?: return@use false
+                val modEntries = config.get("mods") as? List<Config> ?: return@use false
+
+                modEntries.any { modConfig ->
+                    val modId = modConfig.get<String>("modId")?.trim()?.lowercase() ?: return@any false
+                    val dependencyKey = "dependencies.$modId"
+                    val dependencies = config.get(dependencyKey) as? List<Config> ?: return@any false
+
+                    dependencies.any { dependency ->
+                        val dependencyModId = dependency.get<String>("modId")?.lowercase()
+                        val side = dependency.get<String>("side")?.uppercase()
+                        dependencyModId == "minecraft" && side == "CLIENT"
+                    }
+                }
+            }
+        }.toMutableList()
+
+        return this
+    }
     suspend fun getFingerprintsCurseForge(): CurseForgeFingerprintData {
         val fingerprints = mods.map { it.murmur2 }
         val response = httpRequest {
@@ -234,6 +253,119 @@ Priority: u=0, i
 
         lgr.info("CurseForge: fetched ${mods.size} mods for ${cfModIds.size} requested IDs")
         return mods
+    }
+
+    private fun logUnmatched(source: String, unmatched: Collection<File>) {
+        if (unmatched.isEmpty()) {
+            lgr.info("$source: 所有本地 Mod 均已匹配")
+        } else {
+            lgr.info(
+                "$source: 未匹配到 ${unmatched.size} 个 Mod: " +
+                        unmatched.joinToString(", ") { it.name }
+            )
+        }
+    }
+
+    private fun ModBriefInfo.toVo(modFile: File? = null): ModBriefVo {
+        val iconBytes = modFile?.let {
+            runCatching { JarFile(it).use { jar -> jar.logo } }.getOrNull()
+        }
+        return ModBriefVo(
+            name = name,
+            nameCn = nameCn,
+            intro = intro,
+            iconData = iconBytes,
+            iconUrls = buildList {
+                if (logoUrl.isNotBlank()) add(logoUrl)
+            }
+        )
+    }
+
+    private fun CurseForgeMod.toBriefVo(modFile: File?): ModBriefVo {
+        val icons = buildList {
+            logo?.thumbnailUrl?.takeIf { it.isNotBlank() }?.let { add(it) }
+            logo?.url?.takeIf { it.isNotBlank() }?.let { add(it) }
+        }
+        val resolvedName = (name ?: slug).ifBlank { slug }
+        val iconBytes = modFile?.let {
+            runCatching { JarFile(it).use { jar -> jar.logo } }.getOrNull()
+        }
+        val introText = summary?.takeIf { it.isNotBlank() }?.trim()
+            ?: modFile?.let { JarFile(it).readNeoForgeConfig()?.modDescription }
+            ?: "暂无介绍"
+        return ModBriefVo(
+            name = resolvedName,
+            nameCn = null,
+            intro = introText,
+            iconData = iconBytes,
+            iconUrls = icons
+        )
+    }
+
+    data class CurseForgeLocalCard(val slug: String, val brief: ModBriefVo)
+
+    data class CurseForgeLocalResult(
+        val cards: List<CurseForgeLocalCard> = emptyList(),
+        val matchedFiles: Set<File> = emptySet(),
+        val mods: List<Mod> = emptyList()
+    )
+
+    suspend fun discoverModsCurseForge(): CurseForgeLocalResult {
+        return runCatching {
+            if (mods.isEmpty()) {
+                lgr.info("CurseForge: no local mods discovered for lookup")
+                return@runCatching CurseForgeLocalResult()
+            }
+
+            val fingerprintData = getFingerprintsCurseForge()
+            val fingerprintToFile = mods.associateBy { it.murmur2 }
+
+            val modIdToFiles: MutableMap<Long, MutableList<File>> = mutableMapOf()
+            val discoveredMods = arrayListOf<Mod>()
+            fingerprintData.exactMatches.forEach { match ->
+                val projectId = match.id
+                val fileId = match.file.id
+                if (projectId > 0) {
+                    val fingerprint = match.file.fileFingerprint ?: match.latestFiles.firstOrNull()?.fileFingerprint
+                    if (fingerprint != null) {
+                        val localFile = fingerprintToFile[fingerprint]
+                        if (localFile != null) {
+                            modIdToFiles.getOrPut(projectId) { mutableListOf() }.add(localFile)
+                            discoveredMods += Mod("cf", projectId.toString(), fileId.toString(), fingerprint.toString())
+                        }
+                    }
+                }
+            }
+
+            val modIds = modIdToFiles.keys.distinct()
+            if (modIds.isEmpty()) {
+                logUnmatched("CurseForge", mods)
+                return@runCatching CurseForgeLocalResult()
+            }
+
+            val cfMods = getInfosCurseForge(modIds)
+            val matchedFiles = mutableSetOf<File>()
+            val cards = cfMods.mapNotNull { mod ->
+                val slug = mod.slug?.trim().orEmpty()
+                if (slug.isEmpty()) return@mapNotNull null
+                val normalizedSlug = slug.lowercase()
+                val filesForMod = mod.id?.let { modIdToFiles[it] }.orEmpty()
+                if (filesForMod.isNotEmpty()) {
+                    matchedFiles += filesForMod
+                }
+                val modFile = filesForMod.firstOrNull() ?: return@mapNotNull null
+                val briefInfo = cfSlugBriefInfo[normalizedSlug]
+                val brief = briefInfo?.toVo(modFile) ?: mod.toBriefVo(modFile)
+                CurseForgeLocalCard(normalizedSlug, brief)
+            }
+
+            val unmatched = mods.filter { it !in matchedFiles }
+            logUnmatched("CurseForge", unmatched)
+
+            CurseForgeLocalResult(cards, matchedFiles, discoveredMods)
+        }.onFailure {
+            lgr.error("CurseForge: failed to fetch local mod metadata", it)
+        }.getOrElse { CurseForgeLocalResult() }
     }
 
     suspend fun getVersionsModrinth(): Map<String, ModrinthVersionInfo> {

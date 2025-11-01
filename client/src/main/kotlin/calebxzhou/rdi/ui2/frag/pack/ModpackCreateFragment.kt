@@ -20,7 +20,7 @@ class ModpackCreateFragment : RFragment("制作整合包1") {
     override var fragSize = FragmentSize.SMALL
 
     init {
-        contentLayoutInit = {
+        contentViewInit = {
             nameInput = textField("给你的包起个名字")
             /*textView("选择一个图标（可选）")
             picker = ImagePicker(fctx).apply {

@@ -6,7 +6,6 @@ import calebxzhou.rdi.util.renderThread
 import calebxzhou.rdi.util.toFixed
 import icyllis.modernui.mc.BlurHandler
 import icyllis.modernui.view.Gravity
-import icyllis.modernui.widget.LinearLayout
 import icyllis.modernui.widget.SeekBar
 import icyllis.modernui.widget.TextView
 import kotlin.math.tan
@@ -30,7 +29,7 @@ class FovFragment : RFragment("视野") {
     }
 
     init {
-        contentLayoutInit = {
+        contentViewInit = {
             bar = SeekBar(context).apply {
                 max = 120
                 progress = fovOption.get()

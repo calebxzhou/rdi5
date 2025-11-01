@@ -15,6 +15,9 @@ import java.nio.ByteBuffer
 import java.security.MessageDigest
 import java.util.*
 import kotlin.jvm.java
+import kotlin.reflect.full.memberProperties
+import kotlin.reflect.full.primaryConstructor
+import kotlin.reflect.jvm.isAccessible
 
 /**
  * calebxzhou @ 2025-04-16 12:23
@@ -162,3 +165,27 @@ fun Byte.isWhitespaceCharacter(): Boolean {
 }
 
 fun jarResource(path: String) = RDI::class.java.classLoader.getResourceAsStream(path)
+inline fun <reified T : Any> reinstantiateByCopy(original: T, vararg overrideArgs: Any? = emptyArray()): T {
+    val kClass = T::class
+    val constructor = kClass.primaryConstructor
+        ?: throw IllegalArgumentException("Class $kClass has no primary constructor")
+    constructor.isAccessible=true
+    val properties = kClass.memberProperties.associate { prop ->
+        prop.isAccessible=true
+        prop.name to prop.get(original)  // Get value from original
+    }
+
+    // Map properties to constructor params (assumes param names match property names)
+    val constructorParams = constructor.parameters.map { param ->
+
+        // Use override if provided (index-based; extend for named overrides if needed)
+        if (overrideArgs.isNotEmpty() && param.index < overrideArgs.size) {
+            overrideArgs[param.index]
+        } else {
+            properties[param.name]  // Fallback to original value
+                ?: throw IllegalArgumentException("No value for param ${param.name}")
+        }
+    }
+
+    return constructor.call(*constructorParams.toTypedArray())
+}

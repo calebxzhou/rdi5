@@ -123,8 +123,8 @@ class ImagePicker(context: Context) : LinearLayout(context) {
 			ellipsize = TextUtils.TruncateAt.END
 			maxLines = 1
 			layoutParams = linearLayoutParam(PARENT, SELF) {
-				topMargin = context.dp(8f)
-			}
+                topMargin = context.dp(8f)
+            }
 		}
 
 		updatePlaceholder()

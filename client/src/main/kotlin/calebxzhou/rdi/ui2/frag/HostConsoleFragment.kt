@@ -2,7 +2,6 @@ package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.lgr
 import calebxzhou.rdi.model.Host
-import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.net.server
 import calebxzhou.rdi.ui2.Fonts
 import calebxzhou.rdi.ui2.MaterialColor
@@ -10,7 +9,6 @@ import calebxzhou.rdi.ui2.PARENT
 import calebxzhou.rdi.ui2.SELF
 import calebxzhou.rdi.ui2.component.confirm
 import calebxzhou.rdi.ui2.fctx
-import calebxzhou.rdi.ui2.go
 import calebxzhou.rdi.ui2.linearLayoutParam
 import calebxzhou.rdi.ui2.textView
 import calebxzhou.rdi.ui2.toast
@@ -24,13 +22,11 @@ import icyllis.modernui.text.Spanned
 import icyllis.modernui.text.style.ForegroundColorSpan
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.view.View
-import icyllis.modernui.widget.LinearLayout
 import icyllis.modernui.widget.ScrollView
 import icyllis.modernui.widget.TextView
 import io.ktor.client.plugins.sse.SSEBufferPolicy
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import java.lang.System.console
 
 class HostConsoleFragment(val host: Host) : RFragment("主机后台") {
 
@@ -75,7 +71,7 @@ class HostConsoleFragment(val host: Host) : RFragment("主机后台") {
     }
 
     init {
-        contentLayoutInit = {
+        contentViewInit = {
             gravity = Gravity.CENTER
             scrollView = ScrollView(fctx).apply {
                 layoutParams = linearLayoutParam(PARENT,PARENT)

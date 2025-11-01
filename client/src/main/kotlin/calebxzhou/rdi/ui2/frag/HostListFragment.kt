@@ -9,9 +9,7 @@ import calebxzhou.rdi.net.server
 import calebxzhou.rdi.service.isOwnerOrAdmin
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.alertErr
-import calebxzhou.rdi.ui2.component.closeLoading
 import calebxzhou.rdi.ui2.component.confirm
-import calebxzhou.rdi.ui2.component.showLoading
 import calebxzhou.rdi.ui2.misc.contextMenu
 import calebxzhou.rdi.util.ioTask
 import calebxzhou.rdi.util.mc
@@ -19,10 +17,7 @@ import calebxzhou.rdi.util.renderThread
 import icyllis.modernui.widget.LinearLayout
 import icyllis.modernui.widget.Spinner
 import io.ktor.http.*
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.withTimeoutOrNull
 import net.minecraft.client.gui.screens.ConnectScreen
-import net.minecraft.client.multiplayer.ServerStatusPinger
 import net.minecraft.client.multiplayer.resolver.ServerAddress
 
 class HostListFragment(val team: Team) : RFragment("选择主机") {
@@ -35,7 +30,7 @@ class HostListFragment(val team: Team) : RFragment("选择主机") {
             }
             "\uEF09 选择节点" with { Carrier().go() }
         }
-        contentLayoutInit = {
+        contentViewInit = {
             load()
         }
     }
@@ -47,8 +42,8 @@ class HostListFragment(val team: Team) : RFragment("选择主机") {
     }
 
     fun render(hosts: List<Host>) = uiThread {
-        contentLayout.removeAllViews()
-        contentLayout.apply {
+        contentView.removeAllViews()
+        contentView.apply {
             linearLayout {
                 padding8dp()
                 textView("🖱点击开始游玩")
@@ -141,7 +136,7 @@ class HostListFragment(val team: Team) : RFragment("选择主机") {
         private var worlds: List<World> = emptyList()
 
         init {
-            contentLayoutInit = {
+            contentViewInit = {
                 loadWorlds()
             }
         }
@@ -159,7 +154,7 @@ class HostListFragment(val team: Team) : RFragment("选择主机") {
                             worlds.map { it.name }.toMutableList()
                         }
                         displayEntries += "创建新存档"
-                        contentLayout.apply {
+                        contentView.apply {
                             minimumWidth = 500
                             center()
                             linearLayout {
@@ -171,7 +166,7 @@ class HostListFragment(val team: Team) : RFragment("选择主机") {
                                 worldSpinner = spinner(displayEntries)
                             }
                         }
-                        contentLayout.bottomOptions {
+                        contentView.bottomOptions {
                             "创建" colored MaterialColor.GREEN_900 with {
                                 val selectedWorld = worlds.getOrNull(worldSpinner.selectedItemPosition)
                                 val params =
@@ -198,7 +193,7 @@ class HostListFragment(val team: Team) : RFragment("选择主机") {
             set(value) {}
         private val creds = LocalCredentials.read()
         private val carriers = arrayListOf("电信", "移动", "联通", "教育网", "广电")
-        override var contentLayoutInit: LinearLayout.() -> Unit = {
+        override var contentViewInit: LinearLayout.() -> Unit = {
             radioGroup {
                 center()
                 carriers.forEachIndexed { i, c ->

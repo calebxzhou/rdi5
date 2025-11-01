@@ -34,7 +34,7 @@ class TeamFragment : RFragment("我的团队") {
     init {
 
 
-        contentLayoutInit = {
+        contentViewInit = {
             load()
         }
     }
@@ -73,9 +73,9 @@ class TeamFragment : RFragment("我的团队") {
     }
 
     private fun renderTeam(team: Team) = uiThread {
-        contentLayout.removeAllViews()
+        contentView.removeAllViews()
         title = team.name
-        contentLayout.linearLayout {
+        contentView.linearLayout {
             team.members.forEach { member ->
                 headButton(member.id, init = {
                     setTextColor(
@@ -152,7 +152,7 @@ class TeamFragment : RFragment("我的团队") {
                 }
             }
         }
-        contentLayout.bottomOptions {
+        contentView.bottomOptions {
                 "▶ 游玩主机" colored MaterialColor.GREEN_900 with { HostListFragment(team).go() }
                 "💾 管理存档" colored MaterialColor.BLUE_900 with { WorldListFragment().go() }
 
@@ -167,7 +167,7 @@ class TeamFragment : RFragment("我的团队") {
         lateinit var t1: RTextField
 
         init {
-            contentLayoutInit = {
+            contentViewInit = {
                 textView("解散团队后，地图、主机数据将被清空，且无法恢复。在下方输入 确认解散", init = { center() })
                 t1 = textField("输入 确认解散")
             }
@@ -198,8 +198,8 @@ class TeamFragment : RFragment("我的团队") {
         private lateinit var qqInput: REditText
 
         init {
-            contentLayoutInit = {
-                qqInput = REditText(fctx, "QQ号").also { contentLayout += it }
+            contentViewInit = {
+                qqInput = REditText(fctx, "QQ号").also { contentView += it }
                 bottomOptionsConfig = {
                     "邀请" colored MaterialColor.GREEN_900 with {
                         val qq = qqInput.text

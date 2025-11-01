@@ -17,7 +17,7 @@ class ChangeProfileFragment: RFragment("修改信息") {
     private lateinit var qqEdit: REditText
     private lateinit var pwdEdit: REditPassword
     init {
-        contentLayoutInit = {
+        contentViewInit = {
             nameEdit = textField("昵称") {
                 text = account.name
             }

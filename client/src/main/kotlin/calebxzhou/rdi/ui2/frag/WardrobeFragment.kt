@@ -3,7 +3,6 @@ package calebxzhou.rdi.ui2.frag
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.ui2.*
-import calebxzhou.rdi.ui2.component.RTextField
 import calebxzhou.rdi.ui2.component.SkinItemView
 import calebxzhou.rdi.ui2.component.alertErr
 import calebxzhou.rdi.ui2.component.alertOk
@@ -69,7 +68,7 @@ class WardrobeFragment : RFragment("衣柜") {
     private lateinit var scrollView: ScrollView
 
     init {
-        contentLayoutInit = {
+        contentViewInit = {
             orientation = LinearLayout.VERTICAL
 
             // Search and cape toggle section
