@@ -3,7 +3,6 @@ package calebxzhou.rdi.net
 import calebxzhou.rdi.Const
 import calebxzhou.rdi.exception.RequestError
 import calebxzhou.rdi.lgr
-import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.model.Response
 import calebxzhou.rdi.ui2.component.alertErr
 import calebxzhou.rdi.ui2.component.closeLoading
@@ -12,13 +11,11 @@ import calebxzhou.rdi.ui2.frag.LoginFragment
 import calebxzhou.rdi.ui2.frag.UpdateFragment
 import calebxzhou.rdi.ui2.goto
 import calebxzhou.rdi.ui2.nowFragment
-import calebxzhou.rdi.util.encodeBase64
 import calebxzhou.rdi.util.error
 import calebxzhou.rdi.util.ioScope
 import calebxzhou.rdi.util.ioTask
 import calebxzhou.rdi.util.isMcStarted
 import calebxzhou.rdi.util.serdesJson
-import dev.latvian.mods.kubejs.neoforge.NativeEventWrapper.onEvent
 import io.ktor.client.call.*
 import io.ktor.client.plugins.compression.compress
 import io.ktor.client.plugins.sse.*
@@ -132,15 +129,17 @@ class RServer(
         method: HttpMethod = HttpMethod.Post,
         params: Map<String, Any> = mapOf(),
         showLoading: Boolean = true,
+        body: String?=null,
         crossinline onErr: (Response<Unit>) -> Unit = { alertErr(it.msg) },
         crossinline onOk: (Response<Unit>) -> Unit,
-    ) = request<Unit>(path, method, params, showLoading, onErr, onOk)
+    ) = request<Unit>(path, method, params, showLoading, body,onErr, onOk)
 
     inline fun <reified T> request(
         path: String,
         method: HttpMethod = HttpMethod.Get,
         params: Map<String, Any> = mapOf(),
         showLoading: Boolean = true,
+        body: String?=null,
         crossinline onErr: (Response<T>) -> Unit = { alertErr(it.msg) },
         crossinline onOk: (Response<T>) -> Unit,
     ) {
@@ -149,7 +148,9 @@ class RServer(
         }
         ioScope.launch {
             try {
-                val req = makeRequest<T>(path, method, params)
+                val req = makeRequest<T>(path, method, params){
+                    body?.let { setBody(it) }
+                }
                 if (showLoading)
                     nowFragment?.closeLoading()
                 if (req.ok) {
@@ -170,32 +171,6 @@ class RServer(
     }
 
 
-    @Deprecated("use request instead")
-    suspend inline fun <reified T> prepareRequest(
-        post: Boolean = false,
-        path: String,
-        params: List<Pair<String, Any>> = listOf(),
-    ): Response<T> {
-        val fullUrl = "http://${ip}:${hqPort}/${path}"
-        val headers = RAccount.now?.let {
-            listOf("Authorization" to "Basic ${"${it._id}:${it.pwd}".encodeBase64}")
-        } ?: listOf()
-        if (Const.DEBUG) {
-            val paramsStr =
-                if (params.isEmpty()) "[]" else params.joinToString(", ", "[", "]") { "${it.first}=${it.second}" }
-
-        }
-        val resp =
-            httpStringRequest_(post, fullUrl, params, headers)
-        val body = resp.body
-        if (Const.DEBUG) {
-            val bodyPreview = if (body.length > 300) body.take(300) + "..." else body
-            lgr.info("[HQ LEGACY RSP] status=${resp.statusCode()} body=$bodyPreview")
-        }
-        return serdesJson.decodeFromString<Response<T>>(body)
-
-
-    }
 
     fun sse(
         path: String,
