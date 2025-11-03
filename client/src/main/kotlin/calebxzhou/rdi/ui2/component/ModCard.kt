@@ -22,7 +22,8 @@ import java.io.ByteArrayInputStream
 
 class ModCard(
     context: Context,
-    val vo: ModBriefVo
+    val vo: ModBriefVo,
+    enableSelect: Boolean = true
 ): LinearLayout(context) {
 
     private val iconView: ImageView
@@ -30,6 +31,15 @@ class ModCard(
     private val secondaryTitleView: TextView
     private val introView: TextView
     private var cardSelected = false
+    var enableSelect: Boolean = enableSelect
+        set(value) {
+            field = value
+            isClickable = value
+            isFocusable = value
+            if (!value) {
+                setSelectedState(false)
+            }
+        }
 
     init {
         orientation = HORIZONTAL
@@ -38,6 +48,7 @@ class ModCard(
         layoutParams = linearLayoutParam(PARENT, SELF) {
             bottomMargin = context.dp(8f)
         }
+        this.enableSelect = enableSelect
         updateSelectionBackground()
 
         iconView = ImageView(context).apply {
@@ -182,6 +193,9 @@ class ModCard(
     }
 
     fun toggleSelectedState(): Boolean {
+        if (!enableSelect) {
+            return cardSelected
+        }
         setSelectedState(!cardSelected)
         return cardSelected
     }
