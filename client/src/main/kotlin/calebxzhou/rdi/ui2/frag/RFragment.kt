@@ -127,9 +127,6 @@ abstract class RFragment(initialTitle: String = "") : Fragment() {
         }
     }
 
-    protected open fun onNext() {
-
-    }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: DataSet?): View {
         // If caching is enabled and we have a cached view, return it
