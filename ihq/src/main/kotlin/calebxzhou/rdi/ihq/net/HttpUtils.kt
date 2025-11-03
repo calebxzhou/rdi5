@@ -153,6 +153,8 @@ suspend fun RoutingContext.param(name: String): String = call.param(name)
 suspend fun RoutingContext.paramNull(name: String): String? = call.paramNull(name)
 suspend fun ApplicationCall.param(name: String): String =
     paramNull(name) ?: throw ParamError("缺少参数: $name")
+suspend fun ApplicationCall.idParam(name: String): ObjectId =
+    paramNull(name)?.let { ObjectId(it) } ?: throw ParamError("缺少参数: $name")
 
 /** Same as [param] but returns null when absent. */
 suspend fun ApplicationCall.paramNull(name: String): String? {
