@@ -1,42 +1,31 @@
 package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.model.ModBriefVo
+import calebxzhou.rdi.model.pack.Mod
+import calebxzhou.rdi.net.server
 import calebxzhou.rdi.service.ModService
 import calebxzhou.rdi.ui2.FragmentSize
 import calebxzhou.rdi.ui2.MaterialColor
-import calebxzhou.rdi.ui2.SELF
-import calebxzhou.rdi.ui2.button
 import calebxzhou.rdi.ui2.component.ModGrid
 import calebxzhou.rdi.ui2.component.alertErr
-import calebxzhou.rdi.ui2.frameLayoutParam
 import calebxzhou.rdi.ui2.go
-import calebxzhou.rdi.ui2.linearLayout
-import calebxzhou.rdi.ui2.ofView
-import calebxzhou.rdi.ui2.paddingDp
 import calebxzhou.rdi.ui2.plusAssign
 import calebxzhou.rdi.ui2.textView
-import calebxzhou.rdi.ui2.uiThread
 import calebxzhou.rdi.util.ioTask
-import icyllis.modernui.view.Gravity
-import icyllis.modernui.widget.TextView
 import org.bson.types.ObjectId
 
-class HostTempModFragment(val hostId: ObjectId) : RFragment("添加临时Mod") {
+class HostTempModFragment(val hostId: ObjectId) : RFragment("向主机添加临时Mod 请选择") {
     override var fragSize = FragmentSize.LARGE
     private lateinit var modGrid: ModGrid
-    private lateinit var selectedCountText: TextView
+    var   curseForgeResult: ModService.CurseForgeLocalResult?=null
     init {
         contentViewInit = {
-            linearLayout {
-                textView("请选择添加到主机的临时Mod。（更改主机配置会清空）")
-                selectedCountText = textView("已选择0个")
-                paddingDp(0, 0, 0, 4)
-            }
-            modGrid = ModGrid(context){updateSelectedCount(it.size) }
+            modGrid = ModGrid(context, isSelectionEnabled = true) { updateSelectedCount(it.size) }
             this += modGrid
             loadLocalMods()
         }
         titleViewInit= {
+            textView("更新整合包会清空临时mod。")
             quickOptions {
                 "\uD83D\uDDD1\uFE0F 全不选" colored MaterialColor.RED_900 with {
                     modGrid.clearSelection()
@@ -49,8 +38,8 @@ class HostTempModFragment(val hostId: ObjectId) : RFragment("添加临时Mod") {
         }
     }
 
-    private fun updateSelectedCount(count: Int) {
-        selectedCountText.text = "已选择${count}个"
+    private fun updateSelectedCount(count: Int)  {
+        title = "已选择${count}个Mod"
     }
 
     private fun loadLocalMods() = ioTask {
@@ -61,40 +50,45 @@ class HostTempModFragment(val hostId: ObjectId) : RFragment("添加临时Mod") {
         }
         modGrid.showLoading("找到了${ms.mods.size}个mod，正在从CurseForge读取信息...大概5~10秒")
         val curseForgeResult = ms.discoverModsCurseForge()
+        this.curseForgeResult=curseForgeResult
         modGrid.showLoading("CurseForge已匹配 ${curseForgeResult.matchedFiles.size}个 Mod，正在载入结果...")
         val briefs = curseForgeResult.cards.map { it.brief }
-        uiThread {
 
-        }
         modGrid.showMods(briefs)
         updateSelectedCount(modGrid.getSelectedMods().size)
 
 
     }
 
-    override fun onNext() {
+    fun onNext() {
 
         val selected = modGrid.getSelectedMods()
         if (selected.isEmpty()) {
             alertErr("请至少选择一个Mod")
             return
         }
-        Confirm(hostId,selected).go()
+        curseForgeResult?.let {
+            Confirm(hostId,it.mods,it.cards.map { it.brief }).go()
+        }
 
     }
 
-    class Confirm(val hostId: ObjectId,val selected: List<ModBriefVo>) : RFragment("确认添加临时Mod") {
+    class Confirm(val hostId: ObjectId, val selected: List<Mod>, val selectedVo: List<ModBriefVo>) : RFragment("确认添加这${selected.size}个Mod吗？") {
         override var fragSize = FragmentSize.LARGE
 
         init {
             contentViewInit = {
-                textView("确认添加这些Mod？")
-                this += ModGrid(context).also {  it.showMods(selected)}
+                this += ModGrid(context).also {  it.showMods(selectedVo) }
+            }
+            titleViewInit = {
+                quickOptions {
+                    "☑ 提交" colored MaterialColor.GREEN_900 with { onNext() }
+                }
             }
         }
 
-        override fun onNext() {
-
+        fun onNext()=ioTask {
+            server.requestU("host/tempmod"){}
         }
     }
 
