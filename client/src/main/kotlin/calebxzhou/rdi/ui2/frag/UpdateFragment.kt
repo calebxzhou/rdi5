@@ -105,9 +105,8 @@ class UpdateFragment(val server: RServer) : RFragment("正在检查更新") {
                             // Start download process asynchronously
                             ioTask {
                                 // Get server SHA-1 checksums for verification
-                                val modlistResponse = server.prepareRequest<String>(false, "update/mod-list")
-                                val serverIdSha1: Map<String, String> = serdesJson.decodeFromString(modlistResponse.data!!)
-                                server.downloadMods(modsToUpdate, serverIdSha1, this@UpdateFragment)
+                                val modSha1 = server.makeRequest<Map<String, String>>("update/mod-list").data!!
+                                server.downloadMods(modsToUpdate, modSha1, this@UpdateFragment)
                             }
                         })
 
