@@ -26,7 +26,7 @@ object DebugCommand {
                                 props = props
                             )
                         }
-                        it.writeText(bss.json)
+                        it.writeText(bss.gson)
                     }
                     // Add reload logic here
                     Command.SINGLE_SUCCESS

@@ -34,12 +34,15 @@ val serdesGson = GsonBuilder()
     .setPrettyPrinting()
     .registerTypeAdapter(User::class.java, mcUserAdapter)
     .create()
-val Any.json
+val Any.gson
     get() = serdesGson.toJson(this)
 
+inline val <reified T> T.json: String
+    get() = serdesJson.encodeToString<T>(this)
 inline fun <reified T : Any> KClass<T>.fromJson(json: String, gson: Gson = serdesGson): T {
     return gson.fromJson(json, this.java)
 }
+
 object ObjectIdSerializer : KSerializer<ObjectId> {
     override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("ObjectId", PrimitiveKind.STRING)
 
@@ -51,6 +54,7 @@ object ObjectIdSerializer : KSerializer<ObjectId> {
         return ObjectId(decoder.decodeString())
     }
 }
+
 object UUIDSerializer : KSerializer<UUID> {
     override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("UUID", PrimitiveKind.STRING)
 

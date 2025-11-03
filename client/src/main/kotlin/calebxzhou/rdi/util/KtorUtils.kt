@@ -11,7 +11,7 @@ import io.ktor.server.routing.RoutingContext
  */
 suspend fun RoutingContext.gson(obj: Any) {
     call.respondText(
-        Response(0,"", obj).json,
+        Response(0,"", obj).gson,
         ContentType.Application.Json,
         HttpStatusCode.OK
     )

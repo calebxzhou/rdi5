@@ -1,7 +1,7 @@
 package calebxzhou.rdi.service.convert
 
 import calebxzhou.rdi.model.ModBriefInfo
-import calebxzhou.rdi.util.json
+import calebxzhou.rdi.util.gson
 import calebxzhou.rdi.util.serdesJson
 import java.io.File
 
@@ -14,7 +14,7 @@ fun main() {
 
     val combined = combineModBriefInfo(mcmodData, pclData)
 
-    File("mod_brief_info.json").writeText(combined.json)
+    File("mod_brief_info.json").writeText(combined.gson)
     println("Combined ${combined.size} mods")
 }
 

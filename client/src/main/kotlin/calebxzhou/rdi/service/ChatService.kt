@@ -5,11 +5,10 @@ import calebxzhou.rdi.lgr
 import calebxzhou.rdi.model.ChatMsg
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.net.server
-import calebxzhou.rdi.ui2.toast
 import calebxzhou.rdi.util.error
 import calebxzhou.rdi.util.addChatMessage
 import calebxzhou.rdi.util.ioTask
-import calebxzhou.rdi.util.json
+import calebxzhou.rdi.util.gson
 import calebxzhou.rdi.util.mc
 import calebxzhou.rdi.util.serdesJson
 import io.ktor.http.HttpMethod
@@ -32,7 +31,7 @@ suspend fun main() {
             }
             val payload = event.data?.ifBlank { null } ?: return@sse
             val msg = serdesJson.decodeFromString<ChatMsg.Dto>(payload)
-            lgr.info(msg.json)
+            lgr.info(msg.gson)
         },
         onClosed = {
             lgr.info("已关闭日志流")

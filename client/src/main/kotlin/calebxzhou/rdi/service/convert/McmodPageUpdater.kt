@@ -1,9 +1,8 @@
 package calebxzhou.rdi.service.convert
 
 import calebxzhou.rdi.lgr
-import calebxzhou.rdi.net.httpRequest
 import calebxzhou.rdi.service.ModService
-import calebxzhou.rdi.util.json
+import calebxzhou.rdi.util.gson
 import io.ktor.client.request.header
 import io.ktor.client.request.url
 import io.ktor.client.statement.bodyAsText
@@ -29,7 +28,7 @@ fun main() {
     runBlocking {
         val mods = fetchAllPages(baseUrl)
         lgr.info("抓取完成：共 ${mods.size} 个模组")
-        File("mcmod_mod_data.json").writeText(mods.json)
+        File("mcmod_mod_data.json").writeText(mods.gson)
     }
 }
 
