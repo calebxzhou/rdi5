@@ -20,6 +20,7 @@ data class Host(
     @Contextual
     val worldId: ObjectId,
     var port: Int,
+    val extraMods: List<ExtraMod> = arrayListOf()
 ) {
 
 }

@@ -35,25 +35,70 @@ fun Route.teamRoutes() = route("/team") {
         )
         ok()
     }
+
     delete("/") {
-        TeamService.delete(uid)
-        ok()
+        install(TeamGuardPlugin) {
+            permission = TeamPermission.OWNER_ONLY
+        }
+        handle {
+            val ctx = call.teamGuardContext()
+            TeamService.delete(ctx.team, ctx.requester.id)
+            ok()
+        }
     }
+
     post("/member/{qq}") {
-        TeamService.invite(uid, param("qq"))
-        ok()
+        install(TeamGuardPlugin) {
+            permission = TeamPermission.ADMIN_OR_OWNER
+        }
+        handle {
+            val ctx = call.teamGuardContext()
+            TeamService.invite(ctx.team, param("qq"))
+            ok()
+        }
     }
+
     delete("/member/{uid2}") {
-        TeamService.kick(uid, ObjectId(param("uid2")))
-        ok()
+        install(TeamGuardPlugin) {
+            permission = TeamPermission.ADMIN_KICK_MEMBER
+            targetIdExtractor = { idParam("uid2") }
+            requireTargetMember = true
+        }
+        handle {
+            val ctx = call.teamGuardContext()
+            val target = ctx.target ?: throw RequestError("对方不在团队内")
+            TeamService.kick(ctx.team, ctx.requester, target)
+            ok()
+        }
     }
+
     post("/transfer/{uid2}") {
-        TeamService.transferOwnership(uid, ObjectId(param("uid2")))
-        ok()
+        install(TeamGuardPlugin) {
+            permission = TeamPermission.OWNER_ONLY
+            targetIdExtractor = { (idParam("uid2")) }
+            requireTargetMember = true
+        }
+        handle {
+            val ctx = call.teamGuardContext()
+            val target = ctx.target ?: throw RequestError("对方不在团队内")
+            TeamService.transferOwnership(ctx.team, ctx.requester, target)
+            ok()
+        }
     }
+
     put("/role/{uid2}/{role}") {
-        TeamService.setRole(uid, ObjectId(param("uid2")), Team.Role.valueOf(param("role")))
-        ok()
+        install(TeamGuardPlugin) {
+            permission = TeamPermission.OWNER_ONLY
+            targetIdExtractor = { (idParam("uid2")) }
+            requireTargetMember = true
+        }
+        handle {
+            val ctx = call.teamGuardContext()
+            val target = ctx.target ?: throw RequestError("对方不在团队内")
+            val role = Team.Role.valueOf(param("role"))
+            TeamService.setRole(ctx.team, ctx.requester, target, role)
+            ok()
+        }
     }
 
 }
@@ -97,7 +142,7 @@ object TeamService {
     suspend fun create(uid: ObjectId, name: String?, info: String?) {
         val account = PlayerService.getById(uid) ?: throw RequestError("无此账号")
         val info = info ?: "无"
-        val name = name?: "${account.name}的团队"
+        val name = name ?: "${account.name}的团队"
         if (hasJoinedTeam(uid)) throw RequestError("已有团队")
         if (name.displayLength > 32) throw RequestError("团队名称显示长度>32")
         if (info.displayLength > 512) throw RequestError("团队简介显示长度>512")
@@ -114,34 +159,31 @@ object TeamService {
         dbcl.insertOne(team)
     }
 
-    suspend fun delete(uid: ObjectId) {
-        val team = getOwn(uid) ?: throw RequestError("无团队")
-        team.hostIds.forEach { HostService.delete(uid,it) }
-        team.worldIds.forEach { WorldService.delete(uid,it) }
+    suspend fun delete(team: Team, requesterId: ObjectId) {
+        team.hostIds.forEach { HostService.delete(team, it) }
+        team.worldIds.forEach { WorldService.delete(requesterId, it) }
         dbcl.deleteOne(eq("_id", team._id))
-
     }
 
-    suspend fun invite(uid: ObjectId, targetQQ: String) {
-        val team = getOwn(uid) ?: throw RequestError("无团队")
+    suspend fun invite(team: Team, targetQQ: String) {
         val target = PlayerService.getByQQ(targetQQ) ?: throw RequestError("无此账号")
         if (hasJoinedTeam(target._id)) throw RequestError("对方已有团队")
+        if (team.hasMember(target._id)) throw RequestError("对方已在团队内")
         dbcl.updateOne(
             eq("_id", team._id),
             Updates.push("members", Team.Member(target._id, Team.Role.MEMBER))
         )
     }
 
-    suspend fun kick(uid: ObjectId, uid2: ObjectId) {
-        if (uid == uid2) throw RequestError("不能踢自己")
-        val team = getOwn(uid) ?: throw RequestError("无团队")
-        if (!PlayerService.has(uid2)) throw RequestError("无此账号")
-        if (!team.hasMember(uid2)) throw RequestError("对方不在团队内")
+    suspend fun kick(team: Team, requester: Team.Member, target: Team.Member) {
+        if (requester.id == target.id) throw RequestError("不能踢自己")
+        if (requester.role == Team.Role.ADMIN && target.role.level <= Team.Role.ADMIN.level) {
+            throw RequestError("管理员不能踢管理员")
+        }
         dbcl.updateOne(
             eq("_id", team._id),
-            Updates.pull("members", eq("id", uid2))
+            Updates.pull("members", eq("id", target.id))
         )
-
     }
 
     suspend fun quit(uid: ObjectId) {
@@ -153,11 +195,8 @@ object TeamService {
         )
     }
 
-    suspend fun transferOwnership(uid: ObjectId, uid2: ObjectId) {
-        if (uid == uid2) throw RequestError("不能转给自己")
-        val team = getOwn(uid) ?: throw RequestError("你无团队")
-        if (!PlayerService.has(uid2)) throw RequestError("无此账号")
-        if (!team.hasMember(uid2)) throw RequestError("对方不在团队内")
+    suspend fun transferOwnership(team: Team, requester: Team.Member, target: Team.Member) {
+        if (requester.id == target.id) throw RequestError("不能转给自己")
         dbcl.updateOne(
             eq("_id", team._id),
             Updates.combine(
@@ -166,24 +205,22 @@ object TeamService {
             ),
             UpdateOptions().arrayFilters(
                 listOf(
-                    org.bson.Document("elem1.id", uid2),
-                    org.bson.Document("elem2.id", uid)
+                    org.bson.Document("elem1.id", target.id),
+                    org.bson.Document("elem2.id", requester.id)
                 )
             )
         )
     }
 
-    suspend fun setRole(uid: ObjectId, uid2: ObjectId, role: Team.Role) {
-        if (uid == uid2) throw RequestError("不能修改自己")
-        val team = getOwn(uid) ?: throw RequestError("你无团队")
-        if (!PlayerService.has(uid2)) throw RequestError("无此账号")
-        if (!team.hasMember(uid2)) throw RequestError("对方不在团队内")
+    suspend fun setRole(team: Team, requester: Team.Member, target: Team.Member, role: Team.Role) {
+        if (requester.id == target.id) throw RequestError("不能修改自己")
+        if (target.role == Team.Role.OWNER) throw RequestError("不能修改队长身份")
         dbcl.updateOne(
             eq("_id", team._id),
             Updates.set("members.$[elem].role", role),
             UpdateOptions().arrayFilters(
                 listOf(
-                    org.bson.Document("elem.id", uid2)
+                    org.bson.Document("elem.id", target.id)
                 )
             )
         )

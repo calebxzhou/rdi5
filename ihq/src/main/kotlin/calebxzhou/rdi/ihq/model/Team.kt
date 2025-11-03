@@ -17,11 +17,11 @@ data class Team(
     val worldIds: List<@Contextual ObjectId> = emptyList(),
 ) {
 
-    enum class Role {
-        OWNER,
-        ADMIN,
-        MEMBER,
-        GUEST
+    enum class Role(val level: Int) {
+        OWNER(0),
+        ADMIN(1),
+        MEMBER(2),
+        GUEST(10)
     }
     @Serializable
     data class Member(
