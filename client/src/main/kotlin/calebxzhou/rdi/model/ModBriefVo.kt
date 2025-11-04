@@ -1,5 +1,8 @@
 package calebxzhou.rdi.model
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class ModBriefVo(
     val name: String,
     val nameCn: String?,
