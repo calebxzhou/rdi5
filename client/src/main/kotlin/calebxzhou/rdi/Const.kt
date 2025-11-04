@@ -8,7 +8,7 @@ object Const {
     //是否为调试模式,本地用
     @JvmStatic
     var DEBUG = System.getProperty("rdi.debug").toBoolean()
-
+    var USE_MOCK_DATA = System.getProperty("rdi.mockData").toBoolean()
     //版本号与协议号
     const val VERSION = 0x500
     const val IHQ_VERSION = 0x500
