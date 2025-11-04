@@ -23,7 +23,8 @@ import java.io.ByteArrayInputStream
 class ModCard(
     context: Context,
     val vo: ModBriefVo,
-    enableSelect: Boolean = true
+    enableSelect: Boolean = true,
+    simpleMode: Boolean = true
 ): LinearLayout(context) {
 
     private val iconView: ImageView
@@ -40,6 +41,12 @@ class ModCard(
                 setSelectedState(false)
             }
         }
+    var simpleMode: Boolean = simpleMode
+        set(value) {
+            if (field == value) return
+            field = value
+            applyMode()
+        }
 
     init {
         orientation = HORIZONTAL
@@ -55,8 +62,8 @@ class ModCard(
             scaleType = ImageView.ScaleType.CENTER_CROP
             background = iconBackground()
         }
-        addView(iconView, linearLayoutParam(context.dp(56f), context.dp(56f)) {
-            rightMargin = context.dp(16f)
+        addView(iconView, linearLayoutParam(context.dp(if (simpleMode) 14f else 56f), context.dp(if (simpleMode) 14f else 56f)) {
+            rightMargin = context.dp(if (simpleMode) 8f else 16f)
         })
 
         val textColumn = LinearLayout(context).apply {
@@ -110,25 +117,7 @@ class ModCard(
     }
 
     private fun bindData() {
-        val hasChineseName = !vo.nameCn.isNullOrBlank()
-        val primaryText = if (hasChineseName) vo.nameCn.trim() else vo.name.trim()
-
-        if (hasChineseName) {
-            val secondaryTrimmed = vo.name.trim()
-            val shortened = shortenName(secondaryTrimmed, maxChars = 22)
-            if (shortened.isNotEmpty()) {
-                secondaryTitleView.text = shortened
-                secondaryTitleView.visibility = View.VISIBLE
-            } else {
-                secondaryTitleView.visibility = View.GONE
-            }
-        } else {
-            secondaryTitleView.visibility = View.GONE
-        }
-
-        primaryTitleView.text = primaryText.ifBlank { vo.name.trim() }
-        introView.text = vo.intro.ifBlank { "暂无简介" }
-
+        applyMode()
         loadIcon()
     }
 
@@ -204,6 +193,50 @@ class ModCard(
 
     private fun updateSelectionBackground() {
         background = cardBackground(cardSelected)
+    }
+
+    private fun applyMode() {
+        updateIconLayout()
+        updateTextContent()
+    }
+
+    private fun updateIconLayout() {
+        val iconLp = iconView.layoutParams as? LinearLayout.LayoutParams ?: return
+        val size = context.dp(if (simpleMode) 28f else 56f)
+        iconLp.width = size
+        iconLp.height = size
+        iconLp.rightMargin = context.dp(if (simpleMode) 8f else 16f)
+        iconView.layoutParams = iconLp
+    }
+
+    private fun updateTextContent() {
+        tooltipText = vo.intro
+        val hasChineseName = !vo.nameCn.isNullOrBlank()
+        if (simpleMode) {
+            val primaryText = vo.nameCn?.trim().orEmpty().ifBlank { vo.name.trim() }
+            primaryTitleView.text = primaryText.ifBlank { vo.name.trim() }
+            secondaryTitleView.visibility = View.GONE
+            introView.visibility = View.GONE
+        } else {
+            val primaryText = if (hasChineseName) vo.nameCn.trim() else vo.name.trim()
+            primaryTitleView.text = primaryText.ifBlank { vo.name.trim() }
+            introView.text = vo.intro.ifBlank { "暂无简介" }
+            introView.visibility = View.VISIBLE
+
+
+            if (hasChineseName) {
+                val secondaryTrimmed = vo.name.trim()
+                val shortened = shortenName(secondaryTrimmed, maxChars = 22)
+                if (shortened.isNotEmpty()) {
+                    secondaryTitleView.text = shortened
+                    secondaryTitleView.visibility = View.VISIBLE
+                } else {
+                    secondaryTitleView.visibility = View.GONE
+                }
+            } else {
+                secondaryTitleView.visibility = View.GONE
+            }
+        }
     }
 
     private fun cardBackground(isSelected: Boolean): Drawable = drawable { canvas ->

@@ -94,7 +94,7 @@ class ModGrid(
         cardsContainer.removeAllViews()
 
         val rowContext = context
-        briefs.chunked(3).forEach { rowItems ->
+        briefs.chunked(5).forEach { rowItems ->
             val row = LinearLayout(rowContext).apply {
                 horizontal()
                 gravity = Gravity.TOP
@@ -111,8 +111,8 @@ class ModGrid(
                     }
                 })
             }
-            if (rowItems.size < 3) {
-                repeat(3 - rowItems.size) {
+            if (rowItems.size < 5) {
+                repeat(5 - rowItems.size) {
                     row.addView(View(rowContext), linearLayoutParam(0, SELF) { weight = 1f })
                 }
             }
