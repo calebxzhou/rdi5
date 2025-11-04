@@ -3,13 +3,12 @@ package calebxzhou.rdi.service
 import calebxzhou.rdi.lgr
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.model.Room
-import calebxzhou.rdi.ui2.frag.pack.ModpackCreate3Fragment
+import calebxzhou.rdi.model.account
 import calebxzhou.rdi.util.json
 import calebxzhou.rdi.util.serdesJson
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.core.config.Configurator
 import org.bson.types.ObjectId
-import java.io.File
 
 /**
  * calebxzhou @ 8/23/2025 7:30 PM
@@ -20,7 +19,7 @@ suspend fun main() {
     Configurator.setRootLevel(Level.DEBUG)
     Room.now= serdesJson.decodeFromString<Room>("{\"_id\":\"68babf210ffd4cd84117a8d9\",\"name\":\"123123的房间\",\"containerId\":\"55b0d72dc93a4e4bf604b6abdc0707c910c7552063f5db8a9749fcdf408fa75b\",\"score\":0,\"centerPos\":{\"data\":[0,64,0]},\"members\":[{\"id\":\"68b314bbadaf52ddab96b5ed\",\"isOwner\":true}],\"port\":0}")
     RAccount.now = RAccount(ObjectId("68b314bbadaf52ddab96b5ed"),"123123","123123","123123")
-
+    lgr.info(account.json)
     //ModpackCreate3Fragment.readConfKjs().json.let { println(it) }
 
 
