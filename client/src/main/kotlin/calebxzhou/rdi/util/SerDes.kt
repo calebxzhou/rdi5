@@ -2,10 +2,13 @@ package calebxzhou.rdi.util
 
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.cbor.Cbor
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encodeToByteArray
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
@@ -39,6 +42,9 @@ val Any.gson
 
 inline val <reified T> T.json: String
     get() = serdesJson.encodeToString<T>(this)
+@OptIn(ExperimentalSerializationApi::class)
+inline val <reified T> T.cbor: ByteArray
+    get() = Cbor.encodeToByteArray<T>(this)
 inline fun <reified T : Any> KClass<T>.fromJson(json: String, gson: Gson = serdesGson): T {
     return gson.fromJson(json, this.java)
 }
