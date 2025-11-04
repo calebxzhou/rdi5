@@ -12,6 +12,7 @@ import icyllis.modernui.view.KeyEvent
 import icyllis.modernui.view.LayoutInflater
 import icyllis.modernui.view.View
 import icyllis.modernui.view.ViewGroup
+import icyllis.modernui.widget.CheckBox
 import icyllis.modernui.widget.FrameLayout
 import icyllis.modernui.widget.LinearLayout
 import icyllis.modernui.widget.TextView
@@ -289,9 +290,9 @@ abstract class RFragment(initialTitle: String = "") : Fragment() {
     ) {
         val builder = QuickOptionsBuilder()
         builder.config()
-        val buttons = builder.getButtons()
+    val options = builder.buildOptions()
 
-        if (buttons.isEmpty()) return
+    if (options.isEmpty()) return
 
         val buttonRow = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -314,19 +315,37 @@ abstract class RFragment(initialTitle: String = "") : Fragment() {
         addView(buttonRow)
 
         // Create buttons that stick together in material design style
-        buttons.forEachIndexed { index, buttonData ->
-            val button =
-                RButton(context, color = buttonData.color ?: MaterialColor.WHITE) { buttonData.handler() }.apply {
-
+        options.forEachIndexed { index, option ->
+            when (option.type) {
+                OptionType.BUTTON -> {
+                    val button = RButton(context, color = option.color ?: MaterialColor.WHITE) {
+                        option.buttonHandler?.invoke()
+                    }.apply {
+                        text = option.text
+                    }
+                    option.buttonInit?.invoke(button)
+                    button.layoutParams = LinearLayout.LayoutParams(SELF, SELF).apply {
+                        if (index > 0) leftMargin = context.dp(12f)
+                    }
+                    buttonRow.addView(button)
                 }
-            button.text = buttonData.text
-            // Apply optional customizations via init block
-            buttonData.init?.invoke(button)
 
-            button.layoutParams = LinearLayout.LayoutParams(SELF, SELF).apply {
-                if (index > 0) leftMargin = context.dp(12f)
+                OptionType.CHECKBOX -> {
+                    val checkBox = CheckBox(context).apply {
+                        text = option.text
+                        option.initialChecked?.let { isChecked = it }
+                        option.color?.let { setTextColor(it.colorValue) }
+                    }
+                    checkBox.setOnCheckedChangeListener { _, isChecked ->
+                        option.checkboxHandler?.invoke(isChecked)
+                    }
+                    option.checkboxInit?.invoke(checkBox)
+                    checkBox.layoutParams = LinearLayout.LayoutParams(SELF, SELF).apply {
+                        if (index > 0) leftMargin = context.dp(12f)
+                    }
+                    buttonRow.addView(checkBox)
+                }
             }
-            buttonRow.addView(button)
         }
     }
 
@@ -403,61 +422,99 @@ abstract class RFragment(initialTitle: String = "") : Fragment() {
     // Builder class for bottom options DSL - using "with" syntax and colored options
 
     class QuickOptionsBuilder {
-        private val buttons = mutableListOf<ButtonData>()
+        private val options = mutableListOf<OptionData>()
+
+    val checkbox = OptionKind { label -> CheckboxDraft(label) }
+    val button = OptionKind { label -> ButtonDraft(label) }
 
         infix fun String.with(handler: () -> Unit) {
-            buttons.add(ButtonData(this, null, handler, null))
+            ButtonDraft(this).with(handler)
         }
 
-        infix fun String.colored(color: MaterialColor): ColoredButtonBuilder {
-            return ColoredButtonBuilder(this, color)
+        infix fun String.colored(color: MaterialColor): ButtonDraft = ButtonDraft(this).colored(color)
+
+        infix fun String.init(block: RButton.() -> Unit): ButtonDraft = ButtonDraft(this).init(block)
+
+        infix fun <T : OptionDraft> String.make(kind: OptionKind<T>): T = kind.factory.invoke(this@QuickOptionsBuilder, this)
+
+        private fun addOption(option: OptionData) {
+            options += option
         }
 
-        // Allow customizing the created button via an init block
-        infix fun String.init(block: RButton.() -> Unit): InitButtonBuilder {
-            return InitButtonBuilder(this, block)
-        }
+        internal fun buildOptions(): List<OptionData> = options
 
-        inner class ColoredButtonBuilder(private val text: String, private val color: MaterialColor) {
+        interface OptionDraft
+
+        inner class ButtonDraft internal constructor(private val label: String) : OptionDraft {
+            private var color: MaterialColor? = null
             private var initBlock: (RButton.() -> Unit)? = null
-            infix fun init(block: RButton.() -> Unit): ColoredButtonBuilder {
-                initBlock = block
-                return this
-            }
+
+            fun init(block: RButton.() -> Unit): ButtonDraft = apply { initBlock = block }
+
+            infix fun colored(color: MaterialColor): ButtonDraft = apply { this.color = color }
 
             infix fun with(handler: () -> Unit) {
-                buttons.add(ButtonData(text, color, handler, initBlock))
+                addOption(
+                    OptionData(
+                        text = label,
+                        type = OptionType.BUTTON,
+                        color = color,
+                        buttonInit = initBlock,
+                        checkboxInit = null,
+                        buttonHandler = handler,
+                        checkboxHandler = null,
+                        initialChecked = null
+                    )
+                )
             }
         }
 
-        inner class InitButtonBuilder(private val text: String, private val initBlock: RButton.() -> Unit) {
-            infix fun with(handler: () -> Unit) {
-                buttons.add(ButtonData(text, null, handler, initBlock))
-            }
+        inner class CheckboxDraft internal constructor(private val label: String) : OptionDraft {
+            private var color: MaterialColor? = null
+            private var initBlock: (CheckBox.() -> Unit)? = null
+            private var defaultChecked: Boolean? = null
 
-            infix fun colored(color: MaterialColor): ColoredInitButtonBuilder {
-                return ColoredInitButtonBuilder(text, color, initBlock)
+            fun init(block: CheckBox.() -> Unit): CheckboxDraft = apply { initBlock = block }
+
+            infix fun colored(color: MaterialColor): CheckboxDraft = apply { this.color = color }
+
+            fun checked(default: Boolean = true): CheckboxDraft = apply { defaultChecked = default }
+
+            infix fun with(handler: (Boolean) -> Unit) {
+                addOption(
+                    OptionData(
+                        text = label,
+                        type = OptionType.CHECKBOX,
+                        color = color,
+                        buttonInit = null,
+                        checkboxInit = initBlock,
+                        buttonHandler = null,
+                        checkboxHandler = handler,
+                        initialChecked = defaultChecked
+                    )
+                )
             }
         }
 
-        inner class ColoredInitButtonBuilder(
-            private val text: String,
-            private val color: MaterialColor,
-            private val initBlock: RButton.() -> Unit
-        ) {
-            infix fun with(handler: () -> Unit) {
-                buttons.add(ButtonData(text, color, handler, initBlock))
-            }
-        }
-
-        internal fun getButtons() = buttons
+        class OptionKind<T : OptionDraft> internal constructor(
+            internal val factory: QuickOptionsBuilder.(String) -> T
+        )
     }
 
-    data class ButtonData(
+    data class OptionData(
         val text: String,
+        val type: OptionType,
         val color: MaterialColor?,
-        val handler: () -> Unit,
-        val init: (RButton.() -> Unit)?
+        val buttonInit: (RButton.() -> Unit)?,
+        val checkboxInit: (CheckBox.() -> Unit)?,
+        val buttonHandler: (() -> Unit)?,
+        val checkboxHandler: ((Boolean) -> Unit)?,
+        val initialChecked: Boolean?
     )
+
+    enum class OptionType {
+        BUTTON,
+        CHECKBOX,
+    }
 
 }
