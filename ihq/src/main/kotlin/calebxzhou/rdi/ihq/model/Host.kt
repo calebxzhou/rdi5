@@ -1,6 +1,6 @@
 package calebxzhou.rdi.ihq.model
 
-import calebxzhou.rdi.ihq.model.pack.Modpack
+import calebxzhou.rdi.ihq.model.pack.Mod
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import org.bson.types.ObjectId
@@ -20,7 +20,7 @@ data class Host(
     @Contextual
     val worldId: ObjectId,
     var port: Int,
-    val extraMods: List<ExtraMod> = arrayListOf()
+    val mods: List<Mod> = arrayListOf()
 ) {
 
 }

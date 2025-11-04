@@ -19,9 +19,12 @@ import calebxzhou.rdi.ihq.util.str
 import calebxzhou.rdi.ihq.util.serdesJson
 import calebxzhou.rdi.ihq.lgr
 import calebxzhou.rdi.ihq.model.pack.Mod
+import calebxzhou.rdi.ihq.service.HostService.addExtraMods
+import calebxzhou.rdi.ihq.service.HostService.delExtraMods
 import com.mongodb.client.model.Filters.*
 import com.mongodb.client.model.Updates.combine
 import com.mongodb.client.model.Updates.set
+import io.ktor.server.request.receive
 import io.ktor.server.routing.*
 import io.ktor.server.sse.*
 import io.ktor.server.websocket.DefaultWebSocketServerSession
@@ -141,6 +144,25 @@ fun Route.hostRoutes() = route("/host") {
         }
     }
 
+    route("/{hostId}/extra_mod") {
+        install(HostGuardPlugin)
+
+        get {
+            response(data = call.hostGuardContext().host.mods)
+        }
+        post {
+            val ctx = call.hostGuardContext()
+            ctx.requirePermission(HostPermission.ADMIN_OR_OWNER)
+            val mods = call.receive<List<Mod>>()
+            ctx.addExtraMods(mods)
+        }
+        delete {
+            val ctx = call.hostGuardContext()
+            ctx.requirePermission(HostPermission.ADMIN_OR_OWNER)
+            val projectIds = call.receive<List<String>>()
+            ctx.delExtraMods(projectIds)
+        }
+    }
     get("/") {
         TeamService.getJoinedTeam(uid)
             ?.let { HostService.listByTeam(it._id) }
@@ -560,7 +582,46 @@ object HostService {
             lines.cancel()
         }
     }
+    suspend fun HostGuardContext.addExtraMods(mods: List<Mod>) {
+        if (mods.isEmpty()) throw RequestError("mod列表不得为空")
 
+        val currentHost = getById(host._id) ?: throw RequestError("无此主机")
+        val merged = currentHost.mods.toMutableList()
+
+        mods.forEach { mod ->
+            val existingIndex = merged.indexOfFirst { extra ->
+                extra.projectId == mod.projectId
+            }
+            if (existingIndex >= 0) {
+                val existing = merged[existingIndex]
+                if (existing != mod) {
+                    merged[existingIndex] = mod
+                }
+            } else {
+                merged += mod
+            }
+        }
+
+        dbcl.updateOne(
+            eq("_id", currentHost._id),
+            set(Host::mods.name, merged.toList())
+        )
+    }
+    suspend fun HostGuardContext.delExtraMods(projectIds: List<String>) {
+        if (projectIds.isEmpty()) throw RequestError("mod列表不得为空")
+
+        val currentHost = getById(host._id) ?: throw RequestError("无此主机")
+        val targets = projectIds.toSet()
+
+        val updated = currentHost.mods.filterNot { it.projectId in targets }
+
+        if (updated.size == currentHost.mods.size) throw RequestError("没有匹配的mod可删")
+
+        dbcl.updateOne(
+            eq("_id", currentHost._id),
+            set(Host::mods.name, updated)
+        )
+    }
     // List all hosts belonging to a team
     suspend fun listByTeam(teamId: ObjectId): List<Host> =
         dbcl.find(eq("teamId", teamId)).toList()
@@ -591,9 +652,6 @@ object HostService {
 
     suspend fun stopIdleHosts() {
         runIdleMonitorTick(forceStop = true)
-    }
-    suspend fun addTempMods(mods: List<Mod>){
-
     }
 }
 
