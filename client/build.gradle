@@ -191,6 +191,7 @@ def mcLibs = [
 "io.ktor:ktor-server-core:$ktor_version",
 "io.ktor:ktor-server-jetty-jakarta:$ktor_version",
 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0',
+'org.jetbrains.kotlinx:kotlinx-serialization-cbor:1.9.0',
 "io.ktor:ktor-client-content-negotiation:$ktor_version",
 "io.ktor:ktor-serialization-kotlinx-json:$ktor_version"
 ]
