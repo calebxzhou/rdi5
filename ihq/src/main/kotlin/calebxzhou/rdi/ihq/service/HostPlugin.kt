@@ -10,19 +10,13 @@ import io.ktor.server.application.createRouteScopedPlugin
 import io.ktor.util.AttributeKey
 import org.bson.types.ObjectId
 
-enum class HostPermission {
-    TEAM_MEMBER,
-    ADMIN_OR_OWNER,
-    OWNER_ONLY,
-}
-
 class HostGuardConfig {
     var hostIdExtractor: suspend ApplicationCall.() -> ObjectId = {
         val raw = parameters["hostId"] ?: throw ParamError("缺少hostId")
         runCatching { ObjectId(raw) }.getOrElse { throw ParamError("hostId格式错误") }
     }
 
-    var permission: HostPermission = HostPermission.TEAM_MEMBER
+    var permission: TeamPermission = TeamPermission.TEAM_MEMBER
 }
 
 data class HostGuardContext(
@@ -31,11 +25,12 @@ data class HostGuardContext(
     val requester: Team.Member,
 )
 
-fun HostGuardContext.requirePermission(level: HostPermission) {
+fun HostGuardContext.requirePermission(level: TeamPermission) {
     val allowed = when (level) {
-        HostPermission.TEAM_MEMBER -> true
-        HostPermission.ADMIN_OR_OWNER -> requester.role.level <= Team.Role.ADMIN.level
-        HostPermission.OWNER_ONLY -> requester.role == Team.Role.OWNER
+        TeamPermission.TEAM_MEMBER -> true
+        TeamPermission.ADMIN_OR_OWNER -> requester.role.level <= Team.Role.ADMIN.level
+        TeamPermission.OWNER_ONLY -> requester.role == Team.Role.OWNER
+        TeamPermission.ADMIN_KICK_MEMBER -> requester.role.level <= Team.Role.ADMIN.level
     }
     if (!allowed) throw RequestError("无权限")
 }

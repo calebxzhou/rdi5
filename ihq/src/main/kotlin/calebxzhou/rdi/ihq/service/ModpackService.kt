@@ -2,12 +2,13 @@ package calebxzhou.rdi.ihq.service
 
 import calebxzhou.rdi.ihq.DB
 import calebxzhou.rdi.ihq.exception.RequestError
-import calebxzhou.rdi.ihq.model.pack.Modpack
+import calebxzhou.rdi.ihq.model.pack.ModPack
+import calebxzhou.rdi.ihq.net.err
 import calebxzhou.rdi.ihq.net.ok
 import calebxzhou.rdi.ihq.net.param
-import calebxzhou.rdi.ihq.net.paramNull
 import calebxzhou.rdi.ihq.net.response
 import calebxzhou.rdi.ihq.net.uid
+import com.mongodb.client.model.Filters.and
 import io.ktor.server.request.receive
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.post
@@ -21,13 +22,23 @@ import org.bson.types.ObjectId
 
 fun Route.modpackRoutes() {
     post("/create") {
-        val version = call.receive<Modpack.CreateDto>()
+        val version = call.receive<ModPack.CreateDto>()
         ModpackService.create(call.uid, version)
         ok()
     }
     post("/update/{modpackId}") {
         ModpackService.update(call.uid, ObjectId(param("modpackId")),call.receive())
         ok()
+    }
+    get("/{modpackId}/{verName}/mods"){
+        ModpackService.vdbcl.find(
+        and(
+            eq("name", param("verName")),
+            eq("_id", param("modpackId"))
+        )
+        ).firstOrNull()?.mods?.let {
+            response(data=it)
+        }?:err("无此版本")
     }
     get("/my") {
         val mods = ModpackService.pdbcl.find(eq("authorId", call.uid)).toList()
@@ -46,23 +57,23 @@ fun Route.modpackRoutes() {
 object ModpackService {
     private const val MAX_MODPACK_PER_USER = 5
     private const val MAX_VERSION_PER_MODPACK = 128
-    val pdbcl = DB.getCollection<Modpack>("modpack")
-    val vdbcl = DB.getCollection<Modpack.Version>("modpack_version")
+    val pdbcl = DB.getCollection<ModPack>("modpack")
+    val vdbcl = DB.getCollection<ModPack.Version>("modpack_version")
 
-    suspend fun create(uid: ObjectId, dto: Modpack.CreateDto) {
+    suspend fun create(uid: ObjectId, dto: ModPack.CreateDto) {
         val modpackCount = pdbcl.countDocuments(eq("authorId", uid))
         if (modpackCount >= MAX_MODPACK_PER_USER.toLong()) {
             throw RequestError("最多5个整合包")
         }
         val verId = ObjectId()
-        val modpack = Modpack(
+        val modPack = ModPack(
             name = dto.name,
             authorId = uid,
             versions = listOf(verId)
         )
-        val version = Modpack.Version(
+        val version = ModPack.Version(
             _id = verId,
-            modpackId = modpack._id,
+            modpackId = modPack._id,
             name = "1.0",
             changelog = "初次发布",
             mods = dto.mods,
@@ -71,7 +82,7 @@ object ModpackService {
         )
         //todo build image: 从cf下载mod ， cache有 不用下
         vdbcl.insertOne(version)
-        pdbcl.insertOne(modpack)
+        pdbcl.insertOne(modPack)
     }
 
     suspend fun deleteVersion(uid: ObjectId, modpackId: ObjectId, versionId: ObjectId) {
@@ -97,7 +108,7 @@ object ModpackService {
         vdbcl.deleteMany(eq("modpackId", modpackId))
         pdbcl.deleteOne(eq("_id", modpackId))
     }
-    suspend fun update(uid: ObjectId,modpackId: ObjectId,version: Modpack.Version){
+    suspend fun update(uid: ObjectId,modpackId: ObjectId,version: ModPack.Version){
         val modpack = pdbcl.find(eq("_id", modpackId)).firstOrNull() ?: throw RequestError("整合包不存在")
         if (modpack.authorId != uid) {
             throw RequestError("不是你的包")

@@ -26,32 +26,10 @@
     {
       "type": "java",
       "request": "launch",
-      "name": "Client_mech",
-      "presentation": {
-        "group": "Mod Development - client",
-        "order": 1
-      },
-      "projectName": "client",
-      "mainClass": "net.neoforged.devlaunch.Main",
-      "args": [
-        "@C:\\Users\\calebxzhou\\Documents\\coding\\rdi5\\client\\build\\moddev\\client_mechRunProgramArgs.txt"
-      ],
-      "vmArgs": [
-        "@C:\\Users\\calebxzhou\\Documents\\coding\\rdi5\\client\\build\\moddev\\client_mechRunVmArgs.txt",
-        "-Dfml.modFolders\u003drdi%%C:\\Users\\calebxzhou\\Documents\\coding\\rdi5\\client\\bin\\main"
-      ],
-      "cwd": "${workspaceFolder}\\run",
-      "env": {},
-      "console": "internalConsole",
-      "shortenCommandLine": "none"
-    },
-    {
-      "type": "java",
-      "request": "launch",
       "name": "Data",
       "presentation": {
         "group": "Mod Development - client",
-        "order": 2
+        "order": 1
       },
       "projectName": "client",
       "mainClass": "net.neoforged.devlaunch.Main",

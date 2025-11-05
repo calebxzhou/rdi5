@@ -290,9 +290,9 @@ abstract class RFragment(initialTitle: String = "") : Fragment() {
     ) {
         val builder = QuickOptionsBuilder()
         builder.config()
-    val options = builder.buildOptions()
+        val options = builder.buildOptions()
 
-    if (options.isEmpty()) return
+        if (options.isEmpty()) return
 
         val buttonRow = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL

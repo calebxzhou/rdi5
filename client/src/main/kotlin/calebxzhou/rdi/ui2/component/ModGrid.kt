@@ -13,6 +13,7 @@ import calebxzhou.rdi.ui2.vertical
 import icyllis.modernui.core.Context
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.view.View
+import icyllis.modernui.view.ViewGroup
 import icyllis.modernui.widget.LinearLayout
 import icyllis.modernui.widget.TextView
 
@@ -34,6 +35,8 @@ class ModGrid(
     private val selectedMods = linkedSetOf<ModBriefVo>()
     private val cardMap = linkedMapOf<ModBriefVo, ModCard>()
     private val selectionListeners = mutableListOf<(List<ModBriefVo>) -> Unit>()
+    private var currentBriefs: List<ModBriefVo> = emptyList()
+    private var pendingRender: Runnable? = null
 
     var selectionEnabled: Boolean = isSelectionEnabled
         set(value) {
@@ -63,6 +66,14 @@ class ModGrid(
         cardsContainer.addView(stateTextView, linearLayoutParam(PARENT, SELF))
 
         onSelectionChanged?.let { addSelectionListener(it) }
+
+        cardsContainer.addOnLayoutChangeListener { _, left, _, right, _, oldLeft, _, oldRight, _ ->
+            val newWidth = right - left
+            val oldWidth = oldRight - oldLeft
+            if (newWidth > 0 && newWidth != oldWidth && currentBriefs.isNotEmpty()) {
+                schedulePendingRender(currentBriefs)
+            }
+        }
     }
 
     fun addSelectionListener(listener: (selected: List<ModBriefVo>) -> Unit) {
@@ -83,43 +94,17 @@ class ModGrid(
 
     fun showMods(briefs: List<ModBriefVo>) = uiThread {
         if (briefs.isEmpty()) {
+            currentBriefs = emptyList()
             displayState("暂无可展示的Mod", paddingTopDp = 16f, clearSelection = true)
             return@uiThread
         }
 
-    val availableBriefs = briefs.toSet()
-    val selectionTrimmed = selectedMods.retainAll(availableBriefs)
+        currentBriefs = briefs
 
-        cardMap.clear()
-        cardsContainer.removeAllViews()
+        val availableBriefs = briefs.toSet()
+        val selectionTrimmed = selectedMods.retainAll(availableBriefs)
 
-        val rowContext = context
-        briefs.chunked(5).forEach { rowItems ->
-            val row = LinearLayout(rowContext).apply {
-                horizontal()
-                gravity = Gravity.TOP
-            }
-            rowItems.forEachIndexed { index, brief ->
-                val card = ModCard(rowContext, brief, enableSelect = selectionEnabled)
-                card.setSelectedState(selectedMods.contains(brief))
-                card.setOnClickListener(if (selectionEnabled) createCardClickListener(card) else null)
-                cardMap[brief] = card
-                row.addView(card, linearLayoutParam(0, SELF) {
-                    weight = 1f
-                    if (index < rowItems.lastIndex) {
-                        rightMargin = rowContext.dp(12f)
-                    }
-                })
-            }
-            if (rowItems.size < 5) {
-                repeat(5 - rowItems.size) {
-                    row.addView(View(rowContext), linearLayoutParam(0, SELF) { weight = 1f })
-                }
-            }
-            cardsContainer.addView(row, linearLayoutParam(PARENT, SELF) {
-                bottomMargin = rowContext.dp(12f)
-            })
-        }
+        renderGrid(briefs)
 
         if (selectionTrimmed) {
             notifySelectionChanged()
@@ -171,6 +156,9 @@ class ModGrid(
     }
 
     private fun displayState(message: String, paddingTopDp: Float, clearSelection: Boolean) {
+        pendingRender?.let { cardsContainer.removeCallbacks(it) }
+        pendingRender = null
+        currentBriefs = emptyList()
         if (clearSelection && selectedMods.isNotEmpty()) {
             selectedMods.clear()
             notifySelectionChanged()
@@ -185,5 +173,66 @@ class ModGrid(
     private fun notifySelectionChanged() {
         val snapshot = getSelectedMods()
         selectionListeners.forEach { it(snapshot) }
+    }
+
+    private fun renderGrid(briefs: List<ModBriefVo>) {
+        val availableWidth = cardsContainer.width
+        if (availableWidth <= 0) {
+            schedulePendingRender(briefs)
+            return
+        }
+
+        val contentWidth = availableWidth - cardsContainer.paddingLeft - cardsContainer.paddingRight
+        val minCardWidth = context.dp(180f)
+        val spacing = context.dp(12f)
+        val columns = maxOf(1, (contentWidth + spacing) / (minCardWidth + spacing))
+
+        val existingCards = HashMap(cardMap)
+        cardMap.clear()
+        cardsContainer.removeAllViews()
+
+        val rowContext = context
+        briefs.chunked(columns).forEach { rowItems ->
+            val row = LinearLayout(rowContext).apply {
+                horizontal()
+                gravity = Gravity.TOP
+            }
+
+            rowItems.forEachIndexed { index, brief ->
+                val card = existingCards[brief] ?: ModCard(rowContext, brief, enableSelect = selectionEnabled)
+                (card.parent as? ViewGroup)?.removeView(card)
+                card.enableSelect = selectionEnabled
+                card.setSelectedState(selectedMods.contains(brief))
+                card.setOnClickListener(if (selectionEnabled) createCardClickListener(card) else null)
+                cardMap[brief] = card
+                row.addView(card, linearLayoutParam(0, SELF) {
+                    weight = 1f
+                    if (index < rowItems.lastIndex) {
+                        rightMargin = rowContext.dp(12f)
+                    }
+                })
+            }
+
+            if (rowItems.size < columns) {
+                repeat(columns - rowItems.size) {
+                    row.addView(View(rowContext), linearLayoutParam(0, SELF) { weight = 1f })
+                }
+            }
+
+            cardsContainer.addView(row, linearLayoutParam(PARENT, SELF) {
+                bottomMargin = rowContext.dp(12f)
+            })
+        }
+    }
+
+    private fun schedulePendingRender(briefs: List<ModBriefVo>) {
+        pendingRender?.let { cardsContainer.removeCallbacks(it) }
+        pendingRender = Runnable {
+            pendingRender = null
+            if (currentBriefs.isNotEmpty()) {
+                renderGrid(currentBriefs)
+            }
+        }
+        cardsContainer.post(pendingRender)
     }
 }

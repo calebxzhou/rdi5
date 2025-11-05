@@ -5,6 +5,14 @@ import calebxzhou.rdi.ihq.DEFAULT_MODPACK_ID
 import calebxzhou.rdi.ihq.exception.RequestError
 import calebxzhou.rdi.ihq.model.Host
 import calebxzhou.rdi.ihq.model.Team
+import calebxzhou.rdi.ihq.service.HostService.delete
+import calebxzhou.rdi.ihq.service.HostService.getLog
+import calebxzhou.rdi.ihq.service.HostService.listenLogs
+import calebxzhou.rdi.ihq.service.HostService.restart
+import calebxzhou.rdi.ihq.service.HostService.sendCommand
+import calebxzhou.rdi.ihq.service.HostService.start
+import calebxzhou.rdi.ihq.service.HostService.update
+import calebxzhou.rdi.ihq.service.HostService.userStop
 import calebxzhou.rdi.ihq.model.HostStatus
 import calebxzhou.rdi.ihq.model.WsMessage
 import calebxzhou.rdi.ihq.model.imageRef
@@ -20,7 +28,9 @@ import calebxzhou.rdi.ihq.util.serdesJson
 import calebxzhou.rdi.ihq.lgr
 import calebxzhou.rdi.ihq.model.pack.Mod
 import calebxzhou.rdi.ihq.service.HostService.addExtraMods
+import calebxzhou.rdi.ihq.service.HostService.createHost
 import calebxzhou.rdi.ihq.service.HostService.delExtraMods
+import calebxzhou.rdi.ihq.service.WorldService.createWorld
 import com.mongodb.client.model.Filters.*
 import com.mongodb.client.model.Updates.combine
 import com.mongodb.client.model.Updates.set
@@ -54,7 +64,7 @@ import org.bson.types.ObjectId
 // ---------- Routing DSL (mirrors teamRoutes style) ----------
 fun Route.hostRoutes() = route("/host") {
     route("/{hostId}/status") {
-        install(HostGuardPlugin) { permission = HostPermission.TEAM_MEMBER }
+        install(HostGuardPlugin) { permission = TeamPermission.TEAM_MEMBER }
         get {
             val ctx = call.hostGuardContext()
             response(data = HostService.getServerStatus(ctx.host).toString())
@@ -62,44 +72,44 @@ fun Route.hostRoutes() = route("/host") {
     }
 
     route("/{hostId}/start") {
-        install(HostGuardPlugin) { permission = HostPermission.ADMIN_OR_OWNER }
+        install(HostGuardPlugin) { permission = TeamPermission.ADMIN_OR_OWNER }
         post {
-            HostService.start(call.hostGuardContext())
+            call.hostGuardContext().start()
             ok()
         }
     }
 
     route("/{hostId}/stop") {
-        install(HostGuardPlugin) { permission = HostPermission.ADMIN_OR_OWNER }
+        install(HostGuardPlugin) { permission = TeamPermission.ADMIN_OR_OWNER }
         post {
-            HostService.userStop(call.hostGuardContext())
+            call.hostGuardContext().userStop()
             ok()
         }
     }
 
     route("/{hostId}/command") {
-        install(HostGuardPlugin) { permission = HostPermission.ADMIN_OR_OWNER }
+        install(HostGuardPlugin) { permission = TeamPermission.ADMIN_OR_OWNER }
         post {
             val ctx = call.hostGuardContext()
             val command = param("command")
-            HostService.sendCommand(ctx, command)
+            ctx.sendCommand(command)
             ok()
         }
     }
 
     route("/{hostId}/restart") {
-        install(HostGuardPlugin) { permission = HostPermission.ADMIN_OR_OWNER }
+        install(HostGuardPlugin) { permission = TeamPermission.ADMIN_OR_OWNER }
         post {
-            HostService.restart(call.hostGuardContext())
+            call.hostGuardContext().restart()
             ok()
         }
     }
 
     route("/{hostId}/update") {
-        install(HostGuardPlugin) { permission = HostPermission.OWNER_ONLY }
+        install(HostGuardPlugin) { permission = TeamPermission.OWNER_ONLY }
         post {
             val ctx = call.hostGuardContext()
-            HostService.update(ctx, paramNull("packVer"))
+            ctx.update(paramNull("packVer"))
             ok()
         }
     }
@@ -107,10 +117,7 @@ fun Route.hostRoutes() = route("/host") {
     route("/") {
         install(TeamGuardPlugin) { permission = TeamPermission.OWNER_ONLY }
         post {
-            val ctx = call.teamGuardContext()
-            HostService.create(
-                ctx.team,
-                ctx.requester.id,
+            call.teamGuardContext().createHost(
                 DEFAULT_MODPACK_ID,
                 "latest",
                 paramNull("worldId")?.let { ObjectId(it) }
@@ -120,27 +127,27 @@ fun Route.hostRoutes() = route("/host") {
     }
 
     route("/{hostId}") {
-        install(HostGuardPlugin) { permission = HostPermission.OWNER_ONLY }
+        install(HostGuardPlugin) { permission = TeamPermission.OWNER_ONLY }
         delete {
-            HostService.delete(call.hostGuardContext())
+            call.hostGuardContext().delete()
             ok()
         }
     }
 
     route("/{hostId}/log/{lines}") {
-        install(HostGuardPlugin) { permission = HostPermission.ADMIN_OR_OWNER }
+        install(HostGuardPlugin) { permission = TeamPermission.ADMIN_OR_OWNER }
         get {
             val ctx = call.hostGuardContext()
             val lines = param("lines").toInt()
             val startLine = paramNull("startLine")?.toInt() ?: 0
-            response(data = HostService.getLog(ctx, startLine, lines))
+            response(data = ctx.getLog(startLine, lines))
         }
     }
 
     route("/{hostId}/log/stream") {
-        install(HostGuardPlugin) { permission = HostPermission.ADMIN_OR_OWNER }
+        install(HostGuardPlugin) { permission = TeamPermission.ADMIN_OR_OWNER }
         sse {
-            HostService.listenLogs(call.hostGuardContext(), this)
+            call.hostGuardContext().listenLogs(this)
         }
     }
 
@@ -148,17 +155,17 @@ fun Route.hostRoutes() = route("/host") {
         install(HostGuardPlugin)
 
         get {
-            response(data = call.hostGuardContext().host.mods)
+            response(data = call.hostGuardContext().host.extraMods)
         }
         post {
             val ctx = call.hostGuardContext()
-            ctx.requirePermission(HostPermission.ADMIN_OR_OWNER)
+            ctx.requirePermission(TeamPermission.ADMIN_OR_OWNER)
             val mods = call.receive<List<Mod>>()
             ctx.addExtraMods(mods)
         }
         delete {
             val ctx = call.hostGuardContext()
-            ctx.requirePermission(HostPermission.ADMIN_OR_OWNER)
+            ctx.requirePermission(TeamPermission.ADMIN_OR_OWNER)
             val projectIds = call.receive<List<String>>()
             ctx.delExtraMods(projectIds)
         }
@@ -408,19 +415,19 @@ object HostService {
         0
     }
 
-    suspend fun create(team: Team, requesterId: ObjectId, modpackId: ObjectId, packVer: String, worldId: ObjectId?) {
-        PlayerService.getById(requesterId) ?: throw RequestError("无此账号")
+    suspend fun TeamGuardContext.createHost(modpackId: ObjectId, packVer: String, worldId: ObjectId?) {
         val world = worldId?.let {
             if (findByWorld(it) != null) throw RequestError("此存档已被其他主机占用")
             WorldService.getById(it) ?: throw RequestError("无此存档")
-        } ?: WorldService.create(requesterId, null, modpackId)
+        } ?: createWorld(null, modpackId)
         if (world.teamId != team._id) throw RequestError("存档不属于你的团队")
 
         val port = allocateRoomPort()
         val host = Host(
             name = team.name + "的主机" + (team.hosts().size + 1),
             teamId = team._id,
-            modpackId = modpackId,
+            //todo 暂时只能用默认包
+            packId = DEFAULT_MODPACK_ID,
             worldId = world._id,
             port = port,
             packVer = packVer
@@ -432,8 +439,8 @@ object HostService {
         clearShutFlag(host._id)
     }
 
-    suspend fun delete(ctx: HostGuardContext) {
-        delete(ctx.team, ctx.host._id)
+    suspend fun HostGuardContext.delete() {
+        delete(team, host._id)
     }
 
     suspend fun delete(team: Team, hostId: ObjectId) {
@@ -449,45 +456,45 @@ object HostService {
         clearShutFlag(host._id)
     }
 
-    suspend fun update(ctx: HostGuardContext, packVer: String?) {
-        val host = getById(ctx.host._id) ?: throw RequestError("无此主机")
+    suspend fun HostGuardContext.update(packVer: String?) {
+        val current = getById(host._id) ?: throw RequestError("无此主机")
         val resolvedVer = packVer ?: "latest"
-        val running = DockerService.isStarted(host._id.str)
+        val running = DockerService.isStarted(current._id.str)
         if (running) {
-            DockerService.stop(host._id.str)
+            DockerService.stop(current._id.str)
         }
-        DockerService.deleteContainer(host._id.str)
-        val worldId = host.worldId
-        DockerService.createContainer(host.port, host._id.str, worldId.str, "${host.modpackId.str}:$resolvedVer")
-        DockerService.start(host._id.str)
-        clearShutFlag(host._id)
+        DockerService.deleteContainer(current._id.str)
+        val worldId = current.worldId
+        DockerService.createContainer(current.port, current._id.str, worldId.str, "${current.packId.str}:$resolvedVer")
+        DockerService.start(current._id.str)
+        clearShutFlag(current._id)
 
         dbcl.updateOne(
-            eq("_id", host._id), combine(
+            eq("_id", current._id), combine(
                 set(Host::packVer.name, resolvedVer),
             )
         )
     }
 
-    suspend fun start(ctx: HostGuardContext) {
-        val host = getById(ctx.host._id) ?: throw RequestError("无此主机")
-        DockerService.start(host._id.str)
+    suspend fun HostGuardContext.start() {
+        val current = getById(host._id) ?: throw RequestError("无此主机")
+        DockerService.start(current._id.str)
+        clearShutFlag(current._id)
+    }
+
+    suspend fun HostGuardContext.userStop() {
+        sendCommand("stop")
         clearShutFlag(host._id)
     }
 
-    suspend fun userStop(ctx: HostGuardContext) {
-        sendCommand(ctx, "stop")
-        clearShutFlag(ctx.host._id)
+    suspend fun HostGuardContext.restart() {
+        val current = getById(host._id) ?: throw RequestError("无此主机")
+        DockerService.restart(current._id.str)
+        clearShutFlag(current._id)
     }
 
-    suspend fun restart(ctx: HostGuardContext) {
-        val host = getById(ctx.host._id) ?: throw RequestError("无此主机")
-        DockerService.restart(host._id.str)
-        clearShutFlag(host._id)
-    }
-
-    suspend fun sendCommand(ctx: HostGuardContext, command: String) {
-        val hostId = ctx.host._id
+    suspend fun HostGuardContext.sendCommand(command: String) {
+        val hostId = host._id
         val normalized = command.trimEnd()
         if (normalized.isBlank()) throw RequestError("命令不能为空")
 
@@ -540,15 +547,15 @@ object HostService {
     }
 
     // Get logs by range: [startLine, endLine), 0 means newest line
-    suspend fun getLog(ctx: HostGuardContext, startLine: Int = 0, needLines: Int): String {
+    suspend fun HostGuardContext.getLog(startLine: Int = 0, needLines: Int): String {
         if (needLines > 200) throw RequestError("行数太多")
-        val hostId = ctx.host._id
+        val hostId = host._id
         return DockerService.getLog(hostId.str, startLine, startLine + needLines)
     }
 
     // ---------- Streaming Helper (still needs ApplicationCall for SSE) ----------
-    suspend fun listenLogs(ctx: HostGuardContext, session: ServerSSESession) {
-        val hostId = ctx.host._id
+    suspend fun HostGuardContext.listenLogs(session: ServerSSESession) {
+        val hostId = host._id
         val containerName = hostId.str
         val lines = Channel<String>(capacity = Channel.BUFFERED)
         val subscription = DockerService.listenLog(
@@ -586,7 +593,7 @@ object HostService {
         if (mods.isEmpty()) throw RequestError("mod列表不得为空")
 
         val currentHost = getById(host._id) ?: throw RequestError("无此主机")
-        val merged = currentHost.mods.toMutableList()
+        val merged = currentHost.extraMods.toMutableList()
 
         mods.forEach { mod ->
             val existingIndex = merged.indexOfFirst { extra ->
@@ -604,7 +611,7 @@ object HostService {
 
         dbcl.updateOne(
             eq("_id", currentHost._id),
-            set(Host::mods.name, merged.toList())
+            set(Host::extraMods.name, merged.toList())
         )
     }
     suspend fun HostGuardContext.delExtraMods(projectIds: List<String>) {
@@ -613,13 +620,13 @@ object HostService {
         val currentHost = getById(host._id) ?: throw RequestError("无此主机")
         val targets = projectIds.toSet()
 
-        val updated = currentHost.mods.filterNot { it.projectId in targets }
+        val updated = currentHost.extraMods.filterNot { it.projectId in targets }
 
-        if (updated.size == currentHost.mods.size) throw RequestError("没有匹配的mod可删")
+        if (updated.size == currentHost.extraMods.size) throw RequestError("没有匹配的mod可删")
 
         dbcl.updateOne(
             eq("_id", currentHost._id),
-            set(Host::mods.name, updated)
+            set(Host::extraMods.name, updated)
         )
     }
     // List all hosts belonging to a team

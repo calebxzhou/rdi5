@@ -5,7 +5,7 @@ import kotlinx.serialization.Serializable
 import org.bson.types.ObjectId
 
 @Serializable
-class Modpack(
+class ModPack(
     @Contextual val _id: ObjectId = ObjectId(),
     val name: String,
     @Contextual
@@ -22,7 +22,7 @@ class Modpack(
         @Contextual val _id: ObjectId,
         @Contextual
         val modpackId: ObjectId,
-        //1.0 1.1 1.2 etc 初次create作pack name用
+        //1.0 1.1 1.2 etc
         val name: String,
         val changelog: String,
         val mods: List<Mod>,

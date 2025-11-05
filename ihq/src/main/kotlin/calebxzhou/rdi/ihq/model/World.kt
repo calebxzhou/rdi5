@@ -11,9 +11,9 @@ data class World(
     //所属团队
     @Contextual
     val teamId: ObjectId,
-    //如果mount了与上次不同的modpack  警告用户可能坏档
+    //如果mount不同的modpack  警告用户可能坏档
     @Contextual
-    val modpackId: ObjectId,
+    val packId: ObjectId,
 
     var size : Long = 0,
 ){

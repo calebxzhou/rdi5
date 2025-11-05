@@ -13,6 +13,7 @@ import calebxzhou.rdi.ihq.net.uid
 import calebxzhou.rdi.ihq.util.displayLength
 import calebxzhou.rdi.ihq.service.TeamService.addWorld
 import calebxzhou.rdi.ihq.service.TeamService.delWorld
+import calebxzhou.rdi.ihq.service.WorldService.createWorld
 import com.mongodb.client.model.Filters.eq
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.delete
@@ -28,10 +29,12 @@ fun Route.worldRoutes() = route("/world") {
         val team = TeamService.getJoinedTeam(uid) ?: throw RequestError("无团队")
         response(data = WorldService.listByTeam(team._id))
     }
-    post("/") {
-        val modpackId = paramNull("modpackId")?.let { ObjectId(it) } ?: DEFAULT_MODPACK_ID
-        val world = WorldService.create(uid, paramNull("name"), modpackId)
-        response(data = world)
+    route("/") {
+        post {
+            install(TeamGuardPlugin) { permission = TeamPermission.ADMIN_OR_OWNER }
+            val modpackId = paramNull("modpackId")?.let { ObjectId(it) } ?: DEFAULT_MODPACK_ID
+            call.teamGuardContext().createWorld(paramNull("name"), modpackId)
+        }
     }
     post("/duplicate/{worldId}") {
         val sourceId = ObjectId(param("worldId"))
@@ -68,12 +71,11 @@ object WorldService {
         }
     }
 
-    suspend fun create(uid: ObjectId, name: String?, modpackId: ObjectId): World {
-        val team = requireManageableTeam(uid)
+    suspend fun TeamGuardContext.createWorld(name: String?, packId: ObjectId): World {
         val name = name ?: "存档${listByTeam(team._id).size + 1}"
         if (name.displayLength > 32) throw RequestError("名称过长")
         ensureCapacity(team._id)
-        val world = World(name = name, teamId = team._id, modpackId = modpackId)
+        val world = World(name = name, teamId = team._id, packId = packId)
         try {
             DockerService.createVolume(world._id.toHexString())
         } catch (e: Exception) {
@@ -92,7 +94,7 @@ object WorldService {
         if (!team.isOwnerOrAdmin(uid)) throw RequestError("无权限")
         ensureCapacity(team._id)
         if (newName.displayLength > 64) throw RequestError("名称过长")
-        val newWorld = World(name = newName, teamId = team._id, modpackId = source.modpackId)
+        val newWorld = World(name = newName, teamId = team._id, packId = source.packId)
         try {
             DockerService.cloneVolume(source._id.toHexString(), newWorld._id.toHexString())
         } catch (e: Exception) {

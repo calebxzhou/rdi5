@@ -15,14 +15,16 @@ data class Host(
     @Contextual
     val teamId: ObjectId,
     @Contextual
-    val modpackId: ObjectId,
-    val packVer: String,
+    val packId: ObjectId,
+    //版本可能会重新发布 此时id会变 所以不用packVerId
+    val packVer: String = "latest",
     @Contextual
     val worldId: ObjectId,
     var port: Int,
-    val mods: List<Mod> = arrayListOf()
+    //整合包外的附加mod
+    val extraMods: List<Mod> = arrayListOf()
 ) {
 
 }
 
-fun Host.imageRef(): String = "${modpackId.toHexString()}:$packVer"
+fun Host.imageRef(): String = "${packId}:${this.packVer}"

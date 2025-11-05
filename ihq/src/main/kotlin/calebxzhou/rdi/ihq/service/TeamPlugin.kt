@@ -14,6 +14,7 @@ import org.bson.types.ObjectId
  * then access the resolved [TeamGuardContext] via [teamGuardContext].
  */
 enum class TeamPermission {
+	TEAM_MEMBER,
 	OWNER_ONLY,
 	ADMIN_OR_OWNER,
 	ADMIN_KICK_MEMBER,
@@ -70,6 +71,7 @@ val TeamGuardPlugin = createRouteScopedPlugin(
 		}
 
 		val hasPermission = when (permission) {
+			TeamPermission.TEAM_MEMBER -> true
 			TeamPermission.OWNER_ONLY -> requesterMember.role == Team.Role.OWNER
 
 			TeamPermission.ADMIN_OR_OWNER ->

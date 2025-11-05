@@ -51,7 +51,7 @@ class ModCard(
     init {
         orientation = HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
-        setPadding(context.dp(12f), context.dp(12f), context.dp(12f), context.dp(12f))
+        setPadding(context.dp(12f), context.dp(6f), context.dp(12f), context.dp(6f))
         layoutParams = linearLayoutParam(PARENT, SELF) {
             bottomMargin = context.dp(8f)
         }
@@ -81,9 +81,8 @@ class ModCard(
         textColumn.addView(titleRow, linearLayoutParam(PARENT, SELF))
 
         primaryTitleView = TextView(context).apply {
-            textSize = 16f
+
             setTextColor(MaterialColor.GRAY_900.colorValue)
-            textStyle = Typeface.BOLD
             ellipsize = TextUtils.TruncateAt.END
             maxLines = 1
         }
@@ -214,12 +213,21 @@ class ModCard(
         val hasChineseName = !vo.nameCn.isNullOrBlank()
         if (simpleMode) {
             val primaryText = vo.nameCn?.trim().orEmpty().ifBlank { vo.name.trim() }
-            primaryTitleView.text = primaryText.ifBlank { vo.name.trim() }
+
+            primaryTitleView.apply {
+                    textSize = 12f
+                    textStyle = Typeface.BOLD
+                    text = primaryText.ifBlank { vo.name.trim() }
+            }
             secondaryTitleView.visibility = View.GONE
             introView.visibility = View.GONE
         } else {
             val primaryText = if (hasChineseName) vo.nameCn.trim() else vo.name.trim()
-            primaryTitleView.text = primaryText.ifBlank { vo.name.trim() }
+            primaryTitleView.apply {
+                textSize = 16f
+                textStyle = Typeface.BOLD
+                text = primaryText.ifBlank { vo.name.trim() }
+            }
             introView.text = vo.intro.ifBlank { "暂无简介" }
             introView.visibility = View.VISIBLE
 
