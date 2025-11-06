@@ -9,11 +9,13 @@ import calebxzhou.rdi.ihq.service.PlayerService.accountCol
 import calebxzhou.rdi.ihq.service.UpdateService
 import calebxzhou.rdi.ihq.service.playerRoutes
 import calebxzhou.rdi.ihq.service.HostService
+import calebxzhou.rdi.ihq.service.JwtService
 import calebxzhou.rdi.ihq.service.hostRoutes
 import calebxzhou.rdi.ihq.service.hostPlayRoutes
 import calebxzhou.rdi.ihq.service.teamRoutes
 import calebxzhou.rdi.ihq.service.worldRoutes
 import calebxzhou.rdi.ihq.service.chatRoutes
+import calebxzhou.rdi.ihq.service.modpackRoutes
 import calebxzhou.rdi.ihq.util.serdesJson
 import com.mongodb.MongoClientSettings
 import com.mongodb.ServerAddress
@@ -25,11 +27,14 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
+import io.ktor.server.auth.jwt.JWTPrincipal
+import io.ktor.server.auth.jwt.jwt
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import io.ktor.server.plugins.compression.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.statuspages.*
+import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.*
 import io.ktor.server.sse.*
@@ -92,7 +97,7 @@ fun startHttp(){
             }
             //认证错误
             exception<AuthError> { call, cause ->
-                call.response<Unit>(false, cause.message ?: "认证错误",null)
+                call.response<Unit>(-401, cause.message ?: "账密错/未登录",null, HttpStatusCode.Unauthorized)
             }
 
             //其他内部错误
@@ -106,12 +111,16 @@ fun startHttp(){
         }
 
         install(Authentication) {
-            basic("auth-basic") {
-                realm = "Access to the '/' path"
-                validate { credentials ->
-                    PlayerService.validate(credentials.name, credentials.password)?.let {
-                        UserIdPrincipal(it._id.toString())
-                    }
+            val jwtConfig = CONF.jwt
+            jwt("auth-jwt") {
+                realm = jwtConfig.realm
+                verifier(JwtService.verifier)
+                validate { credential ->
+                    val uidClaim = credential.payload.getClaim("uid").asString()
+                    if (!uidClaim.isNullOrBlank()) JWTPrincipal(credential.payload) else null
+                }
+                challenge { _, _ ->
+                    call.response<Unit>(-401, "token×",null, HttpStatusCode.Unauthorized)
                 }
             }
         }
@@ -144,12 +153,12 @@ fun startHttp(){
                     UpdateService.getModFile(call)
                 }
             }*/
-            authenticate("auth-basic") {
+            authenticate( "auth-jwt", optional = true) {
                 teamRoutes()
                 hostRoutes()
                 worldRoutes()
                 chatRoutes()
-                //modpackRoutes()
+                modpackRoutes()
             }
         }
     }.start(wait = true)

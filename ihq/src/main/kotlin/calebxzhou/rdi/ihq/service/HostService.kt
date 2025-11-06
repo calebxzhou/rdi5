@@ -20,7 +20,6 @@ import calebxzhou.rdi.ihq.net.ok
 import calebxzhou.rdi.ihq.net.param
 import calebxzhou.rdi.ihq.net.paramNull
 import calebxzhou.rdi.ihq.net.response
-import calebxzhou.rdi.ihq.net.uid
 import calebxzhou.rdi.ihq.service.TeamService.addHost
 import calebxzhou.rdi.ihq.service.TeamService.delHost
 import calebxzhou.rdi.ihq.util.str
@@ -124,6 +123,9 @@ fun Route.hostRoutes() = route("/host") {
             )
             ok()
         }
+        get {
+            response(data = HostService.listByTeam(call.teamGuardContext().team._id))
+        }
     }
 
     route("/{hostId}") {
@@ -162,19 +164,15 @@ fun Route.hostRoutes() = route("/host") {
             ctx.requirePermission(TeamPermission.ADMIN_OR_OWNER)
             val mods = call.receive<List<Mod>>()
             ctx.addExtraMods(mods)
+            ok()
         }
         delete {
             val ctx = call.hostGuardContext()
             ctx.requirePermission(TeamPermission.ADMIN_OR_OWNER)
             val projectIds = call.receive<List<String>>()
             ctx.delExtraMods(projectIds)
+            ok()
         }
-    }
-    get("/") {
-        TeamService.getJoinedTeam(uid)
-            ?.let { HostService.listByTeam(it._id) }
-            ?.let { response(data = it) }
-            ?: response(data = emptyList<Host>())
     }
 
     /* todo 以后再支持 for 自由选择host
@@ -427,7 +425,7 @@ object HostService {
             name = team.name + "的主机" + (team.hosts().size + 1),
             teamId = team._id,
             //todo 暂时只能用默认包
-            packId = DEFAULT_MODPACK_ID,
+            modpackId = DEFAULT_MODPACK_ID,
             worldId = world._id,
             port = port,
             packVer = packVer
@@ -465,7 +463,7 @@ object HostService {
         }
         DockerService.deleteContainer(current._id.str)
         val worldId = current.worldId
-        DockerService.createContainer(current.port, current._id.str, worldId.str, "${current.packId.str}:$resolvedVer")
+        DockerService.createContainer(current.port, current._id.str, worldId.str, "${current.modpackId.str}:$resolvedVer")
         DockerService.start(current._id.str)
         clearShutFlag(current._id)
 

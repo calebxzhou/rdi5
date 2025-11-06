@@ -38,7 +38,7 @@ fun Route.modpackRoutes() {
         )
         ).firstOrNull()?.mods?.let {
             response(data=it)
-        }?:err("无此版本")
+        }?:response(data=listOf<Any>())
     }
     get("/my") {
         val mods = ModpackService.pdbcl.find(eq("authorId", call.uid)).toList()

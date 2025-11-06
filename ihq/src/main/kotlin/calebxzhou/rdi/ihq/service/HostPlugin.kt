@@ -36,6 +36,12 @@ fun HostGuardContext.requirePermission(level: TeamPermission) {
 }
 
 private val HostGuardKey = AttributeKey<HostGuardContext>("HostGuardContext")
+private val HostGuardSettingsKey = AttributeKey<HostGuardSettings>("HostGuardSettings")
+
+private data class HostGuardSettings(
+    val permission: TeamPermission,
+    val hostResolver: suspend ApplicationCall.() -> ObjectId,
+)
 
 val HostGuardPlugin = createRouteScopedPlugin(
     name = "HostGuard",
@@ -45,22 +51,32 @@ val HostGuardPlugin = createRouteScopedPlugin(
     val hostResolver = pluginConfig.hostIdExtractor
 
     onCall { call ->
-        val requesterId = call.uid
-        val hostId = hostResolver(call)
-        val host = HostService.getById(hostId) ?: throw RequestError("无此主机")
-        val team = TeamService.get(host.teamId) ?: throw RequestError("无此团队")
-        val requesterMember = team.members.firstOrNull { it.id == requesterId }
-            ?: throw RequestError("你不在该团队内")
-
-        if (host.teamId != team._id) {
-            throw RequestError("主机不属于该团队")
-        }
-
-        val ctx = HostGuardContext(host, team, requesterMember)
-        ctx.requirePermission(permission)
-
-        call.attributes.put(HostGuardKey, ctx)
+        call.attributes.put(HostGuardSettingsKey, HostGuardSettings(permission, hostResolver))
     }
 }
 
-fun ApplicationCall.hostGuardContext(): HostGuardContext = attributes[HostGuardKey]
+suspend fun ApplicationCall.hostGuardContext(): HostGuardContext {
+    if (!attributes.contains(HostGuardKey)) {
+        val settings = attributes[HostGuardSettingsKey]
+        val ctx = resolveHostGuardContext(settings)
+        attributes.put(HostGuardKey, ctx)
+    }
+    return attributes[HostGuardKey]
+}
+
+private suspend fun ApplicationCall.resolveHostGuardContext(settings: HostGuardSettings): HostGuardContext {
+    val requesterId = uid
+    val hostId = settings.hostResolver(this)
+    val host = HostService.getById(hostId) ?: throw RequestError("无此主机")
+    val team = TeamService.get(host.teamId) ?: throw RequestError("无此团队")
+    val requesterMember = team.members.firstOrNull { it.id == requesterId }
+        ?: throw RequestError("你不在该团队内")
+
+    if (host.teamId != team._id) {
+        throw RequestError("主机不属于该团队")
+    }
+
+    val ctx = HostGuardContext(host, team, requesterMember)
+    ctx.requirePermission(settings.permission)
+    return ctx
+}
