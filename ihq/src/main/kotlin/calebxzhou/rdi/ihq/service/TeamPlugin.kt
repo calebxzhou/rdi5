@@ -41,6 +41,14 @@ data class TeamGuardContext(
 )
 
 private val TeamGuardKey = AttributeKey<TeamGuardContext>("TeamGuardContext")
+private val TeamGuardSettingsKey = AttributeKey<TeamGuardSettings>("TeamGuardSettings")
+
+private data class TeamGuardSettings(
+	val permission: TeamPermission,
+	val teamResolver: suspend ApplicationCall.() -> ObjectId?,
+	val targetResolver: suspend ApplicationCall.() -> ObjectId?,
+	val requireTarget: Boolean,
+)
 
 val TeamGuardPlugin = createRouteScopedPlugin(
 	name = "TeamGuard",
@@ -52,45 +60,53 @@ val TeamGuardPlugin = createRouteScopedPlugin(
 	val requireTarget = pluginConfig.requireTargetMember
 
 	onCall { call ->
-		val requesterId = call.uid
-        val team = when (val explicitTeamId = teamResolver(call)) {
-			null -> TeamService.getJoinedTeam(requesterId)
-			else -> TeamService.get(explicitTeamId)
-		} ?: throw RequestError("无团队")
-
-		val requesterMember = team.members.firstOrNull { it.id == requesterId }
-			?: throw RequestError("你不在团队内")
-
-		val targetId = targetResolver(call)
-		val targetMember = targetId?.let { id ->
-			team.members.firstOrNull { it.id == id }
-		}
-
-		if (requireTarget && targetId != null && targetMember == null) {
-			throw RequestError("对方不在团队内")
-		}
-
-		val hasPermission = when (permission) {
-			TeamPermission.TEAM_MEMBER -> true
-			TeamPermission.OWNER_ONLY -> requesterMember.role == Team.Role.OWNER
-
-			TeamPermission.ADMIN_OR_OWNER ->
-				requesterMember.role.level <= Team.Role.ADMIN.level
-
-			TeamPermission.ADMIN_KICK_MEMBER ->
-				when (requesterMember.role) {
-					Team.Role.OWNER -> true
-					Team.Role.ADMIN -> targetMember?.role?.level?.let { it > Team.Role.ADMIN.level } ?: false
-					else -> false
-				}
-		}
-
-		if (!hasPermission) {
-			throw RequestError("无权限")
-		}
-
-		call.attributes.put(TeamGuardKey, TeamGuardContext(team, requesterMember, targetMember))
+		call.attributes.put(TeamGuardSettingsKey, TeamGuardSettings(permission, teamResolver, targetResolver, requireTarget))
 	}
 }
 
-fun ApplicationCall.teamGuardContext(): TeamGuardContext = attributes[TeamGuardKey]
+suspend fun ApplicationCall.teamGuardContext(): TeamGuardContext {
+	if (!attributes.contains(TeamGuardKey)) {
+		val settings = attributes[TeamGuardSettingsKey]
+		val context = resolveTeamGuardContext(settings)
+		attributes.put(TeamGuardKey, context)
+	}
+	return attributes[TeamGuardKey]
+}
+
+private suspend fun ApplicationCall.resolveTeamGuardContext(settings: TeamGuardSettings): TeamGuardContext {
+	val requesterId = uid
+	val team = when (val explicitTeamId = settings.teamResolver(this)) {
+		null -> TeamService.getJoinedTeam(requesterId)
+		else -> TeamService.get(explicitTeamId)
+	} ?: throw RequestError("无团队")
+
+	val requesterMember = team.members.firstOrNull { it.id == requesterId }
+		?: throw RequestError("你不在团队内")
+
+	val targetId = settings.targetResolver(this)
+	val targetMember = targetId?.let { id ->
+		team.members.firstOrNull { it.id == id }
+	}
+
+	if (settings.requireTarget && targetId != null && targetMember == null) {
+		throw RequestError("对方不在团队内")
+	}
+
+	val hasPermission = when (settings.permission) {
+		TeamPermission.TEAM_MEMBER -> true
+		TeamPermission.OWNER_ONLY -> requesterMember.role == Team.Role.OWNER
+		TeamPermission.ADMIN_OR_OWNER -> requesterMember.role.level <= Team.Role.ADMIN.level
+		TeamPermission.ADMIN_KICK_MEMBER ->
+			when (requesterMember.role) {
+				Team.Role.OWNER -> true
+				Team.Role.ADMIN -> targetMember?.role?.level?.let { it > Team.Role.ADMIN.level } ?: false
+				else -> false
+			}
+	}
+
+	if (!hasPermission) {
+		throw RequestError("无权限")
+	}
+
+	return TeamGuardContext(team, requesterMember, targetMember)
+}

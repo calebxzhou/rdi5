@@ -506,6 +506,7 @@ class RodernUI : ModernUI(), AutoCloseable, LifecycleOwner, ViewModelStoreOwner,
     override fun getOnBackPressedDispatcher(): OnBackPressedDispatcher = onBackPressedDispatcher
 
     private fun loadDefaultTypeface() {
+        //首选字体的文件名是1开头
         val tfs= File(fontsDir).listFiles { it.extension.matches(Regex("([to])tf")) }.map { file ->
             FontFamily.createFamily(file, true)
         }

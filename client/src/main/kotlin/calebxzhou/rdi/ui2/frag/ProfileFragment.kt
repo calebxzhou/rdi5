@@ -20,6 +20,7 @@ class ProfileFragment : RFragment("我的信息") {
             "▶ 进入团队" colored MaterialColor.GREEN_900 with {
                 goto(TeamFragment())
             }
+            "\uDB81\uDEEE 信箱" colored MaterialColor.BLUE_900 with {}
             /*"🏠 团队" colored MaterialColor.LIGHT_GREEN_900 with {
                 server.request<String>("room/my", method = io.ktor.http.HttpMethod.Get, showLoading = false) {
                     val body = it.data
@@ -42,7 +43,12 @@ class ProfileFragment : RFragment("我的信息") {
                 }
             }*/
 
-            "⛔ 登出" colored MaterialColor.RED_900 with { close() }
+
+        }
+        titleViewInit={
+            quickOptions {
+                "\uDB83\uDFC5 登出" colored MaterialColor.RED_900 with { close() }
+            }
         }
         contentViewInit = {
             headButton(account._id, init = {

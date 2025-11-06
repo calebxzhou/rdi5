@@ -149,7 +149,10 @@ class RServer(
         ioScope.launch {
             try {
                 val req = makeRequest<T>(path, method, params){
-                    body?.let { setBody(it) }
+                    body?.let {
+                        json()
+                        setBody(it)
+                    }
                 }
                 if (showLoading)
                     nowFragment?.closeLoading()
@@ -190,7 +193,7 @@ class RServer(
         }
 
         try {
-            ktorHttpClient.sse(urlString, {
+            ktorClient.sse(urlString, {
                 accountAuthHeader()
                 params.forEach { (key, value) ->
                     when (value) {

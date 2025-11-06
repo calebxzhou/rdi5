@@ -24,6 +24,15 @@ data class ProxyConfig(
 )
 
 @Serializable
+data class JwtConfig(
+    val secret: String = "change-me",
+    val issuer: String = "rdi",
+    val audience: String = "rdi-clients",
+    val realm: String = "RDI",
+    val expiresInSeconds: Long = 7 * 24 * 3600, // default 7 days
+)
+
+@Serializable
 data class DockerConfig(
     val host: String = "127.0.0.1",
     val port: Int = 2376,
@@ -46,6 +55,7 @@ data class AppConfig(
     val proxy: ProxyConfig = ProxyConfig(),
     val docker: DockerConfig = DockerConfig(),
     val apiKey: ApiKeyConfig = ApiKeyConfig(),
+    val jwt: JwtConfig = JwtConfig(),
 ) {
     companion object {
         private val configFile = File("config.toml")

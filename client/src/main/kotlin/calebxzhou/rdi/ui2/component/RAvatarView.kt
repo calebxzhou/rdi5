@@ -1,12 +1,10 @@
 package calebxzhou.rdi.ui2.component
 
 import calebxzhou.rdi.net.httpRequest
-import calebxzhou.rdi.net.httpRequest_
-import calebxzhou.rdi.net.success
 import calebxzhou.rdi.service.PlayerInfoCache
 import calebxzhou.rdi.ui2.paddingDp
-import calebxzhou.rdi.util.ioScope
 import calebxzhou.rdi.ui2.uiThread
+import calebxzhou.rdi.util.ioScope
 import icyllis.modernui.core.Context
 import icyllis.modernui.graphics.Bitmap
 import icyllis.modernui.graphics.BitmapFactory
@@ -15,12 +13,10 @@ import icyllis.modernui.graphics.Paint
 import icyllis.modernui.graphics.drawable.ImageDrawable
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.widget.TextView
-import io.ktor.client.call.body
-import io.ktor.client.request.url
-import io.ktor.client.statement.bodyAsBytes
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import net.neoforged.coremod.api.ASMAPI.loadData
 import org.bson.types.ObjectId
 
 class RAvatarView(

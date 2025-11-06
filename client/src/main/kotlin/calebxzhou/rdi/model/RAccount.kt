@@ -9,6 +9,7 @@ import com.mojang.authlib.minecraft.MinecraftProfileTexture
 import com.mojang.authlib.properties.Property
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import net.minecraft.client.User
 import net.minecraft.client.multiplayer.PlayerInfo
 import net.minecraft.resources.ResourceLocation
@@ -27,6 +28,8 @@ data class RAccount(
     val score: Int = 0,
     var cloth: Cloth = Cloth(),
 ) {
+    @Transient
+    var jwt: String?=null
     @Serializable
     data class Cloth(
         var isSlim: Boolean = true,

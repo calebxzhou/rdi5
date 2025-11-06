@@ -2,13 +2,9 @@ package calebxzhou.rdi.model
 
 import calebxzhou.rdi.lgr
 import calebxzhou.rdi.net.WEB_USER_AGENT
-import calebxzhou.rdi.net.body
-import calebxzhou.rdi.net.httpStringRequest_
 import calebxzhou.rdi.util.serdesJson
-import io.ktor.client.call.body
-import io.ktor.client.request.header
-import io.ktor.client.request.url
-import io.ktor.client.statement.bodyAsText
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive

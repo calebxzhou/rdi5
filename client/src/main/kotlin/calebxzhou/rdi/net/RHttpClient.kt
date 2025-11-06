@@ -1,13 +1,17 @@
 package calebxzhou.rdi.net
 
 import calebxzhou.rdi.RDI
+import calebxzhou.rdi.service.PlayerService
 import calebxzhou.rdi.util.serdesJson
 import io.ktor.client.*
 import io.ktor.client.engine.okhttp.*
 import io.ktor.client.plugins.*
+import io.ktor.client.plugins.auth.Auth
+import io.ktor.client.plugins.auth.providers.bearer
 import io.ktor.client.plugins.compression.ContentEncoding
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.sse.SSE
+import io.ktor.client.plugins.sse.SSEBufferPolicy
 import io.ktor.client.request.*
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.ContentType
@@ -51,9 +55,15 @@ val ktorClient
             install(SSE ){
                 maxReconnectionAttempts = 4
                 reconnectionTime = 2.seconds
+                bufferPolicy = SSEBufferPolicy.LastEvents(10)
             }
             install(ContentEncoding) {
                 deflate(1.0F)
                 gzip(0.9F)
+            }
+            install(HttpTimeout) {
+                requestTimeoutMillis = 60_000
+                connectTimeoutMillis = 10_000
+                socketTimeoutMillis = 60_000
             }
         }

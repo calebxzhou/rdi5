@@ -18,9 +18,8 @@ import calebxzhou.rdi.ihq.util.serdesJson
 import com.mongodb.client.model.Filters.eq
 import com.mongodb.client.model.Updates
 import com.mongodb.client.model.Updates.combine
-import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.server.auth.authenticate
-import io.ktor.server.response.respondText
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
@@ -29,43 +28,40 @@ import kotlinx.coroutines.flow.firstOrNull
 import org.bson.conversions.Bson
 import org.bson.types.ObjectId
 import java.io.File
-import kotlin.text.toByteArray
 
 fun Route.playerRoutes() {
     get("/player-info/{uid}") {
         val uid = ObjectId(param("uid"))
         val info = PlayerService.getInfo(uid)
-        response(data=(info))
+        response(data = info)
     }
     get("/player-info-by-names") {
         val names = param("names").split("\n")
         val infos = PlayerService.getInfoByNames(names)
-        response(data=(infos))
+        response(data = infos)
     }
     get("/name/{uid}") {
         val uid = ObjectId(param("uid"))
         val name = PlayerService.getName(uid) ?: "【玩家不存在】"
-        response(data=name)
+        response(data = name)
     }
     get("/skin/{uid}") {
         val uidParam = param("uid")
         val uid = ObjectId(uidParam)
         val cloth = PlayerService.getSkin(uid)
-        response(data=(cloth))
+        response(data = cloth)
     }
     post("/register") {
-        val name = param("name")
-        val pwd = param("pwd")
-        val qq = param("qq")
-        PlayerService.register(name, pwd, qq)
+        PlayerService.register(param("name"), param("pwd"), param("qq"))
         ok()
     }
+    post("/jwt") {
+        PlayerService.validate(param("usr"), param("pwd"))?.let { JwtService.generateToken(it._id) }
+            ?.let { response(data = it) } ?: err("账密×")
+    }
     post("/login") {
-        val usr = param("usr")
-        val pwd = param("pwd")
-        val specJson = paramNull("spec")
-        val account = PlayerService.login(usr, pwd, specJson, call.clientIp)
-        response(data=(account))
+        val result = PlayerService.login(param("usr"), param("pwd"), paramNull("spec"), call.clientIp)
+        response(data = result)
     }
     post("/crash-report") {
         val uid = ObjectId(param("uid"))
@@ -74,7 +70,7 @@ fun Route.playerRoutes() {
         ok()
     }
 
-    authenticate("auth-basic") {
+    authenticate( "auth-jwt", optional = true) {
         post("/skin") {
             val skin = param("skin")
             val cape = paramNull("cape")
@@ -100,6 +96,8 @@ object PlayerService {
     val accountCol = DB.getCollection<RAccount>("account")
     val authLogCol = DB.getCollection<AuthLog>("auth_log")
     val inGamePlayers = hashMapOf<Byte, RAccount>()
+
+    data class LoginResult(val account: RAccount, val token: String)
 
     suspend fun getByQQ(qq: String): RAccount? = accountCol.find(eq("qq", qq)).firstOrNull()
     suspend fun getByName(name: String): RAccount? = accountCol.find(eq("name", name)).firstOrNull()
@@ -146,14 +144,14 @@ object PlayerService {
     suspend fun register(name: String, pwd: String, qq: String): RAccount {
         if (getByQQ(qq) != null || getByName(name) != null) throw RequestError("QQ或昵称被占用")
         val nameSize = name.displayLength
-        if(nameSize !in 3..24){
+        if (nameSize !in 3..24) {
             throw RequestError("昵称长度应在3~24，当前为${nameSize}")
         }
-        if(qq.length !in 5..10 || !qq.all { it.isDigit() }) {
+        if (qq.length !in 5..10 || !qq.all { it.isDigit() }) {
             throw RequestError("QQ号格式不正确")
 
         }
-        if(pwd.length !in 6..16) {
+        if (pwd.length !in 6..16) {
             throw RequestError("密码长度须在6~16个字符")
         }
         val account = RAccount(name = name, pwd = pwd, qq = qq)

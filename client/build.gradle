@@ -183,6 +183,7 @@ def mcLibs = [
 //添加三方库别忘了jar jarJar reobfJarJar genIntellijRuns 不然找不到class
 "io.ktor:ktor-client-okhttp:$ktor_version",
 "io.ktor:ktor-client-core:$ktor_version",
+"io.ktor:ktor-client-auth:$ktor_version",
 "io.ktor:ktor-client-encoding:$ktor_version",
 'org.jsoup:jsoup:1.19.1',
 'org.mongodb:bson:5.1.0',
