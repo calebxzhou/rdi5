@@ -14,7 +14,7 @@ data class Host(
     @Contextual
     val teamId: ObjectId,
     @Contextual
-    val packId: ObjectId,
+    val modpackId: ObjectId,
     //版本可能会重新发布 此时id会变 所以不用packVerId
     val packVer: String = "latest",
     @Contextual
