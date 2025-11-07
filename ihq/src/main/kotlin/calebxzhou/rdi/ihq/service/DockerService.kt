@@ -15,16 +15,17 @@ import com.github.dockerjava.core.DefaultDockerClientConfig
 import com.github.dockerjava.core.DockerClientBuilder
 import com.github.dockerjava.httpclient5.ApacheDockerHttpClient
 import com.github.dockerjava.transport.DockerHttpClient
-import java.io.ByteArrayOutputStream
 import java.io.Closeable
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Duration
-import org.apache.commons.compress.archivers.tar.TarArchiveEntry
-import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream
 import com.github.dockerjava.api.exception.NotFoundException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry
+import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 
 object DockerService {
     private val client by lazy {
@@ -188,40 +189,69 @@ object DockerService {
         }
     }
 
-    fun uploadFile(containerName: String, localFile: Path, targetFileName: String = localFile.fileName.toString()) {
-        val container = findContainer(containerName, includeStopped = false)
+    fun uploadFile(containerName: String, localPath: Path, targetPath: String) {
+        uploadFiles(containerName, listOf(localPath), targetPath)
+    }
+
+    fun uploadFiles(containerName: String, localPaths: List<Path>, targetPath: String) {
+        if (localPaths.isEmpty()) throw RequestError("本地文件列表不得为空")
+
+        val container = findContainer(containerName, includeStopped = true)
             ?: throw RequestError("找不到此容器")
 
-        if (!Files.exists(localFile) || !Files.isRegularFile(localFile)) {
-            throw RequestError("本地文件不存在或不可读")
+        val normalizedTarget = targetPath.replace('\\', '/').trim()
+        if (normalizedTarget.isEmpty()) {
+            throw RequestError("目标路径不能为空")
+        }
+        val targetSegments = normalizedTarget.split('/')
+            .filter { it.isNotEmpty() }
+        if (targetSegments.any { it == "." || it == ".." }) {
+            throw RequestError("目标路径非法")
         }
 
-        val archiveBytes = createTarArchive(localFile, targetFileName)
+        val remoteDir = when {
+            normalizedTarget == "/" -> "/"
+            normalizedTarget.endsWith('/') -> normalizedTarget.trimEnd('/').ifEmpty { "/" }
+            else -> normalizedTarget
+        }.let { path -> if (path.startsWith('/')) path else "/$path" }
 
-        client.copyArchiveToContainerCmd(container.id)
-            .withRemotePath("/opt/server")
-            .withTarInputStream(archiveBytes.inputStream())
-            .exec()
-    }
+        val tarBytes = ByteArrayOutputStream()
+        try {
+            // Docker copy API accepts a tar stream; wrap the provided files accordingly.
+            TarArchiveOutputStream(tarBytes).use { tar ->
+                tar.setLongFileMode(TarArchiveOutputStream.LONGFILE_POSIX)
 
-    private fun createTarArchive(file: Path, entryName: String): ByteArray {
-        val normalizedName = entryName.trimStart('/')
-        ByteArrayOutputStream().use { baos ->
-            TarArchiveOutputStream(baos).use { tar ->
-                tar.setLongFileMode(TarArchiveOutputStream.LONGFILE_GNU)
-                tar.putArchiveEntry(TarArchiveEntry(normalizedName).apply {
-                    size = Files.size(file)
-                    mode = 0b110_100_100 // 0644 permissions
-                })
-                Files.newInputStream(file).use { input ->
-                    input.copyTo(tar)
+                localPaths.forEach { localPath ->
+                    if (!Files.exists(localPath) || !Files.isRegularFile(localPath)) {
+                        throw RequestError("本地文件不存在或不可读: ${localPath}")
+                    }
+
+                    val entryName = localPath.fileName?.toString()
+                        ?.takeIf { it.isNotEmpty() }
+                        ?: throw RequestError("目标文件名不能为空")
+
+                    val entry = TarArchiveEntry(entryName)
+                    entry.size = Files.size(localPath)
+                    tar.putArchiveEntry(entry)
+                    Files.newInputStream(localPath).use { input ->
+                        input.copyTo(tar)
+                    }
+                    tar.closeArchiveEntry()
                 }
-                tar.closeArchiveEntry()
-                tar.finish()
             }
-            return baos.toByteArray()
+
+            ByteArrayInputStream(tarBytes.toByteArray()).use { tarInput ->
+                client.copyArchiveToContainerCmd(container.id)
+                    .withRemotePath(remoteDir)
+                    .withTarInputStream(tarInput)
+                    .exec()
+            }
+        } catch (e: Exception) {
+            lgr.warn(e) { "uploadFile失败: $containerName -> $targetPath" }
+            throw RequestError("上传文件失败: ${e.message ?: "未知错误"}")
         }
     }
+
 
 
     private fun imageExistsLocally(repoTag: String): Boolean {
