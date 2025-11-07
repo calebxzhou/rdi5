@@ -221,6 +221,7 @@ object HostService {
     private const val SHUTDOWN_THRESHOLD = 10
 
     private val idleMonitorScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val modDownloadScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var idleMonitorJob: Job? = null
 
     private data class HostState(
@@ -592,6 +593,7 @@ object HostService {
 
         val currentHost = getById(host._id) ?: throw RequestError("无此主机")
         val merged = currentHost.extraMods.toMutableList()
+        val toDownload = mutableListOf<Mod>()
 
         mods.forEach { mod ->
             val existingIndex = merged.indexOfFirst { extra ->
@@ -601,16 +603,30 @@ object HostService {
                 val existing = merged[existingIndex]
                 if (existing != mod) {
                     merged[existingIndex] = mod
+                    toDownload += mod
                 }
             } else {
                 merged += mod
+                toDownload += mod
             }
         }
-
         dbcl.updateOne(
             eq("_id", currentHost._id),
             set(Host::extraMods.name, merged.toList())
         )
+        host.downloadExtraMods(toDownload)
+    }
+    suspend fun Host.downloadExtraMods(mods: List<Mod>) {
+        if (mods.isEmpty()) return
+        modDownloadScope.launch {
+            runCatching {
+                val downloadedPaths = CurseForgeService.downloadMods(mods)
+                if (downloadedPaths.isEmpty()) return@runCatching
+                DockerService.uploadFiles(_id.str, downloadedPaths, "/opt/server/mods")
+            }.onFailure { error ->
+                lgr.warn(error) { "后台下载额外mod失败: ${error.message}" }
+            }
+        }
     }
     suspend fun HostGuardContext.delExtraMods(projectIds: List<String>) {
         if (projectIds.isEmpty()) throw RequestError("mod列表不得为空")

@@ -57,8 +57,10 @@ val DB = MongoClient.create(
         .uuidRepresentation(UuidRepresentation.STANDARD)
         .build()).getDatabase(CONF.database.name)
 val CRASH_REPORT_DIR = File("crash-report")
+val DOWNLOAD_MODS_DIR = File("download-mods")
 fun main(): Unit =runBlocking {
     CRASH_REPORT_DIR.mkdir()
+    DOWNLOAD_MODS_DIR.mkdir()
         lgr.info { "init db" }
 
         accountCol.createIndex(Indexes.ascending("qq"), IndexOptions().unique(true))

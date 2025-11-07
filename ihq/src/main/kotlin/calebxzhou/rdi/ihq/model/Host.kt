@@ -22,7 +22,7 @@ data class Host(
     val worldId: ObjectId,
     var port: Int,
     //整合包外的附加mod
-    val extraMods: List<Mod> = arrayListOf()
+    var extraMods: List<Mod> = arrayListOf()
 ) {
 
 }
