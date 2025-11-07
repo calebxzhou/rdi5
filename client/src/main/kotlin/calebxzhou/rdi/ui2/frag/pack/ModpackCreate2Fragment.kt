@@ -35,7 +35,7 @@ class ModpackCreate2Fragment(val name: String) : RFragment("制作整合包2") {
     }
 
     private fun loadMods() = ioScope.launch {
-        val modFiles = ModService().mods
+       /* val modFiles = ModService().mods
         val modsCount = modFiles.size
         if (modsCount == 0) {
             modGrid.showEmpty("未检测到已安装的mod")
@@ -57,6 +57,6 @@ class ModpackCreate2Fragment(val name: String) : RFragment("制作整合包2") {
                     ModpackCreate3Fragment(name, curseForgeResult.mods).go()
                 }
             }
-        }
+        }*/
     }
 }

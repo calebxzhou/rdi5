@@ -1,6 +1,7 @@
 package calebxzhou.rdi.ui2.component
 
-import calebxzhou.rdi.model.ModBriefVo
+import calebxzhou.rdi.model.ModCardVo
+import calebxzhou.rdi.model.pack.Mod
 import calebxzhou.rdi.net.httpRequest
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.util.ioScope
@@ -22,11 +23,11 @@ import java.io.ByteArrayInputStream
 
 class ModCard(
     context: Context,
-    val vo: ModBriefVo,
+    val mod: Mod,
     enableSelect: Boolean = true,
     simpleMode: Boolean = true
 ): LinearLayout(context) {
-
+    var vo = mod.vo?: ModCardVo(name=mod.slug)
     private val iconView: ImageView
     private val primaryTitleView: TextView
     private val secondaryTitleView: TextView
@@ -222,7 +223,7 @@ class ModCard(
             secondaryTitleView.visibility = View.GONE
             introView.visibility = View.GONE
         } else {
-            val primaryText = if (hasChineseName) vo.nameCn.trim() else vo.name.trim()
+            val primaryText = if (hasChineseName) vo.nameCn!!.trim() else vo.name.trim()
             primaryTitleView.apply {
                 textSize = 16f
                 textStyle = Typeface.BOLD

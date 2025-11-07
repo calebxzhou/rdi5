@@ -1,6 +1,11 @@
 package calebxzhou.rdi.ui2.component
 
-import calebxzhou.rdi.model.ModBriefVo
+import calebxzhou.rdi.Const
+import calebxzhou.rdi.model.CurseForgeLocalResult
+import calebxzhou.rdi.model.pack.Mod
+import calebxzhou.rdi.service.filterServerOnlyMods
+import calebxzhou.rdi.service.installedMods
+import calebxzhou.rdi.service.loadInfoCurseForge
 import calebxzhou.rdi.ui2.MaterialColor
 import calebxzhou.rdi.ui2.PARENT
 import calebxzhou.rdi.ui2.SELF
@@ -10,18 +15,29 @@ import calebxzhou.rdi.ui2.linearLayoutParam
 import calebxzhou.rdi.ui2.scrollView
 import calebxzhou.rdi.ui2.uiThread
 import calebxzhou.rdi.ui2.vertical
+import calebxzhou.rdi.util.ioTask
 import icyllis.modernui.core.Context
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.view.View
 import icyllis.modernui.view.ViewGroup
 import icyllis.modernui.widget.LinearLayout
 import icyllis.modernui.widget.TextView
+import kotlinx.serialization.cbor.Cbor
+import kotlinx.serialization.decodeFromByteArray
+import java.io.File
+import kotlin.collections.isNotEmpty
 
 class ModGrid(
     ctx: Context,
-    isSelectionEnabled: Boolean = false,
-    onSelectionChanged: ((List<ModBriefVo>) -> Unit)? = null
-) : LinearLayout(ctx) {
+    val isSelectionEnabled: Boolean = false,
+    //有=不从cf获取 直接用
+    var mods: List<Mod> = emptyList(),
+    val onSelectionChanged: ((List<Mod>) -> Unit)? = null,
+    ) : LinearLayout(ctx) {
+    companion object {
+        val MOCK_DATA: List<Mod>
+            get() = File("temp_mods.cbor").readBytes().let { Cbor.decodeFromByteArray(it) }
+    }
 
     private val cardsContainer: LinearLayout = LinearLayout(ctx).apply { vertical() }
 
@@ -32,19 +48,20 @@ class ModGrid(
         text = "正在读取已经安装的mod…"
     }
 
-    private val selectedMods = linkedSetOf<ModBriefVo>()
-    private val cardMap = linkedMapOf<ModBriefVo, ModCard>()
-    private val selectionListeners = mutableListOf<(List<ModBriefVo>) -> Unit>()
-    private var currentBriefs: List<ModBriefVo> = emptyList()
+    private val selectedMods = linkedSetOf<Mod>()
+    private val cards = linkedMapOf<Mod, ModCard>()
     private var pendingRender: Runnable? = null
+
+    //mod载入结果 如果直接用了brief就是null
+    var modLoadResult: CurseForgeLocalResult? = null
 
     var selectionEnabled: Boolean = isSelectionEnabled
         set(value) {
             if (field == value) return
             field = value
-            cardMap.values.forEach { card ->
-                card.enableSelect = value
-                card.setOnClickListener(if (value) createCardClickListener(card) else null)
+            cards.forEach { card ->
+                card.value.enableSelect = value
+                card.value.setOnClickListener(if (value) createCardClickListener(card.value) else null)
             }
             if (!value && selectedMods.isNotEmpty()) {
                 selectedMods.clear()
@@ -65,59 +82,66 @@ class ModGrid(
 
         cardsContainer.addView(stateTextView, linearLayoutParam(PARENT, SELF))
 
-        onSelectionChanged?.let { addSelectionListener(it) }
 
         cardsContainer.addOnLayoutChangeListener { _, left, _, right, _, oldLeft, _, oldRight, _ ->
             val newWidth = right - left
             val oldWidth = oldRight - oldLeft
-            if (newWidth > 0 && newWidth != oldWidth && currentBriefs.isNotEmpty()) {
-                schedulePendingRender(currentBriefs)
+            if (newWidth > 0 && newWidth != oldWidth && mods.isNotEmpty()) {
+                schedulePendingRender(mods)
             }
         }
+        showMods(mods)
+
     }
 
-    fun addSelectionListener(listener: (selected: List<ModBriefVo>) -> Unit) {
-        selectionListeners.add(listener)
-    }
-
-    fun removeSelectionListener(listener: (selected: List<ModBriefVo>) -> Unit) {
-        selectionListeners.remove(listener)
+    fun loadModsFromLocalInstalled() = ioTask {
+        val mods = installedMods.filterServerOnlyMods()
+        if (mods.isEmpty()) {
+            showEmpty()
+            return@ioTask
+        }
+        showLoading("找到了${mods.size}个mod，正在从CurseForge读取信息...大概5~10秒")
+        if (Const.USE_MOCK_DATA) {
+            showMods(MOCK_DATA)
+        } else {
+            mods.loadInfoCurseForge().let { modLoadResult = it; showMods(it.mods) }
+        }
     }
 
     fun showLoading(message: String) = uiThread {
         displayState(message, paddingTopDp = 8f, clearSelection = false)
     }
 
-    fun showEmpty(message: String) = uiThread {
-        displayState(message, paddingTopDp = 16f, clearSelection = true)
+    fun showEmpty() = uiThread {
+        displayState("暂无可展示的Mod", paddingTopDp = 16f, clearSelection = true)
     }
 
-    fun showMods(briefs: List<ModBriefVo>) = uiThread {
-        if (briefs.isEmpty()) {
-            currentBriefs = emptyList()
-            displayState("暂无可展示的Mod", paddingTopDp = 16f, clearSelection = true)
+    fun showMods(modsToShow: List<Mod>) = uiThread {
+        if (modsToShow.isEmpty()) {
+            this.mods = emptyList()
+            showEmpty()
             return@uiThread
         }
 
-        currentBriefs = briefs
+        this.mods = modsToShow
 
-        val availableBriefs = briefs.toSet()
+        val availableBriefs = modsToShow.toSet()
         val selectionTrimmed = selectedMods.retainAll(availableBriefs)
 
-        renderGrid(briefs)
+        renderGrid(modsToShow)
 
         if (selectionTrimmed) {
             notifySelectionChanged()
         }
     }
 
-    fun getSelectedMods(): List<ModBriefVo> = selectedMods.toList()
+    fun getSelectedMods(): List<Mod> = selectedMods.toList()
 
     fun selectAll() = uiThread {
-        if (!selectionEnabled || cardMap.isEmpty()) return@uiThread
+        if (!selectionEnabled || cards.isEmpty()) return@uiThread
         selectedMods.clear()
-        cardMap.forEach { (brief, card) ->
-            selectedMods.add(brief)
+        cards.forEach { (mod, card) ->
+            selectedMods.add(mod)
             if (!card.isCardSelected()) {
                 card.setSelectedState(true)
             }
@@ -131,7 +155,7 @@ class ModGrid(
             selectedMods.clear()
             changed = true
         }
-        cardMap.values.forEach { card ->
+        cards.values.forEach { card ->
             if (card.isCardSelected()) {
                 card.setSelectedState(false)
                 changed = true
@@ -147,9 +171,9 @@ class ModGrid(
             if (!selectionEnabled) return@OnClickListener
             val isNowSelected = card.toggleSelectedState()
             if (isNowSelected) {
-                selectedMods.add(card.vo)
+                selectedMods.add(card.mod)
             } else {
-                selectedMods.remove(card.vo)
+                selectedMods.remove(card.mod)
             }
             notifySelectionChanged()
         }
@@ -158,12 +182,12 @@ class ModGrid(
     private fun displayState(message: String, paddingTopDp: Float, clearSelection: Boolean) {
         pendingRender?.let { cardsContainer.removeCallbacks(it) }
         pendingRender = null
-        currentBriefs = emptyList()
+        mods = emptyList()
         if (clearSelection && selectedMods.isNotEmpty()) {
             selectedMods.clear()
             notifySelectionChanged()
         }
-        cardMap.clear()
+        cards.clear()
         cardsContainer.removeAllViews()
         stateTextView.text = message
         stateTextView.setPadding(0, context.dp(paddingTopDp), 0, context.dp(paddingTopDp))
@@ -172,13 +196,13 @@ class ModGrid(
 
     private fun notifySelectionChanged() {
         val snapshot = getSelectedMods()
-        selectionListeners.forEach { it(snapshot) }
+        onSelectionChanged?.invoke(snapshot)
     }
 
-    private fun renderGrid(briefs: List<ModBriefVo>) {
+    private fun renderGrid(modsToRender: List<Mod>) {
         val availableWidth = cardsContainer.width
         if (availableWidth <= 0) {
-            schedulePendingRender(briefs)
+            schedulePendingRender(modsToRender)
             return
         }
 
@@ -187,24 +211,24 @@ class ModGrid(
         val spacing = context.dp(12f)
         val columns = maxOf(1, (contentWidth + spacing) / (minCardWidth + spacing))
 
-        val existingCards = HashMap(cardMap)
-        cardMap.clear()
+        val existingCards = HashMap(cards)
+        cards.clear()
         cardsContainer.removeAllViews()
 
         val rowContext = context
-        briefs.chunked(columns).forEach { rowItems ->
+        modsToRender.chunked(columns).forEach { rowItems ->
             val row = LinearLayout(rowContext).apply {
                 horizontal()
                 gravity = Gravity.TOP
             }
 
-            rowItems.forEachIndexed { index, brief ->
-                val card = existingCards[brief] ?: ModCard(rowContext, brief, enableSelect = selectionEnabled)
+            rowItems.forEachIndexed { index, mod ->
+                val card = existingCards[mod] ?: ModCard(rowContext, mod, enableSelect = selectionEnabled)
                 (card.parent as? ViewGroup)?.removeView(card)
                 card.enableSelect = selectionEnabled
-                card.setSelectedState(selectedMods.contains(brief))
+                card.setSelectedState(selectedMods.contains(mod))
                 card.setOnClickListener(if (selectionEnabled) createCardClickListener(card) else null)
-                cardMap[brief] = card
+                cards[mod] = card
                 row.addView(card, linearLayoutParam(0, SELF) {
                     weight = 1f
                     if (index < rowItems.lastIndex) {
@@ -225,12 +249,12 @@ class ModGrid(
         }
     }
 
-    private fun schedulePendingRender(briefs: List<ModBriefVo>) {
+    private fun schedulePendingRender(modsToRender: List<Mod>) {
         pendingRender?.let { cardsContainer.removeCallbacks(it) }
         pendingRender = Runnable {
             pendingRender = null
-            if (currentBriefs.isNotEmpty()) {
-                renderGrid(currentBriefs)
+            if (modsToRender.isNotEmpty()) {
+                renderGrid(modsToRender)
             }
         }
         cardsContainer.post(pendingRender)

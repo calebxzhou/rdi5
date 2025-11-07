@@ -2,6 +2,7 @@ package calebxzhou.rdi.model
 
 import kotlinx.serialization.Serializable
 
+//mod简要信息 从pcl 的 ModData取得 + mcmod目录爬取
 @Serializable
 data class ModBriefInfo(
     //页面id  /class/{id}.html

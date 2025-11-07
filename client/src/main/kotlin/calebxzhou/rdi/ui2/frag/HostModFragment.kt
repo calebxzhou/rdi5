@@ -1,12 +1,13 @@
 package calebxzhou.rdi.ui2.frag
 
-import calebxzhou.rdi.Const
 import calebxzhou.rdi.model.Host
-import calebxzhou.rdi.model.ModBriefVo
+import calebxzhou.rdi.model.ModCardVo
 import calebxzhou.rdi.model.pack.Mod
 import calebxzhou.rdi.net.server
-import calebxzhou.rdi.service.ModService
-import calebxzhou.rdi.service.ModService.Companion.toVo
+import calebxzhou.rdi.service.CurseForgeService
+import calebxzhou.rdi.service.ModrinthService
+import calebxzhou.rdi.service.slugBriefInfo
+import calebxzhou.rdi.service.toVo
 import calebxzhou.rdi.ui2.FragmentSize
 import calebxzhou.rdi.ui2.MaterialColor
 import calebxzhou.rdi.ui2.component.ModGrid
@@ -17,59 +18,105 @@ import calebxzhou.rdi.ui2.plusAssign
 import calebxzhou.rdi.ui2.textView
 import calebxzhou.rdi.util.ioTask
 import calebxzhou.rdi.util.json
-import kotlinx.serialization.cbor.Cbor
-import kotlinx.serialization.decodeFromByteArray
+import icyllis.modernui.widget.TextView
+import io.ktor.http.HttpMethod
 import org.bson.types.ObjectId
-import java.io.File
 
-class HostModFragment(val host: Host): RFragment("主机的所有Mod") {
+class HostModFragment(val host: Host) : RFragment("主机的所有Mod") {
     override var fragSize = FragmentSize.FULL
     private lateinit var extraModGrid: ModGrid
     private lateinit var packModGrid: ModGrid
+    private lateinit var extraModText: TextView
+    private lateinit var packModText: TextView
+
     init {
 
         contentViewInit = {
-            textView("附加Mod：")
-            textView("整合包Mod：")
-            extraModGrid = ModGrid(context)
-            packModGrid = ModGrid(context)
+            extraModText = textView("附加Mod：")
+            extraModGrid = ModGrid(context, isSelectionEnabled = true).also { this += it }
+
+            packModText = textView("整合包Mod：")
+            packModGrid = ModGrid(context).also { this += it }
+
             loadPackMods()
             loadExtraMods()
         }
         titleViewInit = {
             quickOptions {
-                "+ 添加Mod" colored MaterialColor.GREEN_900 with { Add(host._id).go() }
+                "全选" make checkbox with {
+                    if (it)
+                        extraModGrid.selectAll()
+                    else
+                        extraModGrid.clearSelection()
+                }
+                "\uF014 删除选中" colored MaterialColor.RED_900 with {
+                    Confirm(
+                        false,
+                        host._id,
+                        extraModGrid.getSelectedMods()
+                    ).go()
+                }
+                "+ 附加Mod" colored MaterialColor.GREEN_900 with { Add(host._id).go() }
             }
         }
     }
+
     private fun loadPackMods() = ioTask {
-        val mods = server.makeRequest<List<Mod>>(path = "modpack/${host.modpackId}/${host.packVer}/mods").data!!
-        val ms = ModService()
-        mods.mapNotNull { ms.cfSlugBriefInfo[it.slug] }.map { it.toVo() }.let { packModGrid.showMods(it) }
+        val mods = server.makeRequest<List<Mod>>(path = "modpack/${host.modpackId}/${host.packVer}/mods").data ?: run {
+            packModText.text = "整合包Mod：无"
+            return@ioTask
+        }
+        val displayMods = mods.map { original ->
+            val vo = when (original.platform) {
+                "cf" -> CurseForgeService.slugBriefInfo[original.slug]?.toVo()
+                "mr" -> ModrinthService.slugBriefInfo[original.slug]?.toVo()
+                else -> null
+            } ?: placeholderBrief(original.slug)
+            original.copy().also { copy -> copy.vo = vo }
+        }
+        packModGrid.showMods(displayMods)
     }
+
     private fun loadExtraMods() = ioTask {
-        val ms = ModService()
-        host.extraMods.mapNotNull { ms.cfSlugBriefInfo[it.slug] }.map { it.toVo() }.let { packModGrid.showMods(it) }
+        if (host.extraMods.isEmpty()) {
+            extraModText.text = "没有附加Mod。"
+            return@ioTask
+        }
+        val displayMods = host.extraMods.map { original ->
+            val vo = CurseForgeService.slugBriefInfo[original.slug]?.toVo()
+                ?: placeholderBrief(original.slug)
+            original.copy().also { copy -> copy.vo = vo }
+        }
+        extraModGrid.showMods(displayMods)
     }
+
+
+    private fun placeholderBrief(slug: String) = ModCardVo(
+        name = slug,
+        nameCn = null,
+        intro = "暂无简介",
+        iconData = null,
+        iconUrls = emptyList()
+    )
 
     class Add(val hostId: ObjectId) : RFragment("向主机添加Mod 请选择") {
-        companion object{
-            val MOCK_DATA: List<ModBriefVo> =  File("temp_mods.cbor").readBytes().let { Cbor.decodeFromByteArray(it) }
+        companion object {
 
         }
+
         override var fragSize = FragmentSize.FULL
         private lateinit var modGrid: ModGrid
-        var curseForgeResult: ModService.CurseForgeLocalResult?=null
+
         init {
             contentViewInit = {
                 modGrid = ModGrid(context, isSelectionEnabled = true) { updateSelectedCount(it.size) }
                 this += modGrid
-                loadLocalMods()
+                modGrid.loadModsFromLocalInstalled()
             }
-            titleViewInit= {
+            titleViewInit = {
                 quickOptions {
                     "全选" make checkbox with {
-                        if(it)
+                        if (it)
                             modGrid.selectAll()
                         else
                             modGrid.clearSelection()
@@ -79,28 +126,8 @@ class HostModFragment(val host: Host): RFragment("主机的所有Mod") {
             }
         }
 
-        private fun updateSelectedCount(count: Int)  {
+        private fun updateSelectedCount(count: Int) {
             title = "已选择${count}个Mod"
-        }
-
-        private fun loadLocalMods() = ioTask {
-            val ms = ModService().filterServerOnlyMods()
-            if (ms.mods.isEmpty()) {
-                alertErr("未找到能添加到主机的Mod，请先安装Mod")
-                return@ioTask
-            }
-            modGrid.showLoading("找到了${ms.mods.size}个mod，正在从CurseForge读取信息...大概5~10秒")
-            val briefs = if(!Const.USE_MOCK_DATA){
-                val curseForgeResult = ms.discoverModsCurseForge()
-                this.curseForgeResult=curseForgeResult
-                modGrid.showLoading("CurseForge已匹配 ${curseForgeResult.matchedFiles.size}个 Mod，正在载入结果...")
-                curseForgeResult.cards.map { it.brief }
-            } else MOCK_DATA
-            // if (Const.DEBUG) File("temp_mods.cbor").writeBytes(briefs.cbor)
-            modGrid.showMods(briefs)
-            updateSelectedCount(modGrid.getSelectedMods().size)
-
-
         }
 
         fun onNext() {
@@ -110,33 +137,50 @@ class HostModFragment(val host: Host): RFragment("主机的所有Mod") {
                 alertErr("请至少选择一个Mod")
                 return
             }
-            curseForgeResult?.let {
-                Confirm(hostId,it.mods,it.cards.map { it.brief }).go()
+            if (modGrid.modLoadResult == null) {
+                alertErr("CurseForge 信息尚未加载完成，请稍后再试")
+                return
             }
+            Confirm(true, hostId, selected).go()
 
         }
-
-        class Confirm(val hostId: ObjectId, val selected: List<Mod>, val selectedVo: List<ModBriefVo>) : RFragment("确认添加这${selected.size}个Mod吗？") {
-            override var fragSize = FragmentSize.FULL
-
-            init {
-                contentViewInit = {
-                    this += ModGrid(context).also {  it.showMods(selectedVo) }
-                }
-                titleViewInit = {
-                    quickOptions {
-                        "☑ 提交" colored MaterialColor.GREEN_900 with { onNext() }
-                    }
-                }
-            }
-
-            fun onNext()=ioTask {
-                val etaSecs = selected.size * 10
-                server.requestU("host/${hostId}/extra_mod", body = selected.json){
-                    alertOk("已提交Mod添加请求，大约要等${etaSecs/60}分${etaSecs%60}秒，完成后会发送结果到信箱")
-                }
-            }
-        }
-
     }
+
+    class Confirm(val add: Boolean, val hostId: ObjectId, val selected: List<Mod>) :
+        RFragment("确认${if (add) "添加" else "删除"}这${selected.size}个Mod吗？") {
+        override var fragSize = FragmentSize.FULL
+
+        init {
+            contentViewInit = {
+                val displayMods = selected.map { mod ->
+                    mod.copy().also { copy -> copy.vo = mod.vo }
+                }
+                this += ModGrid(context, mods = displayMods)
+            }
+            titleViewInit = {
+                quickOptions {
+                    "☑ 提交" colored MaterialColor.GREEN_900 with { onNext() }
+                }
+            }
+        }
+
+        fun onNext() = ioTask {
+            if (add) {
+                val etaSecs = selected.size * 10
+                server.requestU("host/${hostId}/extra_mod", body = selected.json) {
+                    alertOk("已提交Mod添加请求，大约要等${etaSecs / 60}分${etaSecs % 60}秒，完成后会发送结果到信箱")
+                }
+            } else {
+                server.requestU(
+                    "host/${hostId}/extra_mod",
+                    body = selected.map { it.projectId }.json,
+                    method = HttpMethod.Delete
+                ) {
+                    alertOk("成功删除了这${selected.size}个Mod")
+                }
+            }
+        }
+    }
+
+
 }
