@@ -5,7 +5,11 @@ import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.net.downloadFileWithProgress
 import calebxzhou.rdi.net.formatBytes
 import calebxzhou.rdi.net.formatSpeed
+import calebxzhou.rdi.service.MOD_DIR
 import calebxzhou.rdi.service.ModService
+import calebxzhou.rdi.service.installedMods
+import calebxzhou.rdi.service.modId
+import calebxzhou.rdi.service.readNeoForgeConfig
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.util.ioTask
 import calebxzhou.rdi.util.notifyOs
@@ -15,6 +19,7 @@ import icyllis.modernui.view.View
 import icyllis.modernui.widget.LinearLayout
 import icyllis.modernui.widget.ScrollView
 import java.io.File
+import java.util.jar.JarFile
 import kotlin.system.exitProcess
 
 class UpdateFragment(val server: RServer) : RFragment("正在检查更新") {
@@ -120,9 +125,20 @@ class UpdateFragment(val server: RServer) : RFragment("正在检查更新") {
 
     //返回需要更新的mod列表
     suspend fun RServer.checkUpdate( ): Map<String, File> {
-        val ms = ModService()
-        val clientIdFile = ms.idMods
-        val clientIdSha1 = ms.idSha1s
+        val clientIdFile = installedMods.mapNotNull { file ->
+            JarFile(file).use { jar ->
+                jar.readNeoForgeConfig()?.let { conf ->
+                    conf.modId to file
+                }
+            }
+        }.toMap()
+        val clientIdSha1 = installedMods.mapNotNull { file ->
+            JarFile(file).use { jar ->
+                jar.readNeoForgeConfig()?.let { conf ->
+                    conf.modId to file.sha1
+                }
+            }
+        }.toMap()
         val modlist = makeRequest<String>("update/mod-list").data
 
         val modsUpdate = hashMapOf<String, File>()
@@ -138,7 +154,7 @@ class UpdateFragment(val server: RServer) : RFragment("正在检查更新") {
                 if (clientSha1 != serverSha1) {
                     modsUpdate += id to file
                 }
-            } ?: let { modsUpdate += id to File(ModService.MOD_DIR, "$id.jar") }
+            } ?: let { modsUpdate += id to File(MOD_DIR, "$id.jar") }
         }
         /*notifyOs(
             "以下mod需要更新:${modsStrDisp}.正在更新。"
