@@ -1,6 +1,8 @@
 package calebxzhou.rdi.model.pack
 
+import calebxzhou.rdi.model.ModCardVo
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 
 @Serializable
 data class Mod(
@@ -10,4 +12,6 @@ data class Mod(
     val fileId: String,
     val hash: String,
 ) {
+    @Transient
+    var vo: ModCardVo?=null
 }

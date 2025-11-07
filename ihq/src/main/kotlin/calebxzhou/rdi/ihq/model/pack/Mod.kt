@@ -10,4 +10,5 @@ data class Mod(
     val fileId: String,
     val hash: String,
 ) {
+    val fileName = "${slug}_${platform}_${hash}.jar"
 }
