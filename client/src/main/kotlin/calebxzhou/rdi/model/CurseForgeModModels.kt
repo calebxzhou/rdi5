@@ -1,6 +1,8 @@
 package calebxzhou.rdi.model
 
+import calebxzhou.rdi.model.pack.Mod
 import kotlinx.serialization.Serializable
+import java.io.File
 
 @Serializable
 data class CurseForgeModsRequest(
@@ -92,4 +94,11 @@ data class CurseForgeFileIndex(
     val releaseType: Int? = null,
     val gameVersionTypeId: Long? = null,
     val modLoader: Int? = null
+)
+
+
+data class CurseForgeLocalResult(
+    val matchedFiles: List<File> = emptyList(),
+    val unmatchedFiles: List<File> = emptyList(),
+    val mods: List<Mod> = emptyList()
 )

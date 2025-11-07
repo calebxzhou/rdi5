@@ -2,10 +2,6 @@ package calebxzhou.rdi.model
 
 import kotlinx.serialization.Serializable
 
-@Serializable
-data class CurseForgeFingerprintRequest(
-    val fingerprints: List<Long>
-)
 
 @Serializable
 data class CurseForgeFingerprintResponse(
