@@ -38,7 +38,7 @@ fun Route.teamRoutes() = route("/team") {
 
     delete("/") {
         install(TeamGuardPlugin) {
-            permission = TeamPermission.OWNER_ONLY
+            permission = TeamPermission.OWNER
         }
         handle {
             val ctx = call.teamGuardContext()
@@ -49,7 +49,7 @@ fun Route.teamRoutes() = route("/team") {
 
     post("/member/{qq}") {
         install(TeamGuardPlugin) {
-            permission = TeamPermission.ADMIN_OR_OWNER
+            permission = TeamPermission.ADMIN
         }
         handle {
             val ctx = call.teamGuardContext()
@@ -60,7 +60,7 @@ fun Route.teamRoutes() = route("/team") {
 
     delete("/member/{uid2}") {
         install(TeamGuardPlugin) {
-            permission = TeamPermission.ADMIN_KICK_MEMBER
+            permission = TeamPermission.ADMIN
             targetIdExtractor = { idParam("uid2") }
             requireTargetMember = true
         }
@@ -74,7 +74,7 @@ fun Route.teamRoutes() = route("/team") {
 
     post("/transfer/{uid2}") {
         install(TeamGuardPlugin) {
-            permission = TeamPermission.OWNER_ONLY
+            permission = TeamPermission.OWNER
             targetIdExtractor = { (idParam("uid2")) }
             requireTargetMember = true
         }
@@ -88,7 +88,7 @@ fun Route.teamRoutes() = route("/team") {
 
     put("/role/{uid2}/{role}") {
         install(TeamGuardPlugin) {
-            permission = TeamPermission.OWNER_ONLY
+            permission = TeamPermission.OWNER
             targetIdExtractor = { (idParam("uid2")) }
             requireTargetMember = true
         }

@@ -1,7 +1,6 @@
 package calebxzhou.rdi.ihq.service
 
 import calebxzhou.rdi.ihq.DB
-import calebxzhou.rdi.ihq.DOWNLOAD_MODS_DIR
 import calebxzhou.rdi.ihq.DEFAULT_MODPACK_ID
 import calebxzhou.rdi.ihq.exception.RequestError
 import calebxzhou.rdi.ihq.model.Host
@@ -58,7 +57,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.withContext
-import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Duration.Companion.minutes
@@ -67,7 +65,7 @@ import org.bson.types.ObjectId
 // ---------- Routing DSL (mirrors teamRoutes style) ----------
 fun Route.hostRoutes() = route("/host") {
     route("/{hostId}/status") {
-        install(HostGuardPlugin) { permission = TeamPermission.TEAM_MEMBER }
+        install(HostGuardPlugin) { permission = TeamPermission.MEMBER }
         get {
             val ctx = call.hostGuardContext()
             response(data = HostService.getServerStatus(ctx.host).toString())
@@ -75,7 +73,7 @@ fun Route.hostRoutes() = route("/host") {
     }
 
     route("/{hostId}/start") {
-        install(HostGuardPlugin) { permission = TeamPermission.ADMIN_OR_OWNER }
+        install(HostGuardPlugin) { permission = TeamPermission.ADMIN }
         post {
             call.hostGuardContext().start()
             ok()
@@ -83,7 +81,7 @@ fun Route.hostRoutes() = route("/host") {
     }
 
     route("/{hostId}/stop") {
-        install(HostGuardPlugin) { permission = TeamPermission.ADMIN_OR_OWNER }
+        install(HostGuardPlugin) { permission = TeamPermission.ADMIN }
         post {
             call.hostGuardContext().userStop()
             ok()
@@ -91,7 +89,7 @@ fun Route.hostRoutes() = route("/host") {
     }
 
     route("/{hostId}/command") {
-        install(HostGuardPlugin) { permission = TeamPermission.ADMIN_OR_OWNER }
+        install(HostGuardPlugin) { permission = TeamPermission.ADMIN }
         post {
             val ctx = call.hostGuardContext()
             val command = param("command")
@@ -101,7 +99,7 @@ fun Route.hostRoutes() = route("/host") {
     }
 
     route("/{hostId}/restart") {
-        install(HostGuardPlugin) { permission = TeamPermission.ADMIN_OR_OWNER }
+        install(HostGuardPlugin) { permission = TeamPermission.ADMIN }
         post {
             call.hostGuardContext().restart()
             ok()
@@ -109,7 +107,7 @@ fun Route.hostRoutes() = route("/host") {
     }
 
     route("/{hostId}/update") {
-        install(HostGuardPlugin) { permission = TeamPermission.ADMIN_OR_OWNER }
+        install(HostGuardPlugin) { permission = TeamPermission.ADMIN }
         post {
             val ctx = call.hostGuardContext()
             ctx.update(paramNull("packVer"))
@@ -118,8 +116,9 @@ fun Route.hostRoutes() = route("/host") {
     }
 
     route("/") {
+        install(TeamGuardPlugin)
         post {
-            install(TeamGuardPlugin) { permission = TeamPermission.OWNER_ONLY }
+            call.teamGuardContext().requester require Team.Role.OWNER
             call.teamGuardContext().createHost(
                 DEFAULT_MODPACK_ID,
                 "latest",
@@ -128,7 +127,7 @@ fun Route.hostRoutes() = route("/host") {
             ok()
         }
         get {
-            install(TeamGuardPlugin) { permission = TeamPermission.TEAM_MEMBER }
+            call.teamGuardContext().requester require Team.Role.MEMBER
             response(data = HostService.listByTeam(call.teamGuardContext().team._id))
         }
     }
@@ -140,14 +139,14 @@ fun Route.hostRoutes() = route("/host") {
             } ?: err("无此主机")
         }
         delete {
-            install(HostGuardPlugin) { permission = TeamPermission.OWNER_ONLY }
+            install(HostGuardPlugin) { permission = TeamPermission.OWNER }
             call.hostGuardContext().delete()
             ok()
         }
     }
 
     route("/{hostId}/log/{lines}") {
-        install(HostGuardPlugin) { permission = TeamPermission.ADMIN_OR_OWNER }
+        install(HostGuardPlugin) { permission = TeamPermission.ADMIN }
         get {
             val ctx = call.hostGuardContext()
             val lines = param("lines").toInt()
@@ -157,7 +156,7 @@ fun Route.hostRoutes() = route("/host") {
     }
 
     route("/{hostId}/log/stream") {
-        install(HostGuardPlugin) { permission = TeamPermission.ADMIN_OR_OWNER }
+        install(HostGuardPlugin) { permission = TeamPermission.ADMIN }
         sse {
             call.hostGuardContext().listenLogs(this)
         }
@@ -171,14 +170,14 @@ fun Route.hostRoutes() = route("/host") {
         }
         post {
             val ctx = call.hostGuardContext()
-            ctx.requirePermission(TeamPermission.ADMIN_OR_OWNER)
+            ctx.requirePermission(TeamPermission.ADMIN)
             val mods = call.receive<List<Mod>>()
             ctx.addExtraMods(mods)
             ok()
         }
         delete {
             val ctx = call.hostGuardContext()
-            ctx.requirePermission(TeamPermission.ADMIN_OR_OWNER)
+            ctx.requirePermission(TeamPermission.ADMIN)
             val mods = call.receive<List<Mod>>()
             ctx.delExtraMods(mods)
             ok()

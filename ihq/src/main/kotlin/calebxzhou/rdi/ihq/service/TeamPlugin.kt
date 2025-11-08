@@ -14,12 +14,14 @@ import org.bson.types.ObjectId
  * then access the resolved [TeamGuardContext] via [teamGuardContext].
  */
 enum class TeamPermission {
-	TEAM_MEMBER,
-	OWNER_ONLY,
-	ADMIN_OR_OWNER,
-	ADMIN_KICK_MEMBER,
+	MEMBER,
+	OWNER,
+	ADMIN,
 }
-
+infix fun Team.Member.require(role: Team.Role){
+    val allowed = this.role.level<=role.level
+    if (!allowed) throw RequestError("无权限")
+}
 class TeamGuardConfig {
 	/** Resolve the team id involved in the request. Default: player's joined team. */
 	var teamIdExtractor: suspend ApplicationCall.() -> ObjectId? = { null }
@@ -28,7 +30,7 @@ class TeamGuardConfig {
 	var targetIdExtractor: suspend ApplicationCall.() -> ObjectId? = { null }
 
 	/** Permission rule to enforce. */
-	var permission: TeamPermission = TeamPermission.ADMIN_OR_OWNER
+	var permission: TeamPermission = TeamPermission.ADMIN
 
 	/** Whether the resolved target must exist in the team. */
 	var requireTargetMember: Boolean = false
@@ -93,15 +95,10 @@ private suspend fun ApplicationCall.resolveTeamGuardContext(settings: TeamGuardS
 	}
 
 	val hasPermission = when (settings.permission) {
-		TeamPermission.TEAM_MEMBER -> true
-		TeamPermission.OWNER_ONLY -> requesterMember.role == Team.Role.OWNER
-		TeamPermission.ADMIN_OR_OWNER -> requesterMember.role.level <= Team.Role.ADMIN.level
-		TeamPermission.ADMIN_KICK_MEMBER ->
-			when (requesterMember.role) {
-				Team.Role.OWNER -> true
-				Team.Role.ADMIN -> targetMember?.role?.level?.let { it > Team.Role.ADMIN.level } ?: false
-				else -> false
-			}
+		TeamPermission.MEMBER -> true
+		TeamPermission.OWNER -> requesterMember.role == Team.Role.OWNER
+		TeamPermission.ADMIN -> requesterMember.role.level <= Team.Role.ADMIN.level
+
 	}
 
 	if (!hasPermission) {

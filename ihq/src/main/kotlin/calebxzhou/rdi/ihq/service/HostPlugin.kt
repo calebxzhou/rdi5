@@ -16,7 +16,7 @@ class HostGuardConfig {
         runCatching { ObjectId(raw) }.getOrElse { throw ParamError("hostId格式错误") }
     }
 
-    var permission: TeamPermission = TeamPermission.TEAM_MEMBER
+    var permission: TeamPermission = TeamPermission.MEMBER
 }
 
 data class HostGuardContext(
@@ -27,10 +27,9 @@ data class HostGuardContext(
 
 fun HostGuardContext.requirePermission(level: TeamPermission) {
     val allowed = when (level) {
-        TeamPermission.TEAM_MEMBER -> true
-        TeamPermission.ADMIN_OR_OWNER -> requester.role.level <= Team.Role.ADMIN.level
-        TeamPermission.OWNER_ONLY -> requester.role == Team.Role.OWNER
-        TeamPermission.ADMIN_KICK_MEMBER -> requester.role.level <= Team.Role.ADMIN.level
+        TeamPermission.MEMBER -> true
+        TeamPermission.ADMIN -> requester.role.level <= Team.Role.ADMIN.level
+        TeamPermission.OWNER -> requester.role == Team.Role.OWNER
     }
     if (!allowed) throw RequestError("无权限")
 }

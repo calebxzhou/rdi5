@@ -31,7 +31,7 @@ fun Route.worldRoutes() = route("/world") {
     }
     route("/") {
         post {
-            install(TeamGuardPlugin) { permission = TeamPermission.ADMIN_OR_OWNER }
+            install(TeamGuardPlugin) { permission = TeamPermission.ADMIN }
             val modpackId = paramNull("modpackId")?.let { ObjectId(it) } ?: DEFAULT_MODPACK_ID
             call.teamGuardContext().createWorld(paramNull("name"), modpackId)
         }
