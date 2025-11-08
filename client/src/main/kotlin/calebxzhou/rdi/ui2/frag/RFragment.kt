@@ -100,7 +100,7 @@ abstract class RFragment(initialTitle: String = "") : Fragment() {
         internal fun build(): List<Pair<Int, () -> Unit>> = actions
     }
 
-    private fun reloadFragment() {
+    fun reloadFragment() {
         uiThread {
             try {
                 onReload()
