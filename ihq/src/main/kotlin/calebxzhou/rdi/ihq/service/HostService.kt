@@ -109,7 +109,7 @@ fun Route.hostRoutes() = route("/host") {
     }
 
     route("/{hostId}/update") {
-        install(HostGuardPlugin) { permission = TeamPermission.OWNER_ONLY }
+        install(HostGuardPlugin) { permission = TeamPermission.ADMIN_OR_OWNER }
         post {
             val ctx = call.hostGuardContext()
             ctx.update(paramNull("packVer"))
@@ -118,8 +118,8 @@ fun Route.hostRoutes() = route("/host") {
     }
 
     route("/") {
-        install(TeamGuardPlugin) { permission = TeamPermission.OWNER_ONLY }
         post {
+            install(TeamGuardPlugin) { permission = TeamPermission.OWNER_ONLY }
             call.teamGuardContext().createHost(
                 DEFAULT_MODPACK_ID,
                 "latest",
@@ -128,6 +128,7 @@ fun Route.hostRoutes() = route("/host") {
             ok()
         }
         get {
+            install(TeamGuardPlugin) { permission = TeamPermission.TEAM_MEMBER }
             response(data = HostService.listByTeam(call.teamGuardContext().team._id))
         }
     }
