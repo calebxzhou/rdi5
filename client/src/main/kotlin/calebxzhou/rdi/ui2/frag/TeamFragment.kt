@@ -5,6 +5,7 @@ import calebxzhou.rdi.model.account
 import calebxzhou.rdi.net.server
 import calebxzhou.rdi.service.isOwner
 import calebxzhou.rdi.service.isOwnerOrAdmin
+import calebxzhou.rdi.service.myTeam
 import calebxzhou.rdi.service.owner
 import calebxzhou.rdi.ui2.FragmentSize
 import calebxzhou.rdi.ui2.MaterialColor
@@ -26,6 +27,7 @@ import calebxzhou.rdi.ui2.plusAssign
 import calebxzhou.rdi.ui2.textView
 import calebxzhou.rdi.ui2.toast
 import calebxzhou.rdi.ui2.uiThread
+import calebxzhou.rdi.util.ioTask
 import io.ktor.http.HttpMethod
 
 class TeamFragment : RFragment("我的团队") {
@@ -40,39 +42,30 @@ class TeamFragment : RFragment("我的团队") {
     }
 
 
-    fun load() {
-        server.request<Team>(
-            "/team/",
-            HttpMethod.Get,
-            showLoading = true,
-            onErr = {
-                confirm(
-                    "你还没有加入团队，你可以：",
-                    yesText = "创建自己的团队",
-                    noText = "等朋友拉我",
-                    onYes = {
-                        server.requestU(
-                            "team/",
-                            HttpMethod.Post,
-                            showLoading = true,
-                            onOk = {
-                                toast("创建成功 可以进入团队了")
-                                load()
-                            }
-                        )
-                    },
-                    onNo = {
-                        close()
+    fun load()= ioTask {
+        account.myTeam()?.let { renderTeam(it) }?: confirm(
+            "你还没有加入团队，你可以：",
+            yesText = "创建自己的团队",
+            noText = "等朋友拉我",
+            onYes = {
+                server.requestU(
+                    "team/",
+                    HttpMethod.Post,
+                    showLoading = true,
+                    onOk = {
+                        toast("创建成功 可以进入团队了")
+                        reloadFragment()
                     }
                 )
             },
-            onOk = {
-                renderTeam(it.data!!)
+            onNo = {
+                close()
             }
         )
+
     }
 
-    private fun renderTeam(team: Team) = uiThread {
+    private fun renderTeam(team: Team): Unit = uiThread {
         contentView.removeAllViews()
         title = team.name
         contentView.linearLayout {
@@ -98,7 +91,7 @@ class TeamFragment : RFragment("我的团队") {
                                             showLoading = true,
                                             onOk = {
                                                 toast("已踢出")
-                                                load()
+                                                reloadFragment()
                                             }
                                         )
                                     }
@@ -153,7 +146,7 @@ class TeamFragment : RFragment("我的团队") {
             }
         }
         contentView.bottomOptions {
-                "▶ 游玩主机" colored MaterialColor.GREEN_900 with { HostListFragment(team).go() }
+                "▶ 游玩主机" colored MaterialColor.GREEN_900 with { HostListFragment().go() }
                 "💾 管理存档" colored MaterialColor.BLUE_900 with { WorldListFragment().go() }
 
         }

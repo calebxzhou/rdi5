@@ -7,6 +7,8 @@ import calebxzhou.rdi.model.World
 import calebxzhou.rdi.model.account
 import calebxzhou.rdi.net.server
 import calebxzhou.rdi.service.isOwnerOrAdmin
+import calebxzhou.rdi.service.myTeam
+import calebxzhou.rdi.service.myTeamHosts
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.alertErr
 import calebxzhou.rdi.ui2.component.confirm
@@ -19,8 +21,9 @@ import icyllis.modernui.widget.Spinner
 import io.ktor.http.*
 import net.minecraft.client.gui.screens.ConnectScreen
 import net.minecraft.client.multiplayer.resolver.ServerAddress
+import net.minecraft.commands.arguments.TeamArgument.team
 
-class HostListFragment(val team: Team) : RFragment("选择主机") {
+class HostListFragment() : RFragment("选择主机") {
     override var fragSize = FragmentSize.SMALL
 
     init {
@@ -35,13 +38,15 @@ class HostListFragment(val team: Team) : RFragment("选择主机") {
         }
     }
 
-    fun load() {
-        server.request<List<Host>>("host/", showLoading = true) {
-            render(it.data!!)
+    fun load() = ioTask{
+        account.myTeam()?.let { t->
+            account.myTeamHosts()?.let { h ->
+                render(t,h)
+            }
         }
     }
 
-    fun render(hosts: List<Host>) = uiThread {
+    fun render(team:Team,hosts: List<Host>) = uiThread {
         contentView.removeAllViews()
         contentView.apply {
             linearLayout {
@@ -64,7 +69,7 @@ class HostListFragment(val team: Team) : RFragment("选择主机") {
                                             showLoading = true
                                         ) {
                                             toast("已删除")
-                                            load()
+                                            reloadFragment()
                                         }
                                     }
                                 }
@@ -85,7 +90,6 @@ class HostListFragment(val team: Team) : RFragment("选择主机") {
                                             showLoading = true
                                         ) {
                                             toast("已更新到最新版 主机重启中")
-                                            load()
                                         }
                                     }
                                 }
@@ -188,9 +192,7 @@ class HostListFragment(val team: Team) : RFragment("选择主机") {
     }
 
     class Carrier : RFragment("选择运营商节点") {
-        override var fragSize: FragmentSize
-            get() = FragmentSize.SMALL
-            set(value) {}
+        override var fragSize  = FragmentSize.SMALL
         private val creds = LocalCredentials.read()
         private val carriers = arrayListOf("电信", "移动", "联通", "教育网", "广电")
         override var contentViewInit: LinearLayout.() -> Unit = {
