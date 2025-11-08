@@ -2,6 +2,7 @@ package calebxzhou.rdi.service
 
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.model.Team
+import calebxzhou.rdi.net.server
 import org.bson.types.ObjectId
 
 /**
@@ -17,3 +18,4 @@ fun Team.isOwner(acc: RAccount) = owner?.id == acc._id
 fun Team.isOwnerOrAdmin(acc: RAccount): Boolean = isOwnerOrAdmin(acc._id)
 fun Team.isOwnerOrAdmin(uid: ObjectId): Boolean =
     members.any { it.id == uid && (it.role == Team.Role.OWNER || it.role == Team.Role.ADMIN) }
+suspend fun RAccount.myTeam() = server.makeRequest<Team>("team/").data
