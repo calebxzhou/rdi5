@@ -47,7 +47,7 @@ val ktorClient
                     followRedirects(true)
                     connectTimeout(10, TimeUnit.SECONDS)
                     readTimeout(0, TimeUnit.SECONDS)
-                    applyProxyConfig()
+                  //  applyProxyConfig()
                 }
             }
             BrowserUserAgent()
