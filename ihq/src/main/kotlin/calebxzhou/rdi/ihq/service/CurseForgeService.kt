@@ -16,7 +16,7 @@ import java.io.File
 import java.nio.file.Path
 
 object CurseForgeService {
-    const val BASE_URL = "https://api.curseforge.com/v1"
+    const val BASE_URL = "https://mod.mcimirror.top/curseforge/v1"
     @Serializable
     data class DataResponse(val data: String)
 
@@ -31,7 +31,7 @@ object CurseForgeService {
         }
         val apiKey = CONF.apiKey.curseforge
         DOWNLOAD_MODS_DIR.mkdirs()
-        val downloadUrl = ktorClient.get("${BASE_URL}/mods/${mod.projectId}/files/${mod.fileId}/download-url") {
+        var downloadUrl = ktorClient.get("${BASE_URL}/mods/${mod.projectId}/files/${mod.fileId}/download-url") {
             if (apiKey.isNotBlank()) {
                 header("x-api-key", apiKey)
             }
@@ -40,7 +40,9 @@ object CurseForgeService {
         if (downloadUrl.isBlank()) {
             throw RequestError("无法获取下载链接: ${mod.slug}")
         }
-
+        downloadUrl = downloadUrl.replace("edge.forgecdn.net", "mod.mcimirror.top").
+        replace("mediafilez.forgecdn.net", "mod.mcimirror.top").
+        replace("media.forgecdn.net", "mod.mcimirror.top")
         val success = downloadFileWithProgress(downloadUrl, targetFile.toPath()) { progress ->
             lgr.info { "mod下载中： ${mod.slug} ${progress.percent}%" }
         }

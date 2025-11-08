@@ -24,7 +24,7 @@ suspend fun List<File>.loadInfoCurseForge(): CurseForgeLocalResult {
 }
 
 object CurseForgeService {
-    const val BASE_URL = "https://api.curseforge.com/v1"
+    const val BASE_URL = "https://mod.mcimirror.top/curseforge/v1"//"https://api.curseforge.com/v1"
 
     //传入一堆murmur2格式的hash 返回cf匹配到的fingerprint data
     suspend fun matchFingerprintData(hashes: List<Long>): CurseForgeFingerprintData {
