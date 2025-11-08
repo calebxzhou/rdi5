@@ -143,7 +143,7 @@ object CurseForgeService {
 
         val matchedFiles = cfModMeta.flatMap { meta -> meta.files.map { it.file } }.toList()
 
-        val discoveredMods = cfModMeta.flatMap { meta ->
+        val matched = cfModMeta.flatMap { meta ->
             meta.files.map { record ->
                 Mod(
                     platform = "cf",
@@ -151,13 +151,16 @@ object CurseForgeService {
                     slug = meta.canonicalSlug,
                     fileId = record.fileId,
                     hash = record.fingerprint
-                ).apply { vo = slugBriefInfo[meta.normalizedSlug]?.toVo(record.file)
-                    ?: meta.mod.toBriefVo(record.file)  }
+                ).apply {
+                    file = record.file
+                    vo = slugBriefInfo[meta.normalizedSlug]?.toVo(record.file)
+                    ?: meta.mod.toBriefVo(record.file)
+                }
             }
         }
         val unmatched = hashToFile.values.filterNot { it in matchedFiles }
         lgr.info("curseforge没找到这些mod：${unmatched}")
-        return CurseForgeLocalResult( matchedFiles, unmatched,discoveredMods)
+        return CurseForgeLocalResult( matched, unmatched)
 
     }
 }

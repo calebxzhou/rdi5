@@ -1,5 +1,6 @@
 package calebxzhou.rdi.ihq.net
 
+import calebxzhou.rdi.ihq.CONF
 import calebxzhou.rdi.ihq.lgr
 import calebxzhou.rdi.ihq.util.serdesJson
 import io.ktor.client.HttpClient
@@ -23,6 +24,8 @@ import io.netty.handler.codec.compression.StandardCompressionOptions.deflate
 import io.netty.handler.codec.compression.StandardCompressionOptions.gzip
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.net.InetSocketAddress
+import java.net.Proxy
 import java.net.ProxySelector
 import java.nio.file.Files
 import java.nio.file.Path
@@ -44,7 +47,7 @@ val ktorClient
                     followRedirects(true)
                     connectTimeout(10, TimeUnit.SECONDS)
                     readTimeout(0, TimeUnit.SECONDS)
-                    ProxySelector.getDefault()?.let { proxySelector(it) }
+                    applyProxyConfig()
                 }
             }
             BrowserUserAgent()
@@ -126,5 +129,22 @@ suspend fun downloadFileWithProgress(
     } catch (e: Exception) {
         lgr.error("Download failed for $url", e)
         false
+    }
+}
+
+private fun okhttp3.OkHttpClient.Builder.applyProxyConfig() {
+    val proxyConfig = CONF.proxy
+    val host = proxyConfig.host.trim()
+    val port = proxyConfig.port
+    if (host.isNotEmpty() && port > 0) {
+        runCatching {
+            val address = InetSocketAddress(host, port)
+            proxy(Proxy(Proxy.Type.HTTP, address))
+        }.onFailure { err ->
+            lgr.warn(err) { "Failed to apply configured proxy $host:$port, falling back to default selector" }
+            ProxySelector.getDefault()?.let { proxySelector(it) }
+        }
+    } else {
+        ProxySelector.getDefault()?.let { proxySelector(it) }
     }
 }

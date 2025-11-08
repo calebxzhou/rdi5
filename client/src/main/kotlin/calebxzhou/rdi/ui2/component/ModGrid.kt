@@ -104,7 +104,7 @@ class ModGrid(
         if (Const.USE_MOCK_DATA) {
             showMods(MOCK_DATA)
         } else {
-            mods.loadInfoCurseForge().let { modLoadResult = it; showMods(it.mods) }
+            mods.loadInfoCurseForge().let { modLoadResult = it; showMods(it.matched) }
         }
     }
 

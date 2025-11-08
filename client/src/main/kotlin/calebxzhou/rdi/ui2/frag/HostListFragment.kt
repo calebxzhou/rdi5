@@ -71,8 +71,8 @@ class HostListFragment(val team: Team) : RFragment("选择主机") {
                                 "后台" with {
                                     HostConsoleFragment(host).go()
                                 }
-                                "附加Mod" with {
-
+                                "Mod列表" with {
+                                    HostModFragment(host).go()
                                 }
                                 "切换存档" with {
                                     alertErr("没开发完呢")

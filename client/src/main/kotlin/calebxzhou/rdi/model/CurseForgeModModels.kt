@@ -98,7 +98,6 @@ data class CurseForgeFileIndex(
 
 
 data class CurseForgeLocalResult(
-    val matchedFiles: List<File> = emptyList(),
-    val unmatchedFiles: List<File> = emptyList(),
-    val mods: List<Mod> = emptyList()
+    val matched: List<Mod> = emptyList(),
+    val unmatched: List<File> = emptyList()
 )

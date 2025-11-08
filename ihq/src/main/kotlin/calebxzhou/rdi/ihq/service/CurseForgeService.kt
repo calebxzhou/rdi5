@@ -42,10 +42,7 @@ object CurseForgeService {
         }
 
         val success = downloadFileWithProgress(downloadUrl, targetFile.toPath()) { progress ->
-            val percentText = progress.percent.takeIf { it >= 0 }
-                ?.let { "%.1f".format(it) }
-                ?: "??"
-            lgr.info { "mod下载中： ${mod.slug} ${percentText}%" }
+            lgr.info { "mod下载中： ${mod.slug} ${progress.percent}%" }
         }
 
         if (!success) {

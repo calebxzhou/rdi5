@@ -8,8 +8,10 @@ import calebxzhou.rdi.util.serdesJson
 import com.electronwill.nightconfig.core.CommentedConfig
 import com.electronwill.nightconfig.core.Config
 import com.electronwill.nightconfig.toml.TomlFormat
+import java.io.ByteArrayInputStream
 import java.io.File
 import java.util.jar.JarFile
+import java.util.jar.JarInputStream
 import kotlin.collections.firstOrNull
 
 const val NEOFORGE_CONFIG_PATH = "META-INF/neoforge.mods.toml"
@@ -38,6 +40,8 @@ val JarFile.modLogo
         getJarEntry("logo.png")?.let { logoEntry ->
             getInputStream(logoEntry).readBytes()
         }
+
+private val builtinDependencyIds = setOf("minecraft", "forge", "neoforge", "fabricloader")
 
 fun ModBriefInfo.toVo(modFile: File? = null): ModCardVo {
     val iconBytes = modFile?.let {
@@ -73,7 +77,149 @@ fun List<File>.filterServerOnlyMods() =
             }
         }
     }.toMutableList()
+data class UnmatchedDependencies(
+    val modId: String,
+    val missing: List<Missing>) {
+    data class Missing(val modId: String, val version: String? = null)
+}
+fun List<File>.checkDependencies(): List<UnmatchedDependencies> {
+    val installedModIds = mutableSetOf<String>()
+    this.forEach { file ->
+        runCatching {
+            JarFile(file).use { jar ->
+                collectModIdsFromJar(jar, installedModIds)
+            }
+        }.onFailure { err ->
+            lgr.error("Failed to read mod id from file: ${file.name}", err)
+        }
+    }
 
+    val unmatched = mutableListOf<UnmatchedDependencies>()
+
+    this.forEach { file ->
+        runCatching {
+            JarFile(file).use { jar ->
+                val config = jar.readNeoForgeConfig() ?: return@use null
+                val modEntries = config.get("mods") as? List<Config> ?: return@use null
+
+                modEntries.forEach { modConfig ->
+                    val modId = modConfig.get<String>("modId")?.trim()?.lowercase() ?: return@forEach
+                    val dependencyKey = "dependencies.$modId"
+                    val dependencies = config.get(dependencyKey) as? List<Config> ?: return@forEach
+
+                    val missingDependencies = dependencies.mapNotNull { dependency ->
+                        val dependencyModId = dependency.get<String>("modId")?.trim()?.lowercase() ?: return@mapNotNull null
+                        if (dependencyModId.isEmpty() || builtinDependencyIds.contains(dependencyModId)) return@mapNotNull null
+
+                        val side = dependency.get<String>("side")?.trim()?.uppercase()
+                        if (side == "CLIENT") return@mapNotNull null
+
+                        val dependencyType = dependency.get<String>("type")?.trim()?.lowercase()
+                        val optional = dependency.get<Boolean>("optional") ?: false
+                        val mandatory = dependency.get<Boolean>("mandatory")
+                        val required = when {
+                            dependencyType == "optional" -> false
+                            dependencyType == "incompatible" -> false
+                            mandatory != null -> mandatory
+                            optional -> false
+                            dependencyType == "required" -> true
+                            dependencyType == null -> true
+                            else -> true
+                        }
+                        if (!required) return@mapNotNull null
+
+                        if (installedModIds.contains(dependencyModId)) return@mapNotNull null
+
+                        val versionRange = (dependency.get("versionRange") as? String)?.takeIf { it.isNotBlank() }
+                        UnmatchedDependencies.Missing(dependencyModId, versionRange)
+                    }
+                        .distinctBy { it.modId }
+                    if (missingDependencies.isNotEmpty()) {
+                        lgr.warn(
+                            "Mod '$modId' is missing dependencies: ${missingDependencies.joinToString(", ") { missing ->
+                                missing.version?.let { ver -> "${missing.modId} ($ver)" } ?: missing.modId
+                            }}"
+                        )
+                        unmatched += UnmatchedDependencies(modId, missingDependencies)
+                    }
+                }
+            }
+        }.onFailure { err ->
+            lgr.error("Failed to check dependencies for mod file: ${file.name}", err)
+        }
+    }
+    return unmatched
+}
+
+private fun collectModIdsFromJar(jar: JarFile, installedModIds: MutableSet<String>) {
+    jar.readNeoForgeConfig()?.let { config ->
+        installedModIds += extractModIds(config)
+    }
+
+    val entries = jar.entries()
+    while (entries.hasMoreElements()) {
+        val entry = entries.nextElement()
+        if (entry.isDirectory) continue
+        val name = entry.name
+        if (!name.startsWith("META-INF/jarjar/", ignoreCase = true)) continue
+        if (!name.endsWith(".jar", ignoreCase = true)) continue
+
+        runCatching {
+            jar.getInputStream(entry).use { nestedInput ->
+                collectModIdsFromNestedJar(nestedInput, installedModIds)
+            }
+        }.onFailure { err ->
+            lgr.warn  ( "Failed to inspect nested jar '$name' inside ${jar.name}" )
+            err.printStackTrace()
+        }
+    }
+}
+
+private fun collectModIdsFromNestedJar(inputStream: java.io.InputStream, installedModIds: MutableSet<String>) {
+    JarInputStream(inputStream).use { nestedJar ->
+        var entry = nestedJar.nextJarEntry
+        while (entry != null) {
+            if (!entry.isDirectory) {
+                val entryName = entry.name
+                when {
+                    entryName.equals(NEOFORGE_CONFIG_PATH, ignoreCase = false) -> {
+                        val configText = nestedJar.readBytes().toString(Charsets.UTF_8)
+                        parseNeoForgeConfig(configText)?.let { config ->
+                            installedModIds += extractModIds(config)
+                        }
+                    }
+
+                    entryName.startsWith("META-INF/jarjar/", ignoreCase = true) &&
+                        entryName.endsWith(".jar", ignoreCase = true) -> {
+                        val nestedBytes = nestedJar.readBytes()
+                        collectModIdsFromNestedJar(ByteArrayInputStream(nestedBytes), installedModIds)
+                    }
+                }
+            }
+            nestedJar.closeEntry()
+            entry = nestedJar.nextJarEntry
+        }
+    }
+}
+
+private fun parseNeoForgeConfig(raw: String): CommentedConfig? {
+    if (raw.isBlank()) return null
+    return runCatching {
+        TomlFormat.instance().createParser().parse(raw)
+    }.onFailure { err ->
+        lgr.debug("Failed to parse nested neoforge config",err, )
+    }.getOrNull()
+}
+
+private fun extractModIds(config: Config?): List<String> {
+    val modEntries = config?.get("mods") as? List<Config> ?: return emptyList()
+    return modEntries.mapNotNull { modConfig ->
+        modConfig.get<String>("modId")
+            ?.trim()
+            ?.lowercase()
+            ?.takeIf { it.isNotEmpty() }
+    }
+}
 val CurseForgeService.slugBriefInfo: Map<String, ModBriefInfo> by lazy { ModService.buildSlugMap(briefInfo) { it.curseforgeSlugs } }
 val ModrinthService.slugBriefInfo: Map<String, ModBriefInfo> by lazy { ModService.buildSlugMap(briefInfo) { it.modrinthSlugs } }
 

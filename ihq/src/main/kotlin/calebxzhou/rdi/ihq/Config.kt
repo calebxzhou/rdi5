@@ -20,7 +20,7 @@ data class ServerConfig(
 @Serializable
 data class ProxyConfig(
     val host: String = "127.0.0.1",
-    val port: Int = 23333,
+    val port: Int = 10808,
 )
 
 @Serializable

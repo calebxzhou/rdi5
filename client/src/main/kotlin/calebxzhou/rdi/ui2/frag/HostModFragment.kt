@@ -6,6 +6,7 @@ import calebxzhou.rdi.model.pack.Mod
 import calebxzhou.rdi.net.server
 import calebxzhou.rdi.service.CurseForgeService
 import calebxzhou.rdi.service.ModrinthService
+import calebxzhou.rdi.service.checkDependencies
 import calebxzhou.rdi.service.slugBriefInfo
 import calebxzhou.rdi.service.toVo
 import calebxzhou.rdi.ui2.FragmentSize
@@ -141,6 +142,22 @@ class HostModFragment(val host: Host) : RFragment("主机的所有Mod") {
                 alertErr("CurseForge 信息尚未加载完成，请稍后再试")
                 return
             }
+
+            val missingDeps = modGrid.getSelectedMods()
+                .mapNotNull { it.file }
+                .checkDependencies()
+
+            if (missingDeps.isNotEmpty()) {
+                val detail = missingDeps.joinToString("\n") { unmatched ->
+                    val deps = unmatched.missing.joinToString(", ") { missing ->
+                        missing.version?.let { ver -> "${missing.modId} ($ver)" } ?: missing.modId
+                    }
+                    "${unmatched.modId}: $deps"
+                }
+                alertErr("以下 Mod 缺少前置:\n$detail")
+                return
+            }
+
             Confirm(true, hostId, selected).go()
 
         }
@@ -148,7 +165,7 @@ class HostModFragment(val host: Host) : RFragment("主机的所有Mod") {
 
     class Confirm(val add: Boolean, val hostId: ObjectId, val selected: List<Mod>) :
         RFragment("确认${if (add) "添加" else "删除"}这${selected.size}个Mod吗？") {
-        override var fragSize = FragmentSize.FULL
+        override var fragSize = FragmentSize.MEDIUM
 
         init {
             contentViewInit = {
@@ -168,15 +185,22 @@ class HostModFragment(val host: Host) : RFragment("主机的所有Mod") {
             if (add) {
                 val etaSecs = selected.size * 10
                 server.requestU("host/${hostId}/extra_mod", body = selected.json) {
-                    alertOk("已提交Mod添加请求，大约要等${etaSecs / 60}分${etaSecs % 60}秒，完成后会发送结果到信箱")
+                    server.request<Host>("host/${hostId}"){
+                        HostModFragment(it.data!!).go()
+                        alertOk("已提交Mod添加请求，大约要等${etaSecs / 60}分${etaSecs % 60}秒，完成后会发送结果到信箱")
+                    }
                 }
             } else {
                 server.requestU(
                     "host/${hostId}/extra_mod",
-                    body = selected.map { it.projectId }.json,
+                    body = selected.json,
                     method = HttpMethod.Delete
                 ) {
-                    alertOk("成功删除了这${selected.size}个Mod")
+                    server.request<Host>("host/${hostId}"){
+                        HostModFragment(it.data!!).go()
+                        alertOk("成功删除了这${selected.size}个Mod")
+                    }
+
                 }
             }
         }

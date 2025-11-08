@@ -1,6 +1,7 @@
 package calebxzhou.rdi.ihq.service
 
 import calebxzhou.rdi.ihq.DB
+import calebxzhou.rdi.ihq.DOWNLOAD_MODS_DIR
 import calebxzhou.rdi.ihq.DEFAULT_MODPACK_ID
 import calebxzhou.rdi.ihq.exception.RequestError
 import calebxzhou.rdi.ihq.model.Host
@@ -26,6 +27,8 @@ import calebxzhou.rdi.ihq.util.str
 import calebxzhou.rdi.ihq.util.serdesJson
 import calebxzhou.rdi.ihq.lgr
 import calebxzhou.rdi.ihq.model.pack.Mod
+import calebxzhou.rdi.ihq.net.err
+import calebxzhou.rdi.ihq.net.idParam
 import calebxzhou.rdi.ihq.service.HostService.addExtraMods
 import calebxzhou.rdi.ihq.service.HostService.createHost
 import calebxzhou.rdi.ihq.service.HostService.delExtraMods
@@ -55,6 +58,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Duration.Companion.minutes
@@ -129,8 +133,13 @@ fun Route.hostRoutes() = route("/host") {
     }
 
     route("/{hostId}") {
-        install(HostGuardPlugin) { permission = TeamPermission.OWNER_ONLY }
+        get {
+            HostService.getById(call.idParam("hostId"))?.let {
+                response(data = it)
+            } ?: err("无此主机")
+        }
         delete {
+            install(HostGuardPlugin) { permission = TeamPermission.OWNER_ONLY }
             call.hostGuardContext().delete()
             ok()
         }
@@ -169,8 +178,8 @@ fun Route.hostRoutes() = route("/host") {
         delete {
             val ctx = call.hostGuardContext()
             ctx.requirePermission(TeamPermission.ADMIN_OR_OWNER)
-            val projectIds = call.receive<List<String>>()
-            ctx.delExtraMods(projectIds)
+            val mods = call.receive<List<Mod>>()
+            ctx.delExtraMods(mods)
             ok()
         }
     }
@@ -628,13 +637,13 @@ object HostService {
             }
         }
     }
-    suspend fun HostGuardContext.delExtraMods(projectIds: List<String>) {
-        if (projectIds.isEmpty()) throw RequestError("mod列表不得为空")
+    suspend fun HostGuardContext.delExtraMods(mods: List<Mod>) {
+        if (mods.isEmpty()) throw RequestError("mod列表不得为空")
 
         val currentHost = getById(host._id) ?: throw RequestError("无此主机")
-        val targets = projectIds.toSet()
+        val targets = mods.toSet()
 
-        val updated = currentHost.extraMods.filterNot { it.projectId in targets }
+        val updated = currentHost.extraMods.filterNot { it in targets }
 
         if (updated.size == currentHost.extraMods.size) throw RequestError("没有匹配的mod可删")
 
@@ -642,6 +651,19 @@ object HostService {
             eq("_id", currentHost._id),
             set(Host::extraMods.name, updated)
         )
+
+        val fileNames = targets.map { it.fileName }.distinct()
+
+        fileNames.forEach { fileName ->
+            val remotePath = "/opt/server/mods/$fileName"
+            runCatching {
+                DockerService.deleteFile(currentHost._id.str, remotePath)
+            }.onFailure { err ->
+                lgr.warn(err) { "删除容器中的文件失败: $remotePath" }
+            }
+        }
+
+
     }
     // List all hosts belonging to a team
     suspend fun listByTeam(teamId: ObjectId): List<Host> =

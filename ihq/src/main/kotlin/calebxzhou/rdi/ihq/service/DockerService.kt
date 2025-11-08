@@ -252,7 +252,74 @@ object DockerService {
         }
     }
 
+    fun deleteFile(containerName: String, remotePath: String) {
+        val container = findContainer(containerName, includeStopped = true)
+            ?: throw RequestError("找不到此容器")
+        val started = isStarted(containerName)
+        //不开机删不了文件
+        if(!started) start(containerName)
+        val normalizedPath = remotePath.replace('\\', '/').trim()
+        if (normalizedPath.isEmpty()) {
+            throw RequestError("目标路径不能为空")
+        }
 
+        val validatedPath = when {
+            normalizedPath.startsWith('/') -> normalizedPath
+            else -> "/$normalizedPath"
+        }
+
+        if (validatedPath == "/" || validatedPath == "//") {
+            throw RequestError("不能删除根目录")
+        }
+
+        // Convert to POSIX-friendly path for sh commands
+        val sanitizedPath = validatedPath.replace("'", "'\"'\"'")
+
+        try {
+            val execCreate = client.execCreateCmd(container.id)
+                .withAttachStdout(true)
+                .withAttachStderr(true)
+                .withCmd("sh", "-c", "rm -rf '$sanitizedPath'")
+                .exec()
+
+            val stdout = StringBuilder()
+            val stderr = StringBuilder()
+            val callback = object : Adapter<Frame>() {
+                override fun onNext(frame: Frame) {
+                    val payload = String(frame.payload)
+                    when (frame.streamType) {
+                        StreamType.STDOUT -> stdout.append(payload)
+                        StreamType.STDERR -> stderr.append(payload)
+                        else -> Unit
+                    }
+                }
+            }
+
+            client.execStartCmd(execCreate.id)
+                .withDetach(false)
+                .exec(callback)
+                .awaitCompletion()
+
+            val exitCode = client.inspectExecCmd(execCreate.id).exec().exitCodeLong
+            if (exitCode != null && exitCode != 0L) {
+                val errorMsg = stderr.toString().ifBlank { stdout.toString() }
+                throw RequestError("删除文件失败: ${errorMsg.trim().ifEmpty { "未知错误" }}")
+            }
+
+            if (stdout.isNotEmpty()) {
+                lgr.info { "deleteFile stdout for $containerName:$validatedPath -> ${stdout.toString()}" }
+            }
+            if (stderr.isNotEmpty()) {
+                lgr.warn { "deleteFile stderr for $containerName:$validatedPath -> ${stderr.toString()}" }
+            }
+            //如果删除之前主机是关的 现在给他关了
+            if(!started) stop(containerName)
+        } catch (e: Exception) {
+            if (e is RequestError) throw e
+            lgr.warn(e) { "deleteFile失败: $containerName -> $remotePath" }
+            throw RequestError("删除文件失败: ${e.message ?: "未知错误"}")
+        }
+    }
 
     private fun imageExistsLocally(repoTag: String): Boolean {
         return try {
