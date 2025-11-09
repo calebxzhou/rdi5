@@ -50,7 +50,7 @@ object CurseForgeService {
         if (!success) {
             throw RequestError("下载mod失败: ${mod.slug}")
         }
-
+        lgr.info { "下载完成：$mod" }
         return targetFile.toPath()
     }
 
