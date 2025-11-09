@@ -4,6 +4,7 @@ import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.HwSpecView
+import calebxzhou.rdi.ui2.component.alertErr
 
 class ProfileFragment : RFragment("我的信息") {
     override var closable = false
@@ -20,7 +21,7 @@ class ProfileFragment : RFragment("我的信息") {
             "▶ 进入团队" colored MaterialColor.GREEN_900 with {
                 goto(TeamFragment())
             }
-            "\uDB81\uDEEE 信箱" colored MaterialColor.BLUE_900 with {}
+            "\uDB81\uDEEE 信箱" colored MaterialColor.BLUE_900 with { alertErr("没开发完") }
             /*"🏠 团队" colored MaterialColor.LIGHT_GREEN_900 with {
                 server.request<String>("room/my", method = io.ktor.http.HttpMethod.Get, showLoading = false) {
                     val body = it.data
