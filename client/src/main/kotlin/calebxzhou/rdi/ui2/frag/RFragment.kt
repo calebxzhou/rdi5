@@ -41,9 +41,8 @@ abstract class RFragment(initialTitle: String = "") : Fragment() {
     open var showCloseButton = closable
     open var fragSize: FragmentSize = FragmentSize.FULL
 
-
     //true则缓存content view布局，fragment切换时，保存状态不重新计算，false反之
-    open var mainViewCache = true
+    open var preserveViewStateOnDetach = false
     lateinit var mainLayout: LinearLayout
     lateinit var contentView: LinearLayout
     lateinit var titleView: LinearLayout
@@ -131,7 +130,7 @@ abstract class RFragment(initialTitle: String = "") : Fragment() {
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: DataSet?): View {
         // If caching is enabled and we have a cached view, return it
-        if (mainViewCache && _mainView != null) {
+        if (preserveViewStateOnDetach && _mainView != null) {
             return _mainView!!
         }
         val sizeDims = when (fragSize) {
@@ -252,7 +251,7 @@ abstract class RFragment(initialTitle: String = "") : Fragment() {
 
         }
         // Store the view in cache if caching is enabled
-        if (mainViewCache) {
+        if (preserveViewStateOnDetach) {
             _mainView = root
         }
 
