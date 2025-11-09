@@ -14,6 +14,7 @@ import calebxzhou.rdi.ui2.MaterialColor
 import calebxzhou.rdi.ui2.component.ModGrid
 import calebxzhou.rdi.ui2.component.alertErr
 import calebxzhou.rdi.ui2.component.alertOk
+import calebxzhou.rdi.ui2.component.confirm
 import calebxzhou.rdi.ui2.go
 import calebxzhou.rdi.ui2.plusAssign
 import calebxzhou.rdi.ui2.textView
@@ -23,7 +24,7 @@ import icyllis.modernui.widget.TextView
 import io.ktor.http.HttpMethod
 import org.bson.types.ObjectId
 
-class HostModFragment(val host: Host) : RFragment("主机的所有Mod") {
+class HostModFragment(val hostId: ObjectId) : RFragment("主机的所有Mod") {
     override var fragSize = FragmentSize.FULL
     private lateinit var extraModGrid: ModGrid
     private lateinit var packModGrid: ModGrid
@@ -38,9 +39,13 @@ class HostModFragment(val host: Host) : RFragment("主机的所有Mod") {
 
             packModText = textView("整合包Mod：")
             packModGrid = ModGrid(context).also { this += it }
+            server.request<Host>("host/${hostId}"){
+                it.data?.let {
 
-            loadPackMods()
-            loadExtraMods()
+                    loadPackMods(it)
+                    loadExtraMods(it)
+                }?: alertErr("无法加载主机信息")
+            }
         }
         titleViewInit = {
             quickOptions {
@@ -53,16 +58,23 @@ class HostModFragment(val host: Host) : RFragment("主机的所有Mod") {
                 "\uF014 删除选中" colored MaterialColor.RED_900 with {
                     Confirm(
                         false,
-                        host._id,
+                        hostId,
                         extraModGrid.getSelectedMods()
                     ).go()
                 }
-                "+ 附加Mod" colored MaterialColor.GREEN_900 with { Add(host._id).go() }
+                "重新下载" colored MaterialColor.BLUE_900 with {
+                    confirm("将重新下载这些Mod，并添加到主机。确定吗？"){
+                        server.requestU("host/${hostId}/extra_mod",  method = HttpMethod.Put){
+                            alertOk("已提交重新下载请求，完成后会发送结果到信箱")
+                        }
+                    }
+                }
+                "+ 附加Mod" colored MaterialColor.GREEN_900 with { Add(hostId).go() }
             }
         }
     }
 
-    private fun loadPackMods() = ioTask {
+    private fun loadPackMods(host: Host) = ioTask {
         val mods = server.makeRequest<List<Mod>>(path = "modpack/${host.modpackId}/${host.packVer}/mods").data ?: run {
             packModText.text = "整合包Mod：无"
             return@ioTask
@@ -78,7 +90,7 @@ class HostModFragment(val host: Host) : RFragment("主机的所有Mod") {
         packModGrid.showMods(displayMods)
     }
 
-    private fun loadExtraMods() = ioTask {
+    private fun loadExtraMods(host: Host) = ioTask {
         if (host.extraMods.isEmpty()) {
             extraModText.text = "没有附加Mod。"
             return@ioTask
@@ -185,10 +197,8 @@ class HostModFragment(val host: Host) : RFragment("主机的所有Mod") {
             if (add) {
                 val etaSecs = selected.size * 10
                 server.requestU("host/${hostId}/extra_mod", body = selected.json) {
-                    server.request<Host>("host/${hostId}"){
-                        HostModFragment(it.data!!).go()
                         alertOk("已提交Mod添加请求，大约要等${etaSecs / 60}分${etaSecs % 60}秒，完成后会发送结果到信箱")
-                    }
+
                 }
             } else {
                 server.requestU(
@@ -197,7 +207,6 @@ class HostModFragment(val host: Host) : RFragment("主机的所有Mod") {
                     method = HttpMethod.Delete
                 ) {
                     server.request<Host>("host/${hostId}"){
-                        HostModFragment(it.data!!).go()
                         alertOk("成功删除了这${selected.size}个Mod")
                     }
 
