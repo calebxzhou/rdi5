@@ -67,6 +67,8 @@ object DockerService {
             .withCpuCount(2L)  // Limit to 2 CPUs
             .withMemory(2L * 1024 * 1024 * 1024)  // 2GB RAM limit
             .withMemorySwap(4L * 1024 * 1024 * 1024)  //4G swap
+            .withExtraHosts("host.docker.internal:host-gateway")
+            
             
         volumeName?.let { hostConfig.withBinds(Bind.parse("$it:/data")) }
 
