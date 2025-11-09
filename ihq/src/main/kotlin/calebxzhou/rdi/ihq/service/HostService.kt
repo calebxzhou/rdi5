@@ -31,6 +31,7 @@ import calebxzhou.rdi.ihq.net.idParam
 import calebxzhou.rdi.ihq.service.HostService.addExtraMods
 import calebxzhou.rdi.ihq.service.HostService.createHost
 import calebxzhou.rdi.ihq.service.HostService.delExtraMods
+import calebxzhou.rdi.ihq.service.HostService.reloadExtraMods
 import calebxzhou.rdi.ihq.service.WorldService.createWorld
 import com.mongodb.client.model.Filters.*
 import com.mongodb.client.model.Updates.combine
@@ -173,6 +174,13 @@ fun Route.hostRoutes() = route("/host") {
             ctx.requirePermission(TeamPermission.ADMIN)
             val mods = call.receive<List<Mod>>()
             ctx.addExtraMods(mods)
+            ok()
+        }
+        put {
+            val ctx = call.hostGuardContext()
+            ctx.requirePermission(TeamPermission.ADMIN)
+
+            ctx.reloadExtraMods()
             ok()
         }
         delete {
@@ -497,8 +505,9 @@ object HostService {
 
     suspend fun HostGuardContext.restart() {
         val current = getById(host._id) ?: throw RequestError("无此主机")
-        DockerService.restart(current._id.str)
+        sendCommand("stop")
         clearShutFlag(current._id)
+        DockerService.restart(host._id.str)
     }
 
     suspend fun HostGuardContext.sendCommand(command: String) {
@@ -597,6 +606,9 @@ object HostService {
             lines.cancel()
         }
     }
+    suspend fun HostGuardContext.reloadExtraMods() {
+        host.downloadExtraMods(host.extraMods)
+    }
     suspend fun HostGuardContext.addExtraMods(mods: List<Mod>) {
         if (mods.isEmpty()) throw RequestError("mod列表不得为空")
 
@@ -619,6 +631,7 @@ object HostService {
                 toDownload += mod
             }
         }
+        lgr.info { "准备为主机 ${host.name} 下载mod: ${toDownload}" }
         dbcl.updateOne(
             eq("_id", currentHost._id),
             set(Host::extraMods.name, merged.toList())
