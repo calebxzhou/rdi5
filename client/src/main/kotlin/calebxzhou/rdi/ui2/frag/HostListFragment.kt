@@ -77,13 +77,13 @@ class HostListFragment() : RFragment("选择主机") {
                                     HostConsoleFragment(host).go()
                                 }
                                 "Mod列表" with {
-                                    HostModFragment(host).go()
+                                    HostModFragment(host._id).go()
                                 }
                                 "切换存档" with {
                                     alertErr("没开发完呢")
                                 }
                                 "更新整合包" with {
-                                    confirm("将更新主机“${host.name}”的整合包到最新版本。\n主机会关闭，更新时间大概需要15秒\n（除存档外，所有数据会被删除，包括日志、临时Mod等）") {
+                                    confirm("将更新主机“${host.name}”的整合包到最新版本。\n主机会关闭，更新时间大概需要15秒\n（除存档外，所有数据会被删除，包括日志、附加Mod等）\n附加mod需要你在主机mod管理页面手动点击“重新下载”") {
                                         server.requestU(
                                             "host/${host._id}/update",
                                             HttpMethod.Post,
