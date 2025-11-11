@@ -61,7 +61,7 @@ class PauseFragment : RFragment("暂停") {
 
                             } else {
                                 mc.disconnect()
-                                goto(TitleFragment())
+                                HostListFragment.screen?.let { mc.set(it) }
                             }
                         }
                     }

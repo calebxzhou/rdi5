@@ -124,6 +124,7 @@ class TitleFragment : RFragment() {
 
     fun startMulti() {
         RServer.now.connect()
+
     }
 
 }

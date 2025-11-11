@@ -6,10 +6,15 @@ import calebxzhou.rdi.ui2.component.ImageSelection
 import calebxzhou.rdi.ui2.component.RTextField
 import calebxzhou.rdi.ui2.component.alertErr
 import calebxzhou.rdi.ui2.frag.RFragment
+import icyllis.modernui.core.Context
 import icyllis.modernui.graphics.BitmapFactory
+import icyllis.modernui.graphics.drawable.ColorDrawable
+import icyllis.modernui.view.Gravity
+import icyllis.modernui.view.View
+import icyllis.modernui.widget.LinearLayout
 
-class ModpackCreateFragment : RFragment("制作整合包1") {
-    private lateinit var nameInput: RTextField
+class ModpackCreateFragment : RFragment("制作整合包") {
+
     //private lateinit var picker: ImagePicker
 
     private companion object {
@@ -17,25 +22,34 @@ class ModpackCreateFragment : RFragment("制作整合包1") {
         private const val MAX_DIMENSION = 512
     }
 
-    override var fragSize = FragmentSize.SMALL
+    override var fragSize = FragmentSize.FULL
 
     init {
         contentViewInit = {
-            nameInput = textField("给你的包起个名字")
-            /*textView("选择一个图标（可选）")
-            picker = ImagePicker(fctx).apply {
-                validator = ::validateSelection
-            }.also { this += it }*/
+
         }
-        bottomOptionsConfig = {
-            "下一步" colored MaterialColor.GREEN_900 with {
-                // val image = picker.selectedBytes
-               // val params = buildList {
-                 //   add("name" to nameInput.text)
-                    // add("info" to infoInput.text)
-                    // image?.let { add("image" to it.encodeBase64()) }
-              //  }
-                ModpackCreate2Fragment(nameInput.text).go()
+        titleViewInit = {
+            linearLayout {
+                orientation = LinearLayout.HORIZONTAL
+                layoutParams = linearLayoutParam(PARENT, SELF)
+                gravity = Gravity.CENTER_VERTICAL
+
+
+                listOf(
+                    "\uDB83\uDCA0 Mod", // if not selected 󰲡
+                    "\uDB83\uDCA2 配置 ", // if not selected 󰲣
+                    "\uDB83\uDCA4 魔改"  // if not selected 󰲥
+                ).forEach { label ->
+                    textView(label) {
+                        layoutParams = linearLayoutParam(dp(120f), SELF) {
+                            weight = 1f
+                            marginEnd=10
+                        }
+                        background = ColorDrawable(MaterialColor.TEAL_900.colorValue)
+                        gravity = Gravity.CENTER
+                        paddingDp(4)
+                    }
+                }
             }
         }
     }
@@ -63,5 +77,11 @@ class ModpackCreateFragment : RFragment("制作整合包1") {
         }
 
         return true
+    }
+    class Step1(ctx: Context): View(ctx){
+        init {
+
+
+        }
     }
 }

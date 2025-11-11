@@ -31,6 +31,7 @@ import icyllis.modernui.view.ViewGroup
 import icyllis.modernui.widget.*
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.Screen
+import net.minecraft.client.gui.screens.TitleScreen
 import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite
 import net.minecraft.resources.ResourceLocation
 import org.bson.types.ObjectId
@@ -117,9 +118,7 @@ fun View.onPressEnterKey(handler: () -> Unit) {
     }
 }
 val Fragment.mcScreen: Screen
-    get() = MuiForgeApi.get().createScreen(this,null,mc.screen)
-val Minecraft.fragment
-    get() = (mc.screen as? MuiScreen)?.fragment as? RFragment
+    get() = MuiForgeApi.get().createScreen(this,null, TitleScreen())
 
 fun linearLayoutParam(
     width: Int = PARENT,
@@ -171,6 +170,10 @@ fun ViewGroup.frameLayout(
 fun ViewGroup.gridLayout(
     init: GridLayout.() -> Unit = {}
 ) = GridLayout(this.context).apply(init).also { this += it }
+
+fun ViewGroup.flowLayout(
+    init: FlowLayout.() -> Unit = {}
+) = FlowLayout(this.context).apply(init).also { this += it }
 
 fun ViewGroup.textView(
     msg: String = "",

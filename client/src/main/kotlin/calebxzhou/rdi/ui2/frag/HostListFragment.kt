@@ -14,16 +14,21 @@ import calebxzhou.rdi.ui2.component.alertErr
 import calebxzhou.rdi.ui2.component.confirm
 import calebxzhou.rdi.ui2.misc.contextMenu
 import calebxzhou.rdi.util.ioTask
+import calebxzhou.rdi.util.isMcStarted
 import calebxzhou.rdi.util.mc
 import calebxzhou.rdi.util.renderThread
 import icyllis.modernui.widget.LinearLayout
 import icyllis.modernui.widget.Spinner
 import io.ktor.http.*
 import net.minecraft.client.gui.screens.ConnectScreen
+import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.multiplayer.resolver.ServerAddress
 import net.minecraft.commands.arguments.TeamArgument.team
 
 class HostListFragment() : RFragment("选择主机") {
+    companion object{
+        var screen: Screen? = null
+    }
     override var fragSize = FragmentSize.SMALL
 
     init {
@@ -35,6 +40,9 @@ class HostListFragment() : RFragment("选择主机") {
         }
         contentViewInit = {
             load()
+
+            if(isMcStarted)
+            screen = this@HostListFragment.mcScreen
         }
     }
 

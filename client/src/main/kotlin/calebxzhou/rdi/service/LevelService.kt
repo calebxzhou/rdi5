@@ -9,6 +9,8 @@ import calebxzhou.rdi.ui2.mcScreen
 import calebxzhou.rdi.util.go
 import calebxzhou.rdi.util.mc
 import calebxzhou.rdi.util.renderThread
+import calebxzhou.rdi.util.set
+import net.minecraft.client.gui.screens.TitleScreen
 import net.minecraft.world.Difficulty
 import net.minecraft.world.level.GameRules
 import net.minecraft.world.level.GameType
@@ -19,10 +21,10 @@ import net.minecraft.world.level.levelgen.presets.WorldPresets
 
 object LevelService {
 
-    fun startLevel() {
-        val levelName = "rdi"+ RAccount.now?.name
+  /*  fun startLevel() {
+        val levelName = "rdi" + RAccount.now?.name
         if (mc.levelSource.levelExists(levelName)) {
-            mc.createWorldOpenFlows().openWorld(levelName){
+            mc.createWorldOpenFlows().openWorld(levelName) {
                 goto(TitleFragment())
             }
         } else {
@@ -40,15 +42,21 @@ object LevelService {
             mc.createWorldOpenFlows().createFreshLevel(
                 levelName,
                 levelSettings,
-                WorldOptions(Const.SEED, true, true),WorldPresets::createNormalWorldDimensions, ProfileFragment().mcScreen
+                WorldOptions(Const.SEED, true, true),
+                WorldPresets::createNormalWorldDimensions,
+                ProfileFragment().mcScreen
             )
         }
     }
-      fun openFlatLevel()  = renderThread{
+*/
+    fun openFlatLevel()  {
+        mc set TitleScreen()
         val levelName = "rdi_creative"
         if (mc.levelSource.levelExists(levelName)) {
-            mc.createWorldOpenFlows().openWorld( levelName){
-                goto(TitleFragment())
+            renderThread {
+                mc.createWorldOpenFlows().openWorld(levelName) {
+                    mc set TitleScreen()
+                }
             }
         } else {
             val levelSettings = LevelSettings(
@@ -64,11 +72,15 @@ object LevelService {
                 },
                 WorldDataConfiguration.DEFAULT
             )
-            mc.createWorldOpenFlows().createFreshLevel(
-                levelName,
-                levelSettings,
-                WorldOptions(Const.SEED, true, true),WorldPresets::createNormalWorldDimensions, TitleFragment().mcScreen
-            )
+            renderThread {
+                mc.createWorldOpenFlows().createFreshLevel(
+                    levelName,
+                    levelSettings,
+                    WorldOptions(Const.SEED, true, true),
+                    WorldPresets::createNormalWorldDimensions,
+                    TitleScreen()
+                )
+            }
         }
     }
 }

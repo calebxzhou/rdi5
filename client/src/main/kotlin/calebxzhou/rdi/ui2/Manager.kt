@@ -16,11 +16,13 @@ import icyllis.modernui.mc.ScreenCallback
 import icyllis.modernui.mc.UIManager
 import icyllis.modernui.mc.neoforge.MuiForgeApi
 import icyllis.modernui.mc.neoforge.UIManagerForge
+import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.Screen
 import org.apache.commons.lang3.reflect.FieldUtils.getDeclaredField
 import kotlin.jvm.javaClass
 
-
+val Minecraft.fragment
+    get() = (mc.screen as? MuiScreen)?.fragment as? RFragment
 var prevFragment: Fragment? = null
 val nowFragment
     get() =

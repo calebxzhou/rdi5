@@ -14,8 +14,14 @@ import calebxzhou.rdi.ui2.linearLayout
 import calebxzhou.rdi.ui2.padding8dp
 import calebxzhou.rdi.ui2.textView
 import calebxzhou.rdi.util.ioScope
+import calebxzhou.rdi.util.mc
+import calebxzhou.rdi.util.renderThread
+import calebxzhou.rdi.util.set
 import icyllis.modernui.view.Gravity
 import kotlinx.coroutines.launch
+import net.minecraft.client.gui.screens.GenericMessageScreen
+import net.minecraft.client.gui.screens.TitleScreen
+import net.minecraft.network.chat.Component
 
 class LoginFragment : RFragment("登录") {
     private lateinit var qqInput: RTextField
@@ -56,7 +62,9 @@ class LoginFragment : RFragment("登录") {
                 center()
                 textView("[单人创造]"){
                     padding8dp()
-                    setOnClickListener { LevelService.openFlatLevel() }
+                    setOnClickListener {
+                        LevelService.openFlatLevel()
+                    }
                 }
                 textView("[设置]"){
                     padding8dp()

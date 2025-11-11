@@ -123,7 +123,9 @@ fun List<File>.checkDependencies(): List<UnmatchedDependencies> {
                             mandatory != null -> mandatory
                             optional -> false
                             dependencyType == "required" -> true
+                            dependencyType == "discouraged" -> false
                             dependencyType == null -> true
+
                             else -> true
                         }
                         if (!required) return@mapNotNull null

@@ -125,6 +125,12 @@ abstract class RFragment(initialTitle: String = "") : Fragment() {
             requestLayout()
             invalidate()
         }
+        titleView.apply {
+            removeAllViews()
+            titleViewInit()
+            requestLayout()
+            invalidate()
+        }
     }
 
 
