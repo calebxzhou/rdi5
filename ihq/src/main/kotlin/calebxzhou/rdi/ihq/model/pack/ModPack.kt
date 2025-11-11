@@ -1,8 +1,11 @@
 package calebxzhou.rdi.ihq.model.pack
 
+import calebxzhou.rdi.ihq.MODPACK_DATA_DIR
+import calebxzhou.rdi.ihq.util.str
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import org.bson.types.ObjectId
+import java.io.File
 
 @Serializable
 class ModPack(
@@ -14,26 +17,21 @@ class ModPack(
     val info: String="暂无简介",
     val modloader: String = "neoforge",
     val mcVer: String = "1.21.1",
-
-    val versions: List<@Contextual ObjectId> = arrayListOf(),
+    val versions: List<Version> = arrayListOf(),
 ) {
     @Serializable
     data class Version(
-        @Contextual val _id: ObjectId,
         @Contextual
         val modpackId: ObjectId,
         //1.0 1.1 1.2 etc
         val name: String,
         val changelog: String,
         val mods: List<Mod>,
-        val configs: List<PackFile>,
-        val kjs: List<PackFile>,
-    )
-    @Serializable
-    data class CreateDto(
-        val name: String,
-        val mods: List<Mod>,
-        val configs: List<PackFile>,
-        val kjs: List<PackFile>,
-    )
+    ){
+        val dir
+            get() = MODPACK_DATA_DIR.resolve(modpackId.str).resolve(name)
+        val configDir get()  = dir.resolve("config")
+        val kjsDir get()  = dir.resolve("kubejs")
+        val modsDir get() = dir.resolve("mods")
+    }
 }
