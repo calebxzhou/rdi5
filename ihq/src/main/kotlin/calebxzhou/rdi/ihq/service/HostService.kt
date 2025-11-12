@@ -494,6 +494,9 @@ object HostService {
 
     suspend fun HostGuardContext.start() {
         val current = getById(host._id) ?: throw RequestError("无此主机")
+        if (DockerService.isStarted(current._id.str)) {
+            throw RequestError("已经启动过了")
+        }
         DockerService.start(current._id.str)
         clearShutFlag(current._id)
     }
