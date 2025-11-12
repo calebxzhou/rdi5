@@ -44,26 +44,28 @@ class HostConsoleFragment(val host: Host) : RFragment("主机后台") {
     private val RED_COLOR = Color.rgb(255, 0, 0)        // Red for errors
 
     init {
-        bottomOptionsConfig = {
-            "▶ 启动" colored MaterialColor.GREEN_900 with {
-                confirm("确定要启动吗？"){
-                    server.requestU("host/${host._id}/start"){
-                        toast("启动指令已发送")
+        titleViewInit = {
+            quickOptions {
+                "▶ 启动" colored MaterialColor.GREEN_900 with {
+                    confirm("确定要启动吗？"){
+                        server.requestU("host/${host._id}/start"){
+                            toast("启动指令已发送")
+                        }
                     }
                 }
-            }
-            "⟳ 重启" colored MaterialColor.BLUE_800 with {
-                confirm("确定重启吗？"){
-                    server.requestU("host/${host._id}/restart"){
-                        toast("重启指令已发送")
+                "⟳ 重启" colored MaterialColor.BLUE_800 with {
+                    confirm("确定重启吗？"){
+                        server.requestU("host/${host._id}/restart"){
+                            toast("重启指令已发送")
+                        }
                     }
                 }
-            }
-            "⏹ 停止" colored MaterialColor.RED_900 with {
-                confirm("确定停止吗？") {
+                "⏹ 停止" colored MaterialColor.RED_900 with {
+                    confirm("确定停止吗？") {
 
-                    server.requestU("host/${host._id}/stop"){
-                        toast("停止指令已发送")
+                        server.requestU("host/${host._id}/stop"){
+                            toast("停止指令已发送")
+                        }
                     }
                 }
             }
