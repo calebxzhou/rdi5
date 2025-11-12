@@ -19,6 +19,8 @@ class ModPack(
     val mcVer: String = "1.21.1",
     val versions: List<Version> = arrayListOf(),
 ) {
+    val dir
+        get() = MODPACK_DATA_DIR.resolve(_id.str)
     @Serializable
     data class Version(
         @Contextual
@@ -30,8 +32,5 @@ class ModPack(
     ){
         val dir
             get() = MODPACK_DATA_DIR.resolve(modpackId.str).resolve(name)
-        val configDir get()  = dir.resolve("config")
-        val kjsDir get()  = dir.resolve("kubejs")
-        val modsDir get() = dir.resolve("mods")
     }
 }
