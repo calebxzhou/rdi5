@@ -1,24 +1,58 @@
 package calebxzhou.rdi.model
 
 import calebxzhou.rdi.model.pack.Mod
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.io.File
+import java.util.zip.ZipFile
+
+/**
+ * Data class containing parsed modpack information
+ */
+
+data class CurseForgeModpackData(
+    val manifest: CurseForgePackManifest,
+    val zip: ZipFile,
+    val overrideEntries: List<java.util.zip.ZipEntry>,
+    val overridesFolder: String
+) {
+    fun close() = zip.close()
+}
 
 @Serializable
-data class CurseForgeModsRequest(
-    val modIds: List<Long>,
-    val filterPcOnly: Boolean = true
-)
+data class CurseForgePackManifest(
+    val name: String,
+    val version: String,
+    val minecraft: Mc,
+    val overrides: String? = null,
+    val files: List<CurseForgePackManifest.File> = emptyList(),
+){
+    @Serializable
+    data class Mc(
+        val version: String,
+        val modLoaders: List<ModLoader> = emptyList()
+    )
+
+    @Serializable
+    data class ModLoader(
+        val id: String,
+        val primary: Boolean = false
+    )
+    @Serializable
+    data class File(
+        @SerialName("projectID") val projectId: Int,
+        @SerialName("fileID") val fileId: Int,
+        val required: Boolean = true,
+    )
+}
+
+
+
 
 @Serializable
-data class CurseForgeModsResponse(
-    val data: List<CurseForgeMod>? = null
-)
-
-@Serializable
-data class CurseForgeMod(
-    val id: Long? = null,
-    val gameId: Long? = null,
+data class CurseForgeModInfo(
+    val id: Int,
+    val gameId: Int? = null,
     val name: String? = null,
     val slug: String,
     val links: CurseForgeModLinks? = null,
@@ -100,4 +134,103 @@ data class CurseForgeFileIndex(
 data class CurseForgeLocalResult(
     val matched: List<Mod> = emptyList(),
     val unmatched: List<File> = emptyList()
+)
+
+@Serializable
+data class CurseForgeFileResponse(
+    val data: CurseForgeFile? = null
+)
+
+
+@Serializable
+data class CurseForgeFileDependency(
+    val modId: Long? = null,
+    val relationType: Int? = null
+)
+
+@Serializable
+data class CurseForgeFileModule(
+    val name: String? = null,
+    val fingerprint: Long? = null
+)
+
+
+@Serializable
+data class CurseForgeFingerprintResponse(
+    val data: CurseForgeFingerprintData? = null
+)
+
+@Serializable
+data class CurseForgeFingerprintData(
+    val isCacheBuilt: Boolean = false,
+    val exactMatches: List<CurseForgeFingerprintMatch> = emptyList(),
+    val exactFingerprints: List<Long> = emptyList(),
+    val partialMatches: List<CurseForgeFingerprintMatch> = emptyList(),
+    val partialMatchFingerprints: Map<String, List<Long>> = emptyMap(),
+    val installedFingerprints: List<Long> = emptyList(),
+    val unmatchedFingerprints: List<Long> = emptyList()
+)
+
+@Serializable
+data class CurseForgeFingerprintMatch(
+    val id: Int = 0,
+    val file: CurseForgeFile,
+    val latestFiles: List<CurseForgeFile> = emptyList()
+)
+
+@Serializable
+data class CurseForgeFile(
+    val id: Int = 0,
+    val gameId: Int = 0,
+    val modId: Int = 0,
+    val isAvailable: Boolean = false,
+    val displayName: String? = null,
+    val fileName: String? = null,
+    val releaseType: Int? = null,
+    val fileStatus: Int? = null,
+    val hashes: List<CurseForgeFileHash> = emptyList(),
+    val fileDate: String? = null,
+    val fileLength: Long? = null,
+    val downloadCount: Long? = null,
+    val fileSizeOnDisk: Long? = null,
+    val downloadUrl: String? = null,
+    val gameVersions: List<String> = emptyList(),
+    val sortableGameVersions: List<CurseForgeSortableGameVersion> = emptyList(),
+    val dependencies: List<CurseForgeDependency> = emptyList(),
+    val exposeAsAlternative: Boolean? = null,
+    val parentProjectFileId: Long? = null,
+    val alternateFileId: Long? = null,
+    val isServerPack: Boolean? = null,
+    val serverPackFileId: Long? = null,
+    val isEarlyAccessContent: Boolean? = null,
+    val earlyAccessEndDate: String? = null,
+    val fileFingerprint: Long,
+    val modules: List<CurseForgeModule> = emptyList()
+)
+
+@Serializable
+data class CurseForgeFileHash(
+    val value: String? = null,
+    val algo: Int? = null
+)
+
+@Serializable
+data class CurseForgeSortableGameVersion(
+    val gameVersionName: String? = null,
+    val gameVersionPadded: String? = null,
+    val gameVersion: String? = null,
+    val gameVersionReleaseDate: String? = null,
+    val gameVersionTypeId: Int? = null
+)
+
+@Serializable
+data class CurseForgeDependency(
+    val modId: Long? = null,
+    val relationType: Int? = null
+)
+
+@Serializable
+data class CurseForgeModule(
+    val name: String? = null,
+    val fingerprint: Long? = null
 )
