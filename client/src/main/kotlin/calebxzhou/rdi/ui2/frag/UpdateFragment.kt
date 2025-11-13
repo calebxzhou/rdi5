@@ -6,7 +6,6 @@ import calebxzhou.rdi.net.downloadFileWithProgress
 import calebxzhou.rdi.net.formatBytes
 import calebxzhou.rdi.net.formatSpeed
 import calebxzhou.rdi.service.MOD_DIR
-import calebxzhou.rdi.service.ModService
 import calebxzhou.rdi.service.installedMods
 import calebxzhou.rdi.service.modId
 import calebxzhou.rdi.service.readNeoForgeConfig
