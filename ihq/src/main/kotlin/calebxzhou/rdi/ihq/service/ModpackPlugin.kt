@@ -3,7 +3,7 @@ package calebxzhou.rdi.ihq.service
 import calebxzhou.rdi.ihq.exception.ParamError
 import calebxzhou.rdi.ihq.exception.RequestError
 import calebxzhou.rdi.ihq.model.RAccount
-import calebxzhou.rdi.ihq.model.pack.ModPack
+import calebxzhou.rdi.ihq.model.pack.Modpack
 import calebxzhou.rdi.ihq.net.uid
 import com.mongodb.client.model.Filters.eq
 import io.ktor.server.application.ApplicationCall
@@ -23,7 +23,7 @@ class ModpackGuardConfig {
 
 data class ModpackGuardContext(
     val player: RAccount,
-    val modpack: ModPack,
+    val modpack: Modpack,
 )
 
 val ModpackGuardContext.isAuthor: Boolean
