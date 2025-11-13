@@ -2,7 +2,6 @@ package calebxzhou.rdi.ui2.component
 
 import calebxzhou.rdi.RDI
 import calebxzhou.rdi.lgr
-import calebxzhou.rdi.net.httpRequest
 import calebxzhou.rdi.ui2.iconDrawable
 import calebxzhou.rdi.util.ioScope
 import calebxzhou.rdi.ui2.uiThread
