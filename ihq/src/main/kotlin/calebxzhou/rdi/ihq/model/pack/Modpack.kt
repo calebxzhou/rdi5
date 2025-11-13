@@ -5,10 +5,9 @@ import calebxzhou.rdi.ihq.util.str
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import org.bson.types.ObjectId
-import java.io.File
 
 @Serializable
-class ModPack(
+class Modpack(
     @Contextual val _id: ObjectId = ObjectId(),
     val name: String,
     @Contextual
