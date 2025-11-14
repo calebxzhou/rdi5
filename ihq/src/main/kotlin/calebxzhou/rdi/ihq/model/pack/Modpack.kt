@@ -7,7 +7,7 @@ import kotlinx.serialization.Serializable
 import org.bson.types.ObjectId
 
 @Serializable
-class Modpack(
+data class Modpack(
     @Contextual val _id: ObjectId = ObjectId(),
     val name: String,
     @Contextual

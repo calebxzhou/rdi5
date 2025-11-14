@@ -324,7 +324,7 @@ abstract class RFragment(initialTitle: String = "") : Fragment() {
             when (option.type) {
                 OptionType.BUTTON -> {
                     val button = RButton(context, color = option.color ?: MaterialColor.WHITE) {
-                        option.buttonHandler?.invoke()
+                        option.buttonHandler?.invoke(it)
                     }.apply {
                         text = option.text
                     }
@@ -432,7 +432,7 @@ abstract class RFragment(initialTitle: String = "") : Fragment() {
     val checkbox = OptionKind { label -> CheckboxDraft(label) }
     val button = OptionKind { label -> ButtonDraft(label) }
 
-        infix fun String.with(handler: () -> Unit) {
+        infix fun String.with(handler: (RButton) -> Unit) {
             ButtonDraft(this).with(handler)
         }
 
@@ -458,7 +458,7 @@ abstract class RFragment(initialTitle: String = "") : Fragment() {
 
             infix fun colored(color: MaterialColor): ButtonDraft = apply { this.color = color }
 
-            infix fun with(handler: () -> Unit) {
+            infix fun with(handler: (RButton) -> Unit) {
                 addOption(
                     OptionData(
                         text = label,
@@ -512,7 +512,7 @@ abstract class RFragment(initialTitle: String = "") : Fragment() {
         val color: MaterialColor?,
         val buttonInit: (RButton.() -> Unit)?,
         val checkboxInit: (CheckBox.() -> Unit)?,
-        val buttonHandler: (() -> Unit)?,
+        val buttonHandler: ((RButton) -> Unit)?,
         val checkboxHandler: ((Boolean) -> Unit)?,
         val initialChecked: Boolean?
     )

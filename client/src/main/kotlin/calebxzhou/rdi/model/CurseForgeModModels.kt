@@ -3,6 +3,7 @@ package calebxzhou.rdi.model
 import calebxzhou.rdi.model.pack.Mod
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import java.io.Closeable
 import java.io.File
 import java.util.zip.ZipFile
 
@@ -12,17 +13,18 @@ import java.util.zip.ZipFile
 
 data class CurseForgeModpackData(
     val manifest: CurseForgePackManifest,
+    val file: File,
     val zip: ZipFile,
     val overrideEntries: List<java.util.zip.ZipEntry>,
     val overridesFolder: String
-) {
-    fun close() = zip.close()
+): Closeable {
+    override fun close() = zip.close()
 }
 
 @Serializable
 data class CurseForgePackManifest(
-    val name: String,
-    val version: String,
+    var name: String,
+    var version: String,
     val minecraft: Mc,
     val overrides: String? = null,
     val files: List<CurseForgePackManifest.File> = emptyList(),

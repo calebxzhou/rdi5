@@ -7,6 +7,7 @@ import calebxzhou.rdi.model.*
 import calebxzhou.rdi.model.pack.Mod
 import calebxzhou.rdi.net.httpRequest
 import calebxzhou.rdi.net.json
+import calebxzhou.rdi.service.ModService.briefInfo
 import calebxzhou.rdi.util.murmur2
 import calebxzhou.rdi.util.serdesJson
 import io.ktor.client.call.*
@@ -88,8 +89,10 @@ object CurseForgeService {
     }
 
     //从完整的cf mod信息取得card vo
-    private fun CurseForgeModInfo.toBriefVo(modFile: File?): ModCardVo {
+    private fun CurseForgeModInfo.toBriefVo(modFile: File?=null): ModCardVo {
+        val briefInfo = slugBriefInfo[slug]
         val icons = buildList {
+            briefInfo?.logoUrl?.let { add(it) }
             logo?.thumbnailUrl?.takeIf { it.isNotBlank() }?.let { add(it) }
             logo?.url?.takeIf { it.isNotBlank() }?.let { add(it) }
         }
@@ -100,10 +103,11 @@ object CurseForgeService {
         val introText = summary?.takeIf { it.isNotBlank() }?.trim()
             ?: modFile?.let { JarFile(it).readNeoForgeConfig()?.modDescription }
             ?: "暂无介绍"
+
         return ModCardVo(
             name = resolvedName,
-            nameCn = null,
-            intro = introText,
+            nameCn = briefInfo?.nameCn,
+            intro = briefInfo?.intro?:introText,
             iconData = iconBytes,
             iconUrls = icons
         )
@@ -186,7 +190,31 @@ object CurseForgeService {
         return CurseForgeLocalResult(matched, unmatched)
 
     }
-
+    
+    /**
+     * Fill ModCardVo for CurseForge mods that don't have vo yet
+     * @return List of mods with vo filled
+     */
+    suspend fun List<Mod>.fillCurseForgeVo(): List<Mod> {
+        // Filter mods that need vo and are from CurseForge
+        val modsNeedingVo = filter { it.vo == null && it.platform == "cf" }
+        if (modsNeedingVo.isEmpty()) return this
+        
+        // Batch fetch mod info for all mods needing vo
+        val projectIdToMod = modsNeedingVo.associateBy { it.projectId.toInt() }
+        val modInfos = getModsInfo(projectIdToMod.keys.toList())
+        val projectIdToVo = modInfos.associate { it.id to it.toBriefVo() }
+        
+        // Fill vo for mods that needed it
+        return map { mod ->
+            if (mod.vo == null && mod.platform == "cf") {
+                mod.apply { vo = projectIdToVo[mod.projectId.toInt()] }
+            } else {
+                mod
+            }
+        }
+    }
+    
     suspend fun List<CurseForgePackManifest.File>.toMods(): List<Mod> {
         // Fetch all mod info and file info in parallel
         val modInfoMap = map { it.projectId }
@@ -238,9 +266,10 @@ object CurseForgeService {
 
         try {
             val entries = zip.entries().asSequence().toList()
+            entries.find { it.name == ".minecraft" }?.let { throw ModpackException("你应该选整合包 而不是客户端\n你可以用PCL的导出功能 将客户端转换为整合包") }
             val manifestEntry = entries.firstOrNull {
                 !it.isDirectory && it.name.substringAfterLast('/') == "manifest.json"
-            } ?: throw ModpackException("整合包缺少 manifest.json")
+            } ?: throw ModpackException("整合包缺少文件：manifest.json")
 
             val rootPrefix = manifestEntry.name.substringBeforeLast('/', missingDelimiterValue = "")
                 .let { if (it.isBlank()) "" else "$it/" }
@@ -248,7 +277,7 @@ object CurseForgeService {
             val overrideEntries = entries.filter { !it.isDirectory && it.name.startsWith(overridesFolder) }
 
             if (overrideEntries.isEmpty()) {
-                throw ModpackException("整合包缺少 overrides 文件夹")
+                throw ModpackException("整合包缺少目录：overrides")
             }
 
             val manifestJson = zip.getInputStream(manifestEntry).bufferedReader(Charsets.UTF_8).use { it.readText() }
@@ -280,6 +309,7 @@ object CurseForgeService {
 
             return CurseForgeModpackData(
                 manifest = manifest,
+                zipFile,
                 zip = zip,
                 overrideEntries = overrideEntries,
                 overridesFolder = overridesFolder

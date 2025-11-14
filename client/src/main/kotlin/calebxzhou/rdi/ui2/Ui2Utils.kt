@@ -2,7 +2,6 @@ package calebxzhou.rdi.ui2
 
 import calebxzhou.rdi.lgr
 import calebxzhou.rdi.ui2.component.*
-import calebxzhou.rdi.ui2.frag.RFragment
 import calebxzhou.rdi.util.McWindowHandle
 import calebxzhou.rdi.util.isMcStarted
 import calebxzhou.rdi.util.mc
@@ -21,21 +20,17 @@ import icyllis.modernui.graphics.Image
 import icyllis.modernui.graphics.Paint
 import icyllis.modernui.graphics.drawable.Drawable
 import icyllis.modernui.graphics.drawable.ImageDrawable
-import icyllis.modernui.mc.MuiScreen
 import icyllis.modernui.mc.neoforge.MuiForgeApi
-import icyllis.modernui.view.Gravity
-import icyllis.modernui.view.KeyEvent
-import icyllis.modernui.view.LayoutInflater
-import icyllis.modernui.view.View
-import icyllis.modernui.view.ViewGroup
+import icyllis.modernui.view.*
 import icyllis.modernui.widget.*
-import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.gui.screens.TitleScreen
 import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite
 import net.minecraft.resources.ResourceLocation
 import org.bson.types.ObjectId
+import org.lwjgl.PointerBuffer
 import org.lwjgl.glfw.GLFW
+import org.lwjgl.system.MemoryStack
 
 /**
  * calebxzhou @ 2025-07-22 21:28
@@ -313,6 +308,15 @@ fun copyToClipboard(s: String) {
 fun <T> Result<T>.failAlertPrint(): Result<T> {
      return onFailure { alertErr(it.toString());it.printStackTrace() }
 }
+val String.pointerBuffer: PointerBuffer
+    get() {
+        val stack = MemoryStack.stackPush()
+        val pntr = stack.mallocPointer(1)
+        stack.nUTF8(this,true)
+        pntr.put(stack.pointerAddress)
+        pntr.rewind()
+        return pntr
+    }
 operator fun View.get(id: Int): View = findViewById(id)!!
 inline fun <reified T:View> View.ofView(id: Int) = findViewById<T>(id)!!
 /*

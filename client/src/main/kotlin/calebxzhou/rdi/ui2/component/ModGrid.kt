@@ -3,6 +3,7 @@ package calebxzhou.rdi.ui2.component
 import calebxzhou.rdi.Const
 import calebxzhou.rdi.model.CurseForgeLocalResult
 import calebxzhou.rdi.model.pack.Mod
+import calebxzhou.rdi.service.CurseForgeService.fillCurseForgeVo
 import calebxzhou.rdi.service.filterServerOnlyMods
 import calebxzhou.rdi.service.installedMods
 import calebxzhou.rdi.service.loadInfoCurseForge
@@ -45,7 +46,7 @@ class ModGrid(
         gravity = Gravity.CENTER_HORIZONTAL
         setTextColor(MaterialColor.GRAY_500.colorValue)
         setPadding(0, ctx.dp(8f), 0, ctx.dp(8f))
-        text = "正在读取已经安装的mod…"
+        text = "正在读取mod…"
     }
 
     private val selectedMods = linkedSetOf<Mod>()
@@ -90,7 +91,7 @@ class ModGrid(
                 schedulePendingRender(mods)
             }
         }
-        showMods(mods)
+
 
     }
 
