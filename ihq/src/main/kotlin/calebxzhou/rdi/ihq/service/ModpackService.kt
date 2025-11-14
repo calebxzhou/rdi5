@@ -4,6 +4,7 @@ import calebxzhou.rdi.ihq.DB
 import calebxzhou.rdi.ihq.exception.ParamError
 import calebxzhou.rdi.ihq.exception.RequestError
 import calebxzhou.rdi.ihq.model.pack.Modpack
+import calebxzhou.rdi.ihq.model.pack.ModpackInfo
 import calebxzhou.rdi.ihq.net.*
 import calebxzhou.rdi.ihq.service.ModpackService.createVersion
 import calebxzhou.rdi.ihq.service.ModpackService.deleteModpack
@@ -12,6 +13,7 @@ import calebxzhou.rdi.ihq.service.ModpackService.getVersionFile
 import calebxzhou.rdi.ihq.service.ModpackService.getVersionFileList
 import calebxzhou.rdi.ihq.service.ModpackService.uploadVersionFile
 import com.mongodb.client.model.Filters.eq
+import com.mongodb.client.model.Filters.regex
 import com.mongodb.client.model.Updates
 import io.ktor.server.request.*
 import io.ktor.server.response.*
@@ -19,12 +21,92 @@ import io.ktor.server.routing.*
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.toList
 import org.bson.types.ObjectId
+import java.io.ByteArrayInputStream
+import java.util.zip.ZipInputStream
 
 
 fun Route.modpackRoutes() {
     route("/modpack") {
+        route("/{modpackId}/version/{verName}") {
+            install(ModpackGuardPlugin)
+            delete(""){
+                    val ctx = call.modpackGuardContext()
+                    val verName = param("verName").trim()
+                    ctx.deleteVersion(verName)
+                    ok()
+
+            }
+            post(""){
+
+                    val ctx = call.modpackGuardContext()
+                    val verName = param("verName").trim()
+                    val zipBytes = call.receive<ByteArray>()
+                    ctx.createVersion(verName, zipBytes)
+                    ok()
+
+            }
+            get("/files") {
+
+                    val ctx = call.modpackGuardContext()
+                    val verName = param("verName").trim()
+                    val files = ctx.getVersionFileList(verName)
+                    response(data = files)
+
+            }
+
+            get("/file/{filePath...}") {
+
+                install(ModpackGuardPlugin)
+
+                    val ctx = call.modpackGuardContext()
+                    val verName = param("verName").trim()
+                    val filePath = call.parameters.getAll("filePath")?.joinToString("/")
+                        ?: throw ParamError("缺少参数: filePath")
+                    val content = ctx.getVersionFile(verName, filePath)
+                    call.respondBytes(content)
+
+            }
+            post("/file/{filePath...}") {
+
+                    val ctx = call.modpackGuardContext()
+                    val verName = param("verName").trim()
+                    val filePath = call.parameters.getAll("filePath")?.joinToString("/")
+                        ?: throw ParamError("缺少参数: filePath")
+                    val bytes = call.receive<ByteArray>()
+                    ctx.uploadVersionFile(verName, filePath, bytes)
+                    ok()
+
+
+            }
+
+
+        }
+        get("/{modpackId}") {
+            val modpack = ModpackService.get(call.idParam("modpackId"))
+                ?: throw RequestError("整合包不存在")
+            response(data = modpack)
+        }
+
+        get("/search/{modpackName}") {
+            val name = call.parameters["modpackName"]?.trim()
+                ?: throw ParamError("缺少参数: modpackName")
+            val modpacks = ModpackService.searchByName(name)
+            response(data = modpacks)
+        }
+
+        delete("/{modpackId}") {
+            install(ModpackGuardPlugin)
+
+                val ctx = call.modpackGuardContext()
+                ctx.deleteModpack()
+                ok()
+
+        }
+        get("") {
+            response(data = ModpackService.getAll())
+        }
         post("/") {
-            response(data= ModpackService.create(call.uid, param("name")))
+            response(data = ModpackService.create(call.uid, param("name")))
 
         }
 
@@ -33,79 +115,8 @@ fun Route.modpackRoutes() {
             response(data = mods)
         }
 
-        get("/{modpackId}") {
-            val modpack = ModpackService.get(call.idParam("modpackId"))
-                ?: throw RequestError("整合包不存在")
-            response(data = modpack)
-        }
 
-        delete("/{modpackId}") {
-            install(ModpackGuardPlugin)
-            handle {
-                val ctx = call.modpackGuardContext()
-                ctx.deleteModpack()
-                ok()
-            }
-        }
 
-        route("/{modpackId}/{verName}") {
-            get("/files") {
-                install(ModpackGuardPlugin)
-                handle {
-                    val ctx = call.modpackGuardContext()
-                    val verName = param("verName").trim()
-                    val files = ctx.getVersionFileList(verName)
-                    response(data = files)
-                }
-            }
-
-            route("/file/{filePath...}") {
-                get {
-                    install(ModpackGuardPlugin) 
-                    handle {
-                        val ctx = call.modpackGuardContext()
-                        val verName = param("verName").trim()
-                        val filePath = call.parameters.getAll("filePath")?.joinToString("/")
-                            ?: throw ParamError("缺少参数: filePath")
-                        val content = ctx.getVersionFile(verName, filePath)
-                        call.respondBytes(content)
-                    }
-                }
-
-                post {
-                    install(ModpackGuardPlugin) 
-                    handle {
-                        val ctx = call.modpackGuardContext()
-                        val verName = param("verName").trim()
-                        val filePath = call.parameters.getAll("filePath")?.joinToString("/")
-                            ?: throw ParamError("缺少参数: filePath")
-                        val bytes = call.receive<ByteArray>()
-                        ctx.uploadVersionFile(verName, filePath, bytes)
-                        ok()
-                    }
-                }
-            }
-
-            post {
-                install(ModpackGuardPlugin) 
-                handle {
-                    val ctx = call.modpackGuardContext()
-                    val verName = param("verName").trim()
-                    ctx.createVersion(verName)
-                    ok()
-                }
-            }
-
-            delete {
-                install(ModpackGuardPlugin) 
-                handle {
-                    val ctx = call.modpackGuardContext()
-                    val verName = param("verName").trim()
-                    ctx.deleteVersion(verName)
-                    ok()
-                }
-            }
-        }
     }
 }
 
@@ -116,17 +127,45 @@ object ModpackService {
     suspend fun listByAuthor(uid: ObjectId): List<Modpack> = dbcl.find(eq("authorId", uid)).toList()
 
     suspend fun get(id: ObjectId): Modpack? = dbcl.find(eq("_id", id)).firstOrNull()
+
+    suspend fun searchByName(name: String): List<Modpack> {
+        if (name.isBlank()) return emptyList()
+        //Uses MongoDB's regex filter with case-insensitive flag ("i")
+        return dbcl.find(regex(Modpack::name.name, name, "i")).toList()
+    }
+    suspend fun getAll(): List<ModpackInfo> {
+        val modpacks = dbcl.find().toList()
+        if (modpacks.isEmpty()) return emptyList()
+
+        val authorNames = hashMapOf<ObjectId, String>()
+        modpacks.map { it.authorId }
+            .distinct()
+            .forEach { id ->
+                authorNames[id] = PlayerService.getName(id) ?: "未知作者"
+            }
+
+        return modpacks.map { pack ->
+            ModpackInfo(
+                name = pack.name,
+                author = authorNames[pack.authorId] ?: "未知作者",
+                modCount = pack.versions.maxOfOrNull { it.mods.size } ?: 0,
+                fileSize = pack.totalSize(),
+                icon = pack.icon,
+                info = pack.info
+            )
+        }
+    }
     suspend fun create(uid: ObjectId, name: String): Modpack {
         val modpackCount = dbcl.countDocuments(eq("authorId", uid)).toInt()
         if (modpackCount >= MAX_MODPACK_PER_USER) {
             throw RequestError("最多5个整合包")
         }
         if (dbcl.countDocuments(eq(Modpack::name.name, name)) > 0) {
-            throw RequestError("已存在同名整合包 可以玩别人传过的")
+            throw RequestError("其他人已上传过这个整合包了")
         }
         val player = PlayerService.getById(uid) ?: throw RequestError("无此用户")
         val modPack = Modpack(
-            name = player.name + "的整合包${modpackCount + 1}",
+            name=name ,
             authorId = uid,
         )
         dbcl.insertOne(modPack)
@@ -175,7 +214,7 @@ object ModpackService {
             .toList()
     }
 
-    suspend fun ModpackGuardContext.createVersion(verName: String) {
+    suspend fun ModpackGuardContext.createVersion(verName: String, zipBytes: ByteArray) {
         requireAuthor()
         val name = verName.trim()
         if (name.isEmpty()) throw RequestError("版本名不能为空")
@@ -183,19 +222,63 @@ object ModpackService {
         if (pack.versions.any { it.name == name }) {
             throw RequestError("版本已存在")
         }
-        val version = Modpack.Version(
-            modpackId = pack._id,
-            name = name,
-            changelog = "",
-            mods = emptyList()
-        )
-        dbcl.updateOne(
-            eq("_id", pack._id),
-            Updates.push(Modpack::versions.name, version)
-        )
-        val dir = pack.dir.resolve(name)
-        if (!dir.exists() && !dir.mkdirs()) {
+        
+        // Create version directory
+        val versionDir = pack.dir.resolve(name)
+        if (versionDir.exists()) {
+            throw RequestError("版本目录已存在")
+        }
+        if (!versionDir.mkdirs()) {
             throw RequestError("创建版本目录失败")
+        }
+        
+        try {
+            // Unzip the file into version directory
+            ZipInputStream(ByteArrayInputStream(zipBytes)).use { zipInput ->
+                var entry = zipInput.nextEntry
+                while (entry != null) {
+                    if (!entry.isDirectory) {
+                        val targetFile = versionDir.resolve(entry.name)
+                        
+                        // Security check: prevent path traversal
+                        val normalizedPath = targetFile.canonicalFile
+                        if (!normalizedPath.path.startsWith(versionDir.canonicalPath)) {
+                            throw RequestError("非法文件路径: ${entry.name}")
+                        }
+                        
+                        // Create parent directories if needed
+                        targetFile.parentFile?.mkdirs()
+                        
+                        // Write file content
+                        targetFile.outputStream().use { output ->
+                            zipInput.copyTo(output)
+                        }
+                    }
+                    zipInput.closeEntry()
+                    entry = zipInput.nextEntry
+                }
+            }
+            
+            // Add version to database
+            val version = Modpack.Version(
+                modpackId = pack._id,
+                name = name,
+                changelog = "",
+                mods = emptyList()
+            )
+            dbcl.updateOne(
+                eq("_id", pack._id),
+                Updates.push(Modpack::versions.name, version)
+            )
+        } catch (e: Exception) {
+            // Clean up on error
+            if (versionDir.exists()) {
+                versionDir.deleteRecursively()
+            }
+            throw when (e) {
+                is RequestError -> e
+                else -> RequestError("解压文件失败: ${e.message}")
+            }
         }
     }
 
@@ -284,5 +367,13 @@ object ModpackService {
          )
          dbcl.updateOne(eq("_id", modpackId), com.mongodb.client.model.Updates.push("versions", newVersionId))
         */
+    }
+
+    private fun Modpack.totalSize(): Long {
+        val root = dir
+        if (!root.exists()) return 0
+        return root.walkTopDown()
+            .filter { it.isFile }
+            .sumOf { it.length() }
     }
 }

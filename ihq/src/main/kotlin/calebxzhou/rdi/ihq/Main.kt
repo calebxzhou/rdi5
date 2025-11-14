@@ -89,7 +89,7 @@ fun startHttp(){
     embeddedServer(Netty, host = "::", port = CONF.server.port){
         install(StatusPages) {
             status(HttpStatusCode.NotFound) { call, status ->
-                call.response<Unit>(false, "找不到请求的内容",null)
+                call.response<Unit>(-404, "找不到请求的内容",null)
             }
             //参数不全/有问题
             exception<ParamError> { call, cause ->
