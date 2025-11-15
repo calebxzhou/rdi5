@@ -27,7 +27,10 @@ data class Modpack(
         //1.0 1.1 1.2 etc
         val name: String,
         val changelog: String,
+        //构建完成状态, nullable for backward compatibility with older documents
+        val ready: Boolean? = false,
         val mods: List<Mod>,
+
     ){
         val dir
             get() = MODPACK_DATA_DIR.resolve(modpackId.str).resolve(name)

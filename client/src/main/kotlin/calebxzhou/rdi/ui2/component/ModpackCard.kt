@@ -85,7 +85,6 @@ class ModpackCard(
                 ellipsize = TextUtils.TruncateAt.END
                 maxLines = 1
             }
-
             descriptionView = textView {
                 textSize = 13f
                 setTextColor(MaterialColor.GRAY_700.colorValue)

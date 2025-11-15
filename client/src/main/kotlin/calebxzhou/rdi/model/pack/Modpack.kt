@@ -23,6 +23,7 @@ class Modpack(
         //1.0 1.1 1.2 etc
         val name: String,
         val changelog: String,
+        val ready: Boolean,
         val mods: List<Mod>,
     )
 }

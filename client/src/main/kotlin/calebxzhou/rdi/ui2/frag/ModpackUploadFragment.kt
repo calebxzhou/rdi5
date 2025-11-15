@@ -27,17 +27,22 @@ import calebxzhou.rdi.ui2.textField
 import calebxzhou.rdi.ui2.textView
 import calebxzhou.rdi.ui2.uiThread
 import calebxzhou.rdi.util.ioTask
+import calebxzhou.rdi.util.serdesJson
 import calebxzhou.rdi.util.urlEncoded
 import icyllis.modernui.widget.TextView
+import io.ktor.client.plugins.onUpload
+import io.ktor.client.plugins.onUpload
 import io.ktor.client.request.*
+import io.ktor.client.request.forms.InputProvider
+import io.ktor.client.request.forms.MultiPartFormDataContent
+import io.ktor.client.request.forms.formData
 import io.ktor.http.*
-import io.ktor.http.content.OutgoingContent
-import io.ktor.utils.io.ByteWriteChannel
-import io.ktor.utils.io.writeFully
+import io.ktor.utils.io.streams.asInput
+import kotlinx.serialization.encodeToString
 import org.lwjgl.PointerBuffer
 import org.lwjgl.util.tinyfd.TinyFileDialogs
 import java.io.File
-import kotlin.math.min
+import kotlinx.io.buffered
 
 class ModpackUploadFragment : RFragment("上传整合包") {
     lateinit var progressEditText: TextView
@@ -147,32 +152,55 @@ class ModpackUploadFragment : RFragment("上传整合包") {
                 val versionEncoded = manifest.version.urlEncoded
                 progressText = "创建版本 ${manifest.version}..."
 
-                // Read the entire zip file
-                val zipBytes = data.file.readBytes()
-                val totalBytes = zipBytes.size.toLong()
+                val totalBytes = data.file.length()
 
                 val startTime = System.nanoTime()
                 var lastProgressUpdate = 0L
-                val progressContent = UploadProgressContent(zipBytes) { sentBytes, total ->
-                    val now = System.nanoTime()
-                    if (sentBytes == total || now - lastProgressUpdate > 75_000_000L) {
-                        lastProgressUpdate = now
-                        val elapsedSeconds = (now - startTime) / 1_000_000_000.0
-                        val percent = if (total == 0L) 100 else ((sentBytes * 100) / total).toInt()
-                        val speed = if (elapsedSeconds <= 0) 0.0 else sentBytes / elapsedSeconds
-                        progressText = buildString {
-                            appendLine("正在上传版本 ${manifest.version}...")
-                            appendLine("进度：${percent.coerceIn(0, 100)}% (${sentBytes.humanSize}/${total.humanSize})")
-                            appendLine("速度：${formatSpeed(speed)}")
-                        }
-                    }
-                }
+                val modsJson = serdesJson.encodeToString(mods)
+                val boundary = "rdi-modpack-${System.currentTimeMillis()}"
+                val multipartContent = MultiPartFormDataContent(
+                    formData {
+                        append(
+                            key = "mods",
+                            value = modsJson,
+                            headers = Headers.build {
+                                append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                            }
+                        )
+                        append(
+                            key = "file",
+                            value = InputProvider { data.file.inputStream().asInput().buffered() },
+                            headers = Headers.build {
+                                append(HttpHeaders.ContentType, ContentType.Application.Zip.toString())
+                                append(HttpHeaders.ContentDisposition, "filename=\"${data.file.name}\"")
+                            }
+                        )
+                    },
+                    boundary = boundary
+                )
 
                 val createVersionResp = server.makeRequest<Unit>(
                     path = "modpack/$modpackId/version/$versionEncoded",
                     method = HttpMethod.Post,
                 ) {
-                    setBody(progressContent)
+                    setBody(multipartContent)
+                    onUpload { bytesSentTotal, contentLength ->
+                        val now = System.nanoTime()
+                        val shouldUpdate = contentLength != null && bytesSentTotal == contentLength ||
+                                now - lastProgressUpdate > 75_000_000L
+                        if (shouldUpdate) {
+                            lastProgressUpdate = now
+                            val elapsedSeconds = (now - startTime) / 1_000_000_000.0
+                            val total = contentLength?.takeIf { it > 0 } ?: totalBytes
+                            val percent = if (total <= 0) 100 else ((bytesSentTotal * 100) / total).toInt()
+                            val speed = if (elapsedSeconds <= 0) 0.0 else bytesSentTotal / elapsedSeconds
+                            progressText = buildString {
+                                appendLine("正在上传版本 ${manifest.version}...")
+                                appendLine("进度：${percent.coerceIn(0, 100)}% (${bytesSentTotal.humanSize}/${total.humanSize})")
+                                appendLine("速度：${formatSpeed(speed)}")
+                            }
+                        }
+                    }
                 }
                 
                 if (!createVersionResp.ok) {
@@ -186,13 +214,14 @@ class ModpackUploadFragment : RFragment("上传整合包") {
                 val speed = if (elapsedSeconds <= 0) 0.0 else totalBytes / elapsedSeconds
 
                 progressText = buildString {
-                    appendLine("上传完成")
                     appendLine("文件大小: ${totalBytes.humanSize}")
                     appendLine("平均速度: ${formatSpeed(speed)}")
                     appendLine("耗时: ${"%.1f".format(elapsedSeconds)}秒")
-                    appendLine("整合包上传完成")
+                    appendLine("传完了 服务器要开始构建 等5分钟 结果发你信箱里")
                 }
-                contentView.apply { button("完成", MaterialColor.GREEN_900){ ModpackUploadFragment().go(false) } }
+                uiThread {
+                    contentView.apply { button("完成", MaterialColor.GREEN_900){ ModpackUploadFragment().go(false) } }
+                }
                 closable = true
             } finally {
                 data.close()
@@ -225,33 +254,5 @@ class ModpackUploadFragment : RFragment("上传整合包") {
             modpackData.close()
             closable = true
         }
-    }
-}
-
-private class UploadProgressContent(
-    private val payload: ByteArray,
-    private val chunkSize: Int = DEFAULT_CHUNK_SIZE,
-    private val onProgress: (sent: Long, total: Long) -> Unit,
-) : OutgoingContent.WriteChannelContent() {
-    override val contentLength: Long = payload.size.toLong()
-    override val contentType: ContentType = ContentType.Application.Zip
-
-    override suspend fun writeTo(channel: ByteWriteChannel) {
-        if (payload.isEmpty()) {
-            onProgress(0, 0)
-            return
-        }
-        var offset = 0
-        val total = payload.size
-            while (offset < total) {
-                val length = min(chunkSize, total - offset)
-                channel.writeFully(payload, offset, offset + length)
-                offset += length
-            onProgress(offset.toLong(), total.toLong())
-        }
-    }
-
-    private companion object {
-        private const val DEFAULT_CHUNK_SIZE = 256 * 1024
     }
 }

@@ -22,7 +22,7 @@ import kotlin.collections.isNotEmpty
 
 class ModpackGrid(
     ctx: Context,
-    var modpacks: List<ModpackInfo> = emptyList(),
+    var modpacks: List<ModpackInfo> = arrayListOf(),
     private val onItemClick: (ModpackInfo) -> Unit = {},
 ) : LinearLayout(ctx) {
 

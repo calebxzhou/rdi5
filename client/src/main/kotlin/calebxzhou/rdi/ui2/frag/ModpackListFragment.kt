@@ -21,7 +21,7 @@ class ModpackListFragment: RFragment("大家的整合包") {
         }
         titleViewInit = {
             quickOptions {
-                "\uDB80\uDFD5 上传包" colored MaterialColor.BLUE_900 with { ModpackCreateFragment().go() }
+                "\uDB80\uDFD5 传包" colored MaterialColor.BLUE_900 with { ModpackCreateFragment().go() }
                 "\uEB29 我的包" colored MaterialColor.TEAL_900 with { ModpackCreateFragment().go() }
                 "\uDB86\uDDD8 做新包" colored MaterialColor.AMBER_900 with { alertErr("没写完") }
             }
@@ -31,7 +31,9 @@ class ModpackListFragment: RFragment("大家的整合包") {
         server.makeRequest<List<ModpackInfo>>("modpack").data?.let {
             uiThread {
                 contentView.apply {
-                    this += ModpackGrid(context,it)
+                    this += ModpackGrid(context,it){
+                        HostListFragment.Create(it).go()
+                    }
                 }
             }
         }

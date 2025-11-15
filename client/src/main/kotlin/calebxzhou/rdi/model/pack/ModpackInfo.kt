@@ -4,6 +4,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class ModpackInfo(
+    val id:String,
     val name:String,
     val author: String = "",
     val modCount: Int,
