@@ -52,7 +52,7 @@ data class ApiKeyConfig(
 data class AppConfig(
     val database: DatabaseConfig = DatabaseConfig(),
     val server: ServerConfig = ServerConfig(),
-    val proxy: ProxyConfig = ProxyConfig(),
+    val proxy: ProxyConfig? = null,
     val docker: DockerConfig = DockerConfig(),
     val apiKey: ApiKeyConfig = ApiKeyConfig(),
     val jwt: JwtConfig = JwtConfig(),
