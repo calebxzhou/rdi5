@@ -26,6 +26,7 @@ import org.apache.commons.compress.archivers.tar.TarArchiveEntry
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.File
 
 object DockerService {
     private val client by lazy {
@@ -478,14 +479,14 @@ object DockerService {
             HostStatus.UNKNOWN
         }
     }
-    suspend fun buildImage(name: String, contextPath: String,onLine: (String) -> Unit,
-                   onError: (Throwable) -> Unit = {},
-                   onFinished: () -> Unit = {}): String {
+    suspend fun buildImage(name: String, contextPath: File, onLine: (String) -> Unit,
+                           onError: (Throwable) -> Unit = {},
+                           onFinished: () -> Unit = {}): String {
         return withContext(Dispatchers.IO) {
             try {
                 val buildResponse = client.buildImageCmd()
-                    .withDockerfile(java.io.File(contextPath).resolve("Dockerfile"))
-                    .withBaseDirectory(java.io.File(contextPath))
+                    .withDockerfile((contextPath).resolve("Dockerfile"))
+                    .withBaseDirectory((contextPath))
                     .withTags(setOf(name))
                     .exec(object : com.github.dockerjava.api.command.BuildImageResultCallback() {
                         override fun onNext(item: BuildResponseItem) {
