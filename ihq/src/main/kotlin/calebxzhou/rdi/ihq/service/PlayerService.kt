@@ -15,6 +15,7 @@ import calebxzhou.rdi.ihq.util.displayLength
 import calebxzhou.rdi.ihq.util.isValidHttpUrl
 import calebxzhou.rdi.ihq.util.isValidObjectId
 import calebxzhou.rdi.ihq.util.serdesJson
+import com.mongodb.client.model.Filters.`in`
 import com.mongodb.client.model.Filters.eq
 import com.mongodb.client.model.Updates
 import com.mongodb.client.model.Updates.combine
@@ -25,9 +26,11 @@ import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.toList
 import org.bson.conversions.Bson
 import org.bson.types.ObjectId
 import java.io.File
+import java.util.LinkedHashSet
 
 fun Route.playerRoutes() {
     get("/player-info/{uid}") {
@@ -200,6 +203,20 @@ object PlayerService {
     }
 
     suspend fun getName(uid: ObjectId): String? = getById(uid)?.name
+    suspend fun List<ObjectId>.getPlayerNames(): Map<ObjectId, String> {
+        if (isEmpty()) return emptyMap()
+        val uniqueIds = LinkedHashSet(this)
+        val names = accountCol.find(`in`("_id", uniqueIds.toList()))
+            .toList()
+            .associate { account -> account._id to account.name }
+            .toMutableMap()
+
+        uniqueIds.forEach { id ->
+            names.putIfAbsent(id, "未知")
+        }
+
+        return names
+    }
 
     suspend fun getInfo(uid: ObjectId): RAccount.Dto = getById(uid)?.dto ?: RAccount.Dto()
 
