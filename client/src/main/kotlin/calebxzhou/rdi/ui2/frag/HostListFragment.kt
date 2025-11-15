@@ -5,6 +5,7 @@ import calebxzhou.rdi.model.Host
 import calebxzhou.rdi.model.Team
 import calebxzhou.rdi.model.World
 import calebxzhou.rdi.model.account
+import calebxzhou.rdi.model.pack.ModpackInfo
 import calebxzhou.rdi.net.server
 import calebxzhou.rdi.service.isOwnerOrAdmin
 import calebxzhou.rdi.service.myTeam
@@ -34,7 +35,7 @@ class HostListFragment() : RFragment("选择主机") {
     init {
         bottomOptionsConfig = {
             "＋ 创建主机" colored MaterialColor.BLUE_900 with {
-                Create(::load).go()
+                Create(null,::load).go()
             }
             "\uEF09 选择节点" with { Carrier().go() }
         }
@@ -142,7 +143,7 @@ class HostListFragment() : RFragment("选择主机") {
         }
     }
 
-    class Create(val onOk: () -> Unit) : RFragment("创建主机") {
+    class Create(val modpack: ModpackInfo?=null,val onOk: () -> Unit={}) : RFragment("创建主机") {
         private lateinit var worldSpinner: Spinner
         override var fragSize = FragmentSize.SMALL
         private var worlds: List<World> = emptyList()
@@ -170,8 +171,12 @@ class HostListFragment() : RFragment("选择主机") {
                             minimumWidth = 500
                             center()
                             linearLayout {
-                                textView("选择整合包")
-                                spinner(listOf("默认（原版）"))
+                                modpack?.let { textView("已选择整合包：${it.name}") }
+                                    ?:let {
+                                        textView("未选择整合包 默认原版空岛")
+                                        button("选包"){ ModpackListFragment().go(false)}
+                                    }
+
                             }
                             linearLayout {
                                 textView("选择存档")
