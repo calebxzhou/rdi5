@@ -7,7 +7,6 @@ import calebxzhou.rdi.model.*
 import calebxzhou.rdi.model.pack.Mod
 import calebxzhou.rdi.net.httpRequest
 import calebxzhou.rdi.net.json
-import calebxzhou.rdi.service.ModService.briefInfo
 import calebxzhou.rdi.util.murmur2
 import calebxzhou.rdi.util.serdesJson
 import io.ktor.client.call.*
@@ -17,6 +16,7 @@ import kotlinx.serialization.Serializable
 import java.io.File
 import java.util.jar.JarFile
 import java.util.zip.ZipFile
+import kotlin.math.max
 
 suspend fun List<File>.loadInfoCurseForge(): CurseForgeLocalResult {
     val hashToFile = this.associateBy { it.murmur2 }
@@ -29,7 +29,7 @@ suspend fun List<File>.loadInfoCurseForge(): CurseForgeLocalResult {
 
 object CurseForgeService {
     const val BASE_URL = "https://mod.mcimirror.top/curseforge/v1"//"https://api.curseforge.com/v1"
-    private suspend inline fun req(path: String, method: HttpMethod = HttpMethod.Get, body: Any? = null) =
+    suspend inline fun cfreq(path: String, method: HttpMethod = HttpMethod.Get, body: Any? = null) =
         httpRequest {
             url("${BASE_URL}/${path}")
             json()
@@ -44,7 +44,7 @@ object CurseForgeService {
         @Serializable
         data class CurseForgeFingerprintRequest(val fingerprints: List<Long>)
 
-        val response = req(
+        val response = cfreq(
             "fingerprints/432",
             HttpMethod.Post,
             CurseForgeFingerprintRequest(fingerprints = hashes)
@@ -62,7 +62,7 @@ object CurseForgeService {
         data class CFFileIdsRequest(val fileIds: List<Int>)
         @Serializable
         data class CFFilesResponse(val data: List<CurseForgeFile>)
-        return req(
+        return cfreq(
             "mods/files",
             HttpMethod.Post,
             CFFileIdsRequest(fileIds)
@@ -71,7 +71,7 @@ object CurseForgeService {
     }
 
     suspend fun getModFileInfo(modId: Int, fileId: Int): CurseForgeFile? {
-        return req("mods/${modId}/files/${fileId}").body<CurseForgeFileResponse>().data
+        return cfreq("mods/${modId}/files/${fileId}").body<CurseForgeFileResponse>().data
     }
 
     //从mod project id列表获取cf mod信息
@@ -81,9 +81,9 @@ object CurseForgeService {
         @Serializable
         data class CurseForgeModsResponse(val data: List<CurseForgeModInfo>? = null)
 
-        val mods = req(
+        val mods = cfreq(
             "mods", HttpMethod.Post, CurseForgeModsRequest(modIds)
-        ).body<CurseForgeModsResponse>().data!!
+        ).body<CurseForgeModsResponse>().data!!.filter { it.isMod }
         lgr.info("CurseForge: fetched ${mods.size} mods for ${modIds.size} requested IDs")
         return mods
     }
@@ -322,7 +322,33 @@ object CurseForgeService {
             throw ModpackException("处理整合包时出错: ${e.message}")
         }
     }
+    suspend fun Mod.getDownloadUrl(): String {
+        return cfreq("${BASE_URL}/mods/${projectId}/files/${fileId}/download-url").body<String>()
+    }
+    private val MAX_PARALLEL_DOWNLOADS = max(4, Runtime.getRuntime().availableProcessors() * 2)
 
+    fun handleCurseForgeDownloadUrls(url: String): List<String> {
+        val variants = listOf(
+            url.replace("-service.overwolf.wtf", ".forgecdn.net")
+                .replace("://edge.", "://mediafilez.")
+                .replace("://media.", "://mediafilez."),
+            url.replace("://edge.", "://mediafilez.")
+                .replace("://media.", "://mediafilez."),
+            url.replace("-service.overwolf.wtf", ".forgecdn.net"),
+            url.replace("://media.", "://edge."),
+            url
+        )
+        return variants.distinct()
+    }
+
+
+    suspend fun downloadMod(mod: Mod) {
+        //todo
+    }
+
+    suspend fun downloadMods(mods: List<Mod>) {
+         //todo
+    }
 
 }
 
