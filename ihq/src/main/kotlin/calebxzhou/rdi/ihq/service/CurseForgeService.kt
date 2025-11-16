@@ -4,13 +4,21 @@ import calebxzhou.rdi.ihq.CONF
 import calebxzhou.rdi.ihq.DOWNLOAD_MODS_DIR
 import calebxzhou.rdi.ihq.exception.RequestError
 import calebxzhou.rdi.ihq.lgr
+import calebxzhou.rdi.ihq.model.CurseForgeFile
+import calebxzhou.rdi.ihq.model.CurseForgeFileResponse
 import calebxzhou.rdi.ihq.model.pack.Mod
 import calebxzhou.rdi.ihq.net.downloadFileWithProgress
+import calebxzhou.rdi.ihq.net.httpRequest
+import calebxzhou.rdi.ihq.net.json
 import calebxzhou.rdi.ihq.net.ktorClient
 import calebxzhou.rdi.ihq.util.murmur2
+import com.sun.org.apache.bcel.internal.Const
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.request.setBody
+import io.ktor.client.request.url
+import io.ktor.http.HttpMethod
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -20,14 +28,26 @@ import kotlinx.coroutines.sync.withPermit
 import kotlinx.serialization.Serializable
 import java.io.File
 import java.nio.file.Path
+import javax.ws.rs.client.Entity.json
 import kotlin.math.max
 import kotlin.math.min
 
 object CurseForgeService {
-    const val BASE_URL = "https://mod.mcimirror.top/curseforge/v1"
-    private val MAX_PARALLEL_DOWNLOADS = max(4, Runtime.getRuntime().availableProcessors() * 2)
-    @Serializable
-    data class DataResponse(val data: String)
+    //const val BASE_URL = "https://mod.mcimirror.top/curseforge/v1"
+    const val BASE_URL = "https://api.curseforge.com/v1"
+    suspend inline fun cfreq(path: String, method: HttpMethod = HttpMethod.Get, body: Any? = null) =
+        httpRequest {
+            url("${BASE_URL}/${path}")
+            json()
+            header("x-api-key", CONF.apiKey.curseforge)
+            body?.let { setBody(it) }
+            this.method = method
+        }
+    suspend fun getModFileInfo(modId: String, fileId: String): CurseForgeFile? {
+        return cfreq("mods/${modId}/files/${fileId}").body<CurseForgeFileResponse>().data
+    }
+    private val MAX_PARALLEL_DOWNLOADS = max(4, Runtime.getRuntime().availableProcessors() * 4)
+
 
     suspend fun downloadMod(mod: Mod): Path {
         val targetFile = File(DOWNLOAD_MODS_DIR, mod.fileName)
@@ -38,15 +58,8 @@ object CurseForgeService {
             lgr.info { "mod已存在，跳过下载： ${mod.slug}" }
             return targetFile.toPath()
         }
-        val apiKey = CONF.apiKey.curseforge
-        DOWNLOAD_MODS_DIR.mkdirs()
-        var downloadUrl = ktorClient.get("${BASE_URL}/mods/${mod.projectId}/files/${mod.fileId}/download-url") {
-            if (apiKey.isNotBlank()) {
-                header("x-api-key", apiKey)
-            }
-        }.body<DataResponse>().data
-
-        if (downloadUrl.isBlank()) {
+        val downloadUrl = getModFileInfo(mod.projectId,mod.fileId)?.realDownloadUrl
+        if (downloadUrl.isNullOrBlank()) {
             throw RequestError("无法获取下载链接: ${mod.slug}")
         }
         /*downloadUrl = downloadUrl.replace("edge.forgecdn.net", "mod.mcimirror.top").
