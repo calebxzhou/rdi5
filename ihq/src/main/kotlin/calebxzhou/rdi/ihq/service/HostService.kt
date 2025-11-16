@@ -440,7 +440,7 @@ object HostService {
 
         val port = allocateRoomPort()
         val host = Host(
-            name = team.name + "的主机" + (team.hosts().size + 1),
+            name = "主机" + (team.hosts().size + 1),
             teamId = team._id,
             //todo 暂时只能用默认包
             modpackId = DEFAULT_MODPACK_ID,
