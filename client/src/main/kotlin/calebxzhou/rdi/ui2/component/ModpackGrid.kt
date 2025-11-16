@@ -1,5 +1,6 @@
 package calebxzhou.rdi.ui2.component
 
+import calebxzhou.rdi.model.account
 import calebxzhou.rdi.model.pack.Modpack
 import calebxzhou.rdi.model.pack.ModpackInfo
 import calebxzhou.rdi.ui2.MaterialColor
@@ -8,6 +9,7 @@ import calebxzhou.rdi.ui2.SELF
 import calebxzhou.rdi.ui2.dp
 import calebxzhou.rdi.ui2.horizontal
 import calebxzhou.rdi.ui2.linearLayoutParam
+import calebxzhou.rdi.ui2.misc.contextMenu
 import calebxzhou.rdi.ui2.scrollView
 import calebxzhou.rdi.ui2.vertical
 import calebxzhou.rdi.ui2.textView
@@ -85,6 +87,14 @@ class ModpackGrid(
 				val card = recycled[modpack] ?: ModpackCard(context, modpack)
 				(card.parent as? ViewGroup)?.removeView(card)
 				card.setOnClickListener { onItemClick.invoke(modpack) }
+                card.contextMenu {
+                    "\uF005 收藏" with { alertErr("没做完") }
+                    if(account._id.toString() == modpack.id){
+                        "\uF1F8 删除" with {}
+                        "\uE690 设置" with {}
+                        ""
+                    }
+                }
 				cards[modpack] = card
 				row.addView(card, linearLayoutParam(0, SELF) {
 					weight = 1f
