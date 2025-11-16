@@ -34,8 +34,8 @@ data class JwtConfig(
 
 @Serializable
 data class DockerConfig(
-    val host: String = "127.0.0.1",
-    val port: Int = 2376,
+    val host: String = "localhost",
+    val port: Int = 2375,
     val tlsEnabled: Boolean = false,
     val tlsVerify: Boolean = false,
     val certPath: String = "",
