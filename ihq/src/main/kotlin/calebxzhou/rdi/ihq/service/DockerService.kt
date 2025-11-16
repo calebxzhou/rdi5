@@ -1,5 +1,6 @@
 package calebxzhou.rdi.ihq.service
 
+import calebxzhou.rdi.ihq.CONF
 import calebxzhou.rdi.ihq.exception.RequestError
 import calebxzhou.rdi.ihq.lgr
 import calebxzhou.rdi.ihq.model.HostStatus
@@ -24,17 +25,26 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream
+import org.apache.hc.client5.http.impl.classic.HttpClients
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
 
 object DockerService {
     private val client by lazy {
-        val config = DefaultDockerClientConfig.createDefaultConfigBuilder()
-            .withDockerHost("tcp://localhost:2375") // Use TCP instead of named pipes
-            .withDockerTlsVerify(false)
-            .build()
+        val dockerConfig = CONF.docker
+        val configBuilder = DefaultDockerClientConfig.createDefaultConfigBuilder()
+            .withDockerHost("tcp://${dockerConfig.host}:${dockerConfig.port}")
+            .withApiVersion(dockerConfig.apiVersion)
 
+        if (dockerConfig.tlsEnabled) {
+            configBuilder.withDockerTlsVerify(dockerConfig.tlsVerify)
+            dockerConfig.certPath.takeIf { it.isNotBlank() }?.let { configBuilder.withDockerCertPath(it) }
+        } else {
+            configBuilder.withDockerTlsVerify(false)
+        }
+
+        val config = configBuilder.build()
         val httpClient: DockerHttpClient = ApacheDockerHttpClient.Builder()
             .dockerHost(config.dockerHost)
             .sslConfig(config.sslConfig)
@@ -484,10 +494,22 @@ object DockerService {
                            onFinished: () -> Unit = {}): String {
         return withContext(Dispatchers.IO) {
             try {
-                val buildResponse = client.buildImageCmd()
+                val buildCmd = client.buildImageCmd()
                     .withDockerfile((contextPath).resolve("Dockerfile"))
                     .withBaseDirectory((contextPath))
                     .withTags(setOf(name))
+
+                CONF.proxy?.let { proxy ->
+                    val proxyUrl = "http://${proxy.host}:${proxy.port}"
+                    //用主机代理
+                    buildCmd//.withNetworkMode("host")
+                        .withBuildArg("HTTP_PROXY", proxyUrl)
+                        .withBuildArg("HTTPS_PROXY", proxyUrl)
+                        .withBuildArg("NO_PROXY", "localhost,127.0.0.1")
+
+                }
+
+                val buildResponse = buildCmd
                     .exec(object : com.github.dockerjava.api.command.BuildImageResultCallback() {
                         override fun onNext(item: BuildResponseItem) {
                             val logLine = item.stream?.trim() ?: item.errorDetail?.message?.trim().orEmpty()
