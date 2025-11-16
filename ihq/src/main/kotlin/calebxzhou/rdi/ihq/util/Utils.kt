@@ -8,6 +8,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import org.bson.types.ObjectId
 import java.io.File
+import java.net.URLEncoder
 import java.nio.ByteBuffer
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -63,6 +64,15 @@ private fun Int.isWideCodePoint(): Boolean {
         else -> false
     }
 }
+
+val String.urlEncoded
+    get() = URLEncoder.encode(this, Charsets.UTF_8)
+val String.urlDecoded
+    get() = java.net.URLDecoder.decode(this, Charsets.UTF_8)
+val String.decodeBase64
+    get() = String(Base64.getDecoder().decode(this), Charsets.UTF_8)
+val String.encodeBase64
+    get() = Base64.getEncoder().encodeToString(this.toByteArray(Charsets.UTF_8))
 fun String.isValidUuid(): Boolean {
     val uuidRegex = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$".toRegex()
     return uuidRegex.matches(this)

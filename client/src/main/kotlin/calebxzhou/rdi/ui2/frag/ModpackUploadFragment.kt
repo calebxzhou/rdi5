@@ -133,24 +133,40 @@ class ModpackUploadFragment : RFragment("上传整合包") {
         private fun upload() = ioTask {
             try {
                 val manifest = data.manifest
-
-                progressText = "创建整合包中..."
-                val createResp = server.makeRequest<Modpack>(
-                    path = "modpack/",
-                    method = HttpMethod.Post,
-                    params = mapOf("name" to manifest.name)
-                )
-                if (!createResp.ok || createResp.data == null) {
-                    alertErr(createResp.msg)
-                    progressText = createResp.msg
+                val modpackName = manifest.name.trim()
+                val versionName = manifest.version.trim()
+                if (modpackName.isEmpty()) {
+                    alertErr("整合包名称不能为空")
+                    progressText = "整合包名称不能为空"
                     closable = true
                     return@ioTask
                 }
-                val modpack = createResp.data
+                if (versionName.isEmpty()) {
+                    alertErr("版本号不能为空")
+                    progressText = "版本号不能为空"
+                    closable = true
+                    return@ioTask
+                }
+                manifest.name = modpackName
+                manifest.version = versionName
+
+                val modpack = getOrCreateModpack(modpackName) ?: run {
+                    closable = true
+                    return@ioTask
+                }
+
+                if (modpack.versions.any { it.name.equals(versionName, ignoreCase = true) }) {
+                    val msg = "版本 ${versionName} 已存在于 ${modpack.name}"
+                    alertErr(msg)
+                    progressText = msg
+                    closable = true
+                    return@ioTask
+                }
+
                 val modpackId = modpack._id.toHexString()
 
-                val versionEncoded = manifest.version.urlEncoded
-                progressText = "创建版本 ${manifest.version}..."
+                val versionEncoded = versionName.urlEncoded
+                progressText = "创建版本 ${versionName}..."
 
                 val totalBytes = data.file.length()
 
@@ -195,7 +211,7 @@ class ModpackUploadFragment : RFragment("上传整合包") {
                             val percent = if (total <= 0) 100 else ((bytesSentTotal * 100) / total).toInt()
                             val speed = if (elapsedSeconds <= 0) 0.0 else bytesSentTotal / elapsedSeconds
                             progressText = buildString {
-                                appendLine("正在上传版本 ${manifest.version}...")
+                                appendLine("正在上传版本 ${versionName}...")
                                 appendLine("进度：${percent.coerceIn(0, 100)}% (${bytesSentTotal.humanSize}/${total.humanSize})")
                                 appendLine("速度：${formatSpeed(speed)}")
                             }
@@ -226,6 +242,38 @@ class ModpackUploadFragment : RFragment("上传整合包") {
             } finally {
                 data.close()
             }
+        }
+
+        private suspend fun getOrCreateModpack(name: String): Modpack? {
+            progressText = "检查整合包 ${name}..."
+            val myModpacksResp = server.makeRequest<List<Modpack>>(
+                path = "modpack/my",
+                method = HttpMethod.Get
+            )
+            if (!myModpacksResp.ok) {
+                alertErr(myModpacksResp.msg)
+                progressText = myModpacksResp.msg
+                return null
+            }
+            val existing = myModpacksResp.data.orEmpty()
+                .firstOrNull { it.name.equals(name, ignoreCase = true) }
+            if (existing != null) {
+                progressText = "使用已有整合包 ${name}"
+                return existing
+            }
+
+            progressText = "创建整合包 ${name}..."
+            val createResp = server.makeRequest<Modpack>(
+                path = "modpack/",
+                method = HttpMethod.Post,
+                params = mapOf("name" to name)
+            )
+            if (!createResp.ok || createResp.data == null) {
+                alertErr(createResp.msg)
+                progressText = createResp.msg
+                return null
+            }
+            return createResp.data
         }
     }
 

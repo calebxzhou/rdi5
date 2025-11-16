@@ -75,7 +75,7 @@ object WorldService {
         val name = name ?: "存档${listByTeam(team._id).size + 1}"
         if (name.displayLength > 32) throw RequestError("名称过长")
         ensureCapacity(team._id)
-        val world = World(name = name, teamId = team._id, packId = packId)
+        val world = World(name = name, teamId = team._id, modpackId = packId)
         try {
             DockerService.createVolume(world._id.toHexString())
         } catch (e: Exception) {
@@ -94,7 +94,7 @@ object WorldService {
         if (!team.isOwnerOrAdmin(uid)) throw RequestError("无权限")
         ensureCapacity(team._id)
         if (newName.displayLength > 64) throw RequestError("名称过长")
-        val newWorld = World(name = newName, teamId = team._id, packId = source.packId)
+        val newWorld = World(name = newName, teamId = team._id, modpackId = source.modpackId)
         try {
             DockerService.cloneVolume(source._id.toHexString(), newWorld._id.toHexString())
         } catch (e: Exception) {

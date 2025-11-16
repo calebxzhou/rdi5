@@ -39,6 +39,9 @@ import kotlin.math.min
 /**
  * calebxzhou @ 2025-10-16 20:42
  */
+
+suspend inline fun httpRequest(crossinline builder: HttpRequestBuilder.() -> Unit): HttpResponse = ktorClient.request(builder)
+
 const val WEB_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:143.0) Gecko/20100101 Firefox/143.0"
 fun HttpRequestBuilder.json() = contentType(ContentType.Application.Json)
 val ktorClient

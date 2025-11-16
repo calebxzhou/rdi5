@@ -13,7 +13,7 @@ data class World(
     val teamId: ObjectId,
     //如果mount不同的modpack  警告用户可能坏档
     @Contextual
-    val packId: ObjectId,
+    val modpackId: ObjectId,
 
     var size : Long = 0,
 ){

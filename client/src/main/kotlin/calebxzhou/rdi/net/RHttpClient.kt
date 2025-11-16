@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit
 import javax.print.attribute.standard.Compression
 import kotlin.time.Duration.Companion.seconds
 
-suspend fun httpRequest(builder: HttpRequestBuilder.() -> Unit): HttpResponse = ktorClient.request(builder)
+suspend inline  fun httpRequest(crossinline builder: HttpRequestBuilder.() -> Unit): HttpResponse = ktorClient.request(builder)
 fun HttpRequestBuilder.json() = contentType(ContentType.Application.Json)
 private val httpCacheDirectory by lazy {
     java.io.File(java.io.File(RDI.DIR, "cache"), "http").apply { mkdirs() }
