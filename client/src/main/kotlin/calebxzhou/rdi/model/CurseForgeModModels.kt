@@ -1,6 +1,7 @@
 package calebxzhou.rdi.model
 
 import calebxzhou.rdi.model.pack.Mod
+import calebxzhou.rdi.util.urlEncoded
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.io.Closeable
@@ -64,7 +65,7 @@ data class CurseForgeModInfo(
     val isFeatured: Boolean? = null,
     val primaryCategoryId: Long? = null,
     val categories: List<CurseForgeCategoryInfo> = emptyList(),
-    val classId: Long? = null,
+    val classId: Long? = null,//6才是mc mod
     val authors: List<CurseForgeAuthor> = emptyList(),
     val logo: CurseForgeAsset? = null,
     val screenshots: List<CurseForgeAsset> = emptyList(),
@@ -80,7 +81,9 @@ data class CurseForgeModInfo(
     val isAvailable: Boolean? = null,
     val thumbsUpCount: Long? = null,
     val rating: Double? = null
-)
+){
+    val isMod = classId == 6L
+}
 
 @Serializable
 data class CurseForgeModLinks(
@@ -208,7 +211,10 @@ data class CurseForgeFile(
     val earlyAccessEndDate: String? = null,
     val fileFingerprint: Long,
     val modules: List<CurseForgeModule> = emptyList()
-)
+){
+    val realDownloadUrl
+        get() = downloadUrl?:"https://mediafilez.forgecdn.net/files/${id.toString().substring(0..3).toInt()}/${id.toString().substring(4).toInt()}/${fileName?.urlEncoded}"
+}
 
 @Serializable
 data class CurseForgeFileHash(
