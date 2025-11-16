@@ -24,29 +24,23 @@ import calebxzhou.rdi.ihq.util.serdesJson
 import calebxzhou.rdi.ihq.util.str
 import com.mongodb.client.model.Filters.eq
 import com.mongodb.client.model.Filters.regex
-import com.mongodb.client.model.Updates
 import com.mongodb.client.model.UpdateOptions
-import io.ktor.http.content.PartData
-import io.ktor.http.content.streamProvider
+import com.mongodb.client.model.Updates
+import io.ktor.http.content.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import io.ktor.utils.io.*
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
+import kotlinx.io.readByteArray
 import org.bson.Document
 import org.bson.types.ObjectId
-import kotlinx.serialization.decodeFromString
-import java.io.ByteArrayInputStream
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.nio.file.StandardOpenOption
 import java.util.zip.ZipInputStream
-import kotlin.io.readBytes
-import io.ktor.utils.io.core.readBytes
-import io.ktor.utils.io.toByteArray
-import kotlinx.io.readByteArray
-import kotlin.io.path.copyTo
 
 
 fun Route.modpackRoutes() {
@@ -69,7 +63,8 @@ fun Route.modpackRoutes() {
             post("/rebuild") {
                 val ctx = call.modpackGuardContext()
                 val verName = param("verName").trim()
-                ctx.requireVersion(verName).second.buildAsImage()
+                ctx.requireVersion(verName).run {   first.buildAsImage(second) }
+                ok()
             }
             post("") {
                 val ctx = call.modpackGuardContext()
@@ -282,7 +277,7 @@ object ModpackService {
         if (pack.versions.any { it.name == name }) {
             throw RequestError("版本已存在")
         }
-        // Add version to database
+
         val version = Modpack.Version(
             modpackId = pack._id,
             name = name,
@@ -290,94 +285,143 @@ object ModpackService {
             mods = mods
         )
 
+        val zipFile = pack.dir.resolve("${name}.zip")
+        zipFile.parentFile?.mkdirs()
+        zipFile.writeBytes(zipBytes)
 
+        scope.launch {
+            lgr.info { "开始处理整合包 ${pack._id}:${version.name}" }
+            runCatching {
+                pack.finalizeUploadedVersion(version, zipFile)
+            }.onSuccess {
+                lgr.info { "整合包 ${pack._id}:${version.name} 处理完成" }
+            }.onFailure { error ->
+                lgr.error(error) { "处理整合包 ${pack._id}:${version.name} 失败" }
+            }
+        }
+    }
+
+    private suspend fun Modpack.finalizeUploadedVersion(version: Modpack.Version, zipFile: java.io.File) {
         val verdir = version.dir
         if (verdir.exists()) {
-            throw RequestError("版本目录已存在")
+            verdir.deleteRecursively()
         }
         if (!verdir.mkdirs()) {
             throw RequestError("创建版本目录失败")
         }
 
         try {
-            BASE_IMAGE_DIR.resolve("${modpack.mcVer}_${modpack.modloader}").copyRecursively(verdir,true)
-            // Only unzip the overrides directory into version directory
-            val versionDirPath = verdir.toPath()
-            ZipInputStream(ByteArrayInputStream(zipBytes)).use { zipInput ->
-                var entry = zipInput.nextEntry
-                while (entry != null) {
-                    val relativePath = extractOverridesRelativePath(entry.name)
-                    if (relativePath != null) {
-                        val targetPath = versionDirPath.resolve(relativePath).normalize()
-                        if (!targetPath.startsWith(versionDirPath)) {
-                            throw RequestError("非法文件路径: ${entry.name}")
-                        }
-
-                        if (entry.isDirectory) {
-                            Files.createDirectories(targetPath)
-                        } else {
-                            targetPath.parent?.let { Files.createDirectories(it) }
-                            Files.newOutputStream(targetPath, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING).use { output ->
-                                zipInput.copyTo(output)
-                            }
-                        }
-                    }
-                    zipInput.closeEntry()
-                    entry = zipInput.nextEntry
-                }
-            }
+            unzipOverrides(zipFile, verdir)
             val versionSize = verdir.walkTopDown()
                 .filter { it.isFile }
                 .sumOf { it.length() }
             verdir.resolve("total_size.txt").writeText(versionSize.toString())
 
-
             dbcl.updateOne(
-                eq("_id", pack._id),
+                eq("_id", _id),
                 Updates.push(Modpack::versions.name, version)
             )
 
-            scope.launch {
-                lgr.info { "开始构建镜像 ${pack._id}:${version.name}" }
-                runCatching { version.buildAsImage() }
-                    .onFailure { error ->
-                        lgr.error(error) { "镜像构建失败 ${pack._id}:${version.name}" }
-                    }
-            }
+            lgr.info { "开始构建镜像 ${_id}:${version.name}" }
+            runCatching { buildAsImage(version) }
+                .onFailure { error ->
+                    lgr.error(error) { "镜像构建失败 ${_id}:${version.name}" }
+                }
         } catch (e: Exception) {
-            e.printStackTrace()
-            // Clean up on error
             if (verdir.exists()) {
                 verdir.deleteRecursively()
             }
             throw when (e) {
                 is RequestError -> e
-                else -> RequestError("解压文件失败: ${e.message}")
+                else -> RequestError("处理整合包失败: ${e.message}")
             }
         }
     }
-    suspend fun Modpack.Version.buildAsImage() {
-        val modsDir = dir.resolve("mods").apply { mkdirs() }
-        val downloadedMods = CurseForgeService.downloadMods(mods)
+
+    private fun unzipOverrides(zipFile: java.io.File, targetDir: java.io.File) {
+        val versionDirPath = targetDir.toPath()
+        ZipInputStream(zipFile.inputStream().buffered()).use { zipInput ->
+            var entry = zipInput.nextEntry
+            while (entry != null) {
+                val relativePath = extractOverridesRelativePath(entry.name)
+                if (relativePath != null) {
+                    val resolvedPath = versionDirPath.resolve(relativePath).normalize()
+                    if (!resolvedPath.startsWith(versionDirPath)) {
+                        throw RequestError("非法文件路径: ${entry.name}")
+                    }
+
+                    if (entry.isDirectory) {
+                        Files.createDirectories(resolvedPath)
+                    } else {
+                        resolvedPath.parent?.let { Files.createDirectories(it) }
+                        Files.newOutputStream(resolvedPath, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING).use { output ->
+                            zipInput.copyTo(output)
+                        }
+                    }
+                }
+                zipInput.closeEntry()
+                entry = zipInput.nextEntry
+            }
+        }
+    }
+    suspend fun Modpack.buildAsImage(version: Modpack.Version) {
+        val modsDir = version.dir.resolve("mods").apply { mkdirs() }
+        BASE_IMAGE_DIR.resolve("${mcVer}_${modloader}").copyRecursively(version.dir,true)
+        val downloadedMods = CurseForgeService.downloadMods(version.mods)
+        var symlinkAvailable = true
+        var symlinkWarningLogged = false
 
         downloadedMods.forEach { sourcePath ->
             val fileName = sourcePath.fileName?.toString() ?: return@forEach
             val targetPath = modsDir.resolve(fileName).toPath()
-            Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING)
+            targetPath.parent?.let { Files.createDirectories(it) }
+            val absoluteSource = sourcePath.toAbsolutePath()
+
+            val linked = if (symlinkAvailable) {
+                val result = runCatching {
+                    Files.deleteIfExists(targetPath)
+                    Files.createSymbolicLink(targetPath, absoluteSource)
+                }
+                if (result.isFailure) {
+                    when (val error = result.exceptionOrNull()) {
+                        is UnsupportedOperationException, is SecurityException -> {
+                            symlinkAvailable = false
+                            if (!symlinkWarningLogged) {
+                                lgr.warn(error) { "Symbolic links unavailable, falling back to copy for mods" }
+                                symlinkWarningLogged = true
+                            }
+                        }
+                        null -> Unit
+                        else -> lgr.warn(error) { "Failed to create symlink for ${'$'}fileName, falling back to copy" }
+                    }
+                }
+                result.isSuccess
+            } else {
+                false
+            }
+
+            if (!linked) {
+                Files.copy(absoluteSource, targetPath, StandardCopyOption.REPLACE_EXISTING)
+            }
         }
 
-        val imageTag = "${modpackId.str}:${name}"
+        val imageTag = "${_id.str}:${version.name}"
         val imageId = DockerService.buildImage(
             imageTag,
-            dir,
+            version.dir,
             onLine = { log -> lgr.info { "build image ${imageTag}: ${log}" } },
             onError = { throwable -> lgr.error(throwable) { "build image ${imageTag} failed" } },
-            onFinished = { lgr.info { "build image ${imageTag} finished" } }
+            onFinished = {
+                lgr.info { "build image ${imageTag} finished" }
+                scope.launch {
+                    version.setReady(true)
+                }
+            }
         )
 
         lgr.info { "build image $imageTag success: $imageId" }
 
-        setReady(true)
+
     }
     suspend fun Modpack.Version.setReady(ready: Boolean){
         dbcl.updateOne(
