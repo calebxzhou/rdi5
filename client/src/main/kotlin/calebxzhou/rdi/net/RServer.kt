@@ -141,7 +141,7 @@ class RServer(
         showLoading: Boolean = true,
         body: String?=null,
         crossinline onErr: (Response<T>) -> Unit = { alertErr(it.msg) },
-        crossinline onOk: (Response<T>) -> Unit,
+        crossinline onOk: suspend (Response<T>) -> Unit,
     ) {
         if (showLoading) {
             nowFragment?.showLoading()
