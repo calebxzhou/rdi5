@@ -121,8 +121,8 @@ fun Route.hostRoutes() = route("/host") {
         post {
             call.teamGuardContext().requester require Team.Role.OWNER
             call.teamGuardContext().createHost(
-                DEFAULT_MODPACK_ID,
-                "latest",
+                idParam("modpackId"),
+                param("packVer"),
                 paramNull("worldId")?.let { ObjectId(it) }
             )
             ok()
@@ -134,14 +134,15 @@ fun Route.hostRoutes() = route("/host") {
     }
 
     route("/{hostId}") {
+        install(HostGuardPlugin)
         get {
             HostService.getById(call.idParam("hostId"))?.let {
                 response(data = it)
             } ?: err("无此主机")
         }
         delete {
-            install(HostGuardPlugin) { permission = TeamPermission.OWNER }
-            call.hostGuardContext().delete()
+            call.hostGuardContext().requirePermission(TeamPermission.OWNER)
+                call.hostGuardContext().delete()
             ok()
         }
     }
@@ -442,8 +443,7 @@ object HostService {
         val host = Host(
             name = "主机" + (team.hosts().size + 1),
             teamId = team._id,
-            //todo 暂时只能用默认包
-            modpackId = DEFAULT_MODPACK_ID,
+            modpackId = modpackId,
             worldId = world._id,
             port = port,
             packVer = packVer
