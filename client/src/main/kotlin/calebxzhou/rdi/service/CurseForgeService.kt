@@ -60,6 +60,7 @@ object CurseForgeService {
     suspend fun getFilesInfo(fileIds: List<Int>): List<CurseForgeFile> {
         @Serializable
         data class CFFileIdsRequest(val fileIds: List<Int>)
+
         @Serializable
         data class CFFilesResponse(val data: List<CurseForgeFile>)
         return cfreq(
@@ -78,6 +79,7 @@ object CurseForgeService {
     suspend fun getModsInfo(modIds: List<Int>): List<CurseForgeModInfo> {
         @Serializable
         data class CurseForgeModsRequest(val modIds: List<Int>, val filterPcOnly: Boolean = true)
+
         @Serializable
         data class CurseForgeModsResponse(val data: List<CurseForgeModInfo>? = null)
 
@@ -89,7 +91,7 @@ object CurseForgeService {
     }
 
     //从完整的cf mod信息取得card vo
-    private fun CurseForgeModInfo.toBriefVo(modFile: File?=null): ModCardVo {
+    private fun CurseForgeModInfo.toBriefVo(modFile: File? = null): ModCardVo {
         val briefInfo = slugBriefInfo[slug]
         val icons = buildList {
             briefInfo?.logoUrl?.let { add(it) }
@@ -107,7 +109,7 @@ object CurseForgeService {
         return ModCardVo(
             name = resolvedName,
             nameCn = briefInfo?.nameCn,
-            intro = briefInfo?.intro?:introText,
+            intro = briefInfo?.intro ?: introText,
             iconData = iconBytes,
             iconUrls = icons
         )
@@ -190,7 +192,7 @@ object CurseForgeService {
         return CurseForgeLocalResult(matched, unmatched)
 
     }
-    
+
     /**
      * Fill ModCardVo for CurseForge mods that don't have vo yet
      * @return List of mods with vo filled
@@ -199,22 +201,20 @@ object CurseForgeService {
         // Filter mods that need vo and are from CurseForge
         val modsNeedingVo = filter { it.vo == null && it.platform == "cf" }
         if (modsNeedingVo.isEmpty()) return this
-        
+
         // Batch fetch mod info for all mods needing vo
         val projectIdToMod = modsNeedingVo.associateBy { it.projectId.toInt() }
         val modInfos = getModsInfo(projectIdToMod.keys.toList())
         val projectIdToVo = modInfos.associate { it.id to it.toBriefVo() }
-        
-        // Fill vo for mods that needed it
-        return map { mod ->
+        forEach { mod ->
             if (mod.vo == null && mod.platform == "cf") {
                 mod.apply { vo = projectIdToVo[mod.projectId.toInt()] }
-            } else {
-                mod
             }
         }
+        // Fill vo for mods that needed it
+        return map { it }
     }
-    
+
     suspend fun List<CurseForgePackManifest.File>.toMods(): List<Mod> {
         // Fetch all mod info and file info in parallel
         val modInfoMap = map { it.projectId }
@@ -266,7 +266,8 @@ object CurseForgeService {
 
         try {
             val entries = zip.entries().asSequence().toList()
-            entries.find { it.name == ".minecraft" }?.let { throw ModpackException("你应该选整合包 而不是客户端\n你可以用PCL的导出功能 将客户端转换为整合包") }
+            entries.find { it.name == ".minecraft" }
+                ?.let { throw ModpackException("你应该选整合包 而不是客户端\n你可以用PCL的导出功能 将客户端转换为整合包") }
             val manifestEntry = entries.firstOrNull {
                 !it.isDirectory && it.name.substringAfterLast('/') == "manifest.json"
             } ?: throw ModpackException("整合包缺少文件：manifest.json")
@@ -322,9 +323,11 @@ object CurseForgeService {
             throw ModpackException("处理整合包时出错: ${e.message}")
         }
     }
+
     suspend fun Mod.getDownloadUrl(): String {
         return cfreq("${BASE_URL}/mods/${projectId}/files/${fileId}/download-url").body<String>()
     }
+
     private val MAX_PARALLEL_DOWNLOADS = max(4, Runtime.getRuntime().availableProcessors() * 2)
 
     fun handleCurseForgeDownloadUrls(url: String): List<String> {
@@ -347,7 +350,7 @@ object CurseForgeService {
     }
 
     suspend fun downloadMods(mods: List<Mod>) {
-         //todo
+        //todo
     }
 
 }
