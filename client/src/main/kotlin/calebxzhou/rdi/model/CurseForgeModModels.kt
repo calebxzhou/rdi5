@@ -28,7 +28,7 @@ data class CurseForgePackManifest(
     var version: String,
     val minecraft: Mc,
     val overrides: String? = null,
-    val files: List<CurseForgePackManifest.File> = emptyList(),
+    val files: List<CurseForgePackManifest.File> = arrayListOf(),
 ){
     @Serializable
     data class Mc(
