@@ -1,13 +1,12 @@
 package calebxzhou.rdi.ui2.component
 
-import calebxzhou.rdi.model.pack.ModpackInfo
+import calebxzhou.rdi.model.pack.ModpackVo
 import calebxzhou.rdi.net.humanSize
 import calebxzhou.rdi.ui2.MaterialColor
 import calebxzhou.rdi.ui2.PARENT
 import calebxzhou.rdi.ui2.SELF
 import calebxzhou.rdi.ui2.drawable
 import calebxzhou.rdi.ui2.dp
-import calebxzhou.rdi.ui2.horizontal
 import calebxzhou.rdi.ui2.iconDrawable
 import calebxzhou.rdi.ui2.leadingIcon
 import calebxzhou.rdi.ui2.linearLayout
@@ -15,24 +14,20 @@ import calebxzhou.rdi.ui2.linearLayoutParam
 import calebxzhou.rdi.ui2.padding8dp
 import calebxzhou.rdi.ui2.textView
 import calebxzhou.rdi.ui2.vertical
-import icyllis.modernui.R.attr.textSize
-import icyllis.modernui.R.attr.textStyle
 import icyllis.modernui.core.Context
 import icyllis.modernui.graphics.Paint
 import icyllis.modernui.graphics.drawable.ImageDrawable
 import icyllis.modernui.text.TextUtils
 import icyllis.modernui.text.Typeface
 import icyllis.modernui.view.Gravity
-import icyllis.modernui.view.View
 import icyllis.modernui.widget.ImageView
 import icyllis.modernui.widget.LinearLayout
 import icyllis.modernui.widget.TextView
 import java.io.ByteArrayInputStream
-import javax.swing.text.StyleConstants.setLineSpacing
 
 class ModpackCard(
     context: Context,
-    val modpack: ModpackInfo,
+    val modpack: ModpackVo,
 ) : LinearLayout(context) {
 
     private lateinit var iconView: ImageView
@@ -110,7 +105,7 @@ class ModpackCard(
         iconView.setImageDrawable(packIcon ?: iconDrawable("mcmod"))
 
         // Author and description directly from ModpackInfo
-        authorView.text = "上传者：${modpack.author}"
+        authorView.text = "上传者：${modpack.authorName}"
         infoView.text="${modpack.fileSize.humanSize}+${modpack.modCount}mods "
         val description = modpack.info.trim().ifBlank { "暂无简介" }
         descriptionView.text = description
