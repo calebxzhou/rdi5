@@ -360,7 +360,7 @@ class RodernUI : ModernUI(), AutoCloseable, LifecycleOwner, ViewModelStoreOwner,
         lgr.info(marker, "Looping main thread")
         try {
             Looper.loop()
-        } finally {
+        }catch (e: Exception){e.printStackTrace()} finally {
             viewRoot.surface = RefCnt.move(viewRoot.surface)
             Core.requireUiRecordingContext().unref()
             close()
@@ -416,7 +416,11 @@ class RodernUI : ModernUI(), AutoCloseable, LifecycleOwner, ViewModelStoreOwner,
         renderWindow.swapInterval(1)
         lgr.info(marker, "Looping render thread")
 
-        Looper.loop()
+        try {
+            Looper.loop()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
 
         synchronized(Core::class.java) {
             backgroundImage?.close()
