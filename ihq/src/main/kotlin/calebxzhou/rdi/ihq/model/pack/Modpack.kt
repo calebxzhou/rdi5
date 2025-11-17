@@ -22,13 +22,14 @@ data class Modpack(
         get() = MODPACK_DATA_DIR.resolve(_id.str)
     @Serializable
     data class Version(
+        val time: Long,
         @Contextual
         val modpackId: ObjectId,
         //1.0 1.1 1.2 etc
         val name: String,
         val changelog: String,
-        //构建完成状态, nullable for backward compatibility with older documents
-        val ready: Boolean? = false,
+        //构建完成状态
+        val ready: Boolean = false,
         val mods: List<Mod>,
 
     ){

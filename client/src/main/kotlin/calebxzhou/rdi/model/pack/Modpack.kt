@@ -18,12 +18,14 @@ class Modpack(
 ) {
     @Serializable
     data class Version(
+        val time: Long,
         @Contextual
         val modpackId: ObjectId,
         //1.0 1.1 1.2 etc
         val name: String,
         val changelog: String,
         val ready: Boolean,
-        val mods: List<Mod>,
+        var mods: List<Mod>,
     )
 }
+val List<Modpack.Version>.latest get() = maxBy { it.time }
