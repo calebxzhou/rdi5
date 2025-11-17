@@ -11,12 +11,11 @@ import java.io.File
 import java.net.URLEncoder
 import java.nio.ByteBuffer
 import java.security.MessageDigest
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.*
 import kotlin.jvm.java
-import kotlin.reflect.full.memberProperties
-import kotlin.reflect.full.primaryConstructor
-import kotlin.reflect.jvm.isAccessible
-
 /**
  * calebxzhou @ 2025-04-16 12:23
  */
@@ -161,5 +160,6 @@ fun Byte.isWhitespaceCharacter(): Boolean {
         else -> false
     }
 }
-
+val Long.formatDateTime
+    get() = Instant.ofEpochMilli(this).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
 fun jarResource(path: String) = RDI::class.java.classLoader.getResourceAsStream(path)
