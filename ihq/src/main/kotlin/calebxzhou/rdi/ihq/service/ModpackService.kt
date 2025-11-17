@@ -7,7 +7,8 @@ import calebxzhou.rdi.ihq.exception.RequestError
 import calebxzhou.rdi.ihq.lgr
 import calebxzhou.rdi.ihq.model.pack.Mod
 import calebxzhou.rdi.ihq.model.pack.Modpack
-import calebxzhou.rdi.ihq.model.pack.ModpackInfo
+import calebxzhou.rdi.ihq.model.pack.ModpackDetailedVo
+import calebxzhou.rdi.ihq.model.pack.ModpackVo
 import calebxzhou.rdi.ihq.net.*
 import calebxzhou.rdi.ihq.service.ModpackService.buildAsImage
 import calebxzhou.rdi.ihq.service.ModpackService.createVersion
@@ -17,6 +18,7 @@ import calebxzhou.rdi.ihq.service.ModpackService.getVersion
 import calebxzhou.rdi.ihq.service.ModpackService.getVersionFile
 import calebxzhou.rdi.ihq.service.ModpackService.getVersionFileList
 import calebxzhou.rdi.ihq.service.ModpackService.requireVersion
+import calebxzhou.rdi.ihq.service.ModpackService.toDetailVo
 import calebxzhou.rdi.ihq.service.ModpackService.uploadVersionFile
 import calebxzhou.rdi.ihq.service.PlayerService.getPlayerNames
 import calebxzhou.rdi.ihq.util.scope
@@ -45,99 +47,122 @@ import java.util.zip.ZipInputStream
 
 fun Route.modpackRoutes() {
     route("/modpack") {
-        route("/{modpackId}/version/{verName}") {
+        get {
+            response(data = ModpackService.listAll())
+        }
+        post {
+            response(data = ModpackService.create(call.uid, param("name")))
+        }
+        get("/my") {
+            val mods = ModpackService.listByAuthor(call.uid)
+            response(data = mods)
+        }
+        route("/{modpackId}") {
             install(ModpackGuardPlugin)
-            get(""){
-                val ctx = call.modpackGuardContext()
-                val verName = param("verName").trim()
-                val version = ctx.getVersion(verName)
-                response(data = version)
+            get {
+
+                response(data = call.modpackGuardContext().modpack.toDetailVo())
             }
-            delete("") {
+
+            delete {
+
                 val ctx = call.modpackGuardContext()
-                val verName = param("verName").trim()
-                ctx.deleteVersion(verName)
+                ctx.deleteModpack()
                 ok()
 
             }
-            post("/rebuild") {
-                val ctx = call.modpackGuardContext()
-                val verName = param("verName").trim()
-                ctx.requireVersion(verName).run {   first.buildAsImage(second) }
-                ok()
-            }
-            post("") {
-                val ctx = call.modpackGuardContext()
-                val verName = param("verName").trim()
-                //limit 1 GB
-                val multipart = call.receiveMultipart(formFieldLimit = 1024 * 1024 * 1024)
-                var zipBytes: ByteArray? = null
-                var mods: List<Mod>? = null
 
-                while (true) {
-                    val part = multipart.readPart() ?: break
-                    when (part) {
-                        is PartData.FormItem -> if (part.name == "mods") {
-                            mods = runCatching { serdesJson.decodeFromString<List<Mod>>(part.value) }
-                                .getOrElse { throw ParamError("mods格式错误: ${it.message}") }
+            route("/version/{verName}") {
+                get {
+                    val ctx = call.modpackGuardContext()
+                    val verName = param("verName").trim()
+                    val version = ctx.getVersion(verName)
+                    response(data = version)
+                }
+                delete {
+                    val ctx = call.modpackGuardContext()
+                    val verName = param("verName").trim()
+                    ctx.deleteVersion(verName)
+                    ok()
+
+                }
+                post("/rebuild") {
+                    val ctx = call.modpackGuardContext()
+                    val verName = param("verName").trim()
+                    ctx.requireVersion(verName).run { first.buildAsImage(second) }
+                    ok()
+                }
+                post {
+                    val ctx = call.modpackGuardContext()
+                    val verName = param("verName").trim()
+                    //limit 1 GB
+                    val multipart = call.receiveMultipart(formFieldLimit = 1024 * 1024 * 1024)
+                    var zipBytes: ByteArray? = null
+                    var mods: List<Mod>? = null
+
+                    while (true) {
+                        val part = multipart.readPart() ?: break
+                        when (part) {
+                            is PartData.FormItem -> if (part.name == "mods") {
+                                mods = runCatching { serdesJson.decodeFromString<List<Mod>>(part.value) }
+                                    .getOrElse { throw ParamError("mods格式错误: ${it.message}") }
+                            }
+
+                            is PartData.FileItem -> if (part.name == "file") {
+                                zipBytes = part.provider().toByteArray()
+                            }
+
+                            is PartData.BinaryItem -> if (part.name == "file") {
+                                zipBytes = part.provider().readByteArray()
+                            }
+
+                            else -> {}
                         }
-                        is PartData.FileItem -> if (part.name == "file") {
-                            zipBytes = part.provider().toByteArray()
-                        }
-                        is PartData.BinaryItem -> if (part.name == "file") {
-                            zipBytes = part.provider().readByteArray()
-                        }
-                        else -> {}
                     }
+
+                    val payload = zipBytes ?: throw ParamError("缺少文件")
+                    val modList = mods ?: emptyList()
+
+                    ctx.createVersion(verName, payload, modList)
+                    ok()
+
+                }
+                get("/files") {
+
+                    val ctx = call.modpackGuardContext()
+                    val verName = param("verName").trim()
+                    val files = ctx.getVersionFileList(verName)
+                    response(data = files)
+
                 }
 
-                val payload = zipBytes ?: throw ParamError("缺少文件")
-                val modList = mods ?: emptyList()
+                get("/file/{filePath...}") {
 
-                ctx.createVersion(verName, payload, modList)
-                ok()
+                    install(ModpackGuardPlugin)
 
-            }
-            get("/files") {
+                    val ctx = call.modpackGuardContext()
+                    val verName = param("verName").trim()
+                    val filePath = call.parameters.getAll("filePath")?.joinToString("/")
+                        ?: throw ParamError("缺少参数: filePath")
+                    val content = ctx.getVersionFile(verName, filePath)
+                    call.respondBytes(content)
 
-                val ctx = call.modpackGuardContext()
-                val verName = param("verName").trim()
-                val files = ctx.getVersionFileList(verName)
-                response(data = files)
+                }
+                post("/file/{filePath...}") {
 
-            }
-
-            get("/file/{filePath...}") {
-
-                install(ModpackGuardPlugin)
-
-                val ctx = call.modpackGuardContext()
-                val verName = param("verName").trim()
-                val filePath = call.parameters.getAll("filePath")?.joinToString("/")
-                    ?: throw ParamError("缺少参数: filePath")
-                val content = ctx.getVersionFile(verName, filePath)
-                call.respondBytes(content)
-
-            }
-            post("/file/{filePath...}") {
-
-                val ctx = call.modpackGuardContext()
-                val verName = param("verName").trim()
-                val filePath = call.parameters.getAll("filePath")?.joinToString("/")
-                    ?: throw ParamError("缺少参数: filePath")
-                val bytes = call.receive<ByteArray>()
-                ctx.uploadVersionFile(verName, filePath, bytes)
-                ok()
+                    val ctx = call.modpackGuardContext()
+                    val verName = param("verName").trim()
+                    val filePath = call.parameters.getAll("filePath")?.joinToString("/")
+                        ?: throw ParamError("缺少参数: filePath")
+                    val bytes = call.receive<ByteArray>()
+                    ctx.uploadVersionFile(verName, filePath, bytes)
+                    ok()
 
 
+                }
             }
 
 
-        }
-        get("/{modpackId}") {
-            val modpack = ModpackService.get(call.idParam("modpackId"))
-                ?: throw RequestError("整合包不存在")
-            response(data = modpack)
         }
 
         get("/search/{modpackName}") {
@@ -145,27 +170,6 @@ fun Route.modpackRoutes() {
                 ?: throw ParamError("缺少参数: modpackName")
             val modpacks = ModpackService.searchByName(name)
             response(data = modpacks)
-        }
-
-        delete("/{modpackId}") {
-            install(ModpackGuardPlugin)
-
-            val ctx = call.modpackGuardContext()
-            ctx.deleteModpack()
-            ok()
-
-        }
-        get("") {
-            response(data = ModpackService.getAll())
-        }
-        post("/") {
-            response(data = ModpackService.create(call.uid, param("name")))
-
-        }
-
-        get("/my") {
-            val mods = ModpackService.listByAuthor(call.uid)
-            response(data = mods)
         }
 
 
@@ -186,23 +190,41 @@ object ModpackService {
         return dbcl.find(regex(Modpack::name.name, name, "i")).toList()
     }
 
-    suspend fun getAll(): List<ModpackInfo> {
+    suspend fun listAll(): List<ModpackVo> {
         val modpacks = dbcl.find().toList()
         if (modpacks.isEmpty()) return emptyList()
 
         val authorNames = modpacks.map { it.authorId }.getPlayerNames()
 
         return modpacks.map { pack ->
-            ModpackInfo(
-                pack._id.toString(),
+            ModpackVo(
+                pack._id,
                 name = pack.name,
-                author = authorNames[pack.authorId] ?: "未知作者",
+                authorId = pack.authorId,
+                authorName = authorNames[pack.authorId] ?: "未知作者",
                 modCount = pack.versions.maxOfOrNull { it.mods.size } ?: 0,
                 fileSize = pack.totalSize(),
                 icon = pack.icon,
                 info = pack.info
             )
         }
+    }
+
+    suspend fun Modpack.toDetailVo(): ModpackDetailedVo {
+        val authorName = PlayerService.getName(authorId) ?: "未知作者"
+        return ModpackDetailedVo(
+            id = _id,
+            name = name,
+            authorId = authorId,
+            authorName = authorName,
+            modCount = versions.maxOfOrNull { it.mods.size } ?: 0,
+            fileSize = totalSize(),
+            icon = icon,
+            info = info,
+            modloader = modloader,
+            mcVer = mcVer,
+            versions = versions
+        )
     }
 
     suspend fun create(uid: ObjectId, name: String): Modpack {
@@ -282,7 +304,7 @@ object ModpackService {
             modpackId = pack._id,
             name = name,
             changelog = "新上传",
-            mods = mods
+            mods = mods, time = System.currentTimeMillis()
         )
 
         val zipFile = pack.dir.resolve("${name}.zip")
@@ -354,7 +376,11 @@ object ModpackService {
                         Files.createDirectories(resolvedPath)
                     } else {
                         resolvedPath.parent?.let { Files.createDirectories(it) }
-                        Files.newOutputStream(resolvedPath, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING).use { output ->
+                        Files.newOutputStream(
+                            resolvedPath,
+                            StandardOpenOption.CREATE,
+                            StandardOpenOption.TRUNCATE_EXISTING
+                        ).use { output ->
                             zipInput.copyTo(output)
                         }
                     }
@@ -364,45 +390,19 @@ object ModpackService {
             }
         }
     }
+
     suspend fun Modpack.buildAsImage(version: Modpack.Version) {
         val modsDir = version.dir.resolve("mods").apply { mkdirs() }
-        BASE_IMAGE_DIR.resolve("${mcVer}_${modloader}").copyRecursively(version.dir,true)
+        BASE_IMAGE_DIR.resolve("${mcVer}_${modloader}").copyRecursively(version.dir, true)
         val downloadedMods = CurseForgeService.downloadMods(version.mods)
-        var symlinkAvailable = true
-        var symlinkWarningLogged = false
+
 
         downloadedMods.forEach { sourcePath ->
             val fileName = sourcePath.fileName?.toString() ?: return@forEach
             val targetPath = modsDir.resolve(fileName).toPath()
             targetPath.parent?.let { Files.createDirectories(it) }
             val absoluteSource = sourcePath.toAbsolutePath()
-
-            val linked = if (symlinkAvailable) {
-                val result = runCatching {
-                    Files.deleteIfExists(targetPath)
-                    Files.createSymbolicLink(targetPath, absoluteSource)
-                }
-                if (result.isFailure) {
-                    when (val error = result.exceptionOrNull()) {
-                        is UnsupportedOperationException, is SecurityException -> {
-                            symlinkAvailable = false
-                            if (!symlinkWarningLogged) {
-                                lgr.warn(error) { "Symbolic links unavailable, falling back to copy for mods" }
-                                symlinkWarningLogged = true
-                            }
-                        }
-                        null -> Unit
-                        else -> lgr.warn(error) { "Failed to create symlink for ${'$'}fileName, falling back to copy" }
-                    }
-                }
-                result.isSuccess
-            } else {
-                false
-            }
-
-            if (!linked) {
-                Files.copy(absoluteSource, targetPath, StandardCopyOption.REPLACE_EXISTING)
-            }
+            Files.copy(absoluteSource, targetPath, StandardCopyOption.REPLACE_EXISTING)
         }
 
         val imageTag = "${_id.str}:${version.name}"
@@ -423,7 +423,8 @@ object ModpackService {
 
 
     }
-    suspend fun Modpack.Version.setReady(ready: Boolean){
+
+    suspend fun Modpack.Version.setReady(ready: Boolean) {
         dbcl.updateOne(
             eq(Modpack::_id.name, modpackId),
             Updates.set("${Modpack::versions.name}.$[elem].${Modpack.Version::ready.name}", ready),
@@ -431,8 +432,10 @@ object ModpackService {
                 listOf(
                     Document("elem.name", name)
                 )
-            ))
+            )
+        )
     }
+
     suspend fun ModpackGuardContext.uploadVersionFile(verName: String, path: String, content: ByteArray) {
         requireAuthor()
         if (path.isBlank()) throw RequestError("文件路径不能为空")
