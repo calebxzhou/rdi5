@@ -1,12 +1,17 @@
 package calebxzhou.rdi.model.pack
 
+import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
+import org.bson.types.ObjectId
 
 @Serializable
-data class ModpackInfo(
-    val id:String,
+data class ModpackVo(
+    @Contextual
+    val id: ObjectId,
     val name:String,
-    val author: String = "",
+    @Contextual
+    val authorId: ObjectId,
+    val authorName: String = "",
     val modCount: Int,
     val fileSize: Long,
     val icon: ByteArray?=null,

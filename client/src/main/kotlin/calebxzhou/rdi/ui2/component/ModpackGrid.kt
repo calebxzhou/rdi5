@@ -1,37 +1,30 @@
 package calebxzhou.rdi.ui2.component
 
-import calebxzhou.rdi.model.account
-import calebxzhou.rdi.model.pack.Modpack
-import calebxzhou.rdi.model.pack.ModpackInfo
-import calebxzhou.rdi.ui2.MaterialColor
+import calebxzhou.rdi.model.pack.ModpackVo
 import calebxzhou.rdi.ui2.PARENT
 import calebxzhou.rdi.ui2.SELF
 import calebxzhou.rdi.ui2.dp
 import calebxzhou.rdi.ui2.horizontal
 import calebxzhou.rdi.ui2.linearLayoutParam
-import calebxzhou.rdi.ui2.misc.contextMenu
 import calebxzhou.rdi.ui2.scrollView
 import calebxzhou.rdi.ui2.vertical
-import calebxzhou.rdi.ui2.textView
-import calebxzhou.rdi.ui2.uiThread
 import icyllis.modernui.core.Context
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.view.View
 import icyllis.modernui.view.ViewGroup
 import icyllis.modernui.widget.LinearLayout
-import icyllis.modernui.widget.TextView
 import kotlin.collections.isNotEmpty
 
 class ModpackGrid(
     ctx: Context,
-    var modpacks: List<ModpackInfo> = arrayListOf(),
-    private val onItemClick: (ModpackInfo) -> Unit = {},
+    var modpacks: List<ModpackVo> = arrayListOf(),
+    private val onItemClick: (ModpackVo) -> Unit = {},
 ) : LinearLayout(ctx) {
 
 	private val cardsContainer: LinearLayout = LinearLayout(ctx).apply { vertical() }
 
 	private var pendingRender: Runnable? = null
-	private val cards = linkedMapOf<ModpackInfo, ModpackCard>()
+	private val cards = linkedMapOf<ModpackVo, ModpackCard>()
 
 	init {
 		vertical()
@@ -61,7 +54,7 @@ class ModpackGrid(
 		cardsContainer.removeAllViews()
 	 	}
 
-	private fun renderGrid(items: List<ModpackInfo>) {
+	private fun renderGrid(items: List<ModpackVo>) {
 		val availableWidth = cardsContainer.width
 		if (availableWidth <= 0) {
 			scheduleRender(items)
@@ -87,14 +80,7 @@ class ModpackGrid(
 				val card = recycled[modpack] ?: ModpackCard(context, modpack)
 				(card.parent as? ViewGroup)?.removeView(card)
 				card.setOnClickListener { onItemClick.invoke(modpack) }
-                card.contextMenu {
-                    "\uF005 收藏" with { alertErr("没做完") }
-                    if(account._id.toString() == modpack.id){
-                        "\uF1F8 删除" with {}
-                        "\uE690 设置" with {}
-                        ""
-                    }
-                }
+
 				cards[modpack] = card
 				row.addView(card, linearLayoutParam(0, SELF) {
 					weight = 1f
@@ -116,7 +102,7 @@ class ModpackGrid(
 		}
 	}
 
-	private fun scheduleRender(items: List<ModpackInfo>) {
+	private fun scheduleRender(items: List<ModpackVo>) {
 		pendingRender?.let { cardsContainer.removeCallbacks(it) }
 		val task = Runnable {
 			pendingRender = null

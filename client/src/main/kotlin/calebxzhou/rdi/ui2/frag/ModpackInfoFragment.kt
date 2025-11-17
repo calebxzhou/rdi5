@@ -1,0 +1,122 @@
+package calebxzhou.rdi.ui2.frag
+
+import calebxzhou.rdi.model.account
+import calebxzhou.rdi.model.pack.ModpackDetailedVo
+import calebxzhou.rdi.model.pack.latest
+import calebxzhou.rdi.net.humanSize
+import calebxzhou.rdi.net.server
+import calebxzhou.rdi.service.CurseForgeService
+import calebxzhou.rdi.service.CurseForgeService.fillCurseForgeVo
+import calebxzhou.rdi.service.CurseForgeService.toMods
+import calebxzhou.rdi.service.selectModpackFile
+import calebxzhou.rdi.ui2.FragmentSize
+import calebxzhou.rdi.ui2.MaterialColor
+import calebxzhou.rdi.ui2.button
+import calebxzhou.rdi.ui2.component.ModGrid
+import calebxzhou.rdi.ui2.component.alertErr
+import calebxzhou.rdi.ui2.component.alertOk
+import calebxzhou.rdi.ui2.component.confirm
+import calebxzhou.rdi.ui2.go
+import calebxzhou.rdi.ui2.linearLayout
+import calebxzhou.rdi.ui2.padding8dp
+import calebxzhou.rdi.ui2.plusAssign
+import calebxzhou.rdi.ui2.textView
+import calebxzhou.rdi.ui2.toast
+import calebxzhou.rdi.ui2.uiThread
+import calebxzhou.rdi.util.formatDateTime
+import calebxzhou.rdi.util.ioTask
+import icyllis.modernui.view.Gravity
+import icyllis.modernui.widget.LinearLayout
+import io.ktor.http.HttpMethod
+import org.bson.types.ObjectId
+import sun.tools.jconsole.LabeledComponent.layout
+
+class ModpackInfoFragment(val modpackId: ObjectId) : RFragment("整合包信息") {
+    override var fragSize = FragmentSize.FULL
+    override var preserveViewStateOnDetach: Boolean
+        get() = true
+        set(value) {}
+
+    init {
+        contentViewInit = {
+            server.request<ModpackDetailedVo>("modpack/$modpackId") {
+                it.data?.run {
+                    if(versions.isNotEmpty()){
+                        versions.latest.mods = versions.latest.mods.fillCurseForgeVo()
+                    }
+                    load()
+                }
+            }
+        }
+    }
+
+    private fun ModpackDetailedVo.load() = uiThread {
+
+        titleView.apply {
+            quickOptions {
+                if (authorId == account._id) {
+                    "\uF1F8 删除" colored MaterialColor.RED_900 with {
+                        confirm("确定要永久删除这个整合包吗？？无法恢复！！") {
+                            server.requestU("modpack/$modpackId", HttpMethod.Delete) {
+                                toast("删完了")
+                                close()
+                            }
+                        }
+                    }
+                }
+               /* "▶ 拿最新版开服" colored MaterialColor.GREEN_900 with {
+                    HostListFragment.Create(modpackId, name, versions.latest.name).go()
+                }*/
+            }
+        }
+
+
+        contentView.apply {
+            textView("$name         \uF4CA上传者：$authorName       \uF0C7尺寸：${fileSize.humanSize}      \uF11BMC版本：$mcVer $modloader")
+            textView("简介：$info")
+            textView("共${versions.size}个版本：")
+            versions.filter{it.ready}.forEach { v ->
+                linearLayout {
+                    gravity = Gravity.CENTER_VERTICAL
+                    padding8dp()
+                    textView("V${v.name} - 上传时间：${v.time.formatDateTime}")
+                    quickOptions {
+                        "▶ 拿这版开服" colored MaterialColor.GREEN_900 with {
+                            HostListFragment.Create(modpackId, name, v.name).go()
+                        }
+                        "\uF1F8 删除" colored MaterialColor.RED_900 with {
+                            confirm("确定要永久删除这个版本吗？？无法恢复！！") {
+                                server.requestU("modpack/$modpackId/version/${v.name}", HttpMethod.Delete) {
+                                    toast("删完了")
+                                    reloadFragment()
+                                }
+                            }
+                        }
+                        "\uF0AD 重构" with {
+                            confirm("将使用最新版rdi核心重新构建此版本的整合包，确定吗？") {
+                                server.requestU("modpack/$modpackId/version/${v.name}/rebuild") {
+                                    toast("提交请求了 完事了发信箱告诉你")
+                                    reloadFragment()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if(versions.isNotEmpty()){
+                textView("mod列表：$modCount 个")
+                this += ModGrid(context, mods = versions.latest.mods)
+            }else{
+                textView("此整合包暂无可用版本，等待作者上传....")
+                button("↑ 上传新版") {
+                    ioTask {
+                        selectModpackFile?.let {
+                            val data = CurseForgeService.loadModpack(it)
+                            ModpackUploadFragment.Confirm(data,data.manifest.files.toMods().fillCurseForgeVo(),modpackId,name).go()
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

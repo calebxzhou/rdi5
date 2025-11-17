@@ -1,9 +1,7 @@
 package calebxzhou.rdi.ui2.frag
 
-import calebxzhou.rdi.Const
 import calebxzhou.rdi.exception.ModpackException
 import calebxzhou.rdi.model.CurseForgeModpackData
-import calebxzhou.rdi.model.CurseForgePackManifest
 import calebxzhou.rdi.model.pack.Mod
 import calebxzhou.rdi.model.pack.Modpack
 import calebxzhou.rdi.net.formatSpeed
@@ -18,7 +16,6 @@ import calebxzhou.rdi.ui2.button
 import calebxzhou.rdi.ui2.component.ModGrid
 import calebxzhou.rdi.ui2.component.RTextField
 import calebxzhou.rdi.ui2.component.alertErr
-import calebxzhou.rdi.ui2.editText
 import calebxzhou.rdi.ui2.go
 import calebxzhou.rdi.ui2.linearLayout
 import calebxzhou.rdi.ui2.plusAssign
@@ -29,8 +26,8 @@ import calebxzhou.rdi.ui2.uiThread
 import calebxzhou.rdi.util.ioTask
 import calebxzhou.rdi.util.serdesJson
 import calebxzhou.rdi.util.urlEncoded
+import icyllis.modernui.view.View
 import icyllis.modernui.widget.TextView
-import io.ktor.client.plugins.onUpload
 import io.ktor.client.plugins.onUpload
 import io.ktor.client.request.*
 import io.ktor.client.request.forms.InputProvider
@@ -38,11 +35,10 @@ import io.ktor.client.request.forms.MultiPartFormDataContent
 import io.ktor.client.request.forms.formData
 import io.ktor.http.*
 import io.ktor.utils.io.streams.asInput
-import kotlinx.serialization.encodeToString
-import org.lwjgl.PointerBuffer
 import org.lwjgl.util.tinyfd.TinyFileDialogs
 import java.io.File
 import kotlinx.io.buffered
+import org.bson.types.ObjectId
 
 class ModpackUploadFragment : RFragment("上传整合包") {
     lateinit var progressEditText: TextView
@@ -60,8 +56,11 @@ class ModpackUploadFragment : RFragment("上传整合包") {
             progressEditText = textView("")
         }
     }
+    companion object{
+
+    }
     private fun selectModpackFile() = ioTask {
-        val initialPath = if (Const.DEBUG) "C:/Users/${System.getProperty("user.name")}/Downloads" else null
+        val initialPath = "C:/Users/${System.getProperty("user.name")}/Downloads"
         val selected = TinyFileDialogs.tinyfd_openFileDialog(
             "选择整合包 (ZIP)",
             initialPath,
@@ -81,7 +80,10 @@ class ModpackUploadFragment : RFragment("上传整合包") {
         loadModpack(file.absolutePath)
     }
 
-    class Confirm(var data: CurseForgeModpackData,val mods: List<Mod>) : RFragment("确认整合包信息") {
+    class Confirm(var data: CurseForgeModpackData,val mods: List<Mod>,
+                  val updateModpackId: ObjectId? = null,
+                  val updateModpackName: String? = null,
+        ) : RFragment(updateModpackName?.let { "为整合包${updateModpackName}上传新版" }?:"确认整合包信息") {
         lateinit var nameEdit : RTextField
         lateinit var verEdit : RTextField
 
@@ -89,8 +91,13 @@ class ModpackUploadFragment : RFragment("上传整合包") {
             contentViewInit = {
                 val manifest = data.manifest
                 linearLayout {
-                    nameEdit=textField ("整合包名称") { edit.setText(manifest.name) }
+                    nameEdit=textField ("整合包名称") {
+                        edit.setText(updateModpackName?:manifest.name)
+
+                    }
                     verEdit=textField ("版本") { edit.setText(manifest.version) }
+                    //如果是升级 不允许改名称
+                    if(updateModpackName != null)nameEdit.visibility =View.GONE
                 }
                 textView("mod列表：")
                 this += ModGrid(context,mods=mods)
@@ -100,15 +107,15 @@ class ModpackUploadFragment : RFragment("上传整合包") {
 
                 quickOptions {
                     "确认上传" colored MaterialColor.GREEN_900 with {
-                        data.manifest.name=nameEdit.text.toString()
-                        data.manifest.version=verEdit.text.toString()
-                        Upload(data,mods).go(false)
+                        data.manifest.name= nameEdit.text
+                        data.manifest.version= verEdit.text
+                        Upload(data,mods,updateModpackId).go(false)
                     }
                 }
             }
         }
     }
-    class Upload(val data: CurseForgeModpackData, var mods: List<Mod>) : RFragment("上传整合包") {
+    class Upload(val data: CurseForgeModpackData, var mods: List<Mod>, val updateModpackId: ObjectId?) : RFragment("上传整合包") {
         override var closable = false
         lateinit var progressEditText: TextView
         override var preserveViewStateOnDetach: Boolean
@@ -119,7 +126,7 @@ class ModpackUploadFragment : RFragment("上传整合包") {
             set(value) {}
         var progressText
             get() = progressEditText.text.toString()
-            set(value) = uiThread { progressEditText.setText(value) }
+            set(value) = uiThread { progressEditText.text = value }
 
         init {
             contentViewInit = {
@@ -150,13 +157,13 @@ class ModpackUploadFragment : RFragment("上传整合包") {
                 manifest.name = modpackName
                 manifest.version = versionName
 
-                val modpack = getOrCreateModpack(modpackName) ?: run {
+                val modpack = getOrCreateModpack(modpackName, updateModpackId) ?: run {
                     closable = true
                     return@ioTask
                 }
 
                 if (modpack.versions.any { it.name.equals(versionName, ignoreCase = true) }) {
-                    val msg = "版本 ${versionName} 已存在于 ${modpack.name}"
+                    val msg = "${modpack.name}包已经有$versionName 这个版本了"
                     alertErr(msg)
                     progressText = msg
                     closable = true
@@ -244,8 +251,12 @@ class ModpackUploadFragment : RFragment("上传整合包") {
             }
         }
 
-        private suspend fun getOrCreateModpack(name: String): Modpack? {
-            progressText = "检查整合包 ${name}..."
+        private suspend fun getOrCreateModpack(name: String, targetModpackId: ObjectId?): Modpack? {
+            progressText = if (targetModpackId != null) {
+                "获取整合包 ${name}..."
+            } else {
+                "检查整合包 ${name}..."
+            }
             val myModpacksResp = server.makeRequest<List<Modpack>>(
                 path = "modpack/my",
                 method = HttpMethod.Get
@@ -255,8 +266,21 @@ class ModpackUploadFragment : RFragment("上传整合包") {
                 progressText = myModpacksResp.msg
                 return null
             }
-            val existing = myModpacksResp.data.orEmpty()
-                .firstOrNull { it.name.equals(name, ignoreCase = true) }
+            val myModpacks = myModpacksResp.data.orEmpty()
+
+            if (targetModpackId != null) {
+                val target = myModpacks.firstOrNull { it._id == targetModpackId }
+                if (target == null) {
+                    val msg = "未找到要更新的整合包"
+                    alertErr(msg)
+                    progressText = msg
+                    return null
+                }
+                progressText = "为已有整合包 ${target.name} 上传新版"
+                return target
+            }
+
+            val existing = myModpacks.firstOrNull { it.name.equals(name, ignoreCase = true) }
             if (existing != null) {
                 progressText = "使用已有整合包 ${name}"
                 return existing
@@ -264,7 +288,7 @@ class ModpackUploadFragment : RFragment("上传整合包") {
 
             progressText = "创建整合包 ${name}..."
             val createResp = server.makeRequest<Modpack>(
-                path = "modpack/",
+                path = "modpack",
                 method = HttpMethod.Post,
                 params = mapOf("name" to name)
             )
