@@ -33,7 +33,6 @@ import kotlin.math.max
 import kotlin.math.min
 
 object CurseForgeService {
-    //const val BASE_URL = "https://mod.mcimirror.top/curseforge/v1"
     const val BASE_URL = "https://api.curseforge.com/v1"
     suspend inline fun cfreq(path: String, method: HttpMethod = HttpMethod.Get, body: Any? = null) =
         httpRequest {
