@@ -66,7 +66,6 @@ class RGameEvents {
         @SubscribeEvent
         @JvmStatic
         fun onRenderGuiPre(e: RenderGuiEvent.Pre) {
-            RGuiHud.onRender(e.guiGraphics)
         }
         @SubscribeEvent
         @JvmStatic

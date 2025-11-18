@@ -32,7 +32,7 @@ class RDI {
     init {
         lgr.info("RDI启动中")
         System.setProperty("jdk.httpclient.allowRestrictedHeaders", "host,connection,content-length,expect,upgrade,via")
-        LevelService
+
         DIR.mkdir()
 
         Mcmod.getServerInfo()
