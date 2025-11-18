@@ -29,11 +29,14 @@ data class Modpack(
         val name: String,
         val changelog: String,
         //构建完成状态
-        val ready: Boolean = false,
+        val status: Boolean = false,
         val mods: List<Mod>,
 
-    ){
+        ){
         val dir
             get() = MODPACK_DATA_DIR.resolve(modpackId.str).resolve(name)
+    }
+    enum class Status{
+        FAIL,OK,BUILDING
     }
 }
