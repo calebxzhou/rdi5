@@ -75,8 +75,8 @@ object DockerService {
     fun createContainer(port: Int, containerName: String, volumeName: String?, image: String): String {
         val hostConfig = HostConfig.newHostConfig()
             .withPortBindings(parse("$port:$port"))
-            .withCpuCount(2L)  // Limit to 2 CPUs
-            .withMemory(2L * 1024 * 1024 * 1024)  // 2GB RAM limit
+            .withCpuCount(4L)  // Limit to 2 CPUs
+            .withMemory(4L * 1024 * 1024 * 1024)  // 2GB RAM limit
             .withMemorySwap(4L * 1024 * 1024 * 1024)  //4G swap
             .withExtraHosts("host.docker.internal:host-gateway")
             
@@ -544,6 +544,20 @@ object DockerService {
                 lgr.warn { "Error building image $name: ${e.message}" }
                 throw RequestError("镜像构建失败: ${e.message}")
             }
+        }
+    }
+
+    fun deleteImage(tag: String, force: Boolean = true) {
+        try {
+            client.removeImageCmd(tag)
+                .withForce(force)
+                .withNoPrune(false)
+                .exec()
+            lgr.info { "删除镜像成功: $tag" }
+        } catch (_: NotFoundException) {
+            lgr.info { "尝试删除不存在的镜像: $tag" }
+        } catch (e: Exception) {
+            lgr.warn(e) { "删除镜像失败: $tag" }
         }
     }
     /*fun Room.getVolumeSize(): Long {
