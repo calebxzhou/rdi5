@@ -99,7 +99,7 @@ class ModpackUploadFragment : RFragment("上传整合包") {
                     //如果是升级 不允许改名称
                     if(updateModpackName != null)nameEdit.visibility =View.GONE
                 }
-                textView("mod列表：")
+                textView("mod列表：${mods.size}个")
                 this += ModGrid(context,mods=mods)
             }
             titleViewInit = {
@@ -317,8 +317,7 @@ class ModpackUploadFragment : RFragment("上传整合包") {
         try {
             val manifest = modpackData.manifest
             progressText = "读取到${manifest.files.size}个mod 导入整合包中..."
-            var mods = manifest.files.toMods()
-            mods=mods.fillCurseForgeVo()
+            val mods = manifest.files.toMods()
             Confirm(modpackData, mods).go()
         } catch (e: Exception) {
             alertErr("解析整合包失败: ${e.message}")
