@@ -77,7 +77,8 @@ fun String.isValidUuid(): Boolean {
     val uuidRegex = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$".toRegex()
     return uuidRegex.matches(this)
 }
-
+fun java.io.File.safeDirSize(): Long =
+    if (!exists()) 0L else walkTopDown().filter { it.isFile }.sumOf { it.length() }
 fun String.isValidObjectId(): Boolean {
     return ObjectId.isValid(this)
 }
