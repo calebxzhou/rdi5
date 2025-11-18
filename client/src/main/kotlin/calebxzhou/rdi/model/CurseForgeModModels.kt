@@ -145,6 +145,10 @@ data class CurseForgeLocalResult(
 data class CurseForgeFileResponse(
     val data: CurseForgeFile? = null
 )
+@Serializable
+data class CurseForgeFileListResponse(
+    val data: List<CurseForgeFile> = emptyList()
+)
 
 
 @Serializable

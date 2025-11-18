@@ -206,7 +206,7 @@ data class CurseForgeFile(
     val isEarlyAccessContent: Boolean? = null,
     val earlyAccessEndDate: String? = null,
     val fileFingerprint: Long,
-    val modules: List<CurseForgeModule> = emptyList()
+    val modules: List<CurseForgeModule>? = emptyList()
 ){
     val realDownloadUrl
         //一定要toInt cuz 6606093 -> 6606/93

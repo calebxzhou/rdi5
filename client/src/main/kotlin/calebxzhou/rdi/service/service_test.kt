@@ -34,7 +34,7 @@ suspend fun main() {
         HttpMethod.Post,
         CurseForgeService.CFFileIdsRequest(listOf(7037478))
     ).bodyAsText().let { print(it) }*/
-    cfreq("mods/${667299}/files/${7036475}").bodyAsText().let { print(it) }
+    cfreq("mods/search?slug=mouse-tweaks").bodyAsText().let { print(it) }
         //Mod("cf","1199550","better-replication-pipes","6188683","1370081689").getDownloadUrl().let { print(it) }
       //val mdp = CurseForgeService.loadModpack("C:\\Users\\calebxzhou\\Downloads\\ftb-skies-2-1.9.2.zip")
     //print(mdp.manifest)
@@ -68,5 +68,4 @@ suspend fun testCreateModpackVersion(){
         method = HttpMethod.Post
     ).msg
     print(createVersionResp)
-
 }

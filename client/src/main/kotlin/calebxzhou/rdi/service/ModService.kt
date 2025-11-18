@@ -225,6 +225,19 @@ private fun extractModIds(config: Config?): List<String> {
 val CurseForgeService.slugBriefInfo: Map<String, ModBriefInfo> by lazy { ModService.buildSlugMap(briefInfo) { it.curseforgeSlugs } }
 val ModrinthService.slugBriefInfo: Map<String, ModBriefInfo> by lazy { ModService.buildSlugMap(briefInfo) { it.modrinthSlugs } }
 
+//cf - mr
+fun cfSlug2MrSlug(curseForgeSlug: String): String? {
+    if (curseForgeSlug.isBlank()) return null
+    val info = CurseForgeService.slugBriefInfo[curseForgeSlug.trim().lowercase()] ?: return null
+    return info.modrinthSlugs.firstOrNull { it.isNotBlank() }?.trim()
+}
+//mr - cf
+fun mrSlug2CfSlug(modrinthSlug: String): String? {
+    if (modrinthSlug.isBlank()) return null
+    val info = ModrinthService.slugBriefInfo[modrinthSlug.trim().lowercase()] ?: return null
+    return info.curseforgeSlugs.firstOrNull { it.isNotBlank() }?.trim()
+}
+
 object ModService {
     val briefInfo: List<ModBriefInfo> by lazy { loadBriefInfo() }
 
