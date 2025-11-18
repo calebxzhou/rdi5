@@ -15,6 +15,6 @@ class RDI {
             get() = tickDelta>50
     }
     init {
-        lgr.info("RDI启动中")
+        lgr.info("==========RDI启动中==========")
     }
 }
