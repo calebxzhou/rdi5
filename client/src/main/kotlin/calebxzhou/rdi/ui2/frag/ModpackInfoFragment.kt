@@ -42,7 +42,7 @@ class ModpackInfoFragment(val modpackId: ObjectId) : RFragment("整合包信息"
             server.request<ModpackDetailedVo>("modpack/$modpackId") {
                 it.data?.run {
                     if(versions.isNotEmpty()){
-                        versions.latest.mods = versions.latest.mods.fillCurseForgeVo()
+                        versions.latest.mods.fillCurseForgeVo()
                     }
                     load()
                 }
@@ -75,14 +75,17 @@ class ModpackInfoFragment(val modpackId: ObjectId) : RFragment("整合包信息"
             textView("$name         \uF4CA上传者：$authorName       \uF0C7尺寸：${fileSize.humanSize}      \uF11BMC版本：$mcVer $modloader")
             textView("简介：$info")
             textView("共${versions.size}个版本：")
-            versions.filter{it.ready}.forEach { v ->
+            versions .forEach { v ->
                 linearLayout {
                     gravity = Gravity.CENTER_VERTICAL
                     padding8dp()
                     textView("V${v.name} - 上传时间：${v.time.formatDateTime}")
+                    if(!v.ready) textView("【正在构建中】")
                     quickOptions {
-                        "▶ 拿这版开服" colored MaterialColor.GREEN_900 with {
-                            HostListFragment.Create(modpackId, name, v.name).go()
+                        if(v.ready){
+                            "▶ 拿这版开服" colored MaterialColor.GREEN_900 with {
+                                HostListFragment.Create(modpackId, name, v.name).go()
+                            }
                         }
                         "\uF1F8 删除" colored MaterialColor.RED_900 with {
                             confirm("确定要永久删除这个版本吗？？无法恢复！！") {
@@ -112,7 +115,7 @@ class ModpackInfoFragment(val modpackId: ObjectId) : RFragment("整合包信息"
                     ioTask {
                         selectModpackFile?.let {
                             val data = CurseForgeService.loadModpack(it)
-                            ModpackUploadFragment.Confirm(data,data.manifest.files.toMods().fillCurseForgeVo(),modpackId,name).go()
+                            ModpackUploadFragment.Confirm(data,data.manifest.files.toMods(),modpackId,name).go()
                         }
                     }
                 }
