@@ -12,7 +12,11 @@ data class Mod(
     val slug: String,
     val fileId: String,
     val hash: String,
+    val side: Side= Mod.Side.BOTH,
 ) {
+    enum class Side{
+        CLIENT,SERVER,BOTH
+    }
     @Transient
     var vo: ModCardVo?=null
     @Transient

@@ -9,6 +9,10 @@ data class Mod(
     val slug: String,
     val fileId: String,
     val hash: String,
+    val side: Side = Side.BOTH,
 ) {
     val fileName = "${slug}_${platform}_${hash}.jar"
+    enum class Side{
+        CLIENT,SERVER,BOTH
+    }
 }
