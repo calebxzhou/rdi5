@@ -59,14 +59,18 @@ class RGameEvents {
         @SubscribeEvent
         @JvmStatic
         fun started(e: ServerStartedEvent){
-            lgr.info("====启动完成启动完成启动完成启动完成====")
+            lgr.info("RDI启动完成启动完成启动完成启动完成")
             val server = e.server as DedicatedServer
             playSocketJob?.cancel()
             playSocketJob = ioTask{
                 var hostId = System.getenv("HOST_ID")
                 if(Const.DEBUG) hostId = Const.TEST_HOST_ID
                 if (hostId.isNullOrBlank()) {
-                    lgr.warn("未找到 HOST_ID 环境变量，无法建立玩法通道")
+                    lgr.error("未找到 HOST_ID 环境变量，无法建立玩法通道")
+                    if(!Const.DEBUG){
+                        lgr.error("准备关服")
+                        server.halt(false)
+                    }
                     return@ioTask
                 }
 
