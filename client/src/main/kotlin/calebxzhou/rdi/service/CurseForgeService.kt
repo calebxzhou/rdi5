@@ -11,8 +11,10 @@ import calebxzhou.rdi.util.murmur2
 import calebxzhou.rdi.util.serdesJson
 import io.ktor.client.call.*
 import io.ktor.client.request.*
+import io.ktor.client.statement.*
 import io.ktor.http.*
 import kotlinx.serialization.Serializable
+import org.checkerframework.checker.units.qual.C
 import java.io.File
 import java.util.jar.JarFile
 import java.util.zip.ZipFile
@@ -28,16 +30,33 @@ suspend fun List<File>.loadInfoCurseForge(): CurseForgeLocalResult {
 }
 
 object CurseForgeService {
-    const val BASE_URL = "https://mod.mcimirror.top/curseforge/v1"//"https://api.curseforge.com/v1"
-    suspend inline fun cfreq(path: String, method: HttpMethod = HttpMethod.Get, body: Any? = null) =
-        httpRequest {
-            url("${BASE_URL}/${path}")
+    //镜像源可能会缺mod  比如McJtyLib - 1.21-9.0.14
+    const val BASE_URL = "https://mod.mcimirror.top/curseforge/v1"
+    const val OFFICIAL_URL = "https://api.curseforge.com/v1"
+    suspend fun cfreq(path: String, method: HttpMethod = HttpMethod.Get, body: Any? = null): HttpResponse {
+        suspend fun doRequest(base: String) = httpRequest {
+            url("${base}/${path}")
             json()
             header("x-api-key", Const.CF_AKEY)
             body?.let { setBody(it) }
             this.method = method
-
         }
+
+        val mirrorResult = runCatching<HttpResponse> { doRequest(BASE_URL) }
+        val mirrorResponse = mirrorResult.getOrNull()
+        if (mirrorResponse != null && mirrorResponse.status.isSuccess()) {
+            return mirrorResponse
+        }else{
+            lgr.warn("curseforge镜像源请求失败，${mirrorResponse?.status},${mirrorResponse?.bodyAsText()}")
+        }
+
+        mirrorResult.exceptionOrNull()?.let {
+            lgr.warn("CurseForge mirror request failed, falling back to official API: ${it.message}")
+        }
+        lgr.info("尝试使用官方api")
+        val officialResponse = doRequest(OFFICIAL_URL)
+        return officialResponse
+    }
 
     //传入一堆murmur2格式的hash 返回cf匹配到的fingerprint data
     suspend fun matchFingerprintData(hashes: List<Long>): CurseForgeFingerprintData {
@@ -45,6 +64,7 @@ object CurseForgeService {
         data class CurseForgeFingerprintRequest(val fingerprints: List<Long>)
 
         val response = cfreq(
+            //432代表mc
             "fingerprints/432",
             HttpMethod.Post,
             CurseForgeFingerprintRequest(fingerprints = hashes)
@@ -57,18 +77,41 @@ object CurseForgeService {
         return data
     }
 
-    suspend fun getFilesInfo(fileIds: List<Int>): List<CurseForgeFile> {
-        @Serializable
-        data class CFFileIdsRequest(val fileIds: List<Int>)
+    @Serializable
+    data class CFFileIdsRequest(val fileIds: List<Int>)
 
-        @Serializable
-        data class CFFilesResponse(val data: List<CurseForgeFile>)
-        return cfreq(
+    suspend fun getModFilesInfo(fileIdToProjectId: Map<Int, Int>): List<CurseForgeFile> {
+        if (fileIdToProjectId.isEmpty()) return emptyList()
+
+        val distinctIds = fileIdToProjectId.keys.distinct()
+        val response = cfreq(
             "mods/files",
             HttpMethod.Post,
-            CFFileIdsRequest(fileIds)
-        ).body<CFFilesResponse>().data
+            CFFileIdsRequest(distinctIds)
+        ).body<CurseForgeFileListResponse>()
 
+        val files = response.data.toMutableList()
+        val foundIds = files.mapTo(mutableSetOf()) { it.id }
+        val missingIds = distinctIds.filterNot { foundIds.contains(it) }
+
+        if (missingIds.isNotEmpty()) {
+            lgr.warn("CurseForge bulk file lookup missing ids: ${missingIds}")
+            missingIds.forEach { fileId ->
+                val projectId = fileIdToProjectId[fileId]
+                if (projectId == null) {
+                    lgr.warn("缺少 fileId=$fileId 的 projectId，无法单独重试")
+                    return@forEach
+                }
+                val fallback = runCatching { getModFileInfo(projectId, fileId) }.getOrNull()
+                if (fallback != null) {
+                    files += fallback
+                } else {
+                    lgr.warn("CurseForge 单独查询失败: projectId=$projectId fileId=$fileId")
+                }
+            }
+        }
+
+        return files
     }
 
     suspend fun getModFileInfo(modId: Int, fileId: Int): CurseForgeFile? {
@@ -179,7 +222,8 @@ object CurseForgeService {
                     projectId = meta.projectId.toString(),
                     slug = meta.canonicalSlug,
                     fileId = record.fileId,
-                    hash = record.fingerprint
+                    hash = record.fingerprint,
+
                 ).apply {
                     file = record.file
                     vo = slugBriefInfo[meta.normalizedSlug]?.toVo(record.file)
@@ -211,26 +255,28 @@ object CurseForgeService {
                 mod.apply { vo = projectIdToVo[mod.projectId.toInt()] }
             }
         }
-        // Fill vo for mods that needed it
-        return map { it }
+        return this
     }
 
     suspend fun List<CurseForgePackManifest.File>.toMods(): List<Mod> {
         // Fetch all mod info and file info in parallel
-        val modInfoMap = map { it.projectId }
-            .distinct()
-            .let { getModsInfo(it) }
+        val modInfoMap = getModsInfo(map { it.projectId })
             .associateBy { it.id }
 
-        val fileInfoMap = map { it.fileId }
-            .distinct()
-            .let { getFilesInfo(it) }
+    val fileIdToProjectId = associate { it.fileId to it.projectId }
+    val fileInfoMap = getModFilesInfo(fileIdToProjectId)
             .associateBy { it.id }
 
         // Join the data by matching projectId and fileId
         return mapNotNull { curseFile ->
-            val modInfo = modInfoMap[curseFile.projectId] ?: return@mapNotNull null
-            val fileInfo = fileInfoMap[curseFile.fileId] ?: return@mapNotNull null
+            val modInfo = modInfoMap[curseFile.projectId] ?: let {
+                lgr.error("mod ${curseFile.projectId}/${curseFile.fileId} 在mod info map没有信息")
+                return@mapNotNull null
+            }
+            val fileInfo = fileInfoMap[curseFile.fileId] ?: let {
+                lgr.error("mod ${curseFile.projectId}/${curseFile.fileId} file info map没有信息")
+                return@mapNotNull null
+            }
 
             Mod(
                 platform = "cf",
@@ -238,7 +284,9 @@ object CurseForgeService {
                 slug = modInfo.slug,
                 fileId = fileInfo.id.toString(),
                 hash = fileInfo.fileFingerprint.toString()
-            )
+            ).apply {
+                vo = modInfo.toBriefVo()
+            }
         }
     }
 
