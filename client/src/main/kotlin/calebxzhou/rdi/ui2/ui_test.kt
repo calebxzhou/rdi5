@@ -3,7 +3,6 @@ package calebxzhou.rdi.ui2
 import calebxzhou.rdi.Const
 import calebxzhou.rdi.model.Host
 import calebxzhou.rdi.model.RAccount
-import calebxzhou.rdi.model.Room
 import calebxzhou.rdi.model.Team
 import calebxzhou.rdi.net.server
 import calebxzhou.rdi.service.PlayerService
@@ -11,6 +10,7 @@ import calebxzhou.rdi.ui2.frag.HostListFragment
 import calebxzhou.rdi.ui2.frag.HostModFragment
 import calebxzhou.rdi.ui2.frag.ModpackListFragment
 import calebxzhou.rdi.ui2.frag.ModpackUploadFragment
+import calebxzhou.rdi.ui2.frag.ProfileFragment
 import calebxzhou.rdi.ui2.frag.pack.ModpackCreate3Fragment
 import calebxzhou.rdi.ui2.frag.pack.ModpackCreateFragment
 import calebxzhou.rdi.util.serdesJson
@@ -31,13 +31,13 @@ suspend fun main() {
     Const.DEBUG=true
     System.setProperty("rdi.modDir", "C:\\Users\\calebxzhou\\Documents\\RDI5sea-Ref\\.minecraft\\versions\\rdi55a10\\modss")
     Configurator.setRootLevel(Level.DEBUG)
-    Room.now= serdesJson.decodeFromString<Room>("{\"_id\":\"68babf210ffd4cd84117a8d9\",\"name\":\"123123的房间\",\"containerId\":\"55b0d72dc93a4e4bf604b6abdc0707c910c7552063f5db8a9749fcdf408fa75b\",\"score\":0,\"centerPos\":{\"data\":[0,64,0]},\"members\":[{\"id\":\"68b314bbadaf52ddab96b5ed\",\"isOwner\":true}],\"port\":0}")
-    RAccount.now = RAccount(ObjectId("68b314bbadaf52ddab96b5ed"),"123123","123123","123123")
+
+     RAccount.now = RAccount(ObjectId("68b314bbadaf52ddab96b5ed"),"123123","123123","123123")
     RAccount.now!!.jwt = PlayerService.getJwt("123123","123123")
     val team = server.makeRequest<Team>(
         "/team/").data!!
     val firstHost = server.makeRequest<List<Host>>("host/" ).data!!.first()
-    val frag = ModpackListFragment()
+    val frag = ProfileFragment()
         //SelectAccountFragment(RServer.now)
         //ServerFragment()
         //RoomFragment(room)

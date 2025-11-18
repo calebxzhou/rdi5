@@ -1,7 +1,6 @@
 package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.model.RAccount
-import calebxzhou.rdi.model.Room
 import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.util.mc
@@ -22,7 +21,6 @@ class TitleFragment : RFragment() {
 
     init {
         RAccount.now=null
-        Room.now= Room.DEFAULT
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: DataSet?): View =
