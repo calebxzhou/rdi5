@@ -9,7 +9,10 @@ import calebxzhou.rdi.ihq.model.pack.Mod
 import calebxzhou.rdi.ihq.model.pack.Modpack
 import calebxzhou.rdi.ihq.model.pack.ModpackDetailedVo
 import calebxzhou.rdi.ihq.model.pack.ModpackVo
-import calebxzhou.rdi.ihq.net.*
+import calebxzhou.rdi.ihq.net.ok
+import calebxzhou.rdi.ihq.net.param
+import calebxzhou.rdi.ihq.net.response
+import calebxzhou.rdi.ihq.net.uid
 import calebxzhou.rdi.ihq.service.ModpackService.buildAsImage
 import calebxzhou.rdi.ihq.service.ModpackService.createVersion
 import calebxzhou.rdi.ihq.service.ModpackService.deleteModpack
@@ -19,8 +22,8 @@ import calebxzhou.rdi.ihq.service.ModpackService.getVersionFile
 import calebxzhou.rdi.ihq.service.ModpackService.getVersionFileList
 import calebxzhou.rdi.ihq.service.ModpackService.requireVersion
 import calebxzhou.rdi.ihq.service.ModpackService.toDetailVo
-import calebxzhou.rdi.ihq.service.ModpackService.uploadVersionFile
 import calebxzhou.rdi.ihq.service.PlayerService.getPlayerNames
+import calebxzhou.rdi.ihq.util.safeDirSize
 import calebxzhou.rdi.ihq.util.scope
 import calebxzhou.rdi.ihq.util.serdesJson
 import calebxzhou.rdi.ihq.util.str
@@ -148,18 +151,6 @@ fun Route.modpackRoutes() {
                     call.respondBytes(content)
 
                 }
-                post("/file/{filePath...}") {
-
-                    val ctx = call.modpackGuardContext()
-                    val verName = param("verName").trim()
-                    val filePath = call.parameters.getAll("filePath")?.joinToString("/")
-                        ?: throw ParamError("缺少参数: filePath")
-                    val bytes = call.receive<ByteArray>()
-                    ctx.uploadVersionFile(verName, filePath, bytes)
-                    ok()
-
-
-                }
             }
 
 
@@ -209,7 +200,7 @@ object ModpackService {
             )
         }
     }
-
+    //单个整合包的详细信息
     suspend fun Modpack.toDetailVo(): ModpackDetailedVo {
         val authorName = PlayerService.getName(authorId) ?: "未知作者"
         return ModpackDetailedVo(
@@ -230,12 +221,11 @@ object ModpackService {
     suspend fun create(uid: ObjectId, name: String): Modpack {
         val modpackCount = dbcl.countDocuments(eq("authorId", uid)).toInt()
         if (modpackCount >= MAX_MODPACK_PER_USER) {
-            throw RequestError("最多5个整合包")
+            throw RequestError("一个人最多传5个包")
         }
         if (dbcl.countDocuments(eq(Modpack::name.name, name)) > 0) {
-            throw RequestError("其他人已上传过这个整合包了")
+            throw RequestError("别人传过这个包了")
         }
-        val player = PlayerService.getById(uid) ?: throw RequestError("无此用户")
         val modPack = Modpack(
             name = name,
             authorId = uid,
@@ -247,9 +237,6 @@ object ModpackService {
         return modPack
     }
 
-    suspend fun ModpackGuardContext.getVersions(): List<Modpack.Version> {
-        return reloadModpack().versions
-    }
 
     suspend fun ModpackGuardContext.getVersion(verName: String): Modpack.Version {
         requireAuthor()
@@ -334,6 +321,7 @@ object ModpackService {
 
         try {
             unzipOverrides(zipFile, verdir)
+            //计算总尺寸
             val versionSize = verdir.walkTopDown()
                 .filter { it.isFile }
                 .sumOf { it.length() }
@@ -410,11 +398,16 @@ object ModpackService {
             imageTag,
             version.dir,
             onLine = { log -> lgr.info { "build image ${imageTag}: ${log}" } },
-            onError = { throwable -> lgr.error(throwable) { "build image ${imageTag} failed" } },
+            onError = { throwable ->
+                lgr.error(throwable) { "build image ${imageTag} failed" }
+                scope.launch {
+                    version.setStatus(Modpack.Status.FAIL)
+                }
+            },
             onFinished = {
                 lgr.info { "build image ${imageTag} finished" }
                 scope.launch {
-                    version.setReady(true)
+                    version.setStatus(Modpack.Status.OK)
                 }
             }
         )
@@ -424,35 +417,16 @@ object ModpackService {
 
     }
 
-    suspend fun Modpack.Version.setReady(ready: Boolean) {
+    suspend fun Modpack.Version.setStatus(status: Modpack.Status) {
         dbcl.updateOne(
             eq(Modpack::_id.name, modpackId),
-            Updates.set("${Modpack::versions.name}.$[elem].${Modpack.Version::ready.name}", ready),
+            Updates.set("${Modpack::versions.name}.$[elem].${Modpack.Version::status.name}", status),
             UpdateOptions().arrayFilters(
                 listOf(
                     Document("elem.name", name)
                 )
             )
         )
-    }
-
-    suspend fun ModpackGuardContext.uploadVersionFile(verName: String, path: String, content: ByteArray) {
-        requireAuthor()
-        if (path.isBlank()) throw RequestError("文件路径不能为空")
-        val (pack, _) = requireVersion(verName)
-        val versionDir = pack.dir.resolve(verName)
-        if (!versionDir.exists() && !versionDir.mkdirs()) {
-            throw RequestError("无法创建版本目录")
-        }
-
-        val target = versionDir.resolve(path)
-        val normalized = target.canonicalFile
-        if (!normalized.path.startsWith(versionDir.canonicalPath)) {
-            throw RequestError("非法路径")
-        }
-
-        normalized.parentFile?.mkdirs()
-        normalized.writeBytes(content)
     }
 
     suspend fun ModpackGuardContext.deleteVersion(verName: String) {
@@ -463,8 +437,10 @@ object ModpackService {
             eq("_id", pack._id),
             Updates.set(Modpack::versions.name, updated)
         )
+        deleteImageQuietly(pack.versionImageTag(verName))
         val dir = pack.dir.resolve(verName)
         if (dir.exists()) {
+            pack.dir.resolve("$verName.zip").delete()
             dir.deleteRecursively()
         }
     }
@@ -472,6 +448,7 @@ object ModpackService {
     suspend fun ModpackGuardContext.deleteModpack() {
         requireAuthor()
         val pack = reloadModpack()
+        pack.versions.forEach { deleteImageQuietly(pack.versionImageTag(it.name)) }
         val result = dbcl.deleteOne(eq("_id", pack._id))
         if (result.deletedCount == 0L) {
             throw RequestError("整合包不存在")
@@ -482,19 +459,6 @@ object ModpackService {
         }
     }
 
-    suspend fun deleteModpack(uid: ObjectId, modpackId: ObjectId) {
-        val pack = get(modpackId) ?: throw RequestError("整合包不存在")
-        if (pack.authorId != uid) {
-            throw RequestError("不是你的整合包")
-        }
-        val result = dbcl.deleteOne(eq("_id", modpackId))
-        if (result.deletedCount == 0L) {
-            throw RequestError("整合包不存在")
-        }
-        if (pack.dir.exists()) {
-            pack.dir.deleteRecursively()
-        }
-    }
 
     suspend fun ModpackGuardContext.reloadModpack(): Modpack =
         get(modpack._id) ?: throw RequestError("整合包不存在")
@@ -516,8 +480,7 @@ object ModpackService {
         }
     }
 
-    fun java.io.File.safeDirSize(): Long =
-        if (!exists()) 0L else walkTopDown().filter { it.isFile }.sumOf { it.length() }
+
 
     fun extractOverridesRelativePath(entryName: String): String? {
         if (entryName.isBlank()) return null
@@ -531,21 +494,12 @@ object ModpackService {
         return relativeSegments.joinToString("/")
     }
 
-    suspend fun update(uid: ObjectId, modpackId: ObjectId, version: Modpack.Version) {
-        /* val modpack = dbcl.find(eq("_id", modpackId)).firstOrNull() ?: throw RequestError("整合包不存在")
-         if (modpack.authorId != uid) {
-             throw RequestError("不是你的包")
-         }
-         if (modpack.versions.size >= MAX_VERSION_PER_MODPACK) {
-             throw RequestError("版本最多${MAX_VERSION_PER_MODPACK}个")
-         }
-         val newVersionId = ObjectId()
-         val versionToInsert = version.copy(
-             _id = newVersionId,
-             modpackId = modpackId
-         )
-         dbcl.updateOne(eq("_id", modpackId), com.mongodb.client.model.Updates.push("versions", newVersionId))
-        */
+
+    private fun Modpack.versionImageTag(verName: String) = "${_id.str}:$verName"
+
+    private fun deleteImageQuietly(tag: String) {
+        runCatching { DockerService.deleteImage(tag) }
+            .onFailure { lgr.warn(it) { "删除Docker镜像失败: $tag" } }
     }
 
 }
