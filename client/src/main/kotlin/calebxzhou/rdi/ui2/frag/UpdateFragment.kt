@@ -5,10 +5,10 @@ import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.net.downloadFileWithProgress
 import calebxzhou.rdi.net.formatBytes
 import calebxzhou.rdi.net.formatSpeed
-import calebxzhou.rdi.service.MOD_DIR
-import calebxzhou.rdi.service.installedMods
-import calebxzhou.rdi.service.modId
-import calebxzhou.rdi.service.readNeoForgeConfig
+import calebxzhou.rdi.service.ModService.MOD_DIR
+import calebxzhou.rdi.service.ModService.installedMods
+import calebxzhou.rdi.service.ModService.modId
+import calebxzhou.rdi.service.ModService.readNeoForgeConfig
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.util.ioTask
 import calebxzhou.rdi.util.notifyOs
