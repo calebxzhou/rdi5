@@ -22,18 +22,26 @@ object ModrinthService {
     private val lgr by Loggers
     const val BASE_URL = "https://mod.mcimirror.top/modrinth/v2"
     const val OFFICIAL_URL = "https://api.modrinth.com/v2"
-    //mr - cf
-    fun mr2CfSlug(modrinthSlug: String): String? {
-        if (modrinthSlug.isBlank()) return null
-        val info = ModrinthService.slugBriefInfo[modrinthSlug.trim().lowercase()] ?: return null
-        return info.curseforgeSlugs.firstOrNull { it.isNotBlank() }?.trim()
-    }
-    suspend fun mrreq(path: String, method: HttpMethod = HttpMethod.Get,params: Map<String,Any>?=null, body: Any? = null): HttpResponse {
+
+    //mr - cf slug, 没查到就返回自身
+    val String.mr2CfSlug: String
+        get() {
+            if (isBlank()) return this
+            val info = ModrinthService.slugBriefInfo[trim().lowercase()] ?: return this
+            return info.curseforgeSlugs.firstOrNull { it.isNotBlank() }?.trim() ?: this
+        }
+
+    suspend fun mrreq(
+        path: String,
+        method: HttpMethod = HttpMethod.Get,
+        params: Map<String, Any>? = null,
+        body: Any? = null
+    ): HttpResponse {
         suspend fun doRequest(base: String) = httpRequest {
             url("${base}/${path}")
             json()
             body?.let { setBody(it) }
-            params?.forEach { parameter(it.key,it.value) }
+            params?.forEach { parameter(it.key, it.value) }
             this.method = method
         }
 
@@ -41,7 +49,7 @@ object ModrinthService {
         val mirrorResponse = mirrorResult.getOrNull()
         if (mirrorResponse != null && mirrorResponse.status.isSuccess()) {
             return mirrorResponse
-        }else{
+        } else {
             lgr.warn("Modrinth镜像源请求失败，${mirrorResponse?.status},${mirrorResponse?.bodyAsText()}")
         }
 
@@ -78,9 +86,14 @@ object ModrinthService {
 
         return projects
     }
+
     suspend fun List<File>.mapModrinthVersions(): Map<String, ModrinthVersionInfo> {
         val hashes = map { it.sha1 }
-        val response = mrreq("version_files", method = HttpMethod.Post, body =  ModrinthVersionLookupRequest(hashes = hashes, algorithm = "sha1"))
+        val response = mrreq(
+            "version_files",
+            method = HttpMethod.Post,
+            body = ModrinthVersionLookupRequest(hashes = hashes, algorithm = "sha1")
+        )
             .body<Map<String, ModrinthVersionInfo>>()
 
         val missing = hashes.filter { it !in response }
