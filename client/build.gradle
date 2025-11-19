@@ -275,7 +275,8 @@ dependencies {
     // at runtime, use the full JEI jar for NeoForge
     runtimeOnly("mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}")
 
-
+// https://mvnrepository.com/artifact/ch.qos.logback/logback-classic
+    testImplementation("ch.qos.logback:logback-classic:1.5.21")
     //循环添加deps
     def jarJarVisited = new LinkedHashSet<String>()
     //mc已经自带了 不需要重复导出
