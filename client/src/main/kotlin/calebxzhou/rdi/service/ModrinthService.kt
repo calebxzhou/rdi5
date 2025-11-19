@@ -1,27 +1,33 @@
 package calebxzhou.rdi.service
 
-import calebxzhou.rdi.Const
-import calebxzhou.rdi.lgr
+import calebxzhou.rdi.model.ModBriefInfo
 import calebxzhou.rdi.model.ModrinthProject
 import calebxzhou.rdi.model.ModrinthVersionInfo
 import calebxzhou.rdi.model.ModrinthVersionLookupRequest
 import calebxzhou.rdi.net.httpRequest
 import calebxzhou.rdi.net.json
+import calebxzhou.rdi.service.ModService.briefInfo
+import calebxzhou.rdi.util.Loggers
 import calebxzhou.rdi.util.json
-import calebxzhou.rdi.util.serdesJson
 import calebxzhou.rdi.util.sha1
 import io.ktor.client.call.*
 import io.ktor.client.request.*
-import io.ktor.client.statement.HttpResponse
-import io.ktor.client.statement.bodyAsText
+import io.ktor.client.statement.*
 import io.ktor.http.*
-import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.builtins.serializer
 import java.io.File
 
 object ModrinthService {
+    val slugBriefInfo: Map<String, ModBriefInfo> by lazy { ModService.buildSlugMap(briefInfo) { it.modrinthSlugs } }
+
+    private val lgr by Loggers
     const val BASE_URL = "https://mod.mcimirror.top/modrinth/v2"
     const val OFFICIAL_URL = "https://api.modrinth.com/v2"
+    //mr - cf
+    fun mr2CfSlug(modrinthSlug: String): String? {
+        if (modrinthSlug.isBlank()) return null
+        val info = ModrinthService.slugBriefInfo[modrinthSlug.trim().lowercase()] ?: return null
+        return info.curseforgeSlugs.firstOrNull { it.isNotBlank() }?.trim()
+    }
     suspend fun mrreq(path: String, method: HttpMethod = HttpMethod.Get,params: Map<String,Any>?=null, body: Any? = null): HttpResponse {
         suspend fun doRequest(base: String) = httpRequest {
             url("${base}/${path}")
@@ -46,35 +52,10 @@ object ModrinthService {
         val officialResponse = doRequest(OFFICIAL_URL)
         return officialResponse
     }
-    suspend fun getVersions(mods: List<File>): Map<String, ModrinthVersionInfo> {
 
-        if (mods.isEmpty()) {
-            lgr.info("Modrinth lookup skipped: no mods found in ${MOD_DIR.absolutePath}")
-            return emptyMap()
-        }
-
-        val hashes = mods.map { it.sha1 }
-        val requestPayload = ModrinthVersionLookupRequest(hashes = hashes, algorithm = "sha1")
-
-        val response = httpRequest {
-            url("https://api.modrinth.com/v2/version_files")
-            method = HttpMethod.Post
-            json()
-            setBody(requestPayload)
-        }.body<Map<String, ModrinthVersionInfo>>()
-
-        val missing = hashes.filter { it !in response }
-        if (missing.isNotEmpty()) {
-            lgr.info("Modrinth: ${response.size} matches, ${missing.size} hashes unmatched")
-        } else {
-            lgr.info("Modrinth: matched all ${response.size} hashes")
-        }
-
-        return response
-    }
-
-    suspend fun getProjects(ids: List<String>): List<ModrinthProject> {
-        val normalizedIds = ids.asSequence()
+    //ID / slugs
+    suspend fun List<String>.mapModrinthProjects(): List<ModrinthProject> {
+        val normalizedIds = asSequence()
             .distinct()
             .toList()
 
@@ -97,4 +78,20 @@ object ModrinthService {
 
         return projects
     }
+    suspend fun List<File>.mapModrinthVersions(): Map<String, ModrinthVersionInfo> {
+        val hashes = map { it.sha1 }
+        val response = mrreq("version_files", method = HttpMethod.Post, body =  ModrinthVersionLookupRequest(hashes = hashes, algorithm = "sha1"))
+            .body<Map<String, ModrinthVersionInfo>>()
+
+        val missing = hashes.filter { it !in response }
+        if (missing.isNotEmpty()) {
+            lgr.info("Modrinth: ${response.size} matches, ${missing.size} hashes unmatched")
+        } else {
+            lgr.info("Modrinth: matched all ${response.size} hashes")
+        }
+
+        return response
+    }
+
+
 }
