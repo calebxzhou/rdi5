@@ -7,7 +7,7 @@ import calebxzhou.rdi.net.humanSize
 import calebxzhou.rdi.net.server
 import calebxzhou.rdi.service.CurseForgeService
 import calebxzhou.rdi.service.CurseForgeService.fillCurseForgeVo
-import calebxzhou.rdi.service.CurseForgeService.toMods
+import calebxzhou.rdi.service.CurseForgeService.mapMods
 import calebxzhou.rdi.service.selectModpackFile
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.ModGrid
@@ -102,7 +102,7 @@ class ModpackInfoFragment(val modpackId: ObjectId) : RFragment("整合包信息"
                     ioTask {
                         selectModpackFile?.let {
                             val data = CurseForgeService.loadModpack(it)
-                            ModpackUploadFragment.Confirm(data,data.manifest.files.toMods(),modpackId,name).go()
+                            ModpackUploadFragment.Confirm(data,data.manifest.files.mapMods(),modpackId,name).go()
                         }
                     }
                 }
