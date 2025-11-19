@@ -3,18 +3,10 @@ package calebxzhou.rdi.ui2.frag
 import calebxzhou.rdi.lgr
 import calebxzhou.rdi.model.Host
 import calebxzhou.rdi.net.server
-import calebxzhou.rdi.ui2.Fonts
-import calebxzhou.rdi.ui2.MaterialColor
-import calebxzhou.rdi.ui2.PARENT
-import calebxzhou.rdi.ui2.SELF
+import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.confirm
-import calebxzhou.rdi.ui2.fctx
-import calebxzhou.rdi.ui2.linearLayoutParam
-import calebxzhou.rdi.ui2.textView
-import calebxzhou.rdi.ui2.toast
 import calebxzhou.rdi.util.error
 import calebxzhou.rdi.util.ioScope
-import calebxzhou.rdi.ui2.uiThread
 import icyllis.modernui.graphics.Color
 import icyllis.modernui.graphics.drawable.ColorDrawable
 import icyllis.modernui.text.SpannableStringBuilder
@@ -24,7 +16,7 @@ import icyllis.modernui.view.Gravity
 import icyllis.modernui.view.View
 import icyllis.modernui.widget.ScrollView
 import icyllis.modernui.widget.TextView
-import io.ktor.client.plugins.sse.SSEBufferPolicy
+import io.ktor.client.plugins.sse.*
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
@@ -78,8 +70,7 @@ class HostConsoleFragment(val host: Host) : RFragment("主机后台") {
             scrollView = ScrollView(fctx).apply {
                 layoutParams = linearLayoutParam(PARENT,PARENT)
                 background = ColorDrawable(Color.rgb(0, 0, 0)) // Black background
-                // Leave space for bottom options row so content isn't obscured
-                setPadding(0, dp(8f), 0, dp(96f))
+                setPadding(0, dp(8f), 0, dp(8f))
                 clipToPadding = false
                 console = textView {
                     typeface = Fonts.CODE.typeface
