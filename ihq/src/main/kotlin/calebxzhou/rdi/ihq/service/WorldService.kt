@@ -57,11 +57,6 @@ object WorldService {
     suspend fun listByOwner(ownerId: ObjectId): List<World> =
         dbcl.find(eq("ownerId", ownerId)).toList()
 
-    private suspend fun requireManageableTeam(uid: ObjectId): calebxzhou.rdi.ihq.model.Team {
-        val team = TeamService.getJoinedTeam(uid) ?: throw RequestError("无团队")
-        if (!team.isOwnerOrAdmin(uid)) throw RequestError("无权限")
-        return team
-    }
 
     private suspend fun ensureCapacity(teamId: ObjectId) {
         if (listByOwner(teamId).size >= PLAYER_MAX_WORLD) {
