@@ -16,6 +16,7 @@ import kotlinx.serialization.modules.SerializersModule
 import net.minecraft.client.User
 import org.bson.types.ObjectId
 import java.util.*
+import kotlin.lazy
 import kotlin.reflect.KClass
 
 /**
@@ -33,10 +34,13 @@ val serdesJson = Json {
     isLenient = true // Allows parsing of malformed JSON
     coerceInputValues = true // Helps with default values and nulls
 }
-val serdesGson = GsonBuilder()
-    .setPrettyPrinting()
-    .registerTypeAdapter(User::class.java, mcUserAdapter)
-    .create()
+val serdesGson
+    get() =
+        GsonBuilder()
+            .setPrettyPrinting()
+            .registerTypeAdapter(User::class.java, mcUserAdapter)
+            .create()
+
 val Any.gson
     get() = serdesGson.toJson(this)
 
