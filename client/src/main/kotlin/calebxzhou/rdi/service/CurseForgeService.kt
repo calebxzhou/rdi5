@@ -7,6 +7,11 @@ import calebxzhou.rdi.model.*
 import calebxzhou.rdi.model.pack.Mod
 import calebxzhou.rdi.net.httpRequest
 import calebxzhou.rdi.net.json
+import calebxzhou.rdi.service.ModService.briefInfo
+import calebxzhou.rdi.service.ModService.modDescription
+import calebxzhou.rdi.service.ModService.modLogo
+import calebxzhou.rdi.service.ModService.readNeoForgeConfig
+import calebxzhou.rdi.service.ModService.toVo
 import calebxzhou.rdi.util.murmur2
 import calebxzhou.rdi.util.serdesJson
 import io.ktor.client.call.*
@@ -14,22 +19,15 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import kotlinx.serialization.Serializable
-import org.checkerframework.checker.units.qual.C
 import java.io.File
 import java.util.jar.JarFile
 import java.util.zip.ZipFile
 import kotlin.math.max
 
-suspend fun List<File>.loadInfoCurseForge(): CurseForgeLocalResult {
-    val hashToFile = this.associateBy { it.murmur2 }
-    val hashes = hashToFile.keys.toList()
-    val fingerprintData = CurseForgeService.matchFingerprintData(hashes)
-    val result = CurseForgeService.getInfosFromHash(hashToFile, fingerprintData)
-    //cache loaded info
-    return result
-}
 
 object CurseForgeService {
+    val slugBriefInfo: Map<String, ModBriefInfo> by lazy { ModService.buildSlugMap(briefInfo) { it.curseforgeSlugs } }
+
     //镜像源可能会缺mod  比如McJtyLib - 1.21-9.0.14
     const val BASE_URL = "https://mod.mcimirror.top/curseforge/v1"
     const val OFFICIAL_URL = "https://api.curseforge.com/v1"
@@ -76,7 +74,14 @@ object CurseForgeService {
 
         return data
     }
-
+    suspend fun List<File>.loadInfoCurseForge(): CurseForgeLocalResult {
+        val hashToFile = this.associateBy { it.murmur2 }
+        val hashes = hashToFile.keys.toList()
+        val fingerprintData = CurseForgeService.matchFingerprintData(hashes)
+        val result = CurseForgeService.getInfosFromHash(hashToFile, fingerprintData)
+        //cache loaded info
+        return result
+    }
     @Serializable
     data class CFFileIdsRequest(val fileIds: List<Int>)
 
@@ -392,7 +397,12 @@ object CurseForgeService {
         return variants.distinct()
     }
 
-
+    //cf - mr
+    fun cf2MrSlug(curseForgeSlug: String): String? {
+        if (curseForgeSlug.isBlank()) return null
+        val info = slugBriefInfo[curseForgeSlug.trim().lowercase()] ?: return null
+        return info.modrinthSlugs.firstOrNull { it.isNotBlank() }?.trim()
+    }
     suspend fun downloadMod(mod: Mod) {
         //todo
     }
