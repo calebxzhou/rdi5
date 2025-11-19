@@ -7,28 +7,11 @@ import calebxzhou.rdi.service.isOwner
 import calebxzhou.rdi.service.isOwnerOrAdmin
 import calebxzhou.rdi.service.myTeam
 import calebxzhou.rdi.service.owner
-import calebxzhou.rdi.ui2.FragmentSize
-import calebxzhou.rdi.ui2.MaterialColor
-import calebxzhou.rdi.ui2.button
-import calebxzhou.rdi.ui2.center
-import calebxzhou.rdi.ui2.go
-import calebxzhou.rdi.ui2.component.REditText
-import calebxzhou.rdi.ui2.component.RTextField
-import calebxzhou.rdi.ui2.component.alertErr
-import calebxzhou.rdi.ui2.component.alertOk
-import calebxzhou.rdi.ui2.component.confirm
+import calebxzhou.rdi.ui2.*
+import calebxzhou.rdi.ui2.component.*
 import calebxzhou.rdi.ui2.misc.contextMenu
-import calebxzhou.rdi.ui2.textField
-import calebxzhou.rdi.ui2.fctx
-import calebxzhou.rdi.ui2.headButton
-import calebxzhou.rdi.ui2.linearLayout
-import calebxzhou.rdi.ui2.paddingDp
-import calebxzhou.rdi.ui2.plusAssign
-import calebxzhou.rdi.ui2.textView
-import calebxzhou.rdi.ui2.toast
-import calebxzhou.rdi.ui2.uiThread
 import calebxzhou.rdi.util.ioTask
-import io.ktor.http.HttpMethod
+import io.ktor.http.*
 
 class TeamFragment : RFragment("我的团队") {
     override var fragSize = FragmentSize.SMALL

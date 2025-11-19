@@ -3,16 +3,12 @@ package calebxzhou.rdi.ui2.component
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.frag.RFragment
 import icyllis.modernui.core.Context
+import icyllis.modernui.fragment.Fragment
 import icyllis.modernui.graphics.Canvas
 import icyllis.modernui.graphics.Paint
 import icyllis.modernui.graphics.drawable.Drawable
-import icyllis.modernui.view.Gravity
 import icyllis.modernui.mc.BlurHandler
-import icyllis.modernui.fragment.Fragment
-import icyllis.modernui.view.View
-import icyllis.modernui.view.ViewGroup
-import icyllis.modernui.view.ViewParent
-import icyllis.modernui.view.WindowManager
+import icyllis.modernui.view.*
 import icyllis.modernui.widget.FrameLayout
 import org.lwjgl.util.tinyfd.TinyFileDialogs
 

@@ -5,10 +5,8 @@ import icyllis.modernui.util.AttributeSet
 import icyllis.modernui.view.MeasureSpec
 import icyllis.modernui.view.View
 import icyllis.modernui.view.ViewGroup
-import icyllis.modernui.view.ViewGroup.MarginLayoutParams
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.jvm.JvmOverloads
 
 class FlowLayout @JvmOverloads constructor(
     context: Context,

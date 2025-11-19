@@ -1,14 +1,8 @@
 package calebxzhou.rdi.ui2.component
 
 import calebxzhou.rdi.model.HwSpec
-import calebxzhou.rdi.ui2.Fonts
-import calebxzhou.rdi.ui2.iconDrawable
-import calebxzhou.rdi.ui2.leadingIcon
-import calebxzhou.rdi.ui2.linearLayout
-import calebxzhou.rdi.ui2.paddingDp
-import calebxzhou.rdi.ui2.textView
+import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.util.toFixed
-import com.mojang.datafixers.functions.Functions.comp
 import icyllis.modernui.core.Context
 import icyllis.modernui.graphics.drawable.ColorDrawable
 import icyllis.modernui.view.View

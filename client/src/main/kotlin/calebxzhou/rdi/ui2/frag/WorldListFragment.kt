@@ -2,15 +2,10 @@ package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.model.World
 import calebxzhou.rdi.net.server
-import calebxzhou.rdi.ui2.FragmentSize
-import calebxzhou.rdi.ui2.button
+import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.confirm
 import calebxzhou.rdi.ui2.misc.contextMenu
-import calebxzhou.rdi.ui2.padding8dp
-import calebxzhou.rdi.ui2.textView
-import calebxzhou.rdi.ui2.toast
-import calebxzhou.rdi.ui2.uiThread
-import io.ktor.http.HttpMethod
+import io.ktor.http.*
 
 class WorldListFragment: RFragment("选择存档") {
     override var fragSize = FragmentSize.SMALL

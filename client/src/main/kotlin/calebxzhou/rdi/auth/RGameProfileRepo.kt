@@ -1,15 +1,9 @@
 package calebxzhou.rdi.auth
 
-import calebxzhou.rdi.lgr
 import calebxzhou.rdi.model.RAccount
-import calebxzhou.rdi.net.RServer
-import calebxzhou.rdi.net.body
 import calebxzhou.rdi.net.server
-import calebxzhou.rdi.util.ioScope
-import calebxzhou.rdi.util.serdesJson
 import com.mojang.authlib.GameProfileRepository
 import com.mojang.authlib.ProfileLookupCallback
-import kotlinx.coroutines.launch
 
 class RGameProfileRepo : GameProfileRepository {
     override fun findProfilesByNames(

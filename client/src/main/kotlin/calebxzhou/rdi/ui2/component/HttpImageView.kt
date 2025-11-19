@@ -3,13 +3,13 @@ package calebxzhou.rdi.ui2.component
 import calebxzhou.rdi.RDI
 import calebxzhou.rdi.lgr
 import calebxzhou.rdi.ui2.iconDrawable
-import calebxzhou.rdi.util.ioScope
 import calebxzhou.rdi.ui2.uiThread
+import calebxzhou.rdi.util.ioScope
 import icyllis.modernui.core.Context
 import icyllis.modernui.graphics.drawable.ImageDrawable
 import icyllis.modernui.widget.ImageView
-import io.ktor.client.request.url
-import io.ktor.client.statement.bodyAsBytes
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
 import kotlinx.coroutines.launch
 import java.io.ByteArrayInputStream
 import java.io.File

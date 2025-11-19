@@ -1,25 +1,17 @@
 package calebxzhou.rdi.ui2
 
 import calebxzhou.rdi.ui2.frag.RFragment
-import calebxzhou.rdi.util.go
 import calebxzhou.rdi.util.isMcStarted
 import calebxzhou.rdi.util.mc
 import calebxzhou.rdi.util.set
-import icyllis.modernui.ModernUI
 import icyllis.modernui.fragment.Fragment
-import icyllis.modernui.fragment.FragmentContainerView
-import icyllis.modernui.fragment.FragmentController
 import icyllis.modernui.fragment.FragmentTransaction
-import icyllis.modernui.mc.MuiModApi
 import icyllis.modernui.mc.MuiScreen
 import icyllis.modernui.mc.ScreenCallback
 import icyllis.modernui.mc.UIManager
 import icyllis.modernui.mc.neoforge.MuiForgeApi
-import icyllis.modernui.mc.neoforge.UIManagerForge
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.Screen
-import org.apache.commons.lang3.reflect.FieldUtils.getDeclaredField
-import kotlin.jvm.javaClass
 
 val Minecraft.fragment
     get() = (mc.screen as? MuiScreen)?.fragment as? RFragment

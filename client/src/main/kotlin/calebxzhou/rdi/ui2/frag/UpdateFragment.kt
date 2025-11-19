@@ -17,15 +17,15 @@ import calebxzhou.rdi.util.sha1
 import icyllis.modernui.view.View
 import icyllis.modernui.widget.LinearLayout
 import icyllis.modernui.widget.ScrollView
-import java.io.File
-import java.util.jar.JarFile
-import kotlin.math.max
-import kotlin.system.exitProcess
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
+import java.io.File
+import java.util.jar.JarFile
+import kotlin.math.max
+import kotlin.system.exitProcess
 
 class UpdateFragment(val server: RServer) : RFragment("正在检查更新") {
     init {

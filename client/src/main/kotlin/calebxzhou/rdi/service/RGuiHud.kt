@@ -1,10 +1,10 @@
 package calebxzhou.rdi.service
 
-import calebxzhou.rdi.model.RAccount
-import calebxzhou.rdi.util.*
+import calebxzhou.rdi.util.Font
+import calebxzhou.rdi.util.UiWidth
+import calebxzhou.rdi.util.mcComp
 import net.minecraft.ChatFormatting
 import net.minecraft.client.gui.GuiGraphics
-import net.minecraft.client.gui.components.PlayerFaceRenderer
 
 object RGuiHud {
 

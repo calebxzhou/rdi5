@@ -7,7 +7,6 @@ import calebxzhou.rdi.ui2.component.alertOk
 import calebxzhou.rdi.util.*
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.widget.LinearLayout
-import java.lang.Exception
 
 class PauseFragment : RFragment("暂停") {
     override var fragSize = FragmentSize.SMALL

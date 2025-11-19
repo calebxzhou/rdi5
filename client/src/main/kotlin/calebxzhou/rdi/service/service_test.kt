@@ -1,20 +1,11 @@
 package calebxzhou.rdi.service
 
-import calebxzhou.rdi.lgr
-import calebxzhou.rdi.model.CurseForgeFileResponse
 import calebxzhou.rdi.model.RAccount
-import calebxzhou.rdi.model.account
-import calebxzhou.rdi.model.pack.Mod
 import calebxzhou.rdi.model.pack.Modpack
 import calebxzhou.rdi.net.server
 import calebxzhou.rdi.service.CurseForgeService.cfreq
-import calebxzhou.rdi.service.CurseForgeService.getDownloadUrl
-import calebxzhou.rdi.service.CurseForgeService.toMods
-import calebxzhou.rdi.util.json
-import calebxzhou.rdi.util.serdesJson
-import io.ktor.client.call.body
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.HttpMethod
+import io.ktor.client.statement.*
+import io.ktor.http.*
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.core.config.Configurator
 import org.bson.types.ObjectId

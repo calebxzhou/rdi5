@@ -2,14 +2,14 @@ package calebxzhou.rdi.ui2.component
 
 import calebxzhou.rdi.ui2.*
 import icyllis.modernui.core.Context
+import icyllis.modernui.graphics.Canvas
+import icyllis.modernui.graphics.Paint
+import icyllis.modernui.graphics.drawable.Drawable
 import icyllis.modernui.text.method.PasswordTransformationMethod
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.widget.Button
 import icyllis.modernui.widget.EditText
 import icyllis.modernui.widget.FrameLayout
-import icyllis.modernui.graphics.Canvas
-import icyllis.modernui.graphics.Paint
-import icyllis.modernui.graphics.drawable.Drawable
 
 class REditPassword(
     context: Context,

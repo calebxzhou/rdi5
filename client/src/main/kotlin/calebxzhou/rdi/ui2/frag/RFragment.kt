@@ -1,17 +1,12 @@
 package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.ui2.*
-import calebxzhou.rdi.ui2.FragmentSize
 import calebxzhou.rdi.ui2.component.RButton
 import icyllis.modernui.fragment.Fragment
 import icyllis.modernui.graphics.Paint
 import icyllis.modernui.graphics.drawable.ColorDrawable
 import icyllis.modernui.util.DataSet
-import icyllis.modernui.view.Gravity
-import icyllis.modernui.view.KeyEvent
-import icyllis.modernui.view.LayoutInflater
-import icyllis.modernui.view.View
-import icyllis.modernui.view.ViewGroup
+import icyllis.modernui.view.*
 import icyllis.modernui.widget.CheckBox
 import icyllis.modernui.widget.FrameLayout
 import icyllis.modernui.widget.LinearLayout

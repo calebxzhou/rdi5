@@ -2,14 +2,10 @@ package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.net.RServer
-import calebxzhou.rdi.ui2.component.REditPassword
-import calebxzhou.rdi.ui2.component.REditText
+import calebxzhou.rdi.ui2.button
+import calebxzhou.rdi.ui2.component.*
 import calebxzhou.rdi.ui2.editPwd
 import calebxzhou.rdi.ui2.textField
-import calebxzhou.rdi.ui2.button
-import calebxzhou.rdi.ui2.component.RTextField
-import calebxzhou.rdi.ui2.component.alertErr
-import calebxzhou.rdi.ui2.component.alertOk
 
 class ChangeProfileFragment: RFragment("修改信息") {
     val account = RAccount.now ?: RAccount.DEFAULT

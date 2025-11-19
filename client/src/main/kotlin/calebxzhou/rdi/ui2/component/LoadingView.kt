@@ -1,22 +1,12 @@
 package calebxzhou.rdi.ui2.component
 
-import calebxzhou.rdi.ui2.PARENT
+import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.LoadingView.Companion.ID
-import calebxzhou.rdi.ui2.fctx
 import calebxzhou.rdi.ui2.frag.RFragment
-import calebxzhou.rdi.ui2.frameLayoutParam
-import calebxzhou.rdi.ui2.iconDrawable
-import calebxzhou.rdi.ui2.uiThread
-import calebxzhou.rdi.util.isMcStarted
-import calebxzhou.rdi.util.mc
-import calebxzhou.rdi.util.renderThread
 import icyllis.modernui.animation.ObjectAnimator
 import icyllis.modernui.core.Context
-import icyllis.modernui.mc.MuiScreen
 import icyllis.modernui.graphics.drawable.ColorDrawable
-import icyllis.modernui.util.DataSet
 import icyllis.modernui.view.Gravity
-import icyllis.modernui.view.LayoutInflater
 import icyllis.modernui.view.View
 import icyllis.modernui.view.ViewGroup
 import icyllis.modernui.widget.FrameLayout

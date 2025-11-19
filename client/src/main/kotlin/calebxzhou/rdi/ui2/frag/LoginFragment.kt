@@ -3,25 +3,12 @@ package calebxzhou.rdi.ui2.frag
 import calebxzhou.rdi.auth.localCreds
 import calebxzhou.rdi.service.LevelService
 import calebxzhou.rdi.service.playerLogin
-import calebxzhou.rdi.ui2.FragmentSize
-import calebxzhou.rdi.ui2.MaterialColor
-import calebxzhou.rdi.ui2.center
+import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.RTextField
 import calebxzhou.rdi.ui2.component.alertErr
-import calebxzhou.rdi.ui2.textField
-import calebxzhou.rdi.ui2.go
-import calebxzhou.rdi.ui2.linearLayout
-import calebxzhou.rdi.ui2.padding8dp
-import calebxzhou.rdi.ui2.textView
 import calebxzhou.rdi.util.ioScope
-import calebxzhou.rdi.util.mc
-import calebxzhou.rdi.util.renderThread
-import calebxzhou.rdi.util.set
 import icyllis.modernui.view.Gravity
 import kotlinx.coroutines.launch
-import net.minecraft.client.gui.screens.GenericMessageScreen
-import net.minecraft.client.gui.screens.TitleScreen
-import net.minecraft.network.chat.Component
 
 class LoginFragment : RFragment("登录") {
     private lateinit var qqInput: RTextField

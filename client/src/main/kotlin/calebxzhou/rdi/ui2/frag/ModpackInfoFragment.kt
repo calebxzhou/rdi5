@@ -9,27 +9,14 @@ import calebxzhou.rdi.service.CurseForgeService
 import calebxzhou.rdi.service.CurseForgeService.fillCurseForgeVo
 import calebxzhou.rdi.service.CurseForgeService.toMods
 import calebxzhou.rdi.service.selectModpackFile
-import calebxzhou.rdi.ui2.FragmentSize
-import calebxzhou.rdi.ui2.MaterialColor
-import calebxzhou.rdi.ui2.button
+import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.ModGrid
-import calebxzhou.rdi.ui2.component.alertErr
-import calebxzhou.rdi.ui2.component.alertOk
 import calebxzhou.rdi.ui2.component.confirm
-import calebxzhou.rdi.ui2.go
-import calebxzhou.rdi.ui2.linearLayout
-import calebxzhou.rdi.ui2.padding8dp
-import calebxzhou.rdi.ui2.plusAssign
-import calebxzhou.rdi.ui2.textView
-import calebxzhou.rdi.ui2.toast
-import calebxzhou.rdi.ui2.uiThread
 import calebxzhou.rdi.util.formatDateTime
 import calebxzhou.rdi.util.ioTask
 import icyllis.modernui.view.Gravity
-import icyllis.modernui.widget.LinearLayout
-import io.ktor.http.HttpMethod
+import io.ktor.http.*
 import org.bson.types.ObjectId
-import sun.tools.jconsole.LabeledComponent.layout
 
 class ModpackInfoFragment(val modpackId: ObjectId) : RFragment("整合包信息") {
     override var fragSize = FragmentSize.FULL

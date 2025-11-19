@@ -6,7 +6,6 @@ import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import org.bson.types.ObjectId
 import java.io.File
-import kotlin.collections.maxByOrNull
 
 @Serializable
 data class LoginInfo(

@@ -1,9 +1,7 @@
 package calebxzhou.rdi.util
 
 import calebxzhou.rdi.model.RBlockState
-import io.ktor.server.routing.Routing
-import io.ktor.server.routing.get
-import io.ktor.server.routing.route
+import io.ktor.server.routing.*
 import net.minecraft.world.level.block.Block
 
 /**

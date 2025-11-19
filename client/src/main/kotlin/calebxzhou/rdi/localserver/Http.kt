@@ -3,8 +3,7 @@ package calebxzhou.rdi.localserver
 import calebxzhou.rdi.model.HwSpec
 import calebxzhou.rdi.util.gson
 import calebxzhou.rdi.util.mc
-import io.ktor.server.routing.Routing
-import io.ktor.server.routing.get
+import io.ktor.server.routing.*
 
 /**
  * calebxzhou @ 2025-09-29 19:44

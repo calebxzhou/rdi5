@@ -2,11 +2,9 @@ package calebxzhou.rdi.service.convert
 
 import calebxzhou.rdi.lgr
 import calebxzhou.rdi.service.McmodService
-import calebxzhou.rdi.service.ModService
 import calebxzhou.rdi.util.gson
-import io.ktor.client.request.header
-import io.ktor.client.request.url
-import io.ktor.client.statement.bodyAsText
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.apache.logging.log4j.Level

@@ -1,10 +1,9 @@
 package calebxzhou.rdi.util
 
 import calebxzhou.rdi.model.Response
-import io.ktor.http.ContentType
-import io.ktor.http.HttpStatusCode
-import io.ktor.server.response.respondText
-import io.ktor.server.routing.RoutingContext
+import io.ktor.http.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 
 /**
  * calebxzhou @ 2025-09-29 15:04

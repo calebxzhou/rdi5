@@ -1,10 +1,6 @@
 package calebxzhou.rdi.util
 import net.minecraft.client.gui.components.Tooltip
-import net.minecraft.network.chat.ClickEvent
-import net.minecraft.network.chat.Component
-import net.minecraft.network.chat.HoverEvent
-import net.minecraft.network.chat.MutableComponent
-import net.minecraft.network.chat.Style
+import net.minecraft.network.chat.*
 
 /**
  * calebxzhou @ 2025-04-14 23:08

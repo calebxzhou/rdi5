@@ -4,14 +4,14 @@ import calebxzhou.rdi.ui2.MaterialColor
 import calebxzhou.rdi.ui2.dp
 import icyllis.modernui.R
 import icyllis.modernui.core.Context
+import icyllis.modernui.graphics.Canvas
+import icyllis.modernui.graphics.Paint
+import icyllis.modernui.graphics.drawable.Drawable
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.view.MotionEvent
 import icyllis.modernui.view.View
 import icyllis.modernui.widget.EditText
 import icyllis.modernui.widget.LinearLayout
-import icyllis.modernui.graphics.Canvas
-import icyllis.modernui.graphics.Paint
-import icyllis.modernui.graphics.drawable.Drawable
 
 class REditText(
     context: Context,

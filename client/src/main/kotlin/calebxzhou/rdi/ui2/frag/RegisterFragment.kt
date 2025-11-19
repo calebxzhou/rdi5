@@ -1,13 +1,9 @@
 package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.net.RServer
-import calebxzhou.rdi.ui2.FragmentSize
-import calebxzhou.rdi.ui2.MaterialColor
-import calebxzhou.rdi.ui2.textField
+import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.RTextField
 import calebxzhou.rdi.ui2.component.alertErr
-import calebxzhou.rdi.ui2.toast
-import calebxzhou.rdi.ui2.uiThread
 import icyllis.modernui.view.Gravity
 
 class RegisterFragment : RFragment("注册新账号") {

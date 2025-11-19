@@ -1,11 +1,11 @@
 package calebxzhou.rdi.ui2.frag
 
+// Spinner replaced by radio buttons
 import calebxzhou.rdi.auth.LocalCredentials
 import calebxzhou.rdi.model.Host
 import calebxzhou.rdi.model.Team
 import calebxzhou.rdi.model.World
 import calebxzhou.rdi.model.account
-import calebxzhou.rdi.model.pack.ModpackVo
 import calebxzhou.rdi.net.server
 import calebxzhou.rdi.service.isOwnerOrAdmin
 import calebxzhou.rdi.service.myTeam
@@ -19,7 +19,6 @@ import calebxzhou.rdi.util.isMcStarted
 import calebxzhou.rdi.util.mc
 import calebxzhou.rdi.util.renderThread
 import icyllis.modernui.widget.LinearLayout
-// Spinner replaced by radio buttons
 import io.ktor.http.*
 import net.minecraft.client.gui.screens.ConnectScreen
 import net.minecraft.client.gui.screens.Screen

@@ -1,19 +1,12 @@
 package calebxzhou.rdi.ui2.component
 
 import calebxzhou.rdi.model.pack.ModpackVo
-import calebxzhou.rdi.ui2.PARENT
-import calebxzhou.rdi.ui2.SELF
-import calebxzhou.rdi.ui2.dp
-import calebxzhou.rdi.ui2.horizontal
-import calebxzhou.rdi.ui2.linearLayoutParam
-import calebxzhou.rdi.ui2.scrollView
-import calebxzhou.rdi.ui2.vertical
+import calebxzhou.rdi.ui2.*
 import icyllis.modernui.core.Context
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.view.View
 import icyllis.modernui.view.ViewGroup
 import icyllis.modernui.widget.LinearLayout
-import kotlin.collections.isNotEmpty
 
 class ModpackGrid(
     ctx: Context,

@@ -8,37 +8,25 @@ import calebxzhou.rdi.net.formatSpeed
 import calebxzhou.rdi.net.humanSize
 import calebxzhou.rdi.net.server
 import calebxzhou.rdi.service.CurseForgeService
-import calebxzhou.rdi.service.CurseForgeService.fillCurseForgeVo
 import calebxzhou.rdi.service.CurseForgeService.toMods
-import calebxzhou.rdi.ui2.FragmentSize
-import calebxzhou.rdi.ui2.MaterialColor
-import calebxzhou.rdi.ui2.button
+import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.ModGrid
 import calebxzhou.rdi.ui2.component.RTextField
 import calebxzhou.rdi.ui2.component.alertErr
-import calebxzhou.rdi.ui2.go
-import calebxzhou.rdi.ui2.linearLayout
-import calebxzhou.rdi.ui2.plusAssign
-import calebxzhou.rdi.ui2.pointerBuffer
-import calebxzhou.rdi.ui2.textField
-import calebxzhou.rdi.ui2.textView
-import calebxzhou.rdi.ui2.uiThread
 import calebxzhou.rdi.util.ioTask
 import calebxzhou.rdi.util.serdesJson
 import calebxzhou.rdi.util.urlEncoded
 import icyllis.modernui.view.View
 import icyllis.modernui.widget.TextView
-import io.ktor.client.plugins.onUpload
+import io.ktor.client.plugins.*
 import io.ktor.client.request.*
-import io.ktor.client.request.forms.InputProvider
-import io.ktor.client.request.forms.MultiPartFormDataContent
-import io.ktor.client.request.forms.formData
+import io.ktor.client.request.forms.*
 import io.ktor.http.*
-import io.ktor.utils.io.streams.asInput
-import org.lwjgl.util.tinyfd.TinyFileDialogs
-import java.io.File
+import io.ktor.utils.io.streams.*
 import kotlinx.io.buffered
 import org.bson.types.ObjectId
+import org.lwjgl.util.tinyfd.TinyFileDialogs
+import java.io.File
 
 class ModpackUploadFragment : RFragment("上传整合包") {
     lateinit var progressEditText: TextView

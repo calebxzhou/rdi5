@@ -11,13 +11,9 @@ import calebxzhou.rdi.ui2.frag.LoginFragment
 import calebxzhou.rdi.ui2.frag.UpdateFragment
 import calebxzhou.rdi.ui2.goto
 import calebxzhou.rdi.ui2.nowFragment
-import calebxzhou.rdi.util.error
-import calebxzhou.rdi.util.ioScope
-import calebxzhou.rdi.util.ioTask
-import calebxzhou.rdi.util.isMcStarted
-import calebxzhou.rdi.util.serdesJson
+import calebxzhou.rdi.util.*
 import io.ktor.client.call.*
-import io.ktor.client.plugins.compression.compress
+import io.ktor.client.plugins.compression.*
 import io.ktor.client.plugins.sse.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*

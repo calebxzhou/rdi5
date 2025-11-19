@@ -1,29 +1,20 @@
 package calebxzhou.rdi.net
 
 import calebxzhou.rdi.RDI
-import calebxzhou.rdi.service.PlayerService
 import calebxzhou.rdi.util.serdesJson
 import io.ktor.client.*
 import io.ktor.client.engine.okhttp.*
 import io.ktor.client.plugins.*
-import io.ktor.client.plugins.auth.Auth
-import io.ktor.client.plugins.auth.providers.bearer
-import io.ktor.client.plugins.compression.ContentEncoding
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.plugins.sse.SSE
-import io.ktor.client.plugins.sse.SSEBufferPolicy
+import io.ktor.client.plugins.compression.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.plugins.sse.*
 import io.ktor.client.request.*
-import io.ktor.client.statement.HttpResponse
-import io.ktor.http.ContentType
-import io.ktor.http.contentType
-import io.ktor.serialization.kotlinx.json.json
-import io.ktor.server.application.install
-import io.netty.handler.codec.compression.StandardCompressionOptions.deflate
-import io.netty.handler.codec.compression.StandardCompressionOptions.gzip
+import io.ktor.client.statement.*
+import io.ktor.http.*
+import io.ktor.serialization.kotlinx.json.*
 import okhttp3.Cache
 import java.net.ProxySelector
 import java.util.concurrent.TimeUnit
-import javax.print.attribute.standard.Compression
 import kotlin.time.Duration.Companion.seconds
 
 suspend inline  fun httpRequest(crossinline builder: HttpRequestBuilder.() -> Unit): HttpResponse = ktorClient.request(builder)

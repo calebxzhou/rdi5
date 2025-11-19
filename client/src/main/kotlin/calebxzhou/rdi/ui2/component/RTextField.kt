@@ -9,12 +9,12 @@ import icyllis.modernui.core.Context
 import icyllis.modernui.graphics.Canvas
 import icyllis.modernui.graphics.Paint
 import icyllis.modernui.graphics.drawable.Drawable
+import icyllis.modernui.text.method.PasswordTransformationMethod
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.view.MotionEvent
 import icyllis.modernui.view.View
 import icyllis.modernui.view.ViewGroup
 import icyllis.modernui.widget.*
-import icyllis.modernui.text.method.PasswordTransformationMethod
 
 // (animation removed)
 

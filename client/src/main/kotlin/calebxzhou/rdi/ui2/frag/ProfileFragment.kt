@@ -4,7 +4,6 @@ import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.HwSpecView
-import calebxzhou.rdi.ui2.component.alertErr
 
 class ProfileFragment : RFragment("我的信息") {
     override var closable = false

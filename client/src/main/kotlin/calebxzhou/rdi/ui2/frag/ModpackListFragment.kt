@@ -2,14 +2,9 @@ package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.model.pack.ModpackVo
 import calebxzhou.rdi.net.server
-import calebxzhou.rdi.ui2.FragmentSize
-import calebxzhou.rdi.ui2.MaterialColor
+import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.ModpackGrid
 import calebxzhou.rdi.ui2.component.alertErr
-import calebxzhou.rdi.ui2.frag.pack.ModpackCreateFragment
-import calebxzhou.rdi.ui2.go
-import calebxzhou.rdi.ui2.plusAssign
-import calebxzhou.rdi.ui2.uiThread
 import calebxzhou.rdi.util.ioTask
 
 class ModpackListFragment: RFragment("大家的整合包") {

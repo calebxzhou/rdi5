@@ -1,52 +1,18 @@
 package calebxzhou.rdi.net
 
-import calebxzhou.rdi.Const
 import calebxzhou.rdi.lgr
 import calebxzhou.rdi.model.RAccount
-import calebxzhou.rdi.util.encodeBase64
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.okhttp.OkHttp
-import io.ktor.client.plugins.HttpTimeout
-import io.ktor.client.plugins.auth.Auth
-import io.ktor.client.plugins.auth.providers.bearer
-import io.ktor.client.plugins.timeout
-import io.ktor.client.plugins.sse.SSE
-import io.ktor.client.plugins.sse.SSEBufferPolicy
-import io.ktor.client.request.HttpRequestBuilder
-import io.ktor.client.request.get
-import io.ktor.client.request.header
-import io.ktor.client.request.request
-import io.ktor.client.request.setBody
-import io.ktor.client.request.url
-import io.ktor.client.statement.HttpResponse as KtorHttpResponse
+import io.ktor.client.plugins.*
+import io.ktor.client.request.*
 import io.ktor.client.statement.*
-import io.ktor.http.ContentType
-import io.ktor.http.Headers
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpMethod
-import io.ktor.http.HttpProtocolVersion
-import io.ktor.http.contentType
-import io.ktor.utils.io.jvm.javaio.toInputStream
+import io.ktor.http.*
+import io.ktor.utils.io.jvm.javaio.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlin.time.Duration.Companion.seconds
-import java.net.ProxySelector
-import java.net.URI
-import java.net.URLEncoder
-import java.net.http.HttpRequest
-import java.net.http.HttpRequest.BodyPublishers
 import java.net.http.HttpResponse
-import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
-import java.time.Duration
-import java.util.Optional
-import java.util.concurrent.TimeUnit
-import javax.net.ssl.SSLSession
-import kotlin.LazyThreadSafetyMode
-import kotlin.text.Charsets
-import java.net.http.HttpClient as JdkHttpClient
 
 /**
  * calebxzhou @ 2025-05-10 23:20

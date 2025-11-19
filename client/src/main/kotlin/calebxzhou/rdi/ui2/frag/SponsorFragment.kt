@@ -1,10 +1,10 @@
 package calebxzhou.rdi.ui2.frag
 
+import calebxzhou.rdi.ui2.SELF
 import calebxzhou.rdi.ui2.frameLayoutParam
 import calebxzhou.rdi.ui2.imageView
 import calebxzhou.rdi.ui2.rdiDrawable
 import icyllis.modernui.view.Gravity
-import calebxzhou.rdi.ui2.SELF
 
 class SponsorFragment : RFragment("赞助") {
     val img = rdiDrawable("sponsor.png")

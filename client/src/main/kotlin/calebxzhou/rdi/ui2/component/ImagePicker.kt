@@ -2,18 +2,7 @@ package calebxzhou.rdi.ui2.component
 
 import calebxzhou.rdi.lgr
 import calebxzhou.rdi.net.humanSize
-import calebxzhou.rdi.ui2.MaterialColor
-import calebxzhou.rdi.ui2.PARENT
-import calebxzhou.rdi.ui2.SELF
-import calebxzhou.rdi.ui2.dp
-import calebxzhou.rdi.ui2.frameLayout
-import calebxzhou.rdi.ui2.frameLayoutParam
-import calebxzhou.rdi.ui2.iconDrawable
-import calebxzhou.rdi.ui2.linearLayoutParam
-import calebxzhou.rdi.ui2.paddingDp
-import calebxzhou.rdi.ui2.textView
-import calebxzhou.rdi.ui2.toast
-import calebxzhou.rdi.ui2.uiThread
+import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.util.ioScope
 import icyllis.modernui.core.Context
 import icyllis.modernui.graphics.Canvas
@@ -21,13 +10,13 @@ import icyllis.modernui.graphics.Paint
 import icyllis.modernui.graphics.drawable.ColorDrawable
 import icyllis.modernui.graphics.drawable.Drawable
 import icyllis.modernui.graphics.drawable.ImageDrawable
+import icyllis.modernui.text.TextUtils
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.view.View
 import icyllis.modernui.widget.FrameLayout
 import icyllis.modernui.widget.ImageView
 import icyllis.modernui.widget.LinearLayout
 import icyllis.modernui.widget.TextView
-import icyllis.modernui.text.TextUtils
 import kotlinx.coroutines.launch
 import org.lwjgl.util.tinyfd.TinyFileDialogs
 import java.io.ByteArrayInputStream

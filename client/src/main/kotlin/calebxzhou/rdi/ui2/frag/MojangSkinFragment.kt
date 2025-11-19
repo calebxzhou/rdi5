@@ -6,7 +6,6 @@ import calebxzhou.rdi.net.server
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.alertErr
 import calebxzhou.rdi.ui2.component.alertOk
-import calebxzhou.rdi.ui2.uiThread
 import calebxzhou.rdi.util.ioTask
 import icyllis.modernui.widget.CheckBox
 import icyllis.modernui.widget.EditText
