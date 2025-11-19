@@ -2,7 +2,6 @@ package calebxzhou.rdi.service
 
 import calebxzhou.rdi.Const
 import calebxzhou.rdi.exception.ModpackException
-import calebxzhou.rdi.lgr
 import calebxzhou.rdi.model.*
 import calebxzhou.rdi.model.pack.Mod
 import calebxzhou.rdi.net.httpRequest
@@ -12,6 +11,9 @@ import calebxzhou.rdi.service.ModService.modDescription
 import calebxzhou.rdi.service.ModService.modLogo
 import calebxzhou.rdi.service.ModService.readNeoForgeConfig
 import calebxzhou.rdi.service.ModService.toVo
+import calebxzhou.rdi.service.ModrinthService.mapModrinthProjects
+import calebxzhou.rdi.service.ModrinthService.mr2CfSlug
+import calebxzhou.rdi.util.Loggers
 import calebxzhou.rdi.util.murmur2
 import calebxzhou.rdi.util.serdesJson
 import io.ktor.client.call.*
@@ -27,11 +29,17 @@ import kotlin.math.max
 
 object CurseForgeService {
     val slugBriefInfo: Map<String, ModBriefInfo> by lazy { ModService.buildSlugMap(briefInfo) { it.curseforgeSlugs } }
+    private val lgr by Loggers
 
     //镜像源可能会缺mod  比如McJtyLib - 1.21-9.0.14
     const val BASE_URL = "https://mod.mcimirror.top/curseforge/v1"
     const val OFFICIAL_URL = "https://api.curseforge.com/v1"
-    suspend fun cfreq(path: String, method: HttpMethod = HttpMethod.Get, body: Any? = null): HttpResponse {
+    suspend fun cfreq(
+        path: String,
+        method: HttpMethod = HttpMethod.Get,
+        body: Any? = null,
+        onlyOfficial: Boolean = false
+    ): HttpResponse {
         suspend fun doRequest(base: String) = httpRequest {
             url("${base}/${path}")
             json()
@@ -40,11 +48,15 @@ object CurseForgeService {
             this.method = method
         }
 
+        if (onlyOfficial) {
+            return doRequest(OFFICIAL_URL)
+        }
+
         val mirrorResult = runCatching<HttpResponse> { doRequest(BASE_URL) }
         val mirrorResponse = mirrorResult.getOrNull()
         if (mirrorResponse != null && mirrorResponse.status.isSuccess()) {
             return mirrorResponse
-        }else{
+        } else {
             lgr.warn("curseforge镜像源请求失败，${mirrorResponse?.status},${mirrorResponse?.bodyAsText()}")
         }
 
@@ -74,6 +86,7 @@ object CurseForgeService {
 
         return data
     }
+
     suspend fun List<File>.loadInfoCurseForge(): CurseForgeLocalResult {
         val hashToFile = this.associateBy { it.murmur2 }
         val hashes = hashToFile.keys.toList()
@@ -82,61 +95,63 @@ object CurseForgeService {
         //cache loaded info
         return result
     }
-    @Serializable
-    data class CFFileIdsRequest(val fileIds: List<Int>)
 
-    suspend fun getModFilesInfo(fileIdToProjectId: Map<Int, Int>): List<CurseForgeFile> {
-        if (fileIdToProjectId.isEmpty()) return emptyList()
 
-        val distinctIds = fileIdToProjectId.keys.distinct()
-        val response = cfreq(
+    suspend fun getModFilesInfo(fileIds: List<Int>): List<CurseForgeFile> {
+        if (fileIds.isEmpty()) return emptyList()
+
+        val files = requestModFiles(fileIds).toMutableList()
+        val foundIds = files.mapTo(mutableSetOf()) { it.id }
+        val missingIds = fileIds.filterNot { foundIds.contains(it) }
+        if (missingIds.isNotEmpty()) {
+            lgr.warn("没找到这些mod信息，官方api重试：${missingIds}")
+            files += requestModFiles(missingIds,true)
+        }
+        lgr.info("mod files 找到了${files.size}/${fileIds.size}个")
+        return files
+    }
+    private suspend fun requestModFiles(fileIds: List<Int>,official: Boolean=false): List<CurseForgeFile> {
+        @Serializable
+        data class CFFileIdsRequest(val fileIds: List<Int>)
+
+        return cfreq(
             "mods/files",
             HttpMethod.Post,
-            CFFileIdsRequest(distinctIds)
-        ).body<CurseForgeFileListResponse>()
+            CFFileIdsRequest(fileIds),
+            onlyOfficial = official,
+        ).body<CurseForgeFileListResponse>().data
+    }
+    private suspend fun requestMods(modIds: List<Int>,official: Boolean=false): List<CurseForgeModInfo> {
+        @Serializable
+        data class CFModsRequest(val modIds: List<Int>, val filterPcOnly: Boolean = true)
 
-        val files = response.data.toMutableList()
-        val foundIds = files.mapTo(mutableSetOf()) { it.id }
-        val missingIds = distinctIds.filterNot { foundIds.contains(it) }
+        @Serializable
+        data class CFModsResponse(val data: List<CurseForgeModInfo>? = null)
+        return cfreq("mods", HttpMethod.Post, CFModsRequest(modIds),official).body<CFModsResponse>().data!!.filter { it.isMod }
 
+    }
+    //从mod project id列表获取cf mod信息
+    suspend fun getModsInfo(modIds: List<Int>): List<CurseForgeModInfo> {
+
+        if (modIds.isEmpty()) return emptyList()
+
+        val mods = requestMods(modIds).toMutableList()
+        val foundIds = mods.mapTo(mutableSetOf()) { it.id }
+        val missingIds = modIds.filterNot { foundIds.contains(it) }
         if (missingIds.isNotEmpty()) {
-            lgr.warn("CurseForge bulk file lookup missing ids: ${missingIds}")
-            missingIds.forEach { fileId ->
-                val projectId = fileIdToProjectId[fileId]
-                if (projectId == null) {
-                    lgr.warn("缺少 fileId=$fileId 的 projectId，无法单独重试")
-                    return@forEach
-                }
-                val fallback = runCatching { getModFileInfo(projectId, fileId) }.getOrNull()
-                if (fallback != null) {
-                    files += fallback
-                } else {
-                    lgr.warn("CurseForge 单独查询失败: projectId=$projectId fileId=$fileId")
-                }
-            }
+            lgr.warn("没找到这些mod信息，官方api重试：${missingIds}")
+            mods += requestMods(missingIds,true)
         }
+        lgr.info("mods   找到了${mods.size}/${modIds.size}个")
 
-        return files
+        return mods
     }
 
     suspend fun getModFileInfo(modId: Int, fileId: Int): CurseForgeFile? {
         return cfreq("mods/${modId}/files/${fileId}").body<CurseForgeFileResponse>().data
     }
 
-    //从mod project id列表获取cf mod信息
-    suspend fun getModsInfo(modIds: List<Int>): List<CurseForgeModInfo> {
-        @Serializable
-        data class CurseForgeModsRequest(val modIds: List<Int>, val filterPcOnly: Boolean = true)
 
-        @Serializable
-        data class CurseForgeModsResponse(val data: List<CurseForgeModInfo>? = null)
-
-        val mods = cfreq(
-            "mods", HttpMethod.Post, CurseForgeModsRequest(modIds)
-        ).body<CurseForgeModsResponse>().data!!.filter { it.isMod }
-        lgr.info("CurseForge: fetched ${mods.size} mods for ${modIds.size} requested IDs")
-        return mods
-    }
 
     //从完整的cf mod信息取得card vo
     private fun CurseForgeModInfo.toBriefVo(modFile: File? = null): ModCardVo {
@@ -229,7 +244,7 @@ object CurseForgeService {
                     fileId = record.fileId,
                     hash = record.fingerprint,
 
-                ).apply {
+                    ).apply {
                     file = record.file
                     vo = slugBriefInfo[meta.normalizedSlug]?.toVo(record.file)
                         ?: meta.mod.toBriefVo(record.file)
@@ -263,35 +278,58 @@ object CurseForgeService {
         return this
     }
 
-    suspend fun List<CurseForgePackManifest.File>.toMods(): List<Mod> {
+    suspend fun List<CurseForgePackManifest.File>.mapMods(): List<Mod> {
+
         // Fetch all mod info and file info in parallel
-        val modInfoMap = getModsInfo(map { it.projectId })
+        val modInfoMap = getModsInfo(map{it.projectId})
             .associateBy { it.id }
+        //从modrinth读info是为了知道client side/ server side
+        val cfSlugMrInfo = modInfoMap.values.map { cfInfo ->
+            cfInfo.slug.cf2MrSlug
+        }.mapModrinthProjects().associateBy { it.slug.mr2CfSlug }
 
-    val fileIdToProjectId = associate { it.fileId to it.projectId }
-    val fileInfoMap = getModFilesInfo(fileIdToProjectId)
+        val fileInfoMap = getModFilesInfo(map { it.fileId })
             .associateBy { it.id }
-
+        val libraryModSlugs = arrayListOf<String>()
         // Join the data by matching projectId and fileId
         return mapNotNull { curseFile ->
             val modInfo = modInfoMap[curseFile.projectId] ?: let {
                 lgr.error("mod ${curseFile.projectId}/${curseFile.fileId} 在mod info map没有信息")
                 return@mapNotNull null
             }
+            val cfSlug = modInfo.slug
             val fileInfo = fileInfoMap[curseFile.fileId] ?: let {
                 lgr.error("mod ${curseFile.projectId}/${curseFile.fileId} file info map没有信息")
                 return@mapNotNull null
             }
-
+            val side = cfSlugMrInfo[cfSlug]?.run {
+                if(categories.contains("library")) {
+                    libraryModSlugs+=cfSlug
+                    return@run Mod.Side.BOTH
+                }
+                if (serverSide == "unsupported") {
+                    return@run Mod.Side.CLIENT
+                }
+                if (clientSide == "unsupported") {
+                    return@run Mod.Side.SERVER
+                } else return@run Mod.Side.BOTH
+            } ?: Mod.Side.BOTH
             Mod(
                 platform = "cf",
                 projectId = modInfo.id.toString(),
-                slug = modInfo.slug,
+                slug = cfSlug,
                 fileId = fileInfo.id.toString(),
-                hash = fileInfo.fileFingerprint.toString()
+                hash = fileInfo.fileFingerprint.toString(),
+                side = side
             ).apply {
                 vo = modInfo.toBriefVo()
             }
+        }.also { mod ->
+
+            lgr.info("lib mod: ${libraryModSlugs.joinToString(",")}")
+            lgr.info("server mod：${mod.filter { it.side == Mod.Side.SERVER }.map { it.slug }}")
+            lgr.info("client mod：${mod.filter { it.side == Mod.Side.CLIENT }.map { it.slug }}")
+            lgr.info("both  mod：${mod.filter { it.side == Mod.Side.BOTH }.map { it.slug }}")
         }
     }
 
@@ -377,10 +415,6 @@ object CurseForgeService {
         }
     }
 
-    suspend fun Mod.getDownloadUrl(): String {
-        return cfreq("${BASE_URL}/mods/${projectId}/files/${fileId}/download-url").body<String>()
-    }
-
     private val MAX_PARALLEL_DOWNLOADS = max(4, Runtime.getRuntime().availableProcessors() * 2)
 
     fun handleCurseForgeDownloadUrls(url: String): List<String> {
@@ -398,11 +432,13 @@ object CurseForgeService {
     }
 
     //cf - mr
-    fun cf2MrSlug(curseForgeSlug: String): String? {
-        if (curseForgeSlug.isBlank()) return null
-        val info = slugBriefInfo[curseForgeSlug.trim().lowercase()] ?: return null
-        return info.modrinthSlugs.firstOrNull { it.isNotBlank() }?.trim()
-    }
+    val String.cf2MrSlug: String
+        get() {
+            if (isBlank()) return this
+            val info = slugBriefInfo[trim().lowercase()] ?: return this
+            return info.modrinthSlugs.firstOrNull { it.isNotBlank() }?.trim() ?: this
+        }
+
     suspend fun downloadMod(mod: Mod) {
         //todo
     }
