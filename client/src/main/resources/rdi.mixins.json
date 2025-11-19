@@ -35,8 +35,6 @@
     "mAllowChineseArgument",
     "mAllowChineseName",
     "mAlwaysOfflineMode",
-    "mNetMetrics",
-    "mNetMetrics2",
     "mPlayerInfoUpdate",
     "mProxyConnect",
     "mServerboundHelloPacket",
