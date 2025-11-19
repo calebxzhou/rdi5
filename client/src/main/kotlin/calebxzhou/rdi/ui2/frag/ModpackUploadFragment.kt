@@ -8,7 +8,7 @@ import calebxzhou.rdi.net.formatSpeed
 import calebxzhou.rdi.net.humanSize
 import calebxzhou.rdi.net.server
 import calebxzhou.rdi.service.CurseForgeService
-import calebxzhou.rdi.service.CurseForgeService.toMods
+import calebxzhou.rdi.service.CurseForgeService.mapMods
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.ModGrid
 import calebxzhou.rdi.ui2.component.RTextField
@@ -305,7 +305,7 @@ class ModpackUploadFragment : RFragment("上传整合包") {
         try {
             val manifest = modpackData.manifest
             progressText = "读取到${manifest.files.size}个mod 导入整合包中..."
-            val mods = manifest.files.toMods()
+            val mods = manifest.files.mapMods()
             Confirm(modpackData, mods).go()
         } catch (e: Exception) {
             alertErr("解析整合包失败: ${e.message}")
