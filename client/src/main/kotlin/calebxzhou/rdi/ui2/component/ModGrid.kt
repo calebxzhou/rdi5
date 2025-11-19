@@ -3,19 +3,10 @@ package calebxzhou.rdi.ui2.component
 import calebxzhou.rdi.Const
 import calebxzhou.rdi.model.CurseForgeLocalResult
 import calebxzhou.rdi.model.pack.Mod
-import calebxzhou.rdi.service.CurseForgeService.fillCurseForgeVo
-import calebxzhou.rdi.service.filterServerOnlyMods
-import calebxzhou.rdi.service.installedMods
-import calebxzhou.rdi.service.loadInfoCurseForge
-import calebxzhou.rdi.ui2.MaterialColor
-import calebxzhou.rdi.ui2.PARENT
-import calebxzhou.rdi.ui2.SELF
-import calebxzhou.rdi.ui2.dp
-import calebxzhou.rdi.ui2.horizontal
-import calebxzhou.rdi.ui2.linearLayoutParam
-import calebxzhou.rdi.ui2.scrollView
-import calebxzhou.rdi.ui2.uiThread
-import calebxzhou.rdi.ui2.vertical
+import calebxzhou.rdi.service.CurseForgeService.loadInfoCurseForge
+import calebxzhou.rdi.service.ModService.filterServerOnlyMods
+import calebxzhou.rdi.service.ModService.installedMods
+import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.util.ioTask
 import icyllis.modernui.core.Context
 import icyllis.modernui.view.Gravity
@@ -26,7 +17,6 @@ import icyllis.modernui.widget.TextView
 import kotlinx.serialization.cbor.Cbor
 import kotlinx.serialization.decodeFromByteArray
 import java.io.File
-import kotlin.collections.isNotEmpty
 
 class ModGrid(
     ctx: Context,
