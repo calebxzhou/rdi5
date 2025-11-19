@@ -18,7 +18,7 @@ import kotlin.math.max
 
 /**
  * calebxzhou @ 2025-10-14 14:40
- * 从mc百科获取mod的中文名称 简介 图标等信息
+ * 从mc百科获取mod的中文名称 简介 图标等信息 保存到mcmod_mod_data.json
  */
 fun main() {
     Configurator.setRootLevel(Level.DEBUG)
