@@ -7,14 +7,6 @@ import net.neoforged.neoforge.client.settings.KeyModifier
 import org.lwjgl.glfw.GLFW
 
 object RKeyBinds {
-    val HOME =
-        KeyMapping(
-            "回家",
-            KeyConflictContext.IN_GAME,
-            KeyModifier.NONE,
-            InputConstants.getKey(GLFW.GLFW_KEY_H,-1),
-            "rdi"
-        )
 
     val MCMOD =
         KeyMapping(
