@@ -10,6 +10,9 @@ import calebxzhou.rdi.ihq.model.AuthLog
 import calebxzhou.rdi.ihq.model.HwSpec
 import calebxzhou.rdi.ihq.model.RAccount
 import calebxzhou.rdi.ihq.net.*
+import calebxzhou.rdi.ihq.service.PlayerService.changeCloth
+import calebxzhou.rdi.ihq.service.PlayerService.changeProfile
+import calebxzhou.rdi.ihq.service.PlayerService.clearCloth
 import calebxzhou.rdi.ihq.util.datetime
 import calebxzhou.rdi.ihq.util.displayLength
 import calebxzhou.rdi.ihq.util.isValidHttpUrl
@@ -19,12 +22,13 @@ import com.mongodb.client.model.Filters.`in`
 import com.mongodb.client.model.Filters.eq
 import com.mongodb.client.model.Updates
 import com.mongodb.client.model.Updates.combine
-import io.ktor.http.HttpHeaders
 import io.ktor.server.auth.authenticate
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
+import io.ktor.server.routing.put
+import io.ktor.server.routing.route
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.toList
 import org.bson.conversions.Bson
@@ -33,64 +37,85 @@ import java.io.File
 import java.util.LinkedHashSet
 
 fun Route.playerRoutes() {
-    get("/player-info/{uid}") {
-        val uid = ObjectId(param("uid"))
-        val info = PlayerService.getInfo(uid)
-        response(data = info)
-    }
-    get("/player-info-by-names") {
-        val names = param("names").split("\n")
-        val infos = PlayerService.getInfoByNames(names)
-        response(data = infos)
-    }
-    get("/name/{uid}") {
-        val uid = ObjectId(param("uid"))
-        val name = PlayerService.getName(uid) ?: "【玩家不存在】"
-        response(data = name)
-    }
-    get("/skin/{uid}") {
-        val uidParam = param("uid")
-        val uid = ObjectId(uidParam)
-        val cloth = PlayerService.getSkin(uid)
-        response(data = cloth)
-    }
-    post("/register") {
-        PlayerService.register(param("name"), param("pwd"), param("qq"))
-        ok()
-    }
-    post("/jwt") {
-        PlayerService.validate(param("usr"), param("pwd"))?.let { JwtService.generateToken(it._id) }
-            ?.let { response(data = it) } ?: err("账密×")
-    }
-    post("/login") {
-        val result = PlayerService.login(param("usr"), param("pwd"), paramNull("spec"), call.clientIp)
-        response(data = result)
-    }
-    post("/crash-report") {
-        val uid = ObjectId(param("uid"))
-        val report = param("report")
-        PlayerService.saveCrashReport(uid, report)
-        ok()
-    }
+    route("/player") {
+        route("/{uid}") {
+            get("/name") {
+                val uid = ObjectId(param("uid"))
+                val name = PlayerService.getName(uid) ?: "【玩家不存在】"
+                response(data = name)
+            }
+            get("/skin") {
+                val uidParam = param("uid")
+                val uid = ObjectId(uidParam)
+                val cloth = PlayerService.getSkin(uid)
+                response(data = cloth)
+            }
+            get("/info") {
+                val uid = ObjectId(param("uid"))
+                val info = PlayerService.getInfo(uid)
+                response(data = info)
+            }
+        }
+        /*get("/player-info/{uid}") {
+            val uid = ObjectId(param("uid"))
+            val info = PlayerService.getInfo(uid)
+            response(data = info)
+        }*/
+        get("/infos") {
+            val names = param("names").split("\n")
+            val infos = PlayerService.getInfoByNames(names)
+            response(data = infos)
+        }
+        /*get("/name/{uid}") {
+            val uid = ObjectId(param("uid"))
+            val name = PlayerService.getName(uid) ?: "【玩家不存在】"
+            response(data = name)
+        }
+        get("/skin/{uid}") {
+            val uidParam = param("uid")
+            val uid = ObjectId(uidParam)
+            val cloth = PlayerService.getSkin(uid)
+            response(data = cloth)
+        }*/
+        post("/register") {
+            PlayerService.register(param("name"), param("pwd"), param("qq"))
+            ok()
+        }
+        post("/jwt") {
+            PlayerService.validate(param("usr"), param("pwd"))?.let { JwtService.generateToken(it._id) }
+                ?.let { response(data = it) } ?: err("账密×")
+        }
+        post("/login") {
+            val result = PlayerService.login(param("usr"), param("pwd"), paramNull("spec"), call.clientIp)
+            response(data = result)
+        }
+        post("/crash-report") {
+            val uid = ObjectId(param("uid"))
+            val report = param("report")
+            PlayerService.saveCrashReport(uid, report)
+            ok()
+        }
 
-    authenticate( "auth-jwt", optional = true) {
-        post("/skin") {
-            val skin = param("skin")
-            val cape = paramNull("cape")
-            val isSlim = paramNull("isSlim")?.toBoolean() ?: false
-            PlayerService.changeCloth(uid, isSlim, skin, cape)
-            ok()
-        }
-        post("/change-profile") {
-            val newQq = paramNull("qq")
-            val newName = paramNull("name")
-            val newPwd = paramNull("pwd")
-            PlayerService.changeProfile(uid, newName, newQq, newPwd)
-            ok()
-        }
-        delete("/skin") {
-            PlayerService.clearCloth(uid)
-            ok()
+        authenticate("auth-jwt", optional = true) {
+            install(PlayerPlugin)
+            route("/skin") {
+                post {
+                    call.playerContext.changeCloth(
+                        paramNull("isSlim")?.toBoolean() ?: false,
+                        param("skin"),
+                        paramNull("cape")
+                    )
+                    ok()
+                }
+                delete {
+                    call.playerContext.clearCloth()
+                    ok()
+                }
+            }
+            put("/profile") {
+                call.playerContext.changeProfile(paramNull("name"), paramNull("qq"), paramNull("pwd"))
+                ok()
+            }
         }
     }
 }
@@ -112,8 +137,12 @@ object PlayerService {
         return getByQQ(usr) ?: getByName(usr)
     }
 
+    val PlayerContext.uidFilter
+        get() = equalById(player)
+
     fun equalById(id: ObjectId): Bson = eq("_id", id)
     fun equalById(acc: RAccount): Bson = eq("_id", acc._id)
+
 
     suspend fun getById(id: ObjectId): RAccount? = accountCol.find(equalById(id)).firstOrNull()
 
@@ -125,17 +154,14 @@ object PlayerService {
         return if (account == null || account.pwd != pwd) null else account
     }
 
-    suspend fun clearCloth(uid: ObjectId) {
-        accountCol.updateOne(equalById(uid), Updates.unset("cloth"))
+    suspend fun PlayerContext.clearCloth() {
+        accountCol.updateOne(uidFilter, Updates.unset("cloth"))
     }
 
-    suspend fun changeCloth(uid: ObjectId, isSlim: Boolean, skin: String, cape: String?) {
+    suspend fun PlayerContext.changeCloth(isSlim: Boolean, skin: String, cape: String?) {
         if (!skin.isValidHttpUrl()) throw ParamError("皮肤链接格式错误")
-        val normalizedCape = cape?.also {
-            if (!it.isValidHttpUrl()) throw ParamError("披风链接格式错误")
-        }
-        val cloth = RAccount.Cloth(isSlim, skin, normalizedCape)
-        accountCol.updateOne(equalById(uid), Updates.set("cloth", cloth))
+        if (!cape.isValidHttpUrl()) throw ParamError("披风链接格式错误")
+        accountCol.updateOne(uidFilter, Updates.set("cloth", RAccount.Cloth(isSlim, skin, cape)))
     }
 
     suspend fun getSkin(uid: ObjectId): RAccount.Cloth {
@@ -186,7 +212,7 @@ object PlayerService {
         return account
     }
 
-    suspend fun changeProfile(uid: ObjectId, newName: String?, newQq: String?, newPwd: String?) {
+    suspend fun PlayerContext.changeProfile(newName: String?, newQq: String?, newPwd: String?) {
         val updates = mutableListOf<Bson>()
         newQq?.let {
             if (getByQQ(it) != null) throw RequestError("QQ用过了")
@@ -198,7 +224,7 @@ object PlayerService {
         }
         newPwd?.let { updates += Updates.set("pwd", it) }
         if (updates.isNotEmpty()) {
-            accountCol.updateOne(equalById(uid), combine(updates))
+            accountCol.updateOne(uidFilter, combine(updates))
         }
     }
 
