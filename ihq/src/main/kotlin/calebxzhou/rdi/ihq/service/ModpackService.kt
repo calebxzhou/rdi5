@@ -382,7 +382,8 @@ object ModpackService {
     suspend fun Modpack.buildAsImage(version: Modpack.Version) {
         val modsDir = version.dir.resolve("mods").apply { mkdirs() }
         BASE_IMAGE_DIR.resolve("${mcVer}_${modloader}").copyRecursively(version.dir, true)
-        val downloadedMods = CurseForgeService.downloadMods(version.mods)
+        //只下载非客户端mod
+        val downloadedMods = CurseForgeService.downloadMods(version.mods.filter { it.side != Mod.Side.CLIENT })
 
 
         downloadedMods.forEach { sourcePath ->
