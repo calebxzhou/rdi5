@@ -226,3 +226,7 @@ private fun ContentType.matches(other: ContentType): Boolean {
     return contentType.equals(other.contentType, ignoreCase = true) &&
             contentSubtype.equals(other.contentSubtype, ignoreCase = true)
 }
+fun idExtractor(paramName: String): suspend ApplicationCall.() -> ObjectId = {
+    val raw = parameters[paramName] ?: throw ParamError("缺少$paramName")
+    runCatching { ObjectId(raw) }.getOrElse { throw ParamError("${paramName}格式错误") }
+}
