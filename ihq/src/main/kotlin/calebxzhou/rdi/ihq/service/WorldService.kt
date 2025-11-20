@@ -4,6 +4,7 @@ import calebxzhou.rdi.ihq.DB
 import calebxzhou.rdi.ihq.DEFAULT_MODPACK_ID
 import calebxzhou.rdi.ihq.exception.RequestError
 import calebxzhou.rdi.ihq.lgr
+import calebxzhou.rdi.ihq.model.RAccount
 import calebxzhou.rdi.ihq.model.World
 import calebxzhou.rdi.ihq.net.ok
 import calebxzhou.rdi.ihq.net.param
@@ -57,6 +58,7 @@ object WorldService {
     suspend fun listByOwner(ownerId: ObjectId): List<World> =
         dbcl.find(eq("ownerId", ownerId)).toList()
 
+    suspend fun RAccount.ownWorlds() = WorldService.listByOwner(_id)
 
     private suspend fun ensureCapacity(teamId: ObjectId) {
         if (listByOwner(teamId).size >= PLAYER_MAX_WORLD) {

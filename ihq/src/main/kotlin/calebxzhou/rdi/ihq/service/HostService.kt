@@ -1,10 +1,8 @@
 package calebxzhou.rdi.ihq.service
 
 import calebxzhou.rdi.ihq.DB
-import calebxzhou.rdi.ihq.DEFAULT_MODPACK_ID
 import calebxzhou.rdi.ihq.exception.RequestError
 import calebxzhou.rdi.ihq.model.Host
-import calebxzhou.rdi.ihq.model.Team
 import calebxzhou.rdi.ihq.service.HostService.delete
 import calebxzhou.rdi.ihq.service.HostService.getLog
 import calebxzhou.rdi.ihq.service.HostService.listenLogs
@@ -20,20 +18,27 @@ import calebxzhou.rdi.ihq.net.ok
 import calebxzhou.rdi.ihq.net.param
 import calebxzhou.rdi.ihq.net.paramNull
 import calebxzhou.rdi.ihq.net.response
-import calebxzhou.rdi.ihq.service.TeamService.addHost
-import calebxzhou.rdi.ihq.service.TeamService.delHost
 import calebxzhou.rdi.ihq.util.str
 import calebxzhou.rdi.ihq.util.serdesJson
 import calebxzhou.rdi.ihq.lgr
+import calebxzhou.rdi.ihq.model.RAccount
+import calebxzhou.rdi.ihq.model.Role
 import calebxzhou.rdi.ihq.model.pack.Mod
 import calebxzhou.rdi.ihq.net.err
 import calebxzhou.rdi.ihq.net.idParam
 import calebxzhou.rdi.ihq.service.HostService.addExtraMods
+import calebxzhou.rdi.ihq.service.HostService.addMember
 import calebxzhou.rdi.ihq.service.HostService.createHost
 import calebxzhou.rdi.ihq.service.HostService.delExtraMods
+import calebxzhou.rdi.ihq.service.HostService.delMember
+import calebxzhou.rdi.ihq.service.HostService.getServerStatus
 import calebxzhou.rdi.ihq.service.HostService.reloadExtraMods
+import calebxzhou.rdi.ihq.service.HostService.setRole
+import calebxzhou.rdi.ihq.service.HostService.transferOwnership
 import calebxzhou.rdi.ihq.service.WorldService.createWorld
 import com.mongodb.client.model.Filters.*
+import com.mongodb.client.model.UpdateOptions
+import com.mongodb.client.model.Updates
 import com.mongodb.client.model.Updates.combine
 import com.mongodb.client.model.Updates.set
 import io.ktor.server.request.receive
@@ -58,148 +63,120 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.withContext
+import org.bouncycastle.asn1.x500.style.RFC4519Style.uid
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Duration.Companion.minutes
 import org.bson.types.ObjectId
+import javax.ws.rs.sse.SseEventSource.target
+import kotlin.collections.find
+import org.bson.Document
 
 // ---------- Routing DSL (mirrors teamRoutes style) ----------
 fun Route.hostRoutes() = route("/host") {
-    route("/{hostId}/status") {
-        install(HostGuardPlugin) { permission = TeamPermission.MEMBER }
+    route("/{hostId}") {
+        install(HostGuardPlugin)
+        get("/status") {
+            call.hostGuardContext().host.getServerStatus().let { response(data = it) }
+        }
+        post("/start") {
+            call.hostGuardContext().needAdmin.start()
+            ok()
+        }
+        post("/stop") {
+            call.hostGuardContext().needAdmin.userStop()
+            ok()
+        }
+        post("/command") {
+            val ctx = call.hostGuardContext().needAdmin
+            ctx.sendCommand(param("command"))
+            ok()
+        }
+        post("/restart") {
+            call.hostGuardContext().needAdmin.restart()
+            ok()
+        }
+        post("/update") {
+            call.hostGuardContext().needAdmin.update(paramNull("packVer"))
+            ok()
+        }
+        post("/transfer/{uid}") {
+            call.hostGuardContext().needOwner.transferOwnership(idParam("uid"))
+            ok()
+        }
+        delete {
+            call.hostGuardContext().needOwner.delete()
+            ok()
+        }
         get {
-            val ctx = call.hostGuardContext()
-            response(data = HostService.getServerStatus(ctx.host).toString())
+            HostService.getById(idParam("hostId"))?.let {
+                response(data = it)
+            } ?: err("无此主机")
         }
-    }
+        route("/extra_mod") {
+            get {
+                response(data = call.hostGuardContext().host.extraMods)
+            }
+            post {
+                val ctx = call.hostGuardContext().needAdmin
+                val mods = call.receive<List<Mod>>()
+                ctx.addExtraMods(mods)
+                ok()
+            }
+            put {
+                call.hostGuardContext().needAdmin.reloadExtraMods()
 
-    route("/{hostId}/start") {
-        install(HostGuardPlugin) { permission = TeamPermission.ADMIN }
-        post {
-            call.hostGuardContext().start()
-            ok()
+                ok()
+            }
+            delete {
+                val ctx = call.hostGuardContext().needAdmin
+                val mods = call.receive<List<Mod>>()
+                ctx.delExtraMods(mods)
+                ok()
+            }
         }
-    }
+        route("/log") {
+            sse("/stream") {
+                call.hostGuardContext().needAdmin.listenLogs(this)
 
-    route("/{hostId}/stop") {
-        install(HostGuardPlugin) { permission = TeamPermission.ADMIN }
-        post {
-            call.hostGuardContext().userStop()
-            ok()
+            }
+            get("/{lines}") {
+                val logs = call.hostGuardContext().needAdmin.getLog(paramNull("startLine")?.toInt() ?: 0, param("lines").toInt())
+                response(data=logs)
+            }
         }
-    }
-
-    route("/{hostId}/command") {
-        install(HostGuardPlugin) { permission = TeamPermission.ADMIN }
-        post {
-            val ctx = call.hostGuardContext()
-            val command = param("command")
-            ctx.sendCommand(command)
-            ok()
-        }
-    }
-
-    route("/{hostId}/restart") {
-        install(HostGuardPlugin) { permission = TeamPermission.ADMIN }
-        post {
-            call.hostGuardContext().restart()
-            ok()
-        }
-    }
-
-    route("/{hostId}/update") {
-        install(HostGuardPlugin) { permission = TeamPermission.ADMIN }
-        post {
-            val ctx = call.hostGuardContext()
-            ctx.update(paramNull("packVer"))
-            ok()
+        route("/member/{uid}") {
+            put("/role") {
+                call.hostGuardContext().needOwner.setRole(idParam("uid"), Role.valueOf(param("role")))
+                ok()
+            }
+            post {
+                call.hostGuardContext().needOwner.addMember(idParam("uid"))
+                ok()
+            }
+            delete {
+                call.hostGuardContext().needOwner.delMember(idParam("uid"))
+                ok()
+            }
         }
     }
 
     route("/") {
-        install(TeamGuardPlugin)
         post {
-            call.teamGuardContext().requester require Team.Role.OWNER
-            call.teamGuardContext().createHost(
+            call.playerContext.createHost(
                 idParam("modpackId"),
                 param("packVer"),
-                paramNull("worldId")?.let { ObjectId(it) }
+                paramNull("worldId")?.let { ObjectId(it) },
+                param("difficulty").toInt(),
+                param("gameMode").toInt(),
+                param("levelType")
             )
             ok()
         }
-        get {
-            call.teamGuardContext().requester require Team.Role.MEMBER
-            response(data = HostService.listByTeam(call.teamGuardContext().team._id))
+        get("/{page}") {
+            //todo 显示所有主机 每page20个
         }
     }
-
-    route("/{hostId}") {
-        install(HostGuardPlugin)
-        get {
-            HostService.getById(call.idParam("hostId"))?.let {
-                response(data = it)
-            } ?: err("无此主机")
-        }
-        delete {
-            call.hostGuardContext().requirePermission(TeamPermission.OWNER)
-                call.hostGuardContext().delete()
-            ok()
-        }
-    }
-
-    route("/{hostId}/log/{lines}") {
-        install(HostGuardPlugin) { permission = TeamPermission.ADMIN }
-        get {
-            val ctx = call.hostGuardContext()
-            val lines = param("lines").toInt()
-            val startLine = paramNull("startLine")?.toInt() ?: 0
-            response(data = ctx.getLog(startLine, lines))
-        }
-    }
-
-    route("/{hostId}/log/stream") {
-        install(HostGuardPlugin) { permission = TeamPermission.ADMIN }
-        sse {
-            call.hostGuardContext().listenLogs(this)
-        }
-    }
-
-    route("/{hostId}/extra_mod") {
-        install(HostGuardPlugin)
-
-        get {
-            response(data = call.hostGuardContext().host.extraMods)
-        }
-        post {
-            val ctx = call.hostGuardContext()
-            ctx.requirePermission(TeamPermission.ADMIN)
-            val mods = call.receive<List<Mod>>()
-            ctx.addExtraMods(mods)
-            ok()
-        }
-        put {
-            val ctx = call.hostGuardContext()
-            ctx.requirePermission(TeamPermission.ADMIN)
-
-            ctx.reloadExtraMods()
-            ok()
-        }
-        delete {
-            val ctx = call.hostGuardContext()
-            ctx.requirePermission(TeamPermission.ADMIN)
-            val mods = call.receive<List<Mod>>()
-            ctx.delExtraMods(mods)
-            ok()
-        }
-    }
-
-    /* todo 以后再支持 for 自由选择host
-    get("/all") {
-        response(data = HostService.dbcl.find().map { it._id.toString() to it.name }.toList())
-    }*/
-}
-
-fun Route.hostPlayRoutes() = route("/host") {
     webSocket("/play/{hostId}") {
         val rawHostId = call.param("hostId")
 
@@ -227,7 +204,10 @@ fun Route.hostPlayRoutes() = route("/host") {
             HostService.unregisterPlayableSession(hostId, this)
         }
     }
+
+
 }
+
 
 object HostService {
 
@@ -432,44 +412,48 @@ object HostService {
         0
     }
 
-    suspend fun TeamGuardContext.createHost(modpackId: ObjectId, packVer: String, worldId: ObjectId?) {
+    suspend fun PlayerContext.createHost(
+        modpackId: ObjectId,
+        packVer: String,
+        //null：create new world
+        worldId: ObjectId?,
+        difficulty: Int,
+        gameMode: Int,
+        levelType: String,
+    ) {
+        val playerId = player._id
         val world = worldId?.let {
-            if (findByWorld(it) != null) throw RequestError("此存档已被其他主机占用")
-            WorldService.getById(it) ?: throw RequestError("无此存档")
-        } ?: createWorld(null, modpackId)
-        if (world.teamId != team._id) throw RequestError("存档不属于你的团队")
+            if (findByWorld(it) != null)
+                throw RequestError("此存档已被其他主机占用")
+            WorldService.getById(it)
+                ?: throw RequestError("无此存档")
+        } ?: createWorld(playerId, null, modpackId)
+        if (world.ownerId != uid) throw RequestError("不是你的存档")
 
         val port = allocateRoomPort()
         val host = Host(
-            name = "主机" + (team.hosts().size + 1),
-            teamId = team._id,
+            name = "主机" + (player.ownHosts().size + 1),
+            ownerId = playerId,
             modpackId = modpackId,
+            packVer = packVer,
             worldId = world._id,
             port = port,
-            packVer = packVer
+            difficulty = difficulty,
+            gameMode = gameMode,
+            levelType = levelType
+
         )
         dbcl.insertOne(host)
-        team.addHost(host._id)
         DockerService.createContainer(port, host._id.str, world._id.str, host.imageRef())
         DockerService.start(host._id.str)
         clearShutFlag(host._id)
     }
 
+
     suspend fun HostGuardContext.delete() {
-        delete(team, host._id)
-    }
-
-    suspend fun delete(team: Team, hostId: ObjectId) {
-        val host = getById(hostId) ?: return
-        delete(team, host)
-    }
-
-    suspend fun delete(team: Team, host: Host) {
-        if (host.teamId != team._id) throw RequestError("主机不属于你的团队")
-        dbcl.deleteOne(eq("_id", host._id))
-        team.delHost(host._id)
         DockerService.deleteContainer(host._id.str)
         clearShutFlag(host._id)
+        dbcl.deleteOne(eq("_id", host._id))
     }
 
     suspend fun HostGuardContext.update(packVer: String?) {
@@ -481,7 +465,12 @@ object HostService {
         }
         DockerService.deleteContainer(current._id.str)
         val worldId = current.worldId
-        DockerService.createContainer(current.port, current._id.str, worldId.str, "${current.modpackId.str}:$resolvedVer")
+        DockerService.createContainer(
+            current.port,
+            current._id.str,
+            worldId.str,
+            "${current.modpackId.str}:$resolvedVer"
+        )
         DockerService.start(current._id.str)
         clearShutFlag(current._id)
 
@@ -553,18 +542,14 @@ object HostService {
         }
     }
 
-    suspend fun getServerStatus(host: Host): HostStatus {
-        val status = DockerService.getContainerStatus(host._id.str)
-        if (status == HostStatus.STARTED && hostStates[host._id]?.session != null) {
+    suspend fun Host.getServerStatus(): HostStatus {
+        val status = DockerService.getContainerStatus(_id.str)
+        if (status == HostStatus.STARTED && hostStates[_id]?.session != null) {
             return HostStatus.PLAYABLE
         }
         return status
     }
 
-    suspend fun getServerStatus(hostId: ObjectId): HostStatus {
-        val host = getById(hostId) ?: return HostStatus.UNKNOWN
-        return getServerStatus(host)
-    }
 
     // Get logs by range: [startLine, endLine), 0 means newest line
     suspend fun HostGuardContext.getLog(startLine: Int = 0, needLines: Int): String {
@@ -609,9 +594,11 @@ object HostService {
             lines.cancel()
         }
     }
+
     suspend fun HostGuardContext.reloadExtraMods() {
         host.downloadExtraMods(host.extraMods)
     }
+
     suspend fun HostGuardContext.addExtraMods(mods: List<Mod>) {
         if (mods.isEmpty()) throw RequestError("mod列表不得为空")
 
@@ -641,6 +628,7 @@ object HostService {
         )
         host.downloadExtraMods(toDownload)
     }
+
     suspend fun Host.downloadExtraMods(mods: List<Mod>) {
         if (mods.isEmpty()) return
         modDownloadScope.launch {
@@ -653,6 +641,7 @@ object HostService {
             }
         }
     }
+
     suspend fun HostGuardContext.delExtraMods(mods: List<Mod>) {
         if (mods.isEmpty()) throw RequestError("mod列表不得为空")
 
@@ -681,9 +670,16 @@ object HostService {
 
 
     }
+
+    fun Host.hasMember(id: ObjectId): Boolean {
+        return members.any { it.id == id }
+    }
+
+    suspend fun RAccount.ownHosts() = HostService.listByOwner(_id)
+
     // List all hosts belonging to a team
-    suspend fun listByTeam(teamId: ObjectId): List<Host> =
-        dbcl.find(eq("teamId", teamId)).toList()
+    suspend fun listByOwner(uid: ObjectId): List<Host> =
+        dbcl.find(eq("ownerId", uid)).toList()
 
 
     suspend fun findByWorld(worldId: ObjectId): Host? =
@@ -711,6 +707,83 @@ object HostService {
 
     suspend fun stopIdleHosts() {
         runIdleMonitorTick(forceStop = true)
+    }
+
+    suspend fun HostGuardContext.delMember(targetUid: ObjectId) {
+
+        val targetMember = host.members.find { it.id == targetUid } ?: throw RequestError("该用户不是成员")
+        if (targetMember.role.level <= Role.ADMIN.level) {
+            throw RequestError("无法踢出管理员")
+        }
+        dbcl.updateOne(
+            eq("_id", host._id),
+            Updates.pull(Host::members.name, eq("id", targetUid))
+        )
+    }
+
+    suspend fun HostGuardContext.transferOwnership(targetUid: ObjectId) {
+        val current = getById(host._id) ?: throw RequestError("无此主机")
+        if (current.ownerId == targetUid) throw RequestError("不能转给自己")
+
+        val targetMember = current.members.find { it.id == targetUid } ?: throw RequestError("只能转移给成员")
+        val ownerMember = current.members.find { it.id == current.ownerId }
+
+        val updates = mutableListOf<org.bson.conversions.Bson>()
+        val filters = mutableListOf<Document>()
+
+        updates += set(Host::ownerId.name, targetUid)
+        updates += Updates.set("members.$[target].role", Role.OWNER)
+        filters += Document("target.id", targetUid)
+
+        if (ownerMember != null) {
+            updates += Updates.set("members.$[currentOwner].role", Role.ADMIN)
+            filters += Document("currentOwner.id", current.ownerId)
+        } else {
+            updates += Updates.push(Host::members.name, Host.Member(current.ownerId, Role.ADMIN))
+        }
+
+        dbcl.updateOne(
+            eq("_id", current._id),
+            combine(updates),
+            UpdateOptions().arrayFilters(filters)
+        )
+    }
+
+    suspend fun HostGuardContext.addMember(targetUid: ObjectId) {
+        if (targetUid == host.ownerId) throw RequestError("拥有者无需加入成员")
+        val target = PlayerService.getById(targetUid) ?: throw RequestError("无此账号")
+        if (host.hasMember(target._id)) {
+            throw RequestError("该用户已是成员")
+        }
+        dbcl.updateOne(
+            eq("_id", host._id),
+            Updates.push(Host::members.name, Host.Member(target._id, Role.MEMBER))
+        )
+    }
+
+    suspend fun HostGuardContext.setRole(targetUid: ObjectId, role: Role) {
+        val targetMember = host.members.find { it.id == targetUid } ?: throw RequestError("该用户不是成员")
+        if (targetMember.role == role) {
+            throw RequestError("角色未更改")
+        }
+        if (targetMember.role == Role.OWNER) {
+            throw RequestError("无法更改拥有者角色")
+        }
+        if (role == Role.OWNER) {
+            throw RequestError("请使用转移拥有者来指定新的拥有者")
+        }
+        dbcl.updateOne(
+            eq("_id", host._id),
+            Updates.combine(
+                Updates.set("members.$[elem].role", role),
+            ),
+            UpdateOptions().arrayFilters(
+                listOf(
+                    Document("elem.id", targetUid),
+                )
+            )
+        )
+
     }
 }
 

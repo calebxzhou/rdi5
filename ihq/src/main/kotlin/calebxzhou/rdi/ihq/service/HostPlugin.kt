@@ -3,7 +3,8 @@ package calebxzhou.rdi.ihq.service
 import calebxzhou.rdi.ihq.exception.ParamError
 import calebxzhou.rdi.ihq.exception.RequestError
 import calebxzhou.rdi.ihq.model.Host
-import calebxzhou.rdi.ihq.model.Team
+import calebxzhou.rdi.ihq.model.RAccount
+import calebxzhou.rdi.ihq.model.Role
 import calebxzhou.rdi.ihq.net.uid
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.createRouteScopedPlugin
@@ -16,29 +17,32 @@ class HostGuardConfig {
         runCatching { ObjectId(raw) }.getOrElse { throw ParamError("hostId格式错误") }
     }
 
-    var permission: TeamPermission = TeamPermission.MEMBER
 }
 
 data class HostGuardContext(
     val host: Host,
-    val team: Team,
-    val requester: Team.Member,
+    val requestPlayer: RAccount,
+    val requestMember: Host.Member,
 )
-
-fun HostGuardContext.requirePermission(level: TeamPermission) {
-    val allowed = when (level) {
-        TeamPermission.MEMBER -> true
-        TeamPermission.ADMIN -> requester.role.level <= Team.Role.ADMIN.level
-        TeamPermission.OWNER -> requester.role == Team.Role.OWNER
+val HostGuardContext.needAdmin  get()= requireRole(Role.ADMIN)
+val HostGuardContext.needOwner  get()= requireRole(Role.OWNER)
+fun HostGuardContext.requireRole(level: Role): HostGuardContext {
+    requestMember.let {
+        val allowed = when (level) {
+            Role.MEMBER -> true
+            Role.ADMIN -> requestMember.role.level <= Role.ADMIN.level
+            Role.OWNER -> requestMember.role == Role.OWNER
+            else -> false
+        }
+        if (!allowed) throw RequestError("无权限")
     }
-    if (!allowed) throw RequestError("无权限")
+    return this
 }
 
 private val HostGuardKey = AttributeKey<HostGuardContext>("HostGuardContext")
 private val HostGuardSettingsKey = AttributeKey<HostGuardSettings>("HostGuardSettings")
 
 private data class HostGuardSettings(
-    val permission: TeamPermission,
     val hostResolver: suspend ApplicationCall.() -> ObjectId,
 )
 
@@ -46,11 +50,10 @@ val HostGuardPlugin = createRouteScopedPlugin(
     name = "HostGuard",
     createConfiguration = ::HostGuardConfig
 ) {
-    val permission = pluginConfig.permission
     val hostResolver = pluginConfig.hostIdExtractor
 
     onCall { call ->
-        call.attributes.put(HostGuardSettingsKey, HostGuardSettings(permission, hostResolver))
+        call.attributes.put(HostGuardSettingsKey, HostGuardSettings(hostResolver))
     }
 }
 
@@ -67,15 +70,8 @@ private suspend fun ApplicationCall.resolveHostGuardContext(settings: HostGuardS
     val requesterId = uid
     val hostId = settings.hostResolver(this)
     val host = HostService.getById(hostId) ?: throw RequestError("无此主机")
-    val team = TeamService.get(host.teamId) ?: throw RequestError("无此团队")
-    val requesterMember = team.members.firstOrNull { it.id == requesterId }
-        ?: throw RequestError("你不在该团队内")
-
-    if (host.teamId != team._id) {
-        throw RequestError("主机不属于该团队")
-    }
-
-    val ctx = HostGuardContext(host, team, requesterMember)
-    ctx.requirePermission(settings.permission)
+    val requesterMember = host.members.firstOrNull { it.id == requesterId } ?: throw RequestError("不是主机成员")
+    val player = PlayerService.getById(requesterId)?: throw RequestError("用户不存在")
+    val ctx = HostGuardContext(host,player, requesterMember)
     return ctx
 }

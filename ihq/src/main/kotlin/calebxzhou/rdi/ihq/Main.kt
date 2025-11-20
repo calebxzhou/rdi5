@@ -11,8 +11,6 @@ import calebxzhou.rdi.ihq.service.playerRoutes
 import calebxzhou.rdi.ihq.service.HostService
 import calebxzhou.rdi.ihq.service.JwtService
 import calebxzhou.rdi.ihq.service.hostRoutes
-import calebxzhou.rdi.ihq.service.hostPlayRoutes
-import calebxzhou.rdi.ihq.service.teamRoutes
 import calebxzhou.rdi.ihq.service.worldRoutes
 import calebxzhou.rdi.ihq.service.chatRoutes
 import calebxzhou.rdi.ihq.service.modpackRoutes
@@ -143,7 +141,6 @@ fun startHttp(){
         }
         routing {
             playerRoutes()
-                hostPlayRoutes()
             /*get("/sponsors") {
                 call.respondText("""
                     2025-04-11,ChenQu,100
@@ -160,7 +157,6 @@ fun startHttp(){
                 }
             }*/
             authenticate( "auth-jwt", optional = true) {
-                teamRoutes()
                 hostRoutes()
                 worldRoutes()
                 chatRoutes()
