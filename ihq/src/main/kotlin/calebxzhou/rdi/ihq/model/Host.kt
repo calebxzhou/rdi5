@@ -12,6 +12,8 @@ data class Host(
     @Contextual
     val _id: ObjectId = ObjectId(),
     val name: String,
+    val intro:String="暂无简介",
+    val icon: ByteArray? = null,
     @Contextual
     val ownerId: ObjectId,
     @Contextual
@@ -24,6 +26,7 @@ data class Host(
     val difficulty: Int,
     val gameMode: Int,
     val levelType: String,
+    val gameRules: Map<String,String> = mapOf(),
     //白名单 只有成员才能进
     val whitelist: Boolean=false,
     val members: List<Member> = arrayListOf(),
@@ -37,6 +40,33 @@ data class Host(
         @Contextual
         val id: ObjectId,
         val role: Role
+    )
+    @Serializable
+    data class Vo(
+        @Contextual
+        val _id: ObjectId = ObjectId(),
+        val name: String,
+        val intro: String = "暂无简介",
+        val icon: ByteArray? = null,
+        val ownerName: String,
+        val modpackName: String,
+        val packVer: String,
+        var port: Int,
+    )
+    @Serializable
+    data class DetailVo(
+        @Contextual
+        val _id: ObjectId = ObjectId(),
+        val name: String,
+        val intro: String = "暂无简介",
+        val icon: ByteArray? = null,
+        @Contextual
+        val ownerId: ObjectId,
+        @Contextual
+        val modpackId: ObjectId,
+        val modpackName:String,
+        val totalMods: List<Mod>,
+        var port: Int,
     )
 }
 
