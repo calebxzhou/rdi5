@@ -298,6 +298,8 @@ object CurseForgeService {
                 return@mapNotNull null
             }
             val cfSlug = modInfo.slug
+            //不需要kff client/server已经有了
+            if(cfSlug == "kotlin-for-forge") return@mapNotNull null
             val fileInfo = fileInfoMap[curseFile.fileId] ?: let {
                 lgr.error("mod ${curseFile.projectId}/${curseFile.fileId} file info map没有信息")
                 return@mapNotNull null
