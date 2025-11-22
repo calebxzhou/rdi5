@@ -1,14 +1,14 @@
 package calebxzhou.rdi.mixin;
 
 import calebxzhou.rdi.Const;
+import calebxzhou.rdi.RDI;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.dedicated.DedicatedServerProperties;
-import net.minecraft.world.level.levelgen.WorldOptions;
 import org.spongepowered.asm.mixin.*;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
-import java.util.OptionalLong;
+import java.util.Locale;
 
 /**
  * calebxzhou @ 2024-05-26 10:18
@@ -35,5 +35,11 @@ class mServerProps2  {
     public final int spawnProtection =0;
     @Mutable @Shadow @Final
     public final int serverPort = Const.SERVER_PORT;
+
+    @Redirect(method = "lambda$new$3",at= @At(value = "INVOKE",target = "Ljava/lang/String;toLowerCase(Ljava/util/Locale;)Ljava/lang/String;"
+    ))
+    private static String RDI$LevelTypeProps(String instance, Locale locale){
+        return RDI.Companion.getEnvLevelType();
+    }
 }
 

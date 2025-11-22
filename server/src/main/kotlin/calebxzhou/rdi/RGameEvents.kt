@@ -1,5 +1,7 @@
 package calebxzhou.rdi
 
+import calebxzhou.rdi.RDI.Companion.envDifficulty
+import calebxzhou.rdi.RDI.Companion.envGameMode
 import calebxzhou.rdi.model.CommandResultPayload
 import calebxzhou.rdi.model.WsMessage
 import calebxzhou.rdi.service.client
@@ -17,8 +19,10 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.builtins.serializer
-import kotlinx.serialization.json.Json
 import net.minecraft.server.dedicated.DedicatedServer
+import net.minecraft.world.Difficulty
+import net.minecraft.world.level.GameRules
+import net.minecraft.world.level.GameType
 import org.bson.types.ObjectId
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -26,6 +30,7 @@ import kotlin.math.min
 import net.neoforged.bus.api.SubscribeEvent
 import net.neoforged.fml.common.EventBusSubscriber
 import net.neoforged.neoforge.event.server.ServerStartedEvent
+import net.neoforged.neoforge.event.server.ServerStartingEvent
 import net.neoforged.neoforge.event.server.ServerStoppedEvent
 import net.neoforged.neoforge.event.server.ServerStoppingEvent
 import net.neoforged.neoforge.event.tick.ServerTickEvent
@@ -58,6 +63,33 @@ class RGameEvents {
         }
         @SubscribeEvent
         @JvmStatic
+        fun starting(e: ServerStartingEvent){
+            val server = e.server as DedicatedServer
+            val difficulty = Difficulty.byId(envDifficulty)
+            lgr.info("设置难度为 $difficulty")
+            server.setDifficulty(difficulty,true)
+            server.defaultGameType= GameType.byId(envGameMode)
+            lgr.info("game type ${server.defaultGameType}")
+            GameRules.visitGameRuleTypes(object : GameRules.GameRuleTypeVisitor{
+                override fun <T : GameRules.Value<T>> visit(key: GameRules.Key<T>, type: GameRules.Type<T>) {
+                    val gameRuleEnv = RDI.envGameRule(key.id)
+
+                    gameRuleEnv?.let {
+                        val rule = server.gameRules.getRule(key)
+                        if(rule is GameRules.BooleanValue){
+                            rule.set(it.toBoolean(),server)
+                            lgr.info("$gameRuleEnv=$it  B")
+                        }
+                        if(rule is GameRules.IntegerValue){
+                            rule.set(it.toInt(),server)
+                            lgr.info("$gameRuleEnv=$it  I")
+                        }
+                    }
+                }
+            })
+        }
+        @SubscribeEvent
+        @JvmStatic
         fun started(e: ServerStartedEvent){
             lgr.info("RDI启动完成启动完成启动完成启动完成")
             val server = e.server as DedicatedServer
@@ -77,7 +109,7 @@ class RGameEvents {
                 val path = "/host/play/$hostId"
                 while (currentCoroutineContext().isActive) {
                     try {
-                        client.webSocket(host = "host.docker.internal", port = 65231, path = path) {
+                        client.webSocket(host = if(Const.DEBUG)"127.0.0.1" else "host.docker.internal", port = 65231, path = path) {
                             lgr.info("已连接 IHQ /host/play WebSocket，hostId=$hostId")
                             for (frame in incoming) {
                                 when (frame) {
