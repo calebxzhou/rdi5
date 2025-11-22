@@ -42,7 +42,7 @@ fun playerLogin(usr: String, pwd: String){
     val params = mutableMapOf("usr" to usr, "pwd" to pwd, "spec" to spec)
     ioTask {
         val account = server.makeRequest<RAccount>(
-            path = "login",
+            path = "player/login",
             method = HttpMethod.Post,
             params = params
         ).data!!
@@ -70,11 +70,11 @@ object PlayerService {
 
 
     suspend fun getJwt(usr: String,pwd: String): String {
-        return server.makeRequest<String>("jwt", HttpMethod.Post,  params = mapOf("usr" to usr, "pwd" to pwd)).data!!
+        return server.makeRequest<String>("player/jwt", HttpMethod.Post,  params = mapOf("usr" to usr, "pwd" to pwd)).data!!
     }
     suspend fun getPlayerInfo(uid: ObjectId): RAccount.Dto {
         return try {
-            server.makeRequest<RAccount.Dto>( "player-info/${uid}").data?: RAccount.DEFAULT.dto
+            server.makeRequest<RAccount.Dto>( "player/${uid}/info").data?: RAccount.DEFAULT.dto
         } catch (e: Exception) {
             lgr.warn("获取玩家信息失败",e)
             RAccount.DEFAULT.dto
