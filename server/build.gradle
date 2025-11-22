@@ -87,6 +87,7 @@ neoForge {
 
         server {
             server()
+            jvmArgument('-Xmx4G')
             programArgument '--nogui'
             systemProperty 'rdi.debug', 'true'
             //  systemProperty 'rdi.port','38510'
@@ -161,15 +162,7 @@ def mcLibs = [
 "io.ktor:ktor-serialization-kotlinx-json:$ktor_version"
 ]
 def modrinthMods = [
-        "architectury-api:13.0.8+neoforge",
-        "packet-fixer:LL1w2rTw",
-        "jade:15.10.0+neoforge",
         "lithium:mc1.21.1-0.15.0-neoforge",
-        "packet-fixer:LL1w2rTw",
-        "kubejs:2101.7.1-build.181+KubeJS-1.21.1",
-        "rhino:2101.2.7-build.77+Rhino-1.21",
-        "libx:1.21.1-6.0.6",
-        "skyblock-builder:21.1.18"
 ]
 dependencies {
     // Example optional mod dependency with JEI
