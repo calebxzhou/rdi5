@@ -56,27 +56,11 @@ fun Route.playerRoutes() {
                 response(data = info)
             }
         }
-        /*get("/player-info/{uid}") {
-            val uid = ObjectId(param("uid"))
-            val info = PlayerService.getInfo(uid)
-            response(data = info)
-        }*/
         get("/infos") {
             val names = param("names").split("\n")
             val infos = PlayerService.getInfoByNames(names)
             response(data = infos)
         }
-        /*get("/name/{uid}") {
-            val uid = ObjectId(param("uid"))
-            val name = PlayerService.getName(uid) ?: "【玩家不存在】"
-            response(data = name)
-        }
-        get("/skin/{uid}") {
-            val uidParam = param("uid")
-            val uid = ObjectId(uidParam)
-            val cloth = PlayerService.getSkin(uid)
-            response(data = cloth)
-        }*/
         post("/register") {
             PlayerService.register(param("name"), param("pwd"), param("qq"))
             ok()
@@ -97,10 +81,9 @@ fun Route.playerRoutes() {
         }
 
         authenticate("auth-jwt", optional = true) {
-            install(PlayerPlugin)
             route("/skin") {
                 post {
-                    call.playerContext.changeCloth(
+                    call.player().changeCloth(
                         paramNull("isSlim")?.toBoolean() ?: false,
                         param("skin"),
                         paramNull("cape")
@@ -108,12 +91,12 @@ fun Route.playerRoutes() {
                     ok()
                 }
                 delete {
-                    call.playerContext.clearCloth()
+                    call.player().clearCloth()
                     ok()
                 }
             }
             put("/profile") {
-                call.playerContext.changeProfile(paramNull("name"), paramNull("qq"), paramNull("pwd"))
+                call.player().changeProfile(paramNull("name"), paramNull("qq"), paramNull("pwd"))
                 ok()
             }
         }
@@ -137,8 +120,8 @@ object PlayerService {
         return getByQQ(usr) ?: getByName(usr)
     }
 
-    val PlayerContext.uidFilter
-        get() = equalById(player)
+    val RAccount.uidFilter
+        get() = equalById(_id)
 
     fun equalById(id: ObjectId): Bson = eq("_id", id)
     fun equalById(acc: RAccount): Bson = eq("_id", acc._id)
@@ -154,11 +137,11 @@ object PlayerService {
         return if (account == null || account.pwd != pwd) null else account
     }
 
-    suspend fun PlayerContext.clearCloth() {
+    suspend fun RAccount.clearCloth() {
         accountCol.updateOne(uidFilter, Updates.unset("cloth"))
     }
 
-    suspend fun PlayerContext.changeCloth(isSlim: Boolean, skin: String, cape: String?) {
+    suspend fun RAccount.changeCloth(isSlim: Boolean, skin: String, cape: String?) {
         if (!skin.isValidHttpUrl()) throw ParamError("皮肤链接格式错误")
         if (!cape.isValidHttpUrl()) throw ParamError("披风链接格式错误")
         accountCol.updateOne(uidFilter, Updates.set("cloth", RAccount.Cloth(isSlim, skin, cape)))
@@ -212,7 +195,7 @@ object PlayerService {
         return account
     }
 
-    suspend fun PlayerContext.changeProfile(newName: String?, newQq: String?, newPwd: String?) {
+    suspend fun RAccount.changeProfile(newName: String?, newQq: String?, newPwd: String?) {
         val updates = mutableListOf<Bson>()
         newQq?.let {
             if (getByQQ(it) != null) throw RequestError("QQ用过了")
