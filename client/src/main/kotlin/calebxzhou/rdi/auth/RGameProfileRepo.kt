@@ -12,7 +12,7 @@ class RGameProfileRepo : GameProfileRepository {
     ) {
         val names = _names.filter { it.isNotBlank() }.toTypedArray()
         server.request<List<RAccount.Dto>>(
-            "player-info-by-names",
+            "player/infos",
             params = mapOf("names" to names.joinToString("\n")),
             onErr = {
                 callback.onProfileLookupFailed(
