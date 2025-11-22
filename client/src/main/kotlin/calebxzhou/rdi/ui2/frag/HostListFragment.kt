@@ -3,12 +3,10 @@ package calebxzhou.rdi.ui2.frag
 // Spinner replaced by radio buttons
 import calebxzhou.rdi.auth.LocalCredentials
 import calebxzhou.rdi.model.Host
-import calebxzhou.rdi.model.Team
 import calebxzhou.rdi.model.World
 import calebxzhou.rdi.model.account
 import calebxzhou.rdi.net.server
 import calebxzhou.rdi.service.isOwnerOrAdmin
-import calebxzhou.rdi.service.myTeam
 import calebxzhou.rdi.service.myTeamHosts
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.alertErr
@@ -34,7 +32,7 @@ class HostListFragment() : RFragment("团队的服务器") {
 
     init {
         bottomOptionsConfig = {
-            "\uEF09 选择节点" with { Carrier().go() }
+
         }
         contentViewInit = {
             load()
@@ -45,14 +43,9 @@ class HostListFragment() : RFragment("团队的服务器") {
     }
 
     fun load() = ioTask {
-        account.myTeam()?.let { t ->
-            account.myTeamHosts()?.let { h ->
-                render(t, h)
-            }
-        }
     }
 
-    fun render(team: Team, hosts: List<Host>) = uiThread {
+    /*fun render(team: Team, hosts: List<Host>) = uiThread {
         contentView.removeAllViews()
         contentView.apply {
             linearLayout {
@@ -107,7 +100,7 @@ class HostListFragment() : RFragment("团队的服务器") {
             }
         }
     }
-
+*/
     private fun play(host: Host) {
         //电信以外全bgp
         val bgp = LocalCredentials.read().carrier != 0
@@ -137,92 +130,5 @@ class HostListFragment() : RFragment("团队的服务器") {
         }
     }
 
-    class Create(val modpackId: ObjectId, val modpackName: String, val packVer: String, val onOk: () -> Unit = {}) :
-        RFragment("创建主机") {
-        override var fragSize = FragmentSize.SMALL
-        private var worlds: List<World> = emptyList()
-        private var selectedWorldIndex: Int = 0
 
-        init {
-            contentViewInit = {
-                loadWorlds()
-            }
-        }
-
-        private fun loadWorlds() {
-            server.request<List<World>>(
-                path = "world/",
-                showLoading = true,
-                onOk = { response ->
-                    worlds = response.data!!
-                    uiThread {
-                        val displayEntries = if (worlds.isEmpty()) {
-                            arrayListOf()
-                        } else {
-                            worlds.map { it.name }.toMutableList()
-                        }
-                        displayEntries += "创建新存档"
-                        contentView.apply {
-                            minimumWidth = 500
-                            center()
-                            textView("整合包：$modpackName 版本：$packVer")
-                            linearLayout {
-                                textView("选择存档")
-                                // replace spinner with radio buttons
-                                radioGroup {
-                                    displayEntries.forEachIndexed { idx, label ->
-                                        radioButton(label) {
-                                            id = idx
-                                            isSelected = idx == selectedWorldIndex
-                                        }
-                                    }
-                                    check(selectedWorldIndex)
-                                    setOnCheckedChangeListener { _, id ->
-                                        selectedWorldIndex = id
-                                    }
-                                }
-                            }
-                        }
-                        contentView.bottomOptions {
-                            "创建" colored MaterialColor.GREEN_900 with {
-                                val selectedWorld = worlds.getOrNull(selectedWorldIndex)
-                                val params = mutableMapOf("modpackId" to modpackId,"packVer" to packVer)
-                                selectedWorld?.let { params += ("worldId" to it._id) }
-                                server.requestU("host/", HttpMethod.Post, params) {
-                                    close()
-                                    toast("创建成功")
-                                    onOk()
-                                }
-                            }
-                        }
-                    }
-                },
-                onErr = {
-                    toast("拉取存档失败: ${it.msg}")
-                }
-            )
-        }
-    }
-
-    class Carrier : RFragment("选择运营商节点") {
-        override var fragSize = FragmentSize.SMALL
-        private val creds = LocalCredentials.read()
-        private val carriers = arrayListOf("电信", "移动", "联通", "教育网", "广电")
-        override var contentViewInit: LinearLayout.() -> Unit = {
-            radioGroup {
-                center()
-                carriers.forEachIndexed { i, c ->
-                    radioButton(c) {
-                        id = i
-                        isSelected = creds.carrier == i
-                    }
-                }
-                check(creds.carrier)
-                setOnCheckedChangeListener { g, id ->
-                    creds.carrier = id
-                    creds.save()
-                }
-            }
-        }
-    }
 }
