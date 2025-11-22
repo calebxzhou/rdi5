@@ -57,10 +57,7 @@ object DockerService {
             .withDockerHttpClient(httpClient)
             .build()
     }
-    private val containerEnv
-        get() = {name: String,port: Int ->
-            listOf("HOST_ID=$name","GAME_PORT=${port}")
-        }
+
     private fun findContainer(containerName: String, includeStopped: Boolean = true) =
         client.listContainersCmd()
             .withNameFilter(listOf(containerName))
@@ -72,20 +69,21 @@ object DockerService {
             .withShowAll(includeStopped)
             .exec()
 
-    fun createContainer(port: Int, containerName: String, volumeName: String?, image: String): String {
+    fun createContainer(port: Int, containerName: String, volumeName: String?, image: String,env: List<String>): String {
         val hostConfig = HostConfig.newHostConfig()
             .withPortBindings(parse("$port:$port"))
             .withCpuCount(4L)  // Limit to 2 CPUs
             .withMemory(4L * 1024 * 1024 * 1024)  // 2GB RAM limit
             .withMemorySwap(4L * 1024 * 1024 * 1024)  //4G swap
             .withExtraHosts("host.docker.internal:host-gateway")
+
             
             
         volumeName?.let { hostConfig.withBinds(Bind.parse("$it:/data")) }
 
         return client.createContainerCmd(image)
             .withName(containerName)
-            .withEnv(containerEnv(containerName,port))
+            .withEnv(env)
             .withExposedPorts(ExposedPort(port))
             .withHostConfig(hostConfig)
             .exec().id
