@@ -1,6 +1,5 @@
 package calebxzhou.rdi.ui2.frag
 
-import calebxzhou.rdi.model.Team
 import calebxzhou.rdi.model.account
 import calebxzhou.rdi.net.server
 import calebxzhou.rdi.service.isOwner
