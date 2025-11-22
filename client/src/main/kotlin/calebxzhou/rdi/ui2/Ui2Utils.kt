@@ -290,6 +290,7 @@ fun TextView.leadingIcon(icon: String){
     setCompoundDrawables(iconDrawable(icon).apply { setBounds(0,0,dp(24f),dp(24f)) },null,null,null)
 }
 fun LinearLayout.horizontal() = apply { orientation = LinearLayout.HORIZONTAL }
+fun RadioGroup.horizontal() = apply { orientation = RadioGroup.HORIZONTAL }
 fun LinearLayout.vertical() = apply { orientation = LinearLayout.VERTICAL }
 fun drawable(drawing: Drawable.(Canvas) -> Unit): Drawable = object : Drawable() {
     override fun draw(canvas: Canvas) {
