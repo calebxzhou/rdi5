@@ -40,12 +40,6 @@ class ModpackGrid(
 	}
 
 
-	private fun displayState(message: String) {
-		pendingRender?.let { cardsContainer.removeCallbacks(it) }
-		pendingRender = null
-		cards.clear()
-		cardsContainer.removeAllViews()
-	 	}
 
 	private fun renderGrid(items: List<ModpackVo>) {
 		val availableWidth = cardsContainer.width
