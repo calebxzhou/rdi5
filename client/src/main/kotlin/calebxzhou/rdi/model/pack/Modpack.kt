@@ -24,8 +24,14 @@ class Modpack(
         //1.0 1.1 1.2 etc
         val name: String,
         val changelog: String,
-        val ready: Boolean,
-        var mods: List<Mod>,
-    )
+        //构建完成状态
+        val status: Status,
+        val mods: List<Mod> = arrayListOf(),
+
+        ){
+    }
+    enum class Status{
+        FAIL,OK,BUILDING
+    }
 }
 val List<Modpack.Version>.latest get() = maxBy { it.time }

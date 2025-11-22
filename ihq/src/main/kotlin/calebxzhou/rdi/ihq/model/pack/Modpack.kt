@@ -29,8 +29,8 @@ data class Modpack(
         val name: String,
         val changelog: String,
         //构建完成状态
-        val status: Boolean = false,
-        val mods: List<Mod>,
+        val status: Status,
+        val mods: List<Mod> = arrayListOf(),
 
         ){
         val dir
