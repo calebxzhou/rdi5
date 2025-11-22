@@ -13,6 +13,7 @@ import calebxzhou.rdi.ihq.service.JwtService
 import calebxzhou.rdi.ihq.service.hostRoutes
 import calebxzhou.rdi.ihq.service.worldRoutes
 import calebxzhou.rdi.ihq.service.chatRoutes
+import calebxzhou.rdi.ihq.service.hostPlayRoutes
 import calebxzhou.rdi.ihq.service.modpackRoutes
 import calebxzhou.rdi.ihq.util.serdesJson
 import com.mongodb.MongoClientSettings
@@ -156,7 +157,8 @@ fun startHttp(){
                     UpdateService.getModFile(call)
                 }
             }*/
-            authenticate( "auth-jwt", optional = true) {
+            hostPlayRoutes()
+            authenticate( "auth-jwt") {
                 hostRoutes()
                 worldRoutes()
                 chatRoutes()
