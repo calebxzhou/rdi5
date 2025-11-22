@@ -1,26 +1,21 @@
 package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.model.RAccount
+import calebxzhou.rdi.model.account
 import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.HwSpecView
 
 class ProfileFragment : RFragment("我的信息") {
     override var closable = false
-    val account = RAccount.now ?: RAccount.DEFAULT
-    val server = RServer.now
-    override var fragSize: FragmentSize
-        get() = FragmentSize.MEDIUM
-        set(value) {}
+    override var fragSize = FragmentSize.MEDIUM
 
     init {
         bottomOptionsConfig = {
             //"\uEB29 整合包" colored MaterialColor.ORANGE_800 with { ModpackMarketFragment().go() }
-            "👚 衣柜" colored MaterialColor.PINK_800 with { goto(WardrobeFragment()) }
-            "▶ 进入团队" colored MaterialColor.GREEN_900 with {
-                goto(TeamFragment())
+            "▶ 服务器大厅" colored MaterialColor.GREEN_900 with {
+                HostLobbyFragment().go()
             }
-            "\uDB81\uDEEE 整合包" colored MaterialColor.BLUE_900 with { ModpackListFragment().go() }
             /*"🏠 团队" colored MaterialColor.LIGHT_GREEN_900 with {
                 server.request<String>("room/my", method = io.ktor.http.HttpMethod.Get, showLoading = false) {
                     val body = it.data
@@ -51,11 +46,21 @@ class ProfileFragment : RFragment("我的信息") {
             }
         }
         contentViewInit = {
-            headButton(account._id, init = {
+            linearLayout {
                 center()
-            }, onClick = {
-                ChangeProfileFragment().showOver(this@ProfileFragment)
-            })
+                headButton(account._id)
+                textView("\uEB51"){
+                    setOnClickListener {
+                        ChangeProfileFragment().go()
+                    }
+                }
+                textView("    ")
+                textView ("\uEE1C"){
+                    setOnClickListener {
+                        WardrobeFragment().go()
+                    }
+                }
+            }
             this += HwSpecView(context).apply { center() }
 
         }
