@@ -2,78 +2,76 @@ package calebxzhou.rdi.ihq.service
 
 import calebxzhou.rdi.ihq.DB
 import calebxzhou.rdi.ihq.exception.RequestError
-import calebxzhou.rdi.ihq.model.Host
-import calebxzhou.rdi.ihq.service.HostService.delete
-import calebxzhou.rdi.ihq.service.HostService.getLog
-import calebxzhou.rdi.ihq.service.HostService.listenLogs
-import calebxzhou.rdi.ihq.service.HostService.restart
-import calebxzhou.rdi.ihq.service.HostService.sendCommand
-import calebxzhou.rdi.ihq.service.HostService.start
-import calebxzhou.rdi.ihq.service.HostService.update
-import calebxzhou.rdi.ihq.service.HostService.userStop
-import calebxzhou.rdi.ihq.model.HostStatus
-import calebxzhou.rdi.ihq.model.WsMessage
-import calebxzhou.rdi.ihq.model.imageRef
-import calebxzhou.rdi.ihq.net.ok
-import calebxzhou.rdi.ihq.net.param
-import calebxzhou.rdi.ihq.net.paramNull
-import calebxzhou.rdi.ihq.net.response
-import calebxzhou.rdi.ihq.util.str
-import calebxzhou.rdi.ihq.util.serdesJson
 import calebxzhou.rdi.ihq.lgr
-import calebxzhou.rdi.ihq.model.RAccount
-import calebxzhou.rdi.ihq.model.Role
+import calebxzhou.rdi.ihq.model.*
 import calebxzhou.rdi.ihq.model.pack.Mod
-import calebxzhou.rdi.ihq.net.err
-import calebxzhou.rdi.ihq.net.idParam
+import calebxzhou.rdi.ihq.net.*
 import calebxzhou.rdi.ihq.service.HostService.addExtraMods
 import calebxzhou.rdi.ihq.service.HostService.addMember
 import calebxzhou.rdi.ihq.service.HostService.createHost
 import calebxzhou.rdi.ihq.service.HostService.delExtraMods
 import calebxzhou.rdi.ihq.service.HostService.delMember
+import calebxzhou.rdi.ihq.service.HostService.delete
+import calebxzhou.rdi.ihq.service.HostService.getLog
 import calebxzhou.rdi.ihq.service.HostService.getServerStatus
+import calebxzhou.rdi.ihq.service.HostService.listHostLobby
+import calebxzhou.rdi.ihq.service.HostService.listenLogs
 import calebxzhou.rdi.ihq.service.HostService.reloadExtraMods
+import calebxzhou.rdi.ihq.service.HostService.restart
+import calebxzhou.rdi.ihq.service.HostService.sendCommand
 import calebxzhou.rdi.ihq.service.HostService.setRole
+import calebxzhou.rdi.ihq.service.HostService.start
 import calebxzhou.rdi.ihq.service.HostService.transferOwnership
+import calebxzhou.rdi.ihq.service.HostService.update
+import calebxzhou.rdi.ihq.service.HostService.userStop
+import calebxzhou.rdi.ihq.service.PlayerService.getPlayerNames
 import calebxzhou.rdi.ihq.service.WorldService.createWorld
+import calebxzhou.rdi.ihq.util.serdesJson
+import calebxzhou.rdi.ihq.util.str
 import com.mongodb.client.model.Filters.*
 import com.mongodb.client.model.UpdateOptions
 import com.mongodb.client.model.Updates
 import com.mongodb.client.model.Updates.combine
 import com.mongodb.client.model.Updates.set
-import io.ktor.server.request.receive
+import io.ktor.server.request.*
 import io.ktor.server.routing.*
 import io.ktor.server.sse.*
-import io.ktor.server.websocket.DefaultWebSocketServerSession
-import io.ktor.server.websocket.webSocket
-import io.ktor.sse.ServerSentEvent
-import io.ktor.websocket.CloseReason
-import io.ktor.websocket.Frame
-import io.ktor.websocket.close
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
+import io.ktor.server.websocket.*
+import io.ktor.sse.*
+import io.ktor.websocket.*
+import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.toList
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.withContext
-import org.bouncycastle.asn1.x500.style.RFC4519Style.uid
-import java.util.concurrent.ConcurrentHashMap
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.Duration.Companion.minutes
-import org.bson.types.ObjectId
-import javax.ws.rs.sse.SseEventSource.target
-import kotlin.collections.find
 import org.bson.Document
+import org.bson.types.ObjectId
+import java.util.concurrent.ConcurrentHashMap
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 // ---------- Routing DSL (mirrors teamRoutes style) ----------
 fun Route.hostRoutes() = route("/host") {
+    route("") {
+        post {
+            call.player().createHost(
+                idParam("modpackId"),
+                param("packVer"),
+                paramNull("worldId")?.let { ObjectId(it) },
+                param("difficulty").toInt(),
+                param("gameMode").toInt(),
+                param("levelType")
+            )
+            ok()
+        }
+        get("/lobby/{page?}"){
+            val hosts = call.player().listHostLobby(paramNull("page")?.toInt()?:0)
+            response(data = hosts)
+        }
+        get("/my/{page?}") {
+            response(data = call.player().listHostLobby(paramNull("page")?.toInt()?:0, myOnly = true))
+        }
+    }
     route("/{hostId}") {
         install(HostGuardPlugin)
         get("/status") {
@@ -161,22 +159,13 @@ fun Route.hostRoutes() = route("/host") {
         }
     }
 
-    route("/") {
-        post {
-            call.playerContext.createHost(
-                idParam("modpackId"),
-                param("packVer"),
-                paramNull("worldId")?.let { ObjectId(it) },
-                param("difficulty").toInt(),
-                param("gameMode").toInt(),
-                param("levelType")
-            )
-            ok()
-        }
-        get("/{page}") {
-            //todo 显示所有主机 每page20个
-        }
-    }
+
+
+
+
+}
+//单独拿出来是为了不走authentication
+fun Route.hostPlayRoutes() = route("/host"){
     webSocket("/play/{hostId}") {
         val rawHostId = call.param("hostId")
 
@@ -204,10 +193,7 @@ fun Route.hostRoutes() = route("/host") {
             HostService.unregisterPlayableSession(hostId, this)
         }
     }
-
-
 }
-
 
 object HostService {
 
@@ -217,6 +203,7 @@ object HostService {
 
     private const val PORT_END_EXCLUSIVE = 60000
     private const val SHUTDOWN_THRESHOLD = 10
+    private const val HOSTS_PER_PAGE = 20
 
     private val idleMonitorScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val modDownloadScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -228,6 +215,9 @@ object HostService {
     )
 
     private val hostStates = ConcurrentHashMap<ObjectId, HostState>()
+    private val Host.containerEnv
+        get() = listOf("HOST_ID=${_id.str}","GAME_PORT=${port}",
+            "DIFFICULTY=${difficulty}","GAME_MODE=${gameMode}","LEVEL_TYPE=${levelType}")
 
     fun registerPlayableSession(hostId: ObjectId, session: DefaultWebSocketServerSession): Boolean {
         val state = hostStates.computeIfAbsent(hostId) { HostState() }
@@ -412,7 +402,7 @@ object HostService {
         0
     }
 
-    suspend fun PlayerContext.createHost(
+    suspend fun RAccount.createHost(
         modpackId: ObjectId,
         packVer: String,
         //null：create new world
@@ -421,18 +411,18 @@ object HostService {
         gameMode: Int,
         levelType: String,
     ) {
-        val playerId = player._id
+        val playerId = _id
         val world = worldId?.let {
             if (findByWorld(it) != null)
                 throw RequestError("此存档已被其他主机占用")
             WorldService.getById(it)
                 ?: throw RequestError("无此存档")
         } ?: createWorld(playerId, null, modpackId)
-        if (world.ownerId != uid) throw RequestError("不是你的存档")
+        if (world.ownerId !=playerId) throw RequestError("不是你的存档")
 
         val port = allocateRoomPort()
         val host = Host(
-            name = "主机" + (player.ownHosts().size + 1),
+            name = "${name}的主机" + (ownHosts().size + 1),
             ownerId = playerId,
             modpackId = modpackId,
             packVer = packVer,
@@ -444,7 +434,7 @@ object HostService {
 
         )
         dbcl.insertOne(host)
-        DockerService.createContainer(port, host._id.str, world._id.str, host.imageRef())
+        DockerService.createContainer(port, host._id.str, world._id.str, host.imageRef(),host.containerEnv)
         DockerService.start(host._id.str)
         clearShutFlag(host._id)
     }
@@ -469,7 +459,8 @@ object HostService {
             current.port,
             current._id.str,
             worldId.str,
-            "${current.modpackId.str}:$resolvedVer"
+            "${current.modpackId.str}:$resolvedVer",
+            host.containerEnv
         )
         DockerService.start(current._id.str)
         clearShutFlag(current._id)
@@ -677,6 +668,52 @@ object HostService {
 
     suspend fun RAccount.ownHosts() = HostService.listByOwner(_id)
 
+
+    suspend fun RAccount.listHostLobby(page: Int, pageSize: Int = HOSTS_PER_PAGE, myOnly: Boolean= false): List<Host.Vo> {
+        val safePage = page.coerceAtLeast(0)
+        val safeSize = pageSize.coerceIn(1, 100)
+        val hosts = dbcl.find()
+            .sort(com.mongodb.client.model.Sorts.descending("_id"))
+            .skip(safePage * safeSize)
+            .limit(safeSize)
+            .toList()
+
+        if (hosts.isEmpty()) return emptyList()
+
+        val requesterId = _id
+        val visibleHosts = hosts.filter { host ->
+            if (host.getServerStatus() != HostStatus.PLAYABLE && !myOnly) return@filter false
+            val isMember = host.ownerId == requesterId || host.members.any { it.id == requesterId }
+            if (myOnly && !isMember) return@filter false
+            if (host.whitelist && !isMember) return@filter false
+            true
+        }
+
+        if (visibleHosts.isEmpty()) return emptyList()
+
+        val ownerNames = visibleHosts.map { it.ownerId }.getPlayerNames()
+        val modpackIds = visibleHosts.map { it.modpackId }.distinct()
+        val modpackMap = if (modpackIds.isEmpty()) {
+            emptyMap()
+        } else {
+            ModpackService.dbcl.find(`in`("_id", modpackIds))
+                .toList()
+                .associate { it._id to it.name }
+        }
+
+        return visibleHosts.map { host ->
+            Host.Vo(
+                _id = host._id,
+                intro=host.intro,
+                name = host.name,
+                ownerName = ownerNames[host.ownerId] ?: "未知玩家",
+                modpackName = modpackMap[host.modpackId] ?: "未知整合包",
+                packVer = host.packVer,
+                port = host.port
+            )
+        }
+    }
+
     // List all hosts belonging to a team
     suspend fun listByOwner(uid: ObjectId): List<Host> =
         dbcl.find(eq("ownerId", uid)).toList()
@@ -697,7 +734,7 @@ object HostService {
             }
         }
         DockerService.deleteContainer(containerName)
-        DockerService.createContainer(host.port, containerName, newWorldId?.str, host.imageRef())
+        DockerService.createContainer(host.port, containerName, newWorldId?.str, host.imageRef(),host.containerEnv)
         dbcl.updateOne(eq("_id", host._id), set(Host::worldId.name, newWorldId))
         if (newWorldId != null && wasRunning) {
             DockerService.start(containerName)
@@ -709,6 +746,9 @@ object HostService {
         runIdleMonitorTick(forceStop = true)
     }
 
+    suspend fun getDetail(){
+        //todo
+    }
     suspend fun HostGuardContext.delMember(targetUid: ObjectId) {
 
         val targetMember = host.members.find { it.id == targetUid } ?: throw RequestError("该用户不是成员")
