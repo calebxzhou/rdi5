@@ -2,22 +2,27 @@ package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.net.RServer
+import calebxzhou.rdi.net.server
+import calebxzhou.rdi.ui2.FragmentSize
 import calebxzhou.rdi.ui2.button
 import calebxzhou.rdi.ui2.component.*
 import calebxzhou.rdi.ui2.editPwd
 import calebxzhou.rdi.ui2.textField
+import io.ktor.http.HttpMethod
 
 class ChangeProfileFragment: RFragment("修改信息") {
     val account = RAccount.now ?: RAccount.DEFAULT
+    override var fragSize: FragmentSize
+        get() = FragmentSize.SMALL
+        set(value) {}
     private lateinit var nameEdit: RTextField
-    private lateinit var qqEdit: REditText
-    private lateinit var pwdEdit: REditPassword
+    private lateinit var pwdEdit: RTextField
     init {
         contentViewInit = {
             nameEdit = textField("昵称") {
                 text = account.name
             }
-            pwdEdit = editPwd("新密码 留空则不修改")
+            pwdEdit = textField("新密码 留空则不修改"){isPassword=true}
             /*qqEdit = editText("QQ号") {
                 text = account.qq
             }*/
@@ -46,7 +51,7 @@ class ChangeProfileFragment: RFragment("修改信息") {
         // Only add password to params if it's not empty
         if (pwd.isNotEmpty() && pwd != account.pwd) params["pwd"] = pwd
         //if (qq != account.qq) params["qq"] = qq
-        RServer.now?.requestU("profile", params = params) {
+        server.requestU("player/profile", params = params, method = HttpMethod.Put) {
             // Use existing password if new password is empty
             val finalPwd = pwd.ifEmpty { account.pwd }
             val newAccount = RAccount(account._id, name, finalPwd, account.qq, account.score, account.cloth)
