@@ -21,6 +21,7 @@ import calebxzhou.rdi.ihq.service.ModpackService.getVersion
 import calebxzhou.rdi.ihq.service.ModpackService.getVersionFile
 import calebxzhou.rdi.ihq.service.ModpackService.getVersionFileList
 import calebxzhou.rdi.ihq.service.ModpackService.requireVersion
+import calebxzhou.rdi.ihq.service.ModpackService.setStatus
 import calebxzhou.rdi.ihq.service.ModpackService.toDetailVo
 import calebxzhou.rdi.ihq.service.PlayerService.getPlayerNames
 import calebxzhou.rdi.ihq.util.safeDirSize
@@ -92,8 +93,19 @@ fun Route.modpackRoutes() {
                 post("/rebuild") {
                     val ctx = call.modpackGuardContext()
                     val verName = param("verName").trim()
-                    ctx.requireVersion(verName).run { first.buildAsImage(second) }
+                    val (pack, version) = ctx.requireVersion(verName)
+
                     ok()
+
+                    scope.launch {
+                        runCatching {
+                            version.setStatus(Modpack.Status.BUILDING)
+                            pack.buildAsImage(version)
+                        }.onFailure { error ->
+                            lgr.error(error) { "重构整合包 ${pack._id}:${version.name} 失败" }
+                            version.setStatus(Modpack.Status.FAIL)
+                        }
+                    }
                 }
                 post {
                     val ctx = call.modpackGuardContext()
@@ -291,6 +303,7 @@ object ModpackService {
             modpackId = pack._id,
             name = name,
             changelog = "新上传",
+            status = Modpack.Status.BUILDING,
             mods = mods, time = System.currentTimeMillis()
         )
 
