@@ -39,7 +39,7 @@ class RegisterFragment : RFragment("注册新账号") {
             alertErr("两次输入的密码不一致")
             return
         }
-        RServer.now.requestU("register", params =
+        RServer.now.requestU("player/register", params =
             mapOf("name" to usr, "qq" to qq, "pwd" to pwd) ){
             uiThread {
                 toast("注册成功 点击登录开玩")
