@@ -15,7 +15,7 @@ class WorldListFragment: RFragment("选择存档") {
         }
     }
     private fun load(){
-        server.request<List<World>>("world/", showLoading = true){
+        server.request<List<World>>("world"){
             render(it.data!!)
         }
     }
@@ -28,7 +28,7 @@ class WorldListFragment: RFragment("选择存档") {
                     contextMenu {
                         "删除" with {
                             confirm("要永久删除存档”${world.name}“及其所有的回档点吗？无法恢复！"){
-                                server.request<Unit>("world/${world._id}", HttpMethod.Delete, showLoading = true){
+                                server.requestU("world/${world._id}", HttpMethod.Delete){
                                     toast("已删除")
                                     load()
                                 }
@@ -36,7 +36,7 @@ class WorldListFragment: RFragment("选择存档") {
                         }
                         "复制" with{
                             confirm("要给存档”${world.name}“复制一份一模一样的吗？"){
-                                server.request<Unit>("world/duplicate/${world._id}", HttpMethod.Post, showLoading = true){
+                                server.requestU("world/${world._id}/copy", HttpMethod.Post){
                                     toast("已复制")
                                     load()
                                 }
@@ -49,7 +49,7 @@ class WorldListFragment: RFragment("选择存档") {
                 })
             }
                 if(worlds.isEmpty()){
-                    textView("没有存档，请在创建主机时选择新建存档")
+                    textView("没有存档，请在建服时选择新建存档")
                 }
         }
     }
