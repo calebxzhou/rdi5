@@ -1,6 +1,7 @@
 package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.model.account
+import calebxzhou.rdi.model.pack.Modpack
 import calebxzhou.rdi.model.pack.ModpackDetailedVo
 import calebxzhou.rdi.model.pack.latest
 import calebxzhou.rdi.net.humanSize
@@ -67,11 +68,11 @@ class ModpackInfoFragment(val modpackId: ObjectId) : RFragment("整合包信息"
                     gravity = Gravity.CENTER_VERTICAL
                     padding8dp()
                     textView("V${v.name} - 上传时间：${v.time.formatDateTime}")
-                    if(!v.ready) textView("【正在构建中】")
+                    if(v.status== Modpack.Status.BUILDING) textView("【正在构建中】")
                     quickOptions {
-                        if(v.ready){
+                        if(v.status == Modpack.Status.OK) {
                             "▶ 拿这版开服" colored MaterialColor.GREEN_900 with {
-                                HostListFragment.Create(modpackId, name, v.name).go()
+                                HostCreateFragment(modpackId, name, v.name,v.mods.find { it.slug=="skyblock-builder" }!=null).go()
                             }
                         }
                         "\uF1F8 删除" colored MaterialColor.RED_900 with {
