@@ -78,7 +78,7 @@ fun Route.hostRoutes() = route("/host") {
             call.hostGuardContext().host.getServerStatus().let { response(data = it) }
         }
         post("/start") {
-            call.hostGuardContext().needAdmin.start()
+            call.hostGuardContext().start()
             ok()
         }
         post("/stop") {
@@ -148,14 +148,15 @@ fun Route.hostRoutes() = route("/host") {
                 call.hostGuardContext().needOwner.setRole(idParam("uid"), Role.valueOf(param("role")))
                 ok()
             }
-            post {
-                call.hostGuardContext().needOwner.addMember(idParam("uid"))
-                ok()
-            }
             delete {
                 call.hostGuardContext().needOwner.delMember(idParam("uid"))
                 ok()
             }
+        }
+        post("/member/{qq}"){
+                call.hostGuardContext().needOwner.addMember(param("qq"))
+                ok()
+
         }
     }
 
@@ -430,7 +431,8 @@ object HostService {
             port = port,
             difficulty = difficulty,
             gameMode = gameMode,
-            levelType = levelType
+            levelType = levelType,
+            members = listOf(Host.Member(id = playerId, role = Role.OWNER))
 
         )
         dbcl.insertOne(host)
@@ -682,7 +684,12 @@ object HostService {
 
         val requesterId = _id
         val visibleHosts = hosts.filter { host ->
-            if (host.getServerStatus() != HostStatus.PLAYABLE && !myOnly) return@filter false
+            if (!myOnly) {
+                val status = host.getServerStatus()
+                if (status != HostStatus.PLAYABLE && status != HostStatus.STARTED && status != HostStatus.PAUSED) {
+                    return@filter false
+                }
+            }
             val isMember = host.ownerId == requesterId || host.members.any { it.id == requesterId }
             if (myOnly && !isMember) return@filter false
             if (host.whitelist && !isMember) return@filter false
@@ -746,9 +753,6 @@ object HostService {
         runIdleMonitorTick(forceStop = true)
     }
 
-    suspend fun getDetail(){
-        //todo
-    }
     suspend fun HostGuardContext.delMember(targetUid: ObjectId) {
 
         val targetMember = host.members.find { it.id == targetUid } ?: throw RequestError("该用户不是成员")
@@ -789,9 +793,8 @@ object HostService {
         )
     }
 
-    suspend fun HostGuardContext.addMember(targetUid: ObjectId) {
-        if (targetUid == host.ownerId) throw RequestError("拥有者无需加入成员")
-        val target = PlayerService.getById(targetUid) ?: throw RequestError("无此账号")
+    suspend fun HostGuardContext.addMember( qq: String) {
+        val target = PlayerService.getByQQ(qq) ?: throw RequestError("无此账号")
         if (host.hasMember(target._id)) {
             throw RequestError("该用户已是成员")
         }
