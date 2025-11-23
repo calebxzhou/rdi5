@@ -15,7 +15,7 @@ object Const {
     val SEED = 1145141919810L
     val DEFAULT_MODPACK_ID = ObjectId("abcdefabcdefabcdefabcdef")
     //显示版本
-    const val VERSION_NUMBER = "5.6"
+    const val VERSION_NUMBER = "5.6.1"
 
     val CF_AKEY = byteArrayOf(
         36, 50, 97, 36, 49, 48, 36, 55, 87, 87, 86, 49, 87, 69, 76, 99, 119, 88, 56, 88,
@@ -25,6 +25,5 @@ object Const {
     ).let { String(it) }
     @JvmStatic
     val VERSION_DISP = "RDI ${if(DEBUG )"DEBUG" else ""} $VERSION_NUMBER"
-    const val VERSION_STR = "5.0"
 
 }
