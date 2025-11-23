@@ -3,6 +3,7 @@ package calebxzhou.rdi.ui2.component
 import calebxzhou.rdi.model.Host
 import calebxzhou.rdi.ui2.MaterialColor
 import calebxzhou.rdi.ui2.PARENT
+import calebxzhou.rdi.ui2.SELF
 import calebxzhou.rdi.ui2.drawable
 import calebxzhou.rdi.ui2.iconDrawable
 import calebxzhou.rdi.ui2.imageView
@@ -34,7 +35,7 @@ class HostCard(
         linearLayout {
             orientation = VERTICAL
             gravity = Gravity.START
-            layoutParams = linearLayoutParam(0, LinearLayout.LayoutParams.WRAP_CONTENT) {
+            layoutParams = linearLayoutParam(0, SELF) {
                 weight = 1f
                 leftMargin = dp(12f)
             }
@@ -51,12 +52,12 @@ class HostCard(
             linearLayout {
                 orientation = HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                layoutParams = linearLayoutParam(PARENT, LinearLayout.LayoutParams.WRAP_CONTENT) {
+                layoutParams = linearLayoutParam(PARENT, SELF) {
                     topMargin = dp(6f)
                 }
 
                 textView(data.intro) {
-                    layoutParams = linearLayoutParam(0, LinearLayout.LayoutParams.WRAP_CONTENT) {
+                    layoutParams = linearLayoutParam(0, SELF) {
                         weight = 1f
                         rightMargin = dp(12f)
                     }
