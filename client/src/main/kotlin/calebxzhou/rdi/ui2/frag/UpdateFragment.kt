@@ -5,409 +5,202 @@ import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.net.downloadFileWithProgress
 import calebxzhou.rdi.net.formatBytes
 import calebxzhou.rdi.net.formatSpeed
-import calebxzhou.rdi.service.ModService.MOD_DIR
-import calebxzhou.rdi.service.ModService.installedMods
-import calebxzhou.rdi.service.ModService.modId
-import calebxzhou.rdi.service.ModService.readNeoForgeConfig
+import calebxzhou.rdi.net.humanSize
+import calebxzhou.rdi.net.server
 import calebxzhou.rdi.ui2.*
+import calebxzhou.rdi.ui2.component.RButton
+import calebxzhou.rdi.ui2.component.confirm
 import calebxzhou.rdi.util.ioTask
 import calebxzhou.rdi.util.notifyOs
-import calebxzhou.rdi.util.serdesJson
 import calebxzhou.rdi.util.sha1
 import icyllis.modernui.view.View
 import icyllis.modernui.widget.LinearLayout
 import icyllis.modernui.widget.ScrollView
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
+import icyllis.modernui.widget.TextView
+import net.minecraft.advancements.critereon.MovementPredicate.speed
 import java.io.File
-import java.util.jar.JarFile
-import kotlin.math.max
 import kotlin.system.exitProcess
 
-class UpdateFragment(val server: RServer) : RFragment("正在检查更新") {
-    init {
+class UpdateFragment() : RFragment("正在检查更新") {
 
-    }
+    private val coreJarFile: File = resolveCoreJarFile()
+    private var retryButtonAdded = false
+    override var fragSize: FragmentSize
+        get() = FragmentSize.SMALL
+        set(value) {}
 
-    lateinit var view: ScrollView
-    lateinit var scrollContent: LinearLayout
     override var closable = false
-    // Helper function to scroll to bottom
-    private fun scrollToBottom() {
-        view.post {
-            // Try multiple approaches to ensure scrolling works
-            try {
-                // Approach 1: fullScroll if available
-                view.fullScroll(View.FOCUS_DOWN)
-            } catch (e: Exception) {
-                try {
-                    // Approach 2: smoothScrollTo to bottom
-                    view.smoothScrollTo(0,)
-                } catch (e2: Exception) {
-                    try {
-                        // Approach 3: scrollTo to the maximum scroll position
-                        val maxScroll = scrollContent.height - view.height
-                        if (maxScroll > 0) {
-                            view.scrollTo(0, maxScroll)
-                        }
-                    } catch (e3: Exception) {
-                        // If all methods fail, just ignore
-                        lgr.warn("Failed to scroll to bottom: ${e3.message}")
-                    }
-                }
-            }
-        }
-    }
-    
+
     init {
+        titleViewInit = {
+            quickOptions {
+                "> 跳过更新" with { LoginFragment().go() }
+            }
+        }
         contentViewInit = {
-            iconButton("next", "跳过更新，一会再说",{
-                layoutParams = linearLayoutParam(SELF, SELF)
-            }) {
-                goto(LoginFragment())
-            }
-            view = scrollView {
-                layoutParams = frameLayoutParam(PARENT, PARENT)
-                // Create a LinearLayout as the scrollable content container
-                scrollContent = linearLayout {
-                    orientation = LinearLayout.VERTICAL
-                    layoutParams = frameLayoutParam(PARENT, SELF)
-                    paddingDp(16)
-                }
-            }
-
-            ioTask {
-                val modsToUpdate = server.checkUpdate( )
-                if (modsToUpdate.isEmpty()) {
-                    lgr.info("没有需要更新的mod")
-                    close()
-                    goto(LoginFragment())
-                    return@ioTask
-                }
-                uiThread {
-                    scrollContent.apply {
-                        textView("这些mod需要更新：\n${modsToUpdate.map { it.key }.joinToString(",")}") {
-                            layoutParams = linearLayoutParam(PARENT, SELF).apply {
-                                setMargins(0, 0, 0, dp(16f))
-                            }
-                        }
-                        iconButton("success", "立刻更新", init = {
-                            layoutParams = linearLayoutParam(SELF, SELF).apply {
-                                setMargins(0, 0, 0, dp(8f))
-                            }
-                        }, onClick = { button ->
-                            // Immediately disable button and update UI
-                            button.isEnabled = false
-                            button.text = "正在准备下载..."
-                            
-                            // Immediately show preparation message
-                            scrollContent.removeAllViews()
-                            scrollContent.textView("正在准备下载更新，请稍候...") {
-                                layoutParams = linearLayoutParam(PARENT, SELF).apply {
-                                    setMargins(0, 0, 0, dp(16f))
-                                }
-                            }
-                            scrollToBottom()
-                            
-                            // Start download process asynchronously
-                            ioTask {
-                                // Get server SHA-1 checksums for verification
-                                val modSha1 = server.makeRequest<Map<String, String>>("update/mod-list").data!!
-                                server.downloadMods(modsToUpdate, modSha1, this@UpdateFragment)
-                            }
-                        })
-
-                    }
-                }
-            }
+            startUpdateFlow()
         }
     }
 
-
-
-    //返回需要更新的mod列表
-    suspend fun RServer.checkUpdate( ): Map<String, File> {
-        val clientIdFile = installedMods.mapNotNull { file ->
-            JarFile(file).use { jar ->
-                jar.readNeoForgeConfig()?.let { conf ->
-                    conf.modId to file
-                }
-            }
-        }.toMap()
-        val clientIdSha1 = installedMods.mapNotNull { file ->
-            JarFile(file).use { jar ->
-                jar.readNeoForgeConfig()?.let { conf ->
-                    conf.modId to file.sha1
-                }
-            }
-        }.toMap()
-        val modlist = makeRequest<String>("update/mod-list").data
-
-        val modsUpdate = hashMapOf<String, File>()
-        if(modlist == null) {
-            lgr.warn("无法获取服务端mod列表，跳过更新")
-            return modsUpdate
-        }
-        //服务端
-    val serverIdSha1: Map<String, String> = serdesJson.decodeFromString(modlist)
-        serverIdSha1.forEach { (id, serverSha1) ->
-            clientIdFile[id]?.let { file ->
-                val clientSha1 = clientIdSha1[id]
-                if (clientSha1 != serverSha1) {
-                    modsUpdate += id to file
-                }
-            } ?: let { modsUpdate += id to File(MOD_DIR, "$id.jar") }
-        }
-        /*notifyOs(
-            "以下mod需要更新:${modsStrDisp}.正在更新。"
-        )
-       */
-        return modsUpdate
+    private fun resolveCoreJarFile(): File {
+        val explicit = System.getProperty("rdi.coreJar")?.let { File(it) }
+        val candidates = buildList {
+            explicit?.let { add(it) }
+            add(File("mods/rdi-5-client.jar"))
+        }.map { it.normalize().absoluteFile }
+        return candidates.firstOrNull { it.exists() } ?: candidates.first()
     }
 
-    suspend fun RServer.downloadMods(mods: Map<String, File>, serverIdSha1: Map<String, String>, fragment: UpdateFragment) {
-        // UI has already been updated in the button click handler
-
-        // Clean up any leftover temporary files from previous failed attempts
-        try {
-            mods.values.forEach { file ->
-                file.parentFile?.listFiles { _, name ->
-                    name.startsWith("${file.name}.tmp.") || name.startsWith("${file.name}.backup.")
-                }?.forEach {
-                    lgr.debug("Cleaning up leftover file: ${it.name}")
-                    it.delete()
-                }
-            }
-        } catch (e: Exception) {
-            lgr.warn("Failed to clean up leftover temporary files", e)
-        }
-
-        val totalMods = mods.size
-        val modEntries = mods.entries.toList()
-        if (modEntries.isEmpty()) {
-            uiThread {
-                fragment.scrollContent.textView("没有可更新的模组") {
-                    layoutParams = linearLayoutParam(PARENT, SELF).apply {
-                        setMargins(0, 0, 0, dp(8f))
-                    }
-                }
-                fragment.scrollToBottom()
-            }
-            return
-        }
-
-        val maxConcurrentDownloads = max(2, Runtime.getRuntime().availableProcessors())
-        val downloadResults = coroutineScope {
-            val semaphore = Semaphore(maxConcurrentDownloads)
-            modEntries.mapIndexed { index, entry ->
-                async {
-                    semaphore.withPermit {
-                        val success = downloadSingleMod(
-                            entry.key,
-                            entry.value,
-                            serverIdSha1,
-                            fragment,
-                            index + 1,
-                            totalMods
-                        )
-                        entry.key to success
-                    }
-                }
-            }.awaitAll()
-        }
-
-        val failedMods = downloadResults.filterNot { it.second }.map { it.first }
-        val updateFailed = failedMods.isNotEmpty()
-
-        if (updateFailed) {
-            // Handle update failure case
-            uiThread {
-                fragment.scrollContent.apply {
-                    textView("更新失败！以下mod下载失败：${failedMods.joinToString(", ")}") {
-                        layoutParams = linearLayoutParam(PARENT, SELF).apply {
-                            setMargins(0, dp(16f), 0, dp(16f))
+    private fun startUpdateFlow() {
+        runCatching {
+            server.request<String>("update/hash") {
+                val localHash = coreJarFile.sha1
+                val serverHash = it.data!!
+                if (serverHash == localHash) {
+                    lgr.info("是最新版rdi核心")
+                    toast("当前已是最新版RDI核心")
+                    continueToLogin()
+                    return@request
+                } else {
+                    confirm("RDI核心有新版了，要自动更新吗？") {
+                        logInfo("准备下载 ${coreJarFile.name}...")
+                        ioTask {
+                            val updated = downloadAndReplaceCore(serverHash)
+                            if (updated) {
+                                notifyOs("RDI 核心更新完成，客户端即将重启")
+                                startRestartCountdown()
+                            } else {
+                                showRetryOption()
+                            }
                         }
-                        setTextColor(0xFFE53E3E.toInt()) // Red color
                     }
-
-                    // Add cancel button that navigates to TitleFragment
-                    iconButton("error", "取消更新", init = {
-                        layoutParams = linearLayoutParam(PARENT, SELF).apply {
-                            setMargins(0, 0, 0, dp(8f))
-                        }
-                    }, onClick = {
-                        fragment.close()
-                        goto(TitleFragment())
-                    })
                 }
-                fragment.scrollToBottom()
+
             }
-        } else {
-            // Handle success case with countdown
-            uiThread {
-                val countdownText = fragment.scrollContent.textView("更新完成！客户端将在 5 秒后重启...") {
-                    layoutParams = linearLayoutParam(PARENT, SELF).apply {
-                        setMargins(0, dp(16f), 0, 0)
-                    }
-                    setTextColor(0xFF4CAF50.toInt()) // Green color
-                }
-                fragment.scrollToBottom()
 
-                // Start countdown
-                ioTask {
-                    for (i in 5 downTo 1) {
-                        uiThread {
-                            countdownText.text = "更新完成！客户端将在 $i 秒后重启..."
-                        }
-                        Thread.sleep(1000)
-                    }
 
-                    uiThread {
-                        countdownText.text = "正在重启客户端..."
-                        countdownText.setTextColor(0xFF2196F3.toInt()) // Blue color
-                    }
-
-                    notifyOs("更新完成，客户端即将重启")
-                    restart()
-                }
-            }
+        }.onFailure {
+            lgr.error("核心更新流程失败", it)
+            logError("更新流程遇到错误：${it.message ?: it::class.simpleName}")
+            showRetryOption()
         }
     }
 
-    private suspend fun RServer.downloadSingleMod(
-        id: String,
-        file: File,
-        serverIdSha1: Map<String, String>,
-        fragment: UpdateFragment,
-        position: Int,
-        totalMods: Int
-    ): Boolean {
-        val progressPrefix = "($position/$totalMods)"
-        val tempFile = File(file.parent, "${file.name}.tmp.${System.currentTimeMillis()}")
-        var progressTextView: icyllis.modernui.widget.TextView? = null
+    private suspend fun downloadAndReplaceCore(expectedSha: String): Boolean {
+        val parentDir = coreJarFile.absoluteFile.parentFile ?: File(".")
+        if (!parentDir.exists()) parentDir.mkdirs()
+        val tempFile = File(parentDir, "${coreJarFile.name}.downloading.${System.currentTimeMillis()}")
 
+        var progressView: TextView? = null
         uiThread {
-            progressTextView = fragment.scrollContent.textView("$progressPrefix 开始下载mod： ${id}") {
+            progressView = contentView.textView("正在下载 ${coreJarFile.name} ...") {
                 layoutParams = linearLayoutParam(PARENT, SELF).apply {
                     setMargins(0, 0, 0, dp(8f))
                 }
             }
-            fragment.scrollToBottom()
         }
 
-        return try {
-            val downloadSuccess = downloadFileWithProgress(
-                hqUrl + "update/mod-file?modid=${id}",
-                tempFile.toPath()
-            ) { bytesDownloaded, totalBytes, speed ->
-                val progressInfo = if (totalBytes > 0) {
-                    val percentage = (bytesDownloaded * 100 / totalBytes).toInt()
-                    val downloadedStr = formatBytes(bytesDownloaded)
-                    val totalStr = formatBytes(totalBytes)
-                    val speedStr = formatSpeed(speed)
-                    "$progressPrefix 下载中 $id - $percentage% ($downloadedStr/$totalStr) $speedStr"
-                } else {
-                    val downloadedStr = formatBytes(bytesDownloaded)
-                    val speedStr = formatSpeed(speed)
-                    "$progressPrefix 下载中 $id - $downloadedStr $speedStr"
-                }
-                uiThread {
-                    progressTextView?.text = progressInfo
-                    fragment.scrollToBottom()
-                }
-            }
+        val downloadUrl = "${server.hqUrl}/update/core"
+        val downloadSuccess = downloadFileWithProgress(downloadUrl, tempFile.toPath()) { dl ->
 
-            if (!downloadSuccess) {
-                tempFile.delete()
-                uiThread {
-                    progressTextView?.let { textView ->
-                        textView.text = "$progressPrefix ✗ ${id}下载失败！"
-                        textView.setTextColor(0xFFE53E3E.toInt())
-                    }
-                    fragment.scrollToBottom()
-                }
-                false
-            } else {
-                uiThread {
-                    progressTextView?.let { textView ->
-                        textView.text = "$progressPrefix ✓ ${id}下载完成，正在验证文件完整性..."
-                        textView.setTextColor(0xFF2196F3.toInt())
-                    }
-                    fragment.scrollToBottom()
-                }
-
-                val downloadedSha1 = tempFile.sha1
-                val expectedSha1 = serverIdSha1[id]
-                if (expectedSha1 != null && downloadedSha1 == expectedSha1) {
-                    // Replace the original file atomically
-                    var backupFile: File? = null
-                    try {
-                        if (file.exists()) {
-                            backupFile = File(file.parent, "${file.name}.backup.${System.currentTimeMillis()}")
-                            file.renameTo(backupFile)
-                        }
-                        if (tempFile.renameTo(file)) {
-                            backupFile?.delete()
-                            uiThread {
-                                progressTextView?.let { textView ->
-                                    textView.text = "$progressPrefix ✓ ${id}验证成功！"
-                                    textView.setTextColor(0xFF4CAF50.toInt())
-                                }
-                                fragment.scrollToBottom()
-                            }
-                            true
-                        } else {
-                            backupFile?.renameTo(file)
-                            throw Exception("Failed to move temporary file to final location")
-                        }
-                    } catch (e: Exception) {
-                        lgr.error("Failed to replace file for $id", e)
-                        tempFile.delete()
-                        uiThread {
-                            progressTextView?.let { textView ->
-                                textView.text = "$progressPrefix ✗ ${id}文件替换失败！可能是文件被其他程序占用了，请退出后重试"
-                                textView.setTextColor(0xFFE53E3E.toInt())
-                            }
-                            fragment.scrollToBottom()
-                        }
-                        false
-                    }
-                } else {
-                    tempFile.delete()
-                    lgr.warn("SHA-1 verification failed for $id. Expected: $expectedSha1, Got: $downloadedSha1")
-                    uiThread {
-                        progressTextView?.let { textView ->
-                            textView.text = "$progressPrefix ✗ ${id}文件校验失败！"
-                            textView.setTextColor(0xFFE53E3E.toInt())
-                        }
-                        fragment.scrollToBottom()
-                    }
-                    false
-                }
-            }
-        } catch (e: Exception) {
-            lgr.error("下载 ${id} 失败", e)
-            tempFile.delete()
-            runCatching {
-                file.parentFile?.listFiles { _, name ->
-                    name.startsWith("${file.name}.tmp.")
-                }?.forEach { it.delete() }
-            }.onFailure { cleanupError ->
-                lgr.warn("Failed to clean up temporary files for $id", cleanupError)
-            }
             uiThread {
-                progressTextView?.let { textView ->
-                    textView.text = "$progressPrefix ✗ ${id}下载失败，详见日志！"
-                    textView.setTextColor(0xFFE53E3E.toInt())
+                progressView?.text =
+                    "下载中：${dl.percent} ${dl.bytesDownloaded.humanSize}/${dl.totalBytes.humanSize} ${dl.speedBytesPerSecond / 1000}KB/s"
+
+            }
+        }
+
+        if (!downloadSuccess) {
+            tempFile.delete()
+            logError("下载失败，请检查网络后重试。")
+            return false
+        }
+
+        val downloadedSha = tempFile.sha1
+        if (!downloadedSha.equals(expectedSha, true)) {
+            tempFile.delete()
+            logError("文件损坏了，请重下")
+            return false
+        }
+
+        val backupFile = if (coreJarFile.exists()) File(
+            parentDir,
+            "${coreJarFile.name}.backup.${System.currentTimeMillis()}"
+        ) else null
+
+        return try {
+            backupFile?.let { coreJarFile.copyTo(it, overwrite = true) }
+            tempFile.copyTo(coreJarFile, overwrite = true)
+            tempFile.delete()
+            backupFile?.delete()
+            logSuccess("核心文件已更新至最新版本。")
+            true
+        } catch (t: Throwable) {
+            logError("替换核心文件失败：${t.message}")
+            tempFile.delete()
+            backupFile?.let { backup ->
+                runCatching {
+                    if (!coreJarFile.exists() && backup.exists()) {
+                        backup.renameTo(coreJarFile)
+                    }
                 }
-                fragment.scrollToBottom()
             }
             false
         }
     }
+
+    private fun showRetryOption(): Unit = uiThread {
+        if (retryButtonAdded) return@uiThread
+        retryButtonAdded = true
+        contentView.button( "重试更新") { button: RButton ->
+            button.isEnabled = false
+            contentView.removeAllViews()
+            retryButtonAdded = false
+            startUpdateFlow()
+        }
+    }
+
+    private fun continueToLogin() = uiThread {
+
+        LoginFragment().go(false)
+    }
+
+    private fun startRestartCountdown() {
+        uiThread {
+            val countdownView = contentView.textView("更新完成，客户端将在 5 秒后重启...") {
+                layoutParams = linearLayoutParam(PARENT, SELF).apply {
+                    setMargins(0, dp(16f), 0, 0)
+                }
+                setTextColor(MaterialColor.GREEN_500.colorValue)
+            }
+
+            ioTask {
+                for (i in 5 downTo 1) {
+                    uiThread { countdownView.text = "更新完成，客户端将在 $i 秒后重启..." }
+                    Thread.sleep(1000)
+                }
+                uiThread {
+                    countdownView.text = "正在重启客户端..."
+                    countdownView.setTextColor(MaterialColor.BLUE_500.colorValue)
+                }
+                restart()
+            }
+        }
+    }
+
+    private fun logInfo(message: String) = logMessage(message, MaterialColor.GRAY_200.colorValue)
+    private fun logSuccess(message: String) = logMessage(message, MaterialColor.GREEN_600.colorValue)
+    private fun logError(message: String) = logMessage(message, MaterialColor.RED_500.colorValue)
+
+    private fun logMessage(message: String, color: Int?) = uiThread {
+        contentView.textView(message) {
+            layoutParams = linearLayoutParam(PARENT, SELF).apply {
+                setMargins(0, 0, 0, dp(6f))
+            }
+            color?.let { setTextColor(it) }
+        }
+    }
+
 
     fun restart() {
         try {
