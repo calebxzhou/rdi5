@@ -22,6 +22,8 @@ import io.ktor.client.statement.*
 import io.ktor.http.*
 import kotlinx.serialization.Serializable
 import java.io.File
+import java.nio.charset.Charset
+import java.nio.charset.StandardCharsets
 import java.util.jar.JarFile
 import java.util.zip.ZipFile
 import kotlin.math.max
@@ -351,11 +353,7 @@ object CurseForgeService {
             throw ModpackException("找不到整合包文件: ${zipFile.path}")
         }
 
-        val zip = try {
-            ZipFile(zipFile)
-        } catch (ex: Exception) {
-            throw ModpackException("无法读取整合包: ${ex.message}")
-        }
+        val zip = openZipFileWithFallback(zipFile)
 
         try {
             val entries = zip.entries().asSequence().toList()
@@ -415,6 +413,38 @@ object CurseForgeService {
             zip.close()
             throw ModpackException("处理整合包时出错: ${e.message}")
         }
+    }
+
+    private val zipCharsetCandidates: List<Charset> = buildList {
+        add(StandardCharsets.UTF_8)
+        add(Charset.defaultCharset())
+        runCatching { add(Charset.forName("GB18030")) }.getOrNull()
+        runCatching { add(Charset.forName("GBK")) }.getOrNull()
+        add(StandardCharsets.ISO_8859_1)
+    }.filterNotNull().distinct()
+
+    private fun openZipFileWithFallback(zipFile: File): ZipFile {
+        var lastError: Exception? = null
+        val attempted = mutableListOf<String>()
+
+        fun tryOpen(charset: Charset?): ZipFile? {
+            return try {
+                if (charset == null) ZipFile(zipFile) else ZipFile(zipFile, charset)
+            } catch (ex: Exception) {
+                lastError = ex
+                attempted += charset?.name() ?: "system-default"
+                null
+            }
+        }
+
+        tryOpen(null)?.let { return it }
+        for (charset in zipCharsetCandidates) {
+            tryOpen(charset)?.let { return it }
+        }
+
+        throw ModpackException(
+            "无法读取整合包: ${lastError?.message ?: "未知错误"} (尝试编码: ${attempted.joinToString()})"
+        )
     }
 
     private val MAX_PARALLEL_DOWNLOADS = max(4, Runtime.getRuntime().availableProcessors() * 2)
