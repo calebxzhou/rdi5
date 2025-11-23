@@ -13,7 +13,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(Player.class)
 public class mPlayer {
     @Inject(method = "isModelPartShown", at = @At("HEAD"), cancellable = true)
-//永远显示披风
+    //永远显示披风
     private void RDI$alwaysDisplayCape(PlayerModelPart pPart, CallbackInfoReturnable<Boolean> cir) {
         if (pPart == PlayerModelPart.CAPE) cir.setReturnValue(true);
     }
