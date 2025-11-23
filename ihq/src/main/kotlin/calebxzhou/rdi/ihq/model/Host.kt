@@ -49,23 +49,9 @@ data class Host(
         val intro: String = "暂无简介",
         val icon: ByteArray? = null,
         val ownerName: String,
+
         val modpackName: String,
         val packVer: String,
-        var port: Int,
-    )
-    @Serializable
-    data class DetailVo(
-        @Contextual
-        val _id: ObjectId = ObjectId(),
-        val name: String,
-        val intro: String = "暂无简介",
-        val icon: ByteArray? = null,
-        @Contextual
-        val ownerId: ObjectId,
-        @Contextual
-        val modpackId: ObjectId,
-        val modpackName:String,
-        val totalMods: List<Mod>,
         var port: Int,
     )
 }
