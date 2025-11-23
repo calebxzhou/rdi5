@@ -19,9 +19,10 @@ import icyllis.modernui.widget.TextView
 import io.ktor.client.plugins.sse.*
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import org.bson.types.ObjectId
 
-class HostConsoleFragment(val host: Host) : RFragment("主机后台") {
-
+class HostConsoleFragment(val hostId: ObjectId) : RFragment("主机后台") {
+    
 
     lateinit var console: TextView
     private lateinit var scrollView: ScrollView
@@ -40,14 +41,14 @@ class HostConsoleFragment(val host: Host) : RFragment("主机后台") {
             quickOptions {
                 "▶ 启动" colored MaterialColor.GREEN_900 with {
                     confirm("确定要启动吗？"){
-                        server.requestU("host/${host._id}/start"){
+                        server.requestU("host/${hostId}/start"){
                             toast("启动指令已发送")
                         }
                     }
                 }
                 "⟳ 重启" colored MaterialColor.BLUE_800 with {
                     confirm("确定重启吗？"){
-                        server.requestU("host/${host._id}/restart"){
+                        server.requestU("host/${hostId}/restart"){
                             toast("重启指令已发送")
                         }
                     }
@@ -55,7 +56,7 @@ class HostConsoleFragment(val host: Host) : RFragment("主机后台") {
                 "⏹ 停止" colored MaterialColor.RED_900 with {
                     confirm("确定停止吗？") {
 
-                        server.requestU("host/${host._id}/stop"){
+                        server.requestU("host/${hostId}/stop"){
                             toast("停止指令已发送")
                         }
                     }
@@ -90,7 +91,7 @@ class HostConsoleFragment(val host: Host) : RFragment("主机后台") {
         isFragmentActive = true
         logStreamJob = ioScope.launch {
             try {
-                server.request<String>("host/${host._id}/log/200"){
+                server.request<String>("host/${hostId}/log/200"){
                     it.data!!.lineSequence()
                         .toMutableList()
                         .reversed()
@@ -99,7 +100,7 @@ class HostConsoleFragment(val host: Host) : RFragment("主机后台") {
                         .forEach { appendLogLine(it) }
                 }
                 server.sse(
-                    path = "host/${host._id}/log/stream",
+                    path = "host/${hostId}/log/stream",
                     bufferPolicy = SSEBufferPolicy.LastEvents(50),
                     onEvent = { event ->
                         if (!isFragmentActive) return@sse
