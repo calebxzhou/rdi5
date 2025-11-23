@@ -10,11 +10,13 @@ import org.bson.types.ObjectId
 import java.io.File
 import java.net.URLEncoder
 import java.nio.ByteBuffer
+import java.security.MessageDigest
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.*
 import javax.crypto.Cipher
 import javax.crypto.spec.SecretKeySpec
+import kotlin.collections.joinToString
 import kotlin.reflect.KCallable
 
 /**
@@ -77,6 +79,26 @@ fun String.isValidUuid(): Boolean {
     val uuidRegex = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$".toRegex()
     return uuidRegex.matches(this)
 }
+fun File.digest(algo: String): String {
+    val digest = MessageDigest.getInstance(algo)
+    inputStream().use { input ->
+        val buffer = ByteArray(8192)
+        var bytesRead: Int
+        while (input.read(buffer).also { bytesRead = it } != -1) {
+            digest.update(buffer, 0, bytesRead)
+        }
+    }
+    return digest.digest().joinToString("") { "%02x".format(it) }
+}
+
+val File.sha1: String
+    get() = digest("SHA-1")
+val File.sha256: String
+    get() = digest("SHA-256")
+val File.md5: String
+    get() = digest("MD5")
+val File.sha512: String
+    get() = digest("SHA-512")
 fun java.io.File.safeDirSize(): Long =
     if (!exists()) 0L else walkTopDown().filter { it.isFile }.sumOf { it.length() }
 fun String.isValidObjectId(): Boolean {
