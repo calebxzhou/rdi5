@@ -35,7 +35,7 @@ data class Host(
     var extraMods: List<Mod> = arrayListOf()
 ) {
     companion object{
-        var now : Host?=null
+        var portNow : Int =0
     }
     @Serializable
     data class Member(
@@ -59,4 +59,5 @@ data class Host(
             val TEST = Vo(name="啊实打实大苏打实打实的", intro = "都是大大实打实大苏打实打实的得分风格风格风格非官方", ownerName = "点点滴滴都是", modpackName = "测试测试测试测试测试", packVer = "1.0.0", port = 55555)
         }
     }
+
 }
