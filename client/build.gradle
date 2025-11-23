@@ -199,25 +199,14 @@ def mcLibs = [
 def mcLibExportOnly = [
 ]
 def modrinthMods = [
-        "architectury-api:13.0.8+neoforge",
-        "packet-fixer:LL1w2rTw",
-        "jade:15.10.0+neoforge",
         "justenoughcharacters:4.5.15",
         "notenoughcrashes:4.4.8+1.21.1-neoforge",
         "imblocker-original:5.0.2",
-        "sodium:mc1.21.1-0.6.13-neoforge",
-        "kubejs:2101.7.1-build.181+KubeJS-1.21.1",
-        "rhino:2101.2.7-build.77+Rhino-1.21",
-        "libx:1.21.1-6.0.6",
-        "skyblock-builder:21.1.18"
+        "sodium:mc1.21.1-0.6.13-neoforge"
 ]
 def modrinthModsCompileOnly = [
 ]
 def curseMods = [
-        "ftb-library-forge-404465:6975628",
-        "ftb-quests-forge-289412:6975870",
-        "ftb-teams-forge-404468:6930910",
-        "ftb-ultimine-forge-386134:6930900",
 ]
 def curseExportOnly = [
 ]
