@@ -37,7 +37,7 @@ class mProxyConnect {
     private void RDI$BeforeSendIntention(CallbackInfo ci) {
         try {
             var data = Unpooled.directBuffer();
-            data.writeShort(Host.Companion.getNow().getPort());
+            data.writeShort(Host.Companion.getPortNow());
             channel().writeAndFlush(new RawBytes(data));
             Thread.sleep(100);
         } catch (Exception e) {
