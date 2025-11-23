@@ -135,11 +135,19 @@ fun Route.hostRoutes() = route("/host") {
         }
         route("/log") {
             sse("/stream") {
-                call.hostGuardContext().needAdmin.listenLogs(this)
+                val ctx = try {
+                    call.hostGuardContext()
+                } catch (err: RequestError) {
+                    runCatching {
+                        send(ServerSentEvent(event = "error", data = err.message ?: "unknown"))
+                    }
+                    return@sse
+                }
+                ctx.listenLogs(this)
 
             }
             get("/{lines}") {
-                val logs = call.hostGuardContext().needAdmin.getLog(paramNull("startLine")?.toInt() ?: 0, param("lines").toInt())
+                val logs = call.hostGuardContext().getLog(paramNull("startLine")?.toInt() ?: 0, param("lines").toInt())
                 response(data=logs)
             }
         }
@@ -450,7 +458,8 @@ object HostService {
 
     suspend fun HostGuardContext.update(packVer: String?) {
         val current = getById(host._id) ?: throw RequestError("无此主机")
-        val resolvedVer = packVer ?: "latest"
+        val modpackVer = ModpackService.get(host.modpackId)?.versions?.last() ?: throw RequestError("无此整合包")
+        val resolvedVer = modpackVer.name
         val running = DockerService.isStarted(current._id.str)
         if (running) {
             DockerService.stop(current._id.str)
