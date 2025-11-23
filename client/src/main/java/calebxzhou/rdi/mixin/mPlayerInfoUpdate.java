@@ -17,8 +17,5 @@ public class mPlayerInfoUpdate {
     @Inject(method = "handle(Lnet/minecraft/network/protocol/game/ClientGamePacketListener;)V",at=@At("HEAD"))
     private void RDI$UpdatePlayerInfo(ClientGamePacketListener handler, CallbackInfo ci) {
         PlayerService.onPlayerInfoUpdate((ClientboundPlayerInfoUpdatePacket) (Object)this);
-        // 这里可以添加代码来处理玩家信息更新
-        // 例如，获取玩家的基本信息并存储到缓存中
-        // 这将有助于在加载皮肤时避免卡顿
     }
 }
