@@ -13,7 +13,7 @@ import kotlin.math.max
 
 class HostGrid(
     ctx: Context,
-    hosts: List<Host.Vo> = emptyList(),
+    val hosts: List<Host.Vo> = emptyList(),
     private val onItemClick: (Host.Vo) -> Unit = {},
     private val onPlayClick: (Host.Vo) -> Unit = onItemClick,
 ) : LinearLayout(ctx) {
@@ -23,18 +23,13 @@ class HostGrid(
     private val cards = linkedMapOf<Host.Vo, HostCard>()
     private var pendingRender: Runnable? = null
 
-    var hosts: List<Host.Vo> = hosts
-        set(value) {
-            field = value
-            updateHosts()
-        }
 
     init {
         vertical()
         layoutParams = linearLayoutParam(PARENT, PARENT)
 
         scrollView {
-            layoutParams = linearLayoutParam(PARENT, 0) { weight = 1f }
+            layoutParams = linearLayoutParam(PARENT, PARENT)
             addView(cardsContainer, linearLayoutParam(PARENT, SELF))
         }
 
@@ -63,12 +58,8 @@ class HostGrid(
                 renderGrid(items)
             }
         }
-        if (cardsContainer.width <= 0) {
-            pendingRender = task
-            cardsContainer.post(task)
-        } else {
-            task.run()
-        }
+        pendingRender = task
+        cardsContainer.post(task)
     }
 
     private fun renderGrid(items: List<Host.Vo>) {
