@@ -120,12 +120,10 @@ class HostInfoFragment(val hostId: ObjectId) : RFragment("主机详细信息") {
             this += ModGrid(context, mods = mods )
         }
         titleView.apply {
-            if (meOwner) {
+
                 quickOptions {
                     "▶ 开始游玩"
-                    "\uF4FE 邀请成员" colored MaterialColor.BLUE_900 with {
-                        HostInviteMemberFragment(hostId).go()
-                    }
+
                     "\uEA81 删除主机" colored MaterialColor.RED_900 with {
                         confirm("确认删除主机吗？\n（不删存档，其余数据清空）") {
                             server.requestU("host/$hostId", Delete) { resp ->
@@ -135,19 +133,25 @@ class HostInfoFragment(val hostId: ObjectId) : RFragment("主机详细信息") {
                         }
                     }
                     "\uDB80\uDD8D 后台" colored MaterialColor.TEAL_900 with { HostConsoleFragment(hostId  ).go() }
-                    "\uDB85\uDC5C 切换存档" colored MaterialColor.PINK_800 with { alertErr("没写完") }
-                    "\uDB80\uDFD6 更新整合包" colored MaterialColor.AMBER_900 with {
-                        confirm("将更新主机的整合包 ${modpack.name} 到最新版本。") {
-                            server.requestU(
-                                "host/${_id}/update",
-                                HttpMethod.Post,
-                                showLoading = true
-                            ) {
-                                toast("已更新到最新版 主机重启中")
+                    if (meAdmin) {
+                        "\uF4FE 邀请成员" colored MaterialColor.BLUE_900 with {
+                            HostInviteMemberFragment(hostId).go()
+                        }
+
+                        "\uDB85\uDC5C 切换存档" colored MaterialColor.PINK_800 with { alertErr("没写完") }
+                        "\uDB80\uDFD6 更新整合包" colored MaterialColor.AMBER_900 with {
+                            confirm("将更新主机的整合包 ${modpack.name} 到最新版本。") {
+                                server.requestU(
+                                    "host/${_id}/update",
+                                    HttpMethod.Post,
+                                    showLoading = true
+                                ) {
+                                    toast("已更新到最新版 主机重启中")
+                                }
                             }
                         }
                     }
-                }
+
             }
         }
     }
