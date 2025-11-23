@@ -7,8 +7,11 @@ import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.RTextField
 import calebxzhou.rdi.ui2.component.alertErr
 import calebxzhou.rdi.util.ioScope
+import calebxzhou.rdi.util.mc
+import calebxzhou.rdi.util.set
 import icyllis.modernui.view.Gravity
 import kotlinx.coroutines.launch
+import net.minecraft.client.gui.screens.options.OptionsScreen
 
 class LoginFragment : RFragment("登录") {
     private lateinit var qqInput: RTextField
@@ -55,7 +58,7 @@ class LoginFragment : RFragment("登录") {
                 }
                 textView("[设置]"){
                     padding8dp()
-                    setOnClickListener { SettingsFragment().go() }
+                    setOnClickListener { mc set OptionsScreen(this@LoginFragment.mcScreen,mc.options) }
                 }
 
             }
