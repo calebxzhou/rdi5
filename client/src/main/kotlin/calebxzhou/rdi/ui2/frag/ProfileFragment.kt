@@ -5,6 +5,7 @@ import calebxzhou.rdi.model.account
 import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.HwSpecView
+import calebxzhou.rdi.ui2.component.alertErr
 
 class ProfileFragment : RFragment("我的信息") {
     override var closable = false
@@ -42,6 +43,7 @@ class ProfileFragment : RFragment("我的信息") {
         }
         titleViewInit={
             quickOptions {
+                "\uEB1C 信箱" colored MaterialColor.BLUE_900 with { alertErr("没开发完") }
                 "\uDB83\uDFC5 登出" colored MaterialColor.RED_900 with { close() }
             }
         }
