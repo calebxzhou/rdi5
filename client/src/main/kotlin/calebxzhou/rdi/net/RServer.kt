@@ -61,7 +61,7 @@ class RServer(
     fun connect() {
 
            if (!noUpdate && isMcStarted) {
-               goto(UpdateFragment(this))
+               goto(UpdateFragment())
            } else {
         goto(LoginFragment())
           }
