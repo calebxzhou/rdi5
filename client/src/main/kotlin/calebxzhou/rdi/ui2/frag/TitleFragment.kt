@@ -1,5 +1,6 @@
 package calebxzhou.rdi.ui2.frag
 
+import calebxzhou.rdi.Const
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.ui2.*
@@ -54,7 +55,7 @@ class TitleFragment : RFragment() {
 
                 // Add "5" text directly below the "i"
                 textView() {
-                    text = "5"
+                    text = Const.VERSION_NUMBER
                     setTextColor(0xFFFFFFFF.toInt())
                     textSize = 28f
                     layoutParams = linearLayoutParam {
