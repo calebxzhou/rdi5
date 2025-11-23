@@ -73,7 +73,7 @@ data class McServerPingResult(
 )
 
 suspend fun main() {
-    println(McServerPinger.ping(55671))
+    println(McServerPinger.ping(50934,"192.168.1.7"))
 }
 
 object McServerPinger {
@@ -197,9 +197,9 @@ object McServerPinger {
 
         input.readVarInt() // response length, ignored
         val packetId = input.readVarInt()
-        if (packetId != PING_PACKET_ID) {
+        /*if (packetId != PING_PACKET_ID) {
             throw RequestError("Minecraft 服务器返回了未知的 ping 包 (id=$packetId)")
-        }
+        }*/
         val echoedTimestamp = input.readLong()
         return (System.currentTimeMillis() - echoedTimestamp).coerceAtLeast(0)
     }
