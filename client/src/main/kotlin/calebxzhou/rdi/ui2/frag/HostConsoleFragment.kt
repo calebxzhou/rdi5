@@ -28,6 +28,7 @@ class HostConsoleFragment(val hostId: ObjectId) : RFragment("主机后台") {
     private lateinit var scrollView: ScrollView
     private var lastAllLines: MutableList<String> = mutableListOf()
     private var logStreamJob: Job? = null
+    private var logStreamSseJob: Job? = null
     private var isFragmentActive = true
 
     // Colors for different log types
@@ -46,6 +47,7 @@ class HostConsoleFragment(val hostId: ObjectId) : RFragment("主机后台") {
                         }
                     }
                 }
+
                 "⟳ 重启" colored MaterialColor.BLUE_800 with {
                     confirm("确定重启吗？"){
                         server.requestU("host/${hostId}/restart"){
@@ -88,6 +90,9 @@ class HostConsoleFragment(val hostId: ObjectId) : RFragment("主机后台") {
 
     private fun startLogStream() {
         logStreamJob?.cancel()
+        logStreamJob = null
+        logStreamSseJob?.cancel()
+        logStreamSseJob = null
         isFragmentActive = true
         logStreamJob = ioScope.launch {
             try {
@@ -99,7 +104,7 @@ class HostConsoleFragment(val hostId: ObjectId) : RFragment("主机后台") {
                         .filter { it.isNotBlank() }
                         .forEach { appendLogLine(it) }
                 }
-                server.sse(
+                logStreamSseJob = server.sse(
                     path = "host/${hostId}/log/stream",
                     bufferPolicy = SSEBufferPolicy.LastEvents(50),
                     onEvent = { event ->
@@ -135,12 +140,16 @@ class HostConsoleFragment(val hostId: ObjectId) : RFragment("主机后台") {
                         toast("日志连接断开: ${t.message ?: "未知错误"}")
                     }
                 }
+            } finally {
+                logStreamSseJob = null
             }
         }
     }
 
     private fun stopLogStream() {
         isFragmentActive = false
+        logStreamSseJob?.cancel()
+        logStreamSseJob = null
         logStreamJob?.cancel()
         logStreamJob = null
     }
