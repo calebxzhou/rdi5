@@ -4,34 +4,23 @@
   "package": "calebxzhou.rdi.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
-    "AClientPacketListener",
-    "AConnectScreen",
-    "AEditBox",
     "AMinecraft",
     "mChat",
     "mCrash",
     "mFastCreateMojangService",
     "mFastCreateMojangService2",
-    "mGui",
     "mHttpTexture",
     "mJpgImage",
-    "mOptions",
-    "mPauseScreen",
     "mPlayerTabOverlay",
     "mRAuth",
-    "mScreenBg",
     "mScreenTransition",
     "mSkin",
-    "mTitleScreen",
-    "mWindowTitle",
-    "gameplay.mAutoRespawn"
+    "mTitleScreen"
   ],
   "injectors": {
     "defaultRequire": 1
   },
   "mixins": [
-    "APacketDecoder",
-    "ARegionFileVersion",
     "mAllowChineseArgument",
     "mAllowChineseName",
     "mAlwaysOfflineMode",
@@ -40,9 +29,7 @@
     "mServerboundHelloPacket",
     "mServiceKeyInfo",
     "mTextureUrlChecker",
-    "mTooltipGuard",
     "gameplay.mPlayer",
-    "jade.mNoDisplayModName",
     "mui.mNoBlur"
   ]
 }
