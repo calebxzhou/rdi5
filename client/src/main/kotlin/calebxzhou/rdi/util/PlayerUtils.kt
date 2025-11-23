@@ -12,7 +12,6 @@ import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.EntityHitResult
 import net.minecraft.world.phys.HitResult
-import snownee.jade.overlay.RayTracing
 
 /**
  * calebxzhou @ 2025-04-14 23:10
@@ -37,13 +36,14 @@ val Player.lookingAtBlockEntity: BlockEntity?
         }
         return null
     }
-val Player.lookingAtItemEntity: ItemEntity?
+/*val Player.lookingAtItemEntity: ItemEntity?
     get() {
         val entity = lookingAtEntity
         return if (entity != null && entity is ItemEntity) {
             entity
         } else null
-    }
+    }*/
+/*
 val Player.lookingAtEntity: Entity?
     get() {
         val hit = RayTracing.INSTANCE.rayTrace(this, mc.player?.entityInteractionRange()?.toDouble() ?: 0.0,
@@ -54,6 +54,7 @@ val Player.lookingAtEntity: Entity?
         }
         return null
     }
+*/
 
 //轻量化itemstack 只有物品和数量
 typealias LiteItemStack = Pair<Item,Int>
@@ -85,5 +86,5 @@ infix fun Player.handHas(itemStack: LiteItemStack): Boolean = mainHandItem.`is`(
 infix fun Player.handHas(itemTag: TagKey<Item>): Boolean = mainHandItem.`is`(itemTag)
 infix fun Player.feetOn(block: Block): Boolean = level().getBlockState(blockPosition().below()).`is`(block)
 infix fun Player.isLooking(block: Block): Boolean = lookingAtBlock?.`is`(block) == true
-infix fun Player.isLooking(item: Item): Boolean = lookingAtItemEntity?.item?.`is`(item) == true
+//infix fun Player.isLooking(item: Item): Boolean = lookingAtItemEntity?.item?.`is`(item) == true
 
