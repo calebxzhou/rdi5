@@ -28,7 +28,7 @@ public class mTitleScreen extends Screen {
     public void init() {
         this.addRenderableWidget(
                 Button.builder(Component.literal("启动RDI核心"), p_344156_ -> MuiForgeApi.openScreen(new TitleFragment()))
-                        .bounds(this.width / 2 - 100, this.height/2-10, 100, 20)
+                        .bounds(0, 0, 200, 200)
                         .build()
         );
     }
