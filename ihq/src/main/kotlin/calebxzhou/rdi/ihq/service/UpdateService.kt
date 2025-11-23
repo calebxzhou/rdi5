@@ -1,91 +1,43 @@
 package calebxzhou.rdi.ihq.service
 
+import calebxzhou.rdi.ihq.exception.RequestError
 import calebxzhou.rdi.ihq.lgr
 import calebxzhou.rdi.ihq.net.e404
+import calebxzhou.rdi.ihq.net.err
 import calebxzhou.rdi.ihq.net.initGetParams
 import calebxzhou.rdi.ihq.net.response
 import calebxzhou.rdi.ihq.util.serdesJson
+import calebxzhou.rdi.ihq.util.sha1
 import io.ktor.server.application.ApplicationCall
 import io.ktor.http.ContentType
 import io.ktor.server.response.respondFile
 import io.ktor.server.response.respondText
+import io.ktor.server.routing.Route
+import io.ktor.server.routing.get
+import io.ktor.server.routing.route
 import kotlinx.serialization.Serializable
 import net.peanuuutz.tomlkt.Toml
 import java.io.File
 import java.security.MessageDigest
 import java.util.jar.JarFile
 
-@Serializable
-data class ModsToml(
-    val mods: List<ModInfo> = emptyList()
-)
-@Serializable
-data class ModInfo(
-    val modId: String,
-    val version: String
-)
-
+fun Route.updateRoutes() = route("/update"){
+    get("/hash"){
+        response(data= UpdateService.coreSha1)
+    }
+    get("/core"){
+        val file = UpdateService.coreFile
+        if(!file.exists()) throw RequestError("客户端rdi核心维护中")
+        call.respondFile(file)
+    }
+}
 object UpdateService {
-    val MODS_DIR = File("mods")
-    val modIdSha1 = hashMapOf<String, String>()
-    val modIdFile = hashMapOf<String, File>()
-    private val lenientToml = Toml {
-        ignoreUnknownKeys = true
-    }
 
-    private fun calculateSha1(file: File): String {
-        val digest = MessageDigest.getInstance("SHA-1")
-        file.inputStream().use { input ->
-            val buffer = ByteArray(8192)
-            var bytesRead: Int
-            while (input.read(buffer).also { bytesRead = it } != -1) {
-                digest.update(buffer, 0, bytesRead)
-            }
-        }
-        return digest.digest().joinToString("") { "%02x".format(it) }
-    }
-
-    fun reloadModInfo() {
-        lgr.info { "重载mod列表" }
-        modIdSha1.clear()
-        modIdFile.clear()
-        MODS_DIR.listFiles { it.extension == "jar" }?.forEach { jarFile ->
-            JarFile(jarFile).use { jar ->
-                jar.getJarEntry("META-INF/neoforge.mods.toml")?.let { modsTomlEntry ->
+    val coreFile
+        get() = File("rdi-5-client.jar")
+    val coreSha1
+        get() = coreFile.sha1
 
 
-                    jar.getInputStream(modsTomlEntry).bufferedReader().use { reader ->
-                        try {
-                            val modsToml = lenientToml.decodeFromString(ModsToml.serializer(), reader.readText())
-                            modsToml.mods.firstOrNull()?.let {
-                                modIdSha1[it.modId] = calculateSha1(jarFile)
-                                modIdFile[it.modId] = jarFile
-                            }
-                        }catch (e:Exception){
-                            lgr.warn(e){"fail to parse ${jarFile.name}"}
-                        }
-                    }
-                }
-            }
-        }
-        lgr.info { "OK ${modIdFile.size}个mod" }
-    }
-
-
-    suspend fun getModList(call: ApplicationCall) {
-        call.respondText(
-            serdesJson.encodeToString(modIdSha1),
-            ContentType.Application.Json
-        )
-    }
-
-    suspend fun getModFile(call: ApplicationCall) {
-        call.initGetParams()["modid"]?.let { modid ->
-            modIdFile[modid]?.let {
-                call.respondFile(it)
-            }
-        } ?: call.e404()
-
-    }
 
 }
