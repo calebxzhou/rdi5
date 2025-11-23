@@ -16,7 +16,6 @@ val Host.owner
     get() =  members.find { it.role== Role.OWNER }
 fun Host.isOwner(acc: RAccount) = owner?.id == acc._id
 // Check whether a user is OWNER or ADMIN of this team
-fun Host.isOwnerOrAdmin(acc: RAccount): Boolean = isOwnerOrAdmin(acc._id)
-fun Host.isOwnerOrAdmin(uid: ObjectId): Boolean =
+fun Host.isAdmin(acc: RAccount): Boolean = isAdmin(acc._id)
+fun Host.isAdmin(uid: ObjectId): Boolean =
     members.any { it.id == uid && (it.role == Role.OWNER || it.role == Role.ADMIN) }
-suspend fun RAccount.myTeamHosts() = server.makeRequest<List<Host>>("host/").data
