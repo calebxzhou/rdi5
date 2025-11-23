@@ -15,6 +15,7 @@ import calebxzhou.rdi.ihq.service.worldRoutes
 import calebxzhou.rdi.ihq.service.chatRoutes
 import calebxzhou.rdi.ihq.service.hostPlayRoutes
 import calebxzhou.rdi.ihq.service.modpackRoutes
+import calebxzhou.rdi.ihq.service.updateRoutes
 import calebxzhou.rdi.ihq.util.serdesJson
 import com.mongodb.MongoClientSettings
 import com.mongodb.ServerAddress
@@ -44,6 +45,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.bson.UuidRepresentation
 import java.io.File
+import java.util.Timer
+import java.util.TimerTask
 import kotlin.time.Duration.Companion.seconds
 
 val CONF = AppConfig.load()
@@ -68,17 +71,11 @@ fun main(): Unit =runBlocking {
 
         accountCol.createIndex(Indexes.ascending("qq"), IndexOptions().unique(true))
         accountCol.createIndex(Indexes.ascending("name"), IndexOptions().unique(true))
-    UpdateService.reloadModInfo()
+
     HostService.startIdleMonitor()
     Runtime.getRuntime().addShutdownHook(Thread {
         HostService.stopIdleMonitor()
     })
-    //5分钟重载mod  没什么用 手动重载了
-   /* Timer().scheduleAtFixedRate(object : TimerTask() {
-        override fun run() {
-            UpdateService.reloadModInfo()
-        }
-    },0,60000*5)*/
     // Launch both servers concurrently in the coroutine scope
     launch {
         startHttp()
@@ -142,6 +139,7 @@ fun startHttp(){
         }
         routing {
             playerRoutes()
+            updateRoutes()
             /*get("/sponsors") {
                 call.respondText("""
                     2025-04-11,ChenQu,100
