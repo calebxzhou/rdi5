@@ -1,6 +1,5 @@
-package calebxzhou.rdi.ihq.model
+package calebxzhou.rdi.model
 
-import calebxzhou.rdi.ihq.SYSTEM_SENDER_ID
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import org.bson.types.ObjectId
@@ -10,7 +9,7 @@ data class Mail(
     @Contextual
     val _id: ObjectId = ObjectId(),
     @Contextual
-    val senderId: ObjectId= SYSTEM_SENDER_ID,
+    val senderId: ObjectId ,
     @Contextual
     val receiverId: ObjectId,
     val title: String,
