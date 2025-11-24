@@ -160,6 +160,6 @@ fun Byte.isWhitespaceCharacter(): Boolean {
         else -> false
     }
 }
-val Long.formatDateTime
+val Long.humanDateTime
     get() = Instant.ofEpochMilli(this).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
 fun jarResource(path: String) = RDI::class.java.classLoader.getResourceAsStream(path)

@@ -13,7 +13,7 @@ import calebxzhou.rdi.service.selectModpackFile
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.ModGrid
 import calebxzhou.rdi.ui2.component.confirm
-import calebxzhou.rdi.util.formatDateTime
+import calebxzhou.rdi.util.humanDateTime
 import calebxzhou.rdi.util.ioTask
 import icyllis.modernui.view.Gravity
 import io.ktor.http.*
@@ -60,14 +60,14 @@ class ModpackInfoFragment(val modpackId: ObjectId) : RFragment("整合包信息"
 
 
         contentView.apply {
-            textView("$name         \uF4CA上传者：$authorName       \uF0C7尺寸：${fileSize.humanSize}      \uF11BMC版本：$mcVer $modloader")
+            textView("$name         \uF4CA上传者：$authorName      \uF11BMC版本：$mcVer $modloader")
             textView("简介：$info")
             textView("共${versions.size}个版本：")
             versions .forEach { v ->
                 linearLayout {
                     gravity = Gravity.CENTER_VERTICAL
                     padding8dp()
-                    textView("V${v.name} - 上传时间：${v.time.formatDateTime}")
+                    textView("V${v.name} - 上传时间：${v.time.humanDateTime} - \uF0C7${v.totalSize?.humanSize?:""}")
                     if(v.status== Modpack.Status.BUILDING) textView("【正在构建中】")
                     quickOptions {
                         if(v.status == Modpack.Status.OK) {
