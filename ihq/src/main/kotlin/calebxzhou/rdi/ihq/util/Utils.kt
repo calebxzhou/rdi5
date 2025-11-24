@@ -79,28 +79,7 @@ fun String.isValidUuid(): Boolean {
     val uuidRegex = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$".toRegex()
     return uuidRegex.matches(this)
 }
-fun File.digest(algo: String): String {
-    val digest = MessageDigest.getInstance(algo)
-    inputStream().use { input ->
-        val buffer = ByteArray(8192)
-        var bytesRead: Int
-        while (input.read(buffer).also { bytesRead = it } != -1) {
-            digest.update(buffer, 0, bytesRead)
-        }
-    }
-    return digest.digest().joinToString("") { "%02x".format(it) }
-}
 
-val File.sha1: String
-    get() = digest("SHA-1")
-val File.sha256: String
-    get() = digest("SHA-256")
-val File.md5: String
-    get() = digest("MD5")
-val File.sha512: String
-    get() = digest("SHA-512")
-fun java.io.File.safeDirSize(): Long =
-    if (!exists()) 0L else walkTopDown().filter { it.isFile }.sumOf { it.length() }
 fun String.isValidObjectId(): Boolean {
     return ObjectId.isValid(this)
 }
@@ -113,26 +92,15 @@ fun String?.isValidHttpUrl(): Boolean {
 }
 val ObjectId.str get() = toHexString()
 private const val ENCRYPT_KEY = "wfygiqh%^(*!@&#$%()*qGH83876127RDI"
-fun String.encrypt(): String {
-    val key = ENCRYPT_KEY.toByteArray(charset("UTF-8"))
-    val secretKey = SecretKeySpec(key, "AES")
-    val cipher = Cipher.getInstance("AES")
-    cipher.init(Cipher.ENCRYPT_MODE, secretKey)
-    val encryptedValue = cipher.doFinal(this.toByteArray())
-    return Base64.getEncoder().encodeToString(encryptedValue)
+
+
+//保留小数点后x位
+fun Float.toFixed(decPlaces: Int): String {
+    return String.format("%.${decPlaces}f", this)
 }
 
-fun String.decrypt(): String {
-    val key = ENCRYPT_KEY.toByteArray(charset("UTF-8"))
-    val secretKey = SecretKeySpec(key, "AES")
-    val cipher = Cipher.getInstance("AES")
-    cipher.init(Cipher.DECRYPT_MODE, secretKey)
-    val decryptedValue = cipher.doFinal(Base64.getDecoder().decode(this))
-    return String(decryptedValue)
-}
-
-fun String.isNumber(): Boolean {
-    return this.isNotEmpty() && this.all { it.isDigit() }
+fun Double.toFixed(decPlaces: Int): String {
+    return this.toFloat().toFixed(decPlaces)
 }
 
 fun UUID.toBytes(): ByteArray {
@@ -159,66 +127,6 @@ fun ObjectId.toUUID(): UUID {
 val datetime
     get() = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"))
 
-val File.murmur2: Long
-    get() {
-        val multiplex = 1540483477u
-        val normalizedLength = computeNormalizedLength()
-
-        var num2 = 1u xor normalizedLength
-        var num3 = 0u
-        var num4 = 0
-
-        val buffer = ByteArray(8192)
-        inputStream().use { stream ->
-            while (true) {
-                val read = stream.read(buffer)
-                if (read == -1) break
-
-                for (i in 0 until read) {
-                    val byte = buffer[i]
-                    if (byte.isWhitespaceCharacter()) continue
-
-                    val value = (byte.toInt() and 0xFF).toUInt()
-                    num3 = num3 or (value shl num4)
-                    num4 += 8
-
-                    if (num4 == 32) {
-                        val num6 = num3 * multiplex
-                        val num7 = (num6 xor (num6 shr 24)) * multiplex
-                        num2 = num2 * multiplex xor num7
-                        num3 = 0u
-                        num4 = 0
-                    }
-                }
-            }
-        }
-
-        if (num4 > 0) {
-            num2 = (num2 xor num3) * multiplex
-        }
-
-        var num6 = (num2 xor (num2 shr 13)) * multiplex
-        num6 = num6 xor (num6 shr 15)
-        return num6.toLong()
-    }
-
-fun File.computeNormalizedLength(): UInt {
-    var count = 0u
-    val buffer = ByteArray(8192)
-    inputStream().use { stream ->
-        while (true) {
-            val read = stream.read(buffer)
-            if (read == -1) break
-
-            for (i in 0 until read) {
-                if (!buffer[i].isWhitespaceCharacter()) {
-                    count += 1u
-                }
-            }
-        }
-    }
-    return count
-}
 fun Byte.isWhitespaceCharacter(): Boolean {
     return when (this.toInt() and 0xFF) {
         9, 10, 13, 32 -> true
