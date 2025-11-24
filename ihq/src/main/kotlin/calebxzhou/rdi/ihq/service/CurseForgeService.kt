@@ -11,7 +11,9 @@ import calebxzhou.rdi.ihq.net.downloadFileWithProgress
 import calebxzhou.rdi.ihq.net.httpRequest
 import calebxzhou.rdi.ihq.net.json
 import calebxzhou.rdi.ihq.net.ktorClient
+import calebxzhou.rdi.ihq.util.humanSpeed
 import calebxzhou.rdi.ihq.util.murmur2
+import calebxzhou.rdi.ihq.util.toFixed
 import com.sun.org.apache.bcel.internal.Const
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -48,7 +50,7 @@ object CurseForgeService {
     private val MAX_PARALLEL_DOWNLOADS = max(4, Runtime.getRuntime().availableProcessors() * 4)
 
 
-    suspend fun downloadMod(mod: Mod): Path {
+    suspend fun downloadMod(mod: Mod,onProgress: (String) -> Unit = {}): Path {
         val targetFile = File(DOWNLOAD_MODS_DIR, mod.fileName)
         if (targetFile.exists()
             && targetFile.murmur2.toString() == mod.hash
@@ -65,19 +67,23 @@ object CurseForgeService {
         replace("mediafilez.forgecdn.net", "mod.mcimirror.top").
         replace("media.forgecdn.net", "mod.mcimirror.top")*/
         val success = downloadFileWithProgress(downloadUrl, targetFile.toPath()) { progress ->
-            lgr.info { "mod下载中： ${mod.slug} ${progress.percent}%" }
+            "mod下载中： ${mod.slug} ${progress.percent.toFixed(2)}% ${progress.speedBytesPerSecond.humanSpeed}".run {
+                lgr.info { this }
+                onProgress(this)
+            }
         }
 
         if (!success) {
-            throw RequestError("下载mod失败: ${mod.slug}")
+            "下载mod失败: ${mod.slug}".run { onProgress(this);lgr.error { this } }
         }
         lgr.info { "下载完成：$mod" }
         return targetFile.toPath()
     }
 
-    suspend fun downloadMods(mods: List<Mod>): List<Path> {
+    suspend fun downloadMods(mods: List<Mod>,onProgress: (String) -> Unit = {}): List<Path> {
         if (mods.isEmpty()) return emptyList()
         val parallelism = min(MAX_PARALLEL_DOWNLOADS, mods.size)
+        onProgress("下载Mod：${mods.map { it.slug }}")
         lgr.info { "下载${mods.size}个mod，最大并发：$parallelism" }
         val semaphore = Semaphore(parallelism)
         val downloaded = mutableListOf<Path>()
@@ -87,7 +93,9 @@ object CurseForgeService {
             val outcomes = mods.map { mod ->
                 async(Dispatchers.IO) {
                     semaphore.withPermit {
-                        mod to runCatching { downloadMod(mod) }
+                        mod to runCatching {
+                            downloadMod(mod)
+                        }
                     }
                 }
             }.awaitAll()
