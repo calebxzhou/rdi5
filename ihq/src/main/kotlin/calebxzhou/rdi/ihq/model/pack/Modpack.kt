@@ -30,11 +30,14 @@ data class Modpack(
         val changelog: String,
         //构建完成状态
         val status: Status,
+        val totalSize: Long?=0L,
         val mods: List<Mod> = arrayListOf(),
 
         ){
         val dir
             get() = MODPACK_DATA_DIR.resolve(modpackId.str).resolve(name)
+        val zip
+            get() = dir.parentFile.resolve("${name}.zip")
     }
     enum class Status{
         FAIL,OK,BUILDING

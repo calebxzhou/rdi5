@@ -12,7 +12,6 @@ data class ModpackDetailedVo(
     @Contextual val authorId: ObjectId,
     val authorName:String,
     val modCount: Int,
-    val fileSize: Long,
     val icon: ByteArray?=null,
     val info: String="暂无简介",
     val modloader: String = "neoforge",
