@@ -14,6 +14,7 @@ import calebxzhou.rdi.ihq.service.hostRoutes
 import calebxzhou.rdi.ihq.service.worldRoutes
 import calebxzhou.rdi.ihq.service.chatRoutes
 import calebxzhou.rdi.ihq.service.hostPlayRoutes
+import calebxzhou.rdi.ihq.service.mailRoutes
 import calebxzhou.rdi.ihq.service.modpackRoutes
 import calebxzhou.rdi.ihq.service.updateRoutes
 import calebxzhou.rdi.ihq.util.serdesJson
@@ -161,6 +162,7 @@ fun startHttp(){
                 worldRoutes()
                 chatRoutes()
                 modpackRoutes()
+                mailRoutes()
             }
         }
     }.start(wait = true)
