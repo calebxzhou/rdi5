@@ -399,8 +399,25 @@ idea {
     }
 }
 
-tasks.register('出core', Copy) {
+tasks.register('出core') {
     dependsOn(tasks.named('build'))
-    from(layout.buildDirectory.file("libs/rdi-${version}.jar"))
-    into("..\\ihq\\run")
+    var artifact = layout.buildDirectory.file("libs/rdi-${version}.jar")
+    var destinations = listOf(
+        file("..${File.separator}ihq${File.separator}run"),
+        file("${System.getProperty('user.home')}\\Documents\\RDI5sea-Ref\\.minecraft\\versions\\RDI5.5\\mods"),
+        file("\\\\rdi5\\rdi55\\ihq")
+    )
+
+    doLast {
+        var jarFile = artifact.get().asFile
+        if (!jarFile.exists()) {
+            throw GradleException("未找到构建产物: ${jarFile}")
+        }
+        destinations.forEach { target ->
+            copy {
+                from(jarFile)
+                into(target)
+            }
+        }
+    }
 }

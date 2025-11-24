@@ -60,13 +60,15 @@ test {
 kotlin {
     jvmToolchain(21)
 }
-tasks.register('出core_sea', Copy) {
+tasks.register('出core', Copy) {
     dependsOn(tasks.named('shadowJar'))
-    from(layout.buildDirectory.file("libs/ihq.jar"))
-    into("C:\\Users\\liberatorch\\Documents\\RDI5sea-hq")
-}
-tasks.register('出core_mech', Copy) {
-    dependsOn(tasks.named('shadowJar'))
-    from(layout.buildDirectory.file("libs/ihq.jar"))
-    into("\\\\caleb\\Users\\Public\\rdi5server\\mech\\hq")
+
+    var jar= layout.buildDirectory.file("libs/ihq.jar")
+    doLast {
+        var jarFile = jar.get().asFile
+        copy {
+            from(jarFile)
+            into(file("\\\\rdi5\\rdi55\\ihq"))
+        }
+    }
 }
