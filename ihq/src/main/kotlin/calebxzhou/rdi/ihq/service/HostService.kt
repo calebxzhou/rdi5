@@ -162,7 +162,7 @@ fun Route.hostRoutes() = route("/host") {
             }
         }
         post("/member/{qq}"){
-                call.hostGuardContext().needOwner.addMember(param("qq"))
+                call.hostGuardContext().needAdmin.addMember(param("qq"))
                 ok()
 
         }
