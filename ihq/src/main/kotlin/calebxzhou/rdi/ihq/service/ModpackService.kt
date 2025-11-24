@@ -24,6 +24,7 @@ import calebxzhou.rdi.ihq.service.ModpackService.requireVersion
 import calebxzhou.rdi.ihq.service.ModpackService.setStatus
 import calebxzhou.rdi.ihq.service.ModpackService.toDetailVo
 import calebxzhou.rdi.ihq.service.PlayerService.getPlayerNames
+import calebxzhou.rdi.ihq.util.humanSize
 import calebxzhou.rdi.ihq.util.safeDirSize
 import calebxzhou.rdi.ihq.util.scope
 import calebxzhou.rdi.ihq.util.serdesJson
@@ -100,7 +101,12 @@ fun Route.modpackRoutes() {
                     scope.launch {
                         runCatching {
                             version.setStatus(Modpack.Status.BUILDING)
-                            pack.buildAsImage(version)
+                            val mailId = MailService.sendSystemMail(
+                                uid,
+                                "重构整合包：${verName}",
+                                "开始重新构建整合包 ${pack.name} 版本${version.name}\n"
+                            )._id
+                            pack.buildAsImage(mailId, version)
                         }.onFailure { error ->
                             lgr.error(error) { "重构整合包 ${pack._id}:${version.name} 失败" }
                             version.setStatus(Modpack.Status.FAIL)
@@ -206,12 +212,13 @@ object ModpackService {
                 authorId = pack.authorId,
                 authorName = authorNames[pack.authorId] ?: "未知作者",
                 modCount = pack.versions.maxOfOrNull { it.mods.size } ?: 0,
-                fileSize = pack.totalSize(),
+                fileSize = pack.versions.last().totalSize ?: 0L,
                 icon = pack.icon,
                 info = pack.info
             )
         }
     }
+
     //单个整合包的详细信息
     suspend fun Modpack.toDetailVo(): ModpackDetailedVo {
         val authorName = PlayerService.getName(authorId) ?: "未知作者"
@@ -221,7 +228,6 @@ object ModpackService {
             authorId = authorId,
             authorName = authorName,
             modCount = versions.maxOfOrNull { it.mods.size } ?: 0,
-            fileSize = totalSize(),
             icon = icon,
             info = info,
             modloader = modloader,
@@ -307,59 +313,31 @@ object ModpackService {
             mods = mods, time = System.currentTimeMillis()
         )
 
-        val zipFile = pack.dir.resolve("${name}.zip")
-        zipFile.parentFile?.mkdirs()
-        zipFile.writeBytes(zipBytes)
+        version.zip.writeBytes(zipBytes)
 
         scope.launch {
-            lgr.info { "开始处理整合包 ${pack._id}:${version.name}" }
-            runCatching {
-                pack.finalizeUploadedVersion(version, zipFile)
-            }.onSuccess {
-                lgr.info { "整合包 ${pack._id}:${version.name} 处理完成" }
-            }.onFailure { error ->
-                lgr.error(error) { "处理整合包 ${pack._id}:${version.name} 失败" }
-            }
-        }
-    }
-
-    private suspend fun Modpack.finalizeUploadedVersion(version: Modpack.Version, zipFile: java.io.File) {
-        val verdir = version.dir
-        if (verdir.exists()) {
-            verdir.deleteRecursively()
-        }
-        if (!verdir.mkdirs()) {
-            throw RequestError("创建版本目录失败")
-        }
-
-        try {
-            unzipOverrides(zipFile, verdir)
-            //计算总尺寸
-            val versionSize = verdir.walkTopDown()
-                .filter { it.isFile }
-                .sumOf { it.length() }
-            verdir.resolve("total_size.txt").writeText(versionSize.toString())
-
             dbcl.updateOne(
-                eq("_id", _id),
+                eq("_id", pack._id),
                 Updates.push(Modpack::versions.name, version)
             )
-
-            lgr.info { "开始构建镜像 ${_id}:${version.name}" }
-            runCatching { buildAsImage(version) }
+            lgr.info { "开始构建镜像 ${pack.name}:${version.name}" }
+            val mailId = MailService.sendSystemMail(
+                player._id,
+                "构建整合包：${verName}",
+                "开始构建整合包 ${pack.name} 版本${version.name}\n"
+            )._id
+            runCatching { pack.buildAsImage(mailId, version) }
                 .onFailure { error ->
-                    lgr.error(error) { "镜像构建失败 ${_id}:${version.name}" }
+                    lgr.error(error) { "镜像构建失败 ${pack.name}:${version.name}" }
+                    MailService.changeMail(
+                        mailId,
+                        "整合包构建失败：${pack.name}",
+                        "无法构建整合包，错误原因：${error.stackTrace}"
+                    )
                 }
-        } catch (e: Exception) {
-            if (verdir.exists()) {
-                verdir.deleteRecursively()
-            }
-            throw when (e) {
-                is RequestError -> e
-                else -> RequestError("处理整合包失败: ${e.message}")
-            }
         }
     }
+
 
     private fun unzipOverrides(zipFile: java.io.File, targetDir: java.io.File) {
         val versionDirPath = targetDir.toPath()
@@ -392,49 +370,92 @@ object ModpackService {
         }
     }
 
-    suspend fun Modpack.buildAsImage(version: Modpack.Version) {
-        val modsDir = version.dir.resolve("mods").apply { mkdirs() }
-        BASE_IMAGE_DIR.resolve("${mcVer}_${modloader}").copyRecursively(version.dir, true)
-        //只下载非客户端mod
-        val downloadedMods = CurseForgeService.downloadMods(version.mods.filter { it.side != Mod.Side.CLIENT })
-
-
-        downloadedMods.forEach { sourcePath ->
-            val fileName = sourcePath.fileName?.toString() ?: return@forEach
-            val targetPath = modsDir.resolve(fileName).toPath()
-            targetPath.parent?.let { Files.createDirectories(it) }
-            val absoluteSource = sourcePath.toAbsolutePath()
-            Files.copy(absoluteSource, targetPath, StandardCopyOption.REPLACE_EXISTING)
+    suspend fun Modpack.buildAsImage(mailId: ObjectId, version: Modpack.Version) {
+        if (!version.zip.exists()) {
+            throw RequestError("版本压缩文件不存在 请重新上传")
+        }
+        val targetDir = version.dir
+        if (targetDir.exists()) {
+            targetDir.deleteRecursively()
+        }
+        if (!targetDir.mkdirs()) {
+            throw RequestError("创建版本目录失败")
         }
 
-        val imageTag = "${_id.str}:${version.name}"
-        val imageId = DockerService.buildImage(
-            imageTag,
-            version.dir,
-            onLine = { log -> lgr.info { "build image ${imageTag}: ${log}" } },
-            onError = { throwable ->
-                lgr.error(throwable) { "build image ${imageTag} failed" }
+        try {
+            MailService.changeMail(mailId, newContent = "正在解压...")
+            BASE_IMAGE_DIR.resolve("${mcVer}_${modloader}").copyRecursively(targetDir, true)
+            unzipOverrides(version.zip, targetDir)
+            targetDir.safeDirSize.let {
+                version.setTotalSize(it)
+                MailService.changeMail(mailId, newContent = "解压完成 总尺寸${it.humanSize}")
+            }
+            val modsDir = targetDir.resolve("mods").apply { mkdirs() }
+            val downloadedMods = CurseForgeService.downloadMods(version.mods.filter { it.side != Mod.Side.CLIENT }) {
                 scope.launch {
-                    version.setStatus(Modpack.Status.FAIL)
-                }
-            },
-            onFinished = {
-                lgr.info { "build image ${imageTag} finished" }
-                scope.launch {
-                    version.setStatus(Modpack.Status.OK)
+                    MailService.changeMail(mailId, newContent = it)
                 }
             }
-        )
+            MailService.changeMail(mailId, newContent = "所有mod下载完成 开始安装。。")
+            downloadedMods.forEach { sourcePath ->
+                val fileName = sourcePath.fileName?.toString() ?: return@forEach
+                val targetPath = modsDir.resolve(fileName).toPath()
+                targetPath.parent?.let { Files.createDirectories(it) }
+                val absoluteSource = sourcePath.toAbsolutePath()
+                Files.copy(absoluteSource, targetPath, StandardCopyOption.REPLACE_EXISTING)
+            }
 
-        lgr.info { "build image $imageTag success: $imageId" }
+            val imageTag = "${_id.str}:${version.name}"
+            val imageId = DockerService.buildImage(
+                imageTag,
+                targetDir,
+                onLine = { log ->
+                    scope.launch {
+                        MailService.changeMail(mailId, newContent = log)
+                    }
+                    lgr.info { "build image ${imageTag}: ${log}" }
+                },
+                onError = { throwable ->
+                    lgr.error(throwable) { "build image ${imageTag} failed" }
+                    scope.launch {
+                        MailService.changeMail(mailId, newContent = "构建失败：${throwable.message}", newTitle = "构建失败${name}")
+                        version.setStatus(Modpack.Status.FAIL)
+                    }
+                },
+                onFinished = {
+                    lgr.info { "build image ${imageTag} finished" }
+                    scope.launch {
+                        MailService.changeMail(mailId, newContent = "构建成功", newTitle = "构建成功${name}能玩了")
+                        version.setStatus(Modpack.Status.OK)
+                    }
+                }
+            )
 
-
+            lgr.info { "build image $imageTag success: $imageId" }
+        } catch (e: Exception) {
+            if (targetDir.exists()) {
+                targetDir.deleteRecursively()
+            }
+            throw e
+        }
     }
 
     suspend fun Modpack.Version.setStatus(status: Modpack.Status) {
         dbcl.updateOne(
             eq(Modpack::_id.name, modpackId),
             Updates.set("${Modpack::versions.name}.$[elem].${Modpack.Version::status.name}", status),
+            UpdateOptions().arrayFilters(
+                listOf(
+                    Document("elem.name", name)
+                )
+            )
+        )
+    }
+
+    suspend fun Modpack.Version.setTotalSize(size: Long) {
+        dbcl.updateOne(
+            eq(Modpack::_id.name, modpackId),
+            Updates.set("${Modpack::versions.name}.$[elem].${Modpack.Version::totalSize.name}", size),
             UpdateOptions().arrayFilters(
                 listOf(
                     Document("elem.name", name)
@@ -483,17 +504,6 @@ object ModpackService {
             ?: throw RequestError("版本不存在")
         return pack to version
     }
-
-    fun Modpack.totalSize(): Long = versions.sumOf { version ->
-        val versionDir = version.dir
-        val sizeFile = versionDir.resolve("total_size.txt")
-        when {
-            sizeFile.exists() -> sizeFile.readText().toLongOrNull() ?: versionDir.safeDirSize()
-            versionDir.exists() -> versionDir.safeDirSize()
-            else -> 0L
-        }
-    }
-
 
 
     fun extractOverridesRelativePath(entryName: String): String? {
