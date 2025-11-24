@@ -5,24 +5,47 @@ import calebxzhou.rdi.ihq.SYSTEM_SENDER_ID
 import calebxzhou.rdi.ihq.exception.ParamError
 import calebxzhou.rdi.ihq.exception.RequestError
 import calebxzhou.rdi.ihq.model.Mail
+import calebxzhou.rdi.ihq.model.RAccount
+import calebxzhou.rdi.ihq.net.response
+import calebxzhou.rdi.ihq.service.MailService.getInbox
 import com.mongodb.client.model.Filters.and
 import com.mongodb.client.model.Filters.eq
 import com.mongodb.client.model.Sorts
 import com.mongodb.client.model.Updates
+import io.ktor.server.routing.Route
+import io.ktor.server.routing.get
+import io.ktor.server.routing.route
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.toList
+import org.bouncycastle.asn1.x500.style.RFC4519Style.uid
+import kotlin.io.use
 import org.bson.types.ObjectId
 
+fun Route.mailRoutes() {
+    route("/mail"){
+        get { response(data=call.player().getInbox()) }
+    }
+}
 object MailService {
     private const val TITLE_MAX_LEN = 120
     private const val CONTENT_MAX_LEN = 4000
 
     private val mailCol = DB.getCollection<Mail>("mail")
 
-    suspend fun getInbox(uid: ObjectId): List<Mail> {
-        ensurePlayerExists(uid)
-        return mailCol.find(eq("receiverId", uid))
+    suspend fun RAccount.getInbox(): List<Mail.Vo> {
+        val mails = mailCol.find(eq("receiverId", _id))
             .sort(Sorts.descending("_id"))
             .toList()
+        return mails.map {
+            Mail.Vo(
+                it._id,
+                if (it.senderId == SYSTEM_SENDER_ID) "系统" else PlayerService.getName(it.senderId) ?: "未知",
+                it.title,
+                it.content.substring(0, 20),
+                it.unread
+            )
+        }
+
     }
 
     suspend fun sendMail(
@@ -52,7 +75,8 @@ object MailService {
     ): Mail {
         ensurePlayerExists(receiverId)
         val normalizedTitle = normalizeTitle(title)
-        val normalizedContent = normalizeContent(content)
+        //系统邮件不需要截断正文长度 因为日志很长
+        val normalizedContent = (content)
         val mail = Mail(
             senderId = SYSTEM_SENDER_ID,
             receiverId = receiverId,
@@ -61,6 +85,35 @@ object MailService {
         )
         mailCol.insertOne(mail)
         return mail
+    }
+
+    suspend fun changeMail(
+        mailId: ObjectId,
+        newTitle: String? = null,
+        newContent: String? = null,
+        append: Boolean = true
+    ) {
+        if (newTitle == null && newContent == null) return
+
+        val mail = mailCol.find(eq("_id", mailId))
+            .limit(1)
+            .firstOrNull()
+            ?: throw RequestError("未找到对应邮件")
+
+        val normalizedTitle = newTitle?.let(::normalizeTitle)
+        val normalizedContent = newContent?.let(::normalizeContent)?.let { content ->
+            if (append) {
+                val existing = mail.content.ifBlank { "" }
+                if (existing.isBlank()) content else "$existing\n$content"
+            } else content
+        }
+
+        val updateOps = mutableListOf<org.bson.conversions.Bson>()
+        normalizedTitle?.let { updateOps += Updates.set("title", it) }
+        normalizedContent?.let { updateOps += Updates.set("content", it) }
+
+        if (updateOps.isEmpty()) return
+        mailCol.updateOne(eq("_id", mailId), Updates.combine(*updateOps.toTypedArray()))
     }
 
     suspend fun markAsRead(mailId: ObjectId, ownerId: ObjectId) {
@@ -91,4 +144,5 @@ object MailService {
         if (normalized.length > CONTENT_MAX_LEN) throw ParamError("内容过长")
         return normalized
     }
+
 }
