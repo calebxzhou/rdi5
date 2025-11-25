@@ -83,7 +83,7 @@ object CurseForgeService {
     suspend fun downloadMods(mods: List<Mod>,onProgress: (String) -> Unit = {}): List<Path> {
         if (mods.isEmpty()) return emptyList()
         val parallelism = min(MAX_PARALLEL_DOWNLOADS, mods.size)
-        onProgress("下载Mod：${mods.map { it.slug }}")
+        onProgress("下载${mods.size}个Mod：${mods.map { it.slug }}")
         lgr.info { "下载${mods.size}个mod，最大并发：$parallelism" }
         val semaphore = Semaphore(parallelism)
         val downloaded = mutableListOf<Path>()
