@@ -6,32 +6,62 @@ import calebxzhou.rdi.ihq.exception.ParamError
 import calebxzhou.rdi.ihq.exception.RequestError
 import calebxzhou.rdi.ihq.model.Mail
 import calebxzhou.rdi.ihq.model.RAccount
+import calebxzhou.rdi.ihq.net.idParam
+import calebxzhou.rdi.ihq.net.ok
 import calebxzhou.rdi.ihq.net.response
+import calebxzhou.rdi.ihq.service.MailService.deleteMail
 import calebxzhou.rdi.ihq.service.MailService.getInbox
+import calebxzhou.rdi.ihq.service.MailService.getMail
+import calebxzhou.rdi.ihq.service.MailService.mailId
+import calebxzhou.rdi.ihq.util.humanDateTime
+import calebxzhou.rdi.ihq.util.ioScope
 import com.mongodb.client.model.Filters.and
 import com.mongodb.client.model.Filters.eq
 import com.mongodb.client.model.Sorts
 import com.mongodb.client.model.Updates
 import io.ktor.server.routing.Route
+import io.ktor.server.routing.RoutingContext
+import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.route
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.toList
-import org.bouncycastle.asn1.x500.style.RFC4519Style.uid
-import kotlin.io.use
+import kotlinx.coroutines.launch
 import org.bson.types.ObjectId
 
 fun Route.mailRoutes() {
     route("/mail"){
         get { response(data=call.player().getInbox()) }
+        route("/{mailId}"){
+            get {
+                response(data=call.player().getMail(mailId()))
+            }
+            delete {
+                call.player().deleteMail(mailId())
+                ok()
+            }
+        }
     }
 }
 object MailService {
     private const val TITLE_MAX_LEN = 120
     private const val CONTENT_MAX_LEN = 4000
-
+    suspend fun RoutingContext.mailId() = idParam("mailId")
     private val mailCol = DB.getCollection<Mail>("mail")
-
+    suspend fun getById(mailId: ObjectId): Mail? {
+        return mailCol.find(eq("_id", mailId))
+            .limit(1)
+            .firstOrNull()
+    }
+    suspend fun RAccount.getMail(mailId: ObjectId): Mail {
+        val mail = mailCol.find(
+            and(
+                eq("_id", mailId),
+                eq("receiverId", this._id)
+            )
+        ).limit(1).firstOrNull() ?: throw RequestError("未找到对应邮件")
+        return mail
+    }
     suspend fun RAccount.getInbox(): List<Mail.Vo> {
         val mails = mailCol.find(eq("receiverId", _id))
             .sort(Sorts.descending("_id"))
@@ -54,20 +84,30 @@ object MailService {
         title: String,
         content: String,
     ): Mail {
+        if (content.length > CONTENT_MAX_LEN) throw ParamError("内容过长")
         ensurePlayerExists(senderId)
         ensurePlayerExists(receiverId)
         val normalizedTitle = normalizeTitle(title)
-        val normalizedContent = normalizeContent(content)
         val mail = Mail(
             senderId = senderId,
             receiverId = receiverId,
             title = normalizedTitle,
-            content = normalizedContent,
+            content = content,
         )
         mailCol.insertOne(mail)
         return mail
     }
-
+    suspend fun RAccount.deleteMail(mailId: ObjectId) {
+        val deleteResult = mailCol.deleteOne(
+            and(
+                eq("_id", mailId),
+                eq("receiverId", this._id)
+            )
+        )
+        if (deleteResult.deletedCount == 0L) {
+            throw RequestError("未找到对应邮件")
+        }
+    }
     suspend fun sendSystemMail(
         receiverId: ObjectId,
         title: String,
@@ -87,13 +127,13 @@ object MailService {
         return mail
     }
 
-    suspend fun changeMail(
+    fun changeMail(
         mailId: ObjectId,
         newTitle: String? = null,
         newContent: String? = null,
         append: Boolean = true
-    ) {
-        if (newTitle == null && newContent == null) return
+    )= ioScope.launch {
+        if (newTitle == null && newContent == null) return@launch
 
         val mail = mailCol.find(eq("_id", mailId))
             .limit(1)
@@ -101,10 +141,10 @@ object MailService {
             ?: throw RequestError("未找到对应邮件")
 
         val normalizedTitle = newTitle?.let(::normalizeTitle)
-        val normalizedContent = newContent?.let(::normalizeContent)?.let { content ->
+        val normalizedContent = newContent?.let { content ->
             if (append) {
                 val existing = mail.content.ifBlank { "" }
-                if (existing.isBlank()) content else "$existing\n$content"
+                if (existing.isBlank()) content else "$existing\n[${humanDateTime}] $content"
             } else content
         }
 
@@ -112,7 +152,7 @@ object MailService {
         normalizedTitle?.let { updateOps += Updates.set("title", it) }
         normalizedContent?.let { updateOps += Updates.set("content", it) }
 
-        if (updateOps.isEmpty()) return
+        if (updateOps.isEmpty()) return@launch
         mailCol.updateOne(eq("_id", mailId), Updates.combine(*updateOps.toTypedArray()))
     }
 
@@ -138,11 +178,5 @@ object MailService {
         return normalized
     }
 
-    private fun normalizeContent(content: String): String {
-        val normalized = content.trim()
-        if (normalized.isEmpty()) throw ParamError("内容不能为空")
-        if (normalized.length > CONTENT_MAX_LEN) throw ParamError("内容过长")
-        return normalized
-    }
 
 }

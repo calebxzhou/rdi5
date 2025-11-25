@@ -43,7 +43,7 @@ class ProfileFragment : RFragment("我的信息") {
         }
         titleViewInit={
             quickOptions {
-                "\uEB1C 信箱" colored MaterialColor.BLUE_900 with { alertErr("没开发完") }
+                "\uEB1C 信箱" colored MaterialColor.BLUE_900 with { MailFragment().go() }
                 "\uDB83\uDFC5 登出" colored MaterialColor.RED_900 with { close() }
             }
         }
