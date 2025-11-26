@@ -62,12 +62,14 @@ val DB = MongoClient.create(
 val CRASH_REPORT_DIR = File("crash-report")
 val DOWNLOAD_MODS_DIR = File("download-mods")
 val MODPACK_DATA_DIR = File("modpack")
-val BASE_IMAGE_DIR = File("base-image")
+val HOSTS_DIR = File("hosts")
+val GAME_LIBS_DIR = File("game-libs")
 fun main(): Unit =runBlocking {
     CRASH_REPORT_DIR.mkdir()
     DOWNLOAD_MODS_DIR.mkdir()
     MODPACK_DATA_DIR.mkdir()
-    BASE_IMAGE_DIR.mkdir()
+    HOSTS_DIR.mkdir()
+    GAME_LIBS_DIR.mkdir()
         lgr.info { "init db" }
 
         accountCol.createIndex(Indexes.ascending("qq"), IndexOptions().unique(true))
