@@ -11,8 +11,11 @@ import calebxzhou.rdi.service.CurseForgeService.fillCurseForgeVo
 import calebxzhou.rdi.service.CurseForgeService.mapMods
 import calebxzhou.rdi.service.selectModpackFile
 import calebxzhou.rdi.ui2.*
+import calebxzhou.rdi.ui2.component.LoadingView
 import calebxzhou.rdi.ui2.component.ModGrid
+import calebxzhou.rdi.ui2.component.closeLoading
 import calebxzhou.rdi.ui2.component.confirm
+import calebxzhou.rdi.ui2.component.showLoading
 import calebxzhou.rdi.util.humanDateTime
 import calebxzhou.rdi.util.ioTask
 import icyllis.modernui.view.Gravity
@@ -29,7 +32,7 @@ class ModpackInfoFragment(val modpackId: ObjectId) : RFragment("整合包信息"
         contentViewInit = {
             server.request<ModpackDetailedVo>("modpack/$modpackId") {
                 it.data?.run {
-                    if(versions.isNotEmpty()){
+                    if (versions.isNotEmpty()) {
                         versions.latest.mods.fillCurseForgeVo()
                     }
                     load()
@@ -52,9 +55,9 @@ class ModpackInfoFragment(val modpackId: ObjectId) : RFragment("整合包信息"
                         }
                     }
                 }
-               /* "▶ 拿最新版开服" colored MaterialColor.GREEN_900 with {
-                    HostListFragment.Create(modpackId, name, versions.latest.name).go()
-                }*/
+                /* "▶ 拿最新版开服" colored MaterialColor.GREEN_900 with {
+                     HostListFragment.Create(modpackId, name, versions.latest.name).go()
+                 }*/
             }
         }
 
@@ -63,16 +66,21 @@ class ModpackInfoFragment(val modpackId: ObjectId) : RFragment("整合包信息"
             textView("$name         \uF4CA上传者：$authorName      \uF11BMC版本：$mcVer $modloader")
             textView("简介：$info")
             textView("共${versions.size}个版本：")
-            versions .forEach { v ->
+            versions.forEach { v ->
                 linearLayout {
                     gravity = Gravity.CENTER_VERTICAL
                     padding8dp()
-                    textView("V${v.name} - 上传时间：${v.time.humanDateTime} - \uF0C7${v.totalSize?.humanSize?:""}")
-                    if(v.status== Modpack.Status.BUILDING) textView("【正在构建中】")
+                    textView("V${v.name} - 上传时间：${v.time.humanDateTime} - \uF0C7${v.totalSize?.humanSize ?: ""}")
+                    if (v.status == Modpack.Status.BUILDING) textView("【正在构建中】")
                     quickOptions {
-                        if(v.status == Modpack.Status.OK) {
+                        if (v.status == Modpack.Status.OK) {
                             "▶ 拿这版开服" colored MaterialColor.GREEN_900 with {
-                                HostCreateFragment(modpackId, name, v.name,v.mods.find { it.slug=="skyblock-builder" }!=null).go()
+                                HostCreateFragment(
+                                    modpackId,
+                                    name,
+                                    v.name,
+                                    v.mods.find { it.slug == "skyblock-builder" } != null
+                                ).go()
                             }
                         }
                         "\uF1F8 删除" colored MaterialColor.RED_900 with {
@@ -94,16 +102,18 @@ class ModpackInfoFragment(val modpackId: ObjectId) : RFragment("整合包信息"
                     }
                 }
             }
-            if(versions.isNotEmpty()){
+            if (versions.isNotEmpty()) {
                 textView("mod列表：$modCount 个")
                 this += ModGrid(context, mods = versions.latest.mods)
-            }else{
+            } else {
                 textView("此整合包暂无可用版本，等待作者上传....")
-                button("↑ 上传新版") {
-                    ioTask {
-                        selectModpackFile?.let {
+                button("↑ 上传新版") { btn->
+                    selectModpackFile?.let {
+                        contentView.textView("正在读取此整合包...")
+                        btn.isEnabled = false
+                        ioTask {
                             val data = CurseForgeService.loadModpack(it)
-                            ModpackUploadFragment.Confirm(data,data.manifest.files.mapMods(),modpackId,name).go()
+                            ModpackUploadFragment.Confirm(data, data.manifest.files.mapMods(), modpackId, name).go()
                         }
                     }
                 }
