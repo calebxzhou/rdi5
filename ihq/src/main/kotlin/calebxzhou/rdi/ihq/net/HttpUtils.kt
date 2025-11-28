@@ -164,8 +164,10 @@ suspend fun RoutingContext.idParam(name: String): ObjectId = call.idParam(name)
 suspend fun RoutingContext.paramNull(name: String): String? = call.paramNull(name)
 suspend fun ApplicationCall.param(name: String): String =
     paramNull(name) ?: throw ParamError("缺少参数: $name")
+suspend fun ApplicationCall.idParamNull(name: String): ObjectId? =
+    paramNull(name)?.let { ObjectId(it) }
 suspend fun ApplicationCall.idParam(name: String): ObjectId =
-    paramNull(name)?.let { ObjectId(it) } ?: throw ParamError("缺少参数: $name")
+    idParamNull(name) ?: throw ParamError("缺少ID: $name")
 
 /** Same as [param] but returns null when absent. */
 suspend fun ApplicationCall.paramNull(name: String): String? {
@@ -225,8 +227,4 @@ private fun JsonElement.asString(): String? = when (this) {
 private fun ContentType.matches(other: ContentType): Boolean {
     return contentType.equals(other.contentType, ignoreCase = true) &&
             contentSubtype.equals(other.contentSubtype, ignoreCase = true)
-}
-fun idExtractor(paramName: String): suspend ApplicationCall.() -> ObjectId = {
-    val raw = parameters[paramName] ?: throw ParamError("缺少$paramName")
-    runCatching { ObjectId(raw) }.getOrElse { throw ParamError("${paramName}格式错误") }
 }
