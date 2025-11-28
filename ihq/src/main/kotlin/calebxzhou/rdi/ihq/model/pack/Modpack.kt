@@ -21,6 +21,10 @@ data class Modpack(
 ) {
     val dir
         get() = MODPACK_DATA_DIR.resolve(_id.str)
+    val libsDir
+        get() = GAME_LIBS_DIR
+            .resolve(mcVer)
+            .resolve(modloader)
     @Serializable
     data class Version(
         val time: Long,
