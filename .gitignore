@@ -1,2 +1,4 @@
 *.log
 client_ui
+.gradle
+rdi
