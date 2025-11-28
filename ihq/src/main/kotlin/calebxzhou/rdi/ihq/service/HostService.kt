@@ -1,44 +1,52 @@
 package calebxzhou.rdi.ihq.service
 
 import calebxzhou.rdi.ihq.DB
+import calebxzhou.rdi.ihq.DOWNLOAD_MODS_DIR
+import calebxzhou.rdi.ihq.HOSTS_DIR
+import calebxzhou.rdi.ihq.exception.ParamError
 import calebxzhou.rdi.ihq.exception.RequestError
 import calebxzhou.rdi.ihq.lgr
 import calebxzhou.rdi.ihq.model.*
 import calebxzhou.rdi.ihq.model.pack.Mod
+import calebxzhou.rdi.ihq.model.pack.Modpack
 import calebxzhou.rdi.ihq.net.*
-import calebxzhou.rdi.ihq.service.HostService.addExtraMods
 import calebxzhou.rdi.ihq.service.HostService.addMember
+import calebxzhou.rdi.ihq.service.HostService.changeModpack
+import calebxzhou.rdi.ihq.service.HostService.changeVersion
 import calebxzhou.rdi.ihq.service.HostService.createHost
-import calebxzhou.rdi.ihq.service.HostService.delExtraMods
 import calebxzhou.rdi.ihq.service.HostService.delMember
 import calebxzhou.rdi.ihq.service.HostService.delete
 import calebxzhou.rdi.ihq.service.HostService.getLog
-import calebxzhou.rdi.ihq.service.HostService.getServerStatus
+import calebxzhou.rdi.ihq.service.HostService.hostContext
 import calebxzhou.rdi.ihq.service.HostService.listHostLobby
 import calebxzhou.rdi.ihq.service.HostService.listenLogs
-import calebxzhou.rdi.ihq.service.HostService.reloadExtraMods
+import calebxzhou.rdi.ihq.service.HostService.needAdmin
+import calebxzhou.rdi.ihq.service.HostService.needOwner
 import calebxzhou.rdi.ihq.service.HostService.restart
 import calebxzhou.rdi.ihq.service.HostService.sendCommand
 import calebxzhou.rdi.ihq.service.HostService.setRole
 import calebxzhou.rdi.ihq.service.HostService.start
+import calebxzhou.rdi.ihq.service.HostService.status
 import calebxzhou.rdi.ihq.service.HostService.transferOwnership
-import calebxzhou.rdi.ihq.service.HostService.update
 import calebxzhou.rdi.ihq.service.HostService.userStop
-import calebxzhou.rdi.ihq.service.PlayerService.getPlayerNames
+import calebxzhou.rdi.ihq.service.ModpackService.getVersion
 import calebxzhou.rdi.ihq.service.WorldService.createWorld
+import calebxzhou.rdi.ihq.util.ioScope
 import calebxzhou.rdi.ihq.util.serdesJson
 import calebxzhou.rdi.ihq.util.str
+import com.github.dockerjava.api.model.*
 import com.mongodb.client.model.Filters.*
 import com.mongodb.client.model.UpdateOptions
 import com.mongodb.client.model.Updates
 import com.mongodb.client.model.Updates.combine
 import com.mongodb.client.model.Updates.set
-import io.ktor.server.request.*
+import io.ktor.server.application.*
 import io.ktor.server.routing.*
 import io.ktor.server.sse.*
 import io.ktor.server.websocket.*
 import io.ktor.sse.*
 import io.ktor.websocket.*
+import io.ktor.websocket.Frame
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.firstOrNull
@@ -46,6 +54,10 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.toList
 import org.bson.Document
 import org.bson.types.ObjectId
+import java.io.File
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.StandardCopyOption
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -57,53 +69,57 @@ fun Route.hostRoutes() = route("/host") {
             call.player().createHost(
                 idParam("modpackId"),
                 param("packVer"),
-                paramNull("worldId")?.let { ObjectId(it) },
+                param("worldOpr"),
+                paramNull("useWorld")?.let { ObjectId(it) },
                 param("difficulty").toInt(),
                 param("gameMode").toInt(),
                 param("levelType")
             )
             ok()
         }
-        get("/lobby/{page?}"){
-            val hosts = call.player().listHostLobby(paramNull("page")?.toInt()?:0)
+        get("/lobby/{page?}") {
+            val hosts = call.player().listHostLobby(paramNull("page")?.toInt() ?: 0)
+            response(data = hosts)
+        }
+        get("/search/modpack/{modpackId}/{verName}") {
+            val hosts = HostService.findByModpackVersion(idParam("modpackId"), param("verName"))
             response(data = hosts)
         }
         get("/my/{page?}") {
-            response(data = call.player().listHostLobby(paramNull("page")?.toInt()?:0, myOnly = true))
+            response(data = call.player().listHostLobby(paramNull("page")?.toInt() ?: 0, myOnly = true))
         }
     }
     route("/{hostId}") {
-        install(HostGuardPlugin)
         get("/status") {
-            call.hostGuardContext().host.getServerStatus().let { response(data = it) }
+            call.hostContext().host.status.let { response(data = it) }
         }
         post("/start") {
-            call.hostGuardContext().start()
+            call.hostContext().start()
             ok()
         }
         post("/stop") {
-            call.hostGuardContext().needAdmin.userStop()
+            call.hostContext().needAdmin.userStop()
             ok()
         }
         post("/command") {
-            val ctx = call.hostGuardContext().needAdmin
+            val ctx = call.hostContext().needAdmin
             ctx.sendCommand(param("command"))
             ok()
         }
         post("/restart") {
-            call.hostGuardContext().needAdmin.restart()
+            call.hostContext().needAdmin.restart()
             ok()
         }
         post("/update") {
-            call.hostGuardContext().needAdmin.update(paramNull("packVer"))
+            call.hostContext().needAdmin.changeVersion(paramNull("verName"))
             ok()
         }
-        post("/transfer/{uid}") {
-            call.hostGuardContext().needOwner.transferOwnership(idParam("uid"))
+        post("/transfer/{uid2}") {
+            call.hostContext().needOwner.transferOwnership()
             ok()
         }
         delete {
-            call.hostGuardContext().needOwner.delete()
+            call.hostContext().needOwner.delete()
             ok()
         }
         get {
@@ -111,32 +127,15 @@ fun Route.hostRoutes() = route("/host") {
                 response(data = it)
             } ?: err("无此主机")
         }
-        route("/extra_mod") {
-            get {
-                response(data = call.hostGuardContext().host.extraMods)
-            }
-            post {
-                val ctx = call.hostGuardContext().needAdmin
-                val mods = call.receive<List<Mod>>()
-                ctx.addExtraMods(mods)
-                ok()
-            }
-            put {
-                call.hostGuardContext().needAdmin.reloadExtraMods()
-
-                ok()
-            }
-            delete {
-                val ctx = call.hostGuardContext().needAdmin
-                val mods = call.receive<List<Mod>>()
-                ctx.delExtraMods(mods)
-                ok()
-            }
+        post("/modpack/{modpackId}/{verName}") {
+            call.hostContext().needAdmin.changeModpack(idParam("modpackId"), param("verName"))
+            ok()
         }
+
         route("/log") {
             sse("/stream") {
                 val ctx = try {
-                    call.hostGuardContext()
+                    call.hostContext()
                 } catch (err: RequestError) {
                     runCatching {
                         send(ServerSentEvent(event = "error", data = err.message ?: "unknown"))
@@ -147,34 +146,32 @@ fun Route.hostRoutes() = route("/host") {
 
             }
             get("/{lines}") {
-                val logs = call.hostGuardContext().getLog(paramNull("startLine")?.toInt() ?: 0, param("lines").toInt())
-                response(data=logs)
+                val logs = call.hostContext().getLog(paramNull("startLine")?.toInt() ?: 0, param("lines").toInt())
+                response(data = logs)
             }
         }
-        route("/member/{uid}") {
-            put("/role") {
-                call.hostGuardContext().needOwner.setRole(idParam("uid"), Role.valueOf(param("role")))
+        route("/member/{uid2}") {
+            put("/role/{role}") {
+                call.hostContext().needOwner.setRole(Role.valueOf(param("role")))
                 ok()
             }
             delete {
-                call.hostGuardContext().needOwner.delMember(idParam("uid"))
+                call.hostContext().needOwner.delMember()
                 ok()
             }
         }
-        post("/member/{qq}"){
-                call.hostGuardContext().needAdmin.addMember(param("qq"))
-                ok()
+        post("/member/{qq}") {
+            call.hostContext().needAdmin.addMember(param("qq"))
+            ok()
 
         }
     }
 
 
-
-
-
 }
+
 //单独拿出来是为了不走authentication
-fun Route.hostPlayRoutes() = route("/host"){
+fun Route.hostPlayRoutes() = route("/host") {
     webSocket("/play/{hostId}") {
         val rawHostId = call.param("hostId")
 
@@ -204,12 +201,24 @@ fun Route.hostPlayRoutes() = route("/host"){
     }
 }
 
+data class HostContext(
+    val host: Host,
+    val player: RAccount,
+    val member: Host.Member,
+    val targetMemberNull: Host.Member?
+) {
+    val targetMember get() = targetMemberNull ?: throw ParamError("主机无此玩家")
+}
+
 object HostService {
+
+    private val isWindowsHost: Boolean = System.getProperty("os.name").contains("windows", ignoreCase = true)
+    private val dockerDesktopPrefix: String = System.getenv("DOCKER_DESKTOP_PATH_PREFIX")?.trimEnd('/') ?: "/run/desktop/mnt/host"
 
     val dbcl = DB.getCollection<Host>("host")
 
     private const val PORT_START = 50000
-
+    const val SERVER_RDI_CORE_FILENAME = "rdi-5-server.jar"
     private const val PORT_END_EXCLUSIVE = 60000
     private const val SHUTDOWN_THRESHOLD = 10
     private const val HOSTS_PER_PAGE = 20
@@ -224,9 +233,73 @@ object HostService {
     )
 
     private val hostStates = ConcurrentHashMap<ObjectId, HostState>()
+
+    private enum class OverlayStrategy(val envValue: String) {
+        HOST("host"),
+        IN_CONTAINER("in-container")
+    }
+
     private val Host.containerEnv
-        get() = listOf("HOST_ID=${_id.str}","GAME_PORT=${port}",
-            "DIFFICULTY=${difficulty}","GAME_MODE=${gameMode}","LEVEL_TYPE=${levelType}")
+        get() = { mods: List<Mod> ->
+            listOf(
+                "HOST_ID=${_id.str}",
+                "GAME_PORT=${port}",
+                "DIFFICULTY=${difficulty}",
+                "GAME_MODE=${gameMode}",
+                "LEVEL_TYPE=${levelType}",
+                "MOD_LIST=${mods.joinToString("\n") { mod -> mod.fileName }}",
+            )
+        }
+
+    private fun Host.buildEnv(mods: List<Mod>, strategy: OverlayStrategy, lowerDirs: String? = null): List<String> {
+        val base = this.containerEnv(mods)
+        val overlayVars = mutableListOf("RDI_OVERLAY_STRATEGY=${strategy.envValue}")
+        if (!lowerDirs.isNullOrBlank()) {
+            overlayVars += "RDI_OVERLAY_LOWERDIRS=${lowerDirs}"
+        }
+        return base + overlayVars
+    }
+
+    private data class OverlaySources(
+        val libsDir: File,
+        val versionDir: File
+    )
+
+    private fun Host.prepareOverlaySources(modpack: Modpack, version: Modpack.Version): OverlaySources {
+        val libsDir = modpack.libsDir.canonicalFile.also {
+            if (!it.exists()) throw RequestError("整合包依赖缺失: ${it}")
+        }
+        val versionDir = version.dir.canonicalFile.also {
+            if (!it.exists()) throw RequestError("整合包版本目录缺失: ${it}")
+        }
+        val hostRoot = overlayRootDir().apply { mkdirs() }
+
+
+        return OverlaySources(libsDir, versionDir)
+    }
+    val HostContext.needAdmin get() = requireRole(Role.ADMIN)
+    val HostContext.needOwner get() = requireRole(Role.OWNER)
+    fun HostContext.requireRole(level: Role): HostContext {
+        member.let {
+            val allowed = when (level) {
+                Role.MEMBER -> true
+                Role.ADMIN -> member.role.level <= Role.ADMIN.level
+                Role.OWNER -> member.role == Role.OWNER
+                else -> false
+            }
+            if (!allowed) throw RequestError("无权限")
+        }
+        return this
+    }
+
+
+    suspend fun ApplicationCall.hostContext(): HostContext {
+        val requesterId = uid
+        val host = HostService.getById(idParam("hostId")) ?: throw RequestError("无此主机")
+        val reqMem = host.members.firstOrNull { it.id == requesterId } ?: throw RequestError("不是主机成员")
+        val tarMem = idParamNull("uid2")?.let { uid2 -> host.members.find { it.id == uid2 } }
+        return HostContext(host, player(), reqMem, tarMem)
+    }
 
     fun registerPlayableSession(hostId: ObjectId, session: DefaultWebSocketServerSession): Boolean {
         val state = hostStates.computeIfAbsent(hostId) { HostState() }
@@ -388,7 +461,7 @@ object HostService {
                 hostStates.remove(hostId, state)
             }
         }
-        lgr.info { "clear shut flag $hostId" }
+        lgr.info { "保持在线 $hostId" }
     }
 
     private fun stopHost(host: Host, reason: String) {
@@ -414,7 +487,7 @@ object HostService {
     suspend fun RAccount.createHost(
         modpackId: ObjectId,
         packVer: String,
-        //null：create new world
+        worldOpr: String,
         worldId: ObjectId?,
         difficulty: Int,
         gameMode: Int,
@@ -422,20 +495,30 @@ object HostService {
     ) {
         val playerId = _id
         val world = worldId?.let {
-            if (findByWorld(it) != null)
-                throw RequestError("此存档已被其他主机占用")
-            WorldService.getById(it)
-                ?: throw RequestError("无此存档")
-        } ?: createWorld(playerId, null, modpackId)
-        if (world.ownerId !=playerId) throw RequestError("不是你的存档")
+            val occupyHost = findByWorld(it)
+            if (occupyHost != null)
+                throw RequestError("此存档已被主机《${occupyHost.name}》占用")
+            WorldService.getById(it)?.also { world ->
+                if (world.ownerId != playerId) throw RequestError("不是你的存档")
+            } ?: throw RequestError("无此存档")
+        } ?: let {
+            when (worldOpr) {
+                "create" -> createWorld(playerId, null, modpackId)
+                "use" -> throw ParamError("缺少存档ID")
+                "no" -> null
+                else -> null
+            }
+        }
 
+        val modpack = ModpackService.getById(modpackId) ?: throw RequestError("无此包")
+        val version = modpack.getVersion(packVer) ?: throw RequestError("无此版本")
         val port = allocateRoomPort()
         val host = Host(
             name = "${name}的主机" + (ownHosts().size + 1),
             ownerId = playerId,
             modpackId = modpackId,
             packVer = packVer,
-            worldId = world._id,
+            worldId = world?._id,
             port = port,
             difficulty = difficulty,
             gameMode = gameMode,
@@ -443,47 +526,199 @@ object HostService {
             members = listOf(Host.Member(id = playerId, role = Role.OWNER))
 
         )
-        dbcl.insertOne(host)
-        DockerService.createContainer(port, host._id.str, world._id.str, host.imageRef(),host.containerEnv)
-        DockerService.start(host._id.str)
-        clearShutFlag(host._id)
-    }
+        val mailId =
+            MailService.sendSystemMail(playerId, "主机创建中", "你的主机《${host.name}》正在创建中，请稍等几分钟...")._id
+        ioScope.launch {
+            runCatching {
+                host.makeContainer(world?._id, modpack, version)
+                dbcl.insertOne(host)
 
+                DockerService.start(host._id.str)
 
-    suspend fun HostGuardContext.delete() {
-        DockerService.deleteContainer(host._id.str)
-        clearShutFlag(host._id)
-        dbcl.deleteOne(eq("_id", host._id))
-    }
-
-    suspend fun HostGuardContext.update(packVer: String?) {
-        val current = getById(host._id) ?: throw RequestError("无此主机")
-        val modpackVer = ModpackService.get(host.modpackId)?.versions?.last() ?: throw RequestError("无此整合包")
-        val resolvedVer = modpackVer.name
-        val running = DockerService.isStarted(current._id.str)
-        if (running) {
-            DockerService.stop(current._id.str)
+                clearShutFlag(host._id)
+            }.onFailure {
+                host.cleanupOverlayArtifacts()
+                lgr.error { it }
+                it.printStackTrace()
+                MailService.changeMail(mailId, "主机创建失败", newContent = "无法创建主机，错误：${it}")
+            }.onSuccess {
+                MailService.changeMail(mailId, "主机创建成功", newContent = "可以玩了")
+            }
         }
-        DockerService.deleteContainer(current._id.str)
-        val worldId = current.worldId
-        DockerService.createContainer(
-            current.port,
-            current._id.str,
-            worldId.str,
-            "${current.modpackId.str}:$resolvedVer",
-            host.containerEnv
-        )
-        DockerService.start(current._id.str)
-        clearShutFlag(current._id)
 
+
+    }
+
+    suspend fun HostContext.changeModpack(modpackId: ObjectId, verName: String) {
+        if (host.status != HostStatus.STOPPED)
+            throw RequestError("请先停止主机")
+        val modpack = ModpackService.getById(modpackId) ?: throw RequestError("无此整合包")
+        val version = modpack.getVersion(verName) ?: throw RequestError("无此版本")
+        DockerService.deleteContainer(host._id.str)
+        host.cleanupOverlayArtifacts()
+        host.makeContainer(host.worldId, modpack, version)
         dbcl.updateOne(
-            eq("_id", current._id), combine(
-                set(Host::packVer.name, resolvedVer),
+            eq("_id", host._id), combine(
+                set(Host::modpackId.name, modpackId),
+                set(Host::packVer.name, verName),
             )
         )
     }
 
-    suspend fun HostGuardContext.start() {
+    private fun Host.makeContainer(
+        worldId: ObjectId?,
+        modpack: Modpack,
+        version: Modpack.Version
+    ) {
+        if (isWindowsHost) {
+            makeContainerWithInContainerOverlay(worldId, modpack, version)
+        } else {
+            makeContainerWithHostOverlay(worldId, modpack, version)
+        }
+    }
+
+    private fun Host.makeContainerWithInContainerOverlay(
+        worldId: ObjectId?,
+        modpack: Modpack,
+        version: Modpack.Version
+    ) {
+        val sources = prepareOverlaySources(modpack, version)
+        val overlayLowerDirs = listOf("/mnt/lib", "/mnt/modpack").joinToString(":")
+
+        val mounts = mutableListOf(
+            Mount()
+                .withType(MountType.TMPFS)
+                .withTarget("/mnt/overlay")
+                .withTmpfsOptions(TmpfsOptions().withSizeBytes(1L * 1024 * 1024 * 1024)),
+            Mount()
+                .withType(MountType.BIND)
+                .withSource(sources.versionDir.toDockerAccessiblePath())
+                .withTarget("/mnt/modpack")
+                .withReadOnly(true),
+            Mount()
+                .withType(MountType.BIND)
+                .withSource(sources.libsDir.toDockerAccessiblePath())
+                .withTarget("/mnt/lib")
+                .withReadOnly(true)
+        ).apply {
+            if (worldId != null) {
+                this += Mount()
+                    .withType(MountType.VOLUME)
+                    .withSource(worldId.str)
+                    .withTarget("/data")
+            } else {
+                this += Mount()
+                    .withType(MountType.TMPFS)
+                    .withTarget("/data")
+                    .withTmpfsOptions(TmpfsOptions().withSizeBytes(512 * 1024 * 1024))
+            }
+        }
+
+        DockerService.createContainer(
+            port,
+            this._id.str,
+            mounts,
+            "rdi:${modpack.mcVer}_${modpack.modloader}",
+            buildEnv(version.mods, OverlayStrategy.IN_CONTAINER, overlayLowerDirs),
+            requiresSysAdmin = true
+        )
+    }
+
+    private fun Host.makeContainerWithHostOverlay(
+        worldId: ObjectId?,
+        modpack: Modpack,
+        version: Modpack.Version
+    ) {
+        val sources = prepareOverlaySources(modpack, version)
+
+        DockerService.createVolume(overlayUpperVolumeName())
+        DockerService.createVolume(overlayWorkVolumeName())
+
+        val dockerRootDir = DockerService.dockerRootDir
+        val upperDirPath = "$dockerRootDir/volumes/${overlayUpperVolumeName()}/_data"
+        val workDirPath = "$dockerRootDir/volumes/${overlayWorkVolumeName()}/_data"
+        val lowerDirs = listOf(sources.libsDir, sources.versionDir)
+            .joinToString(":") { it.toDockerAccessiblePath() }
+
+        val overlayMount = Mount()
+            .withType(MountType.VOLUME)
+            .withSource(overlayVolumeName())
+            .withTarget("/opt/server")
+            .withReadOnly(false)
+            .withVolumeOptions(
+                VolumeOptions()
+                    .withNoCopy(true)
+                    .withDriverConfig(
+                        Driver()
+                            .withName("local")
+                            .withOptions(
+                                mapOf(
+                                    "type" to "overlay",
+                                    "device" to "overlay",
+                                    "o" to "lowerdir=${lowerDirs},upperdir=${upperDirPath},workdir=${workDirPath}"
+                                )
+                            )
+                    )
+            )
+
+        val mounts = mutableListOf(overlayMount).apply {
+            if (worldId != null) {
+                this += Mount()
+                    .withType(MountType.VOLUME)
+                    .withSource(worldId.str)
+                    .withTarget("/data")
+            } else {
+                //临时存档 关机消失
+                this += Mount()
+                    .withType(MountType.TMPFS)
+                    .withTarget("/data")
+                    .withTmpfsOptions(TmpfsOptions().withSizeBytes(512 * 1024 * 1024))
+            }
+        }
+
+        DockerService.createContainer(
+            port,
+            this._id.str,
+            mounts,
+            "rdi:${modpack.mcVer}_${modpack.modloader}",
+            buildEnv(version.mods, OverlayStrategy.HOST)
+        )
+    }
+
+
+    suspend fun HostContext.delete() {
+        DockerService.deleteContainer(host._id.str)
+        host.cleanupOverlayArtifacts()
+        clearShutFlag(host._id)
+        dbcl.deleteOne(eq("_id", host._id))
+    }
+
+    suspend fun HostContext.changeVersion(packVer: String?) {
+        val modpack = ModpackService.getById(host.modpackId) ?: throw RequestError("无此整合包")
+        val modpackVer = modpack.versions.find { it.name == packVer } ?: modpack.versions.lastOrNull()
+        ?: throw RequestError("无可用版本")
+        val resolvedVer = modpackVer.name
+        val hostIdStr = host._id.str
+        val mailId = MailService.sendSystemMail(
+            player._id,
+            "主机版本切换中",
+            "你的主机《${host.name}》正在切换到版本 $resolvedVer ，请稍等几分钟..."
+        )._id
+        if (DockerService.isStarted(hostIdStr)) {
+            DockerService.stop(hostIdStr)
+        }
+        DockerService.start(hostIdStr)
+        clearShutFlag(host._id)
+
+        dbcl.updateOne(
+            eq("_id", host._id), combine(
+                set(Host::packVer.name, resolvedVer),
+            )
+        )
+        MailService.changeMail(mailId, "主机版本切换完成", "好了")
+    }
+
+    suspend fun HostContext.start() {
         val current = getById(host._id) ?: throw RequestError("无此主机")
         if (DockerService.isStarted(current._id.str)) {
             throw RequestError("已经启动过了")
@@ -492,19 +727,19 @@ object HostService {
         clearShutFlag(current._id)
     }
 
-    suspend fun HostGuardContext.userStop() {
+    suspend fun HostContext.userStop() {
         sendCommand("stop")
         clearShutFlag(host._id)
     }
 
-    suspend fun HostGuardContext.restart() {
+    suspend fun HostContext.restart() {
         val current = getById(host._id) ?: throw RequestError("无此主机")
         sendCommand("stop")
         clearShutFlag(current._id)
         DockerService.restart(host._id.str)
     }
 
-    suspend fun HostGuardContext.sendCommand(command: String) {
+    suspend fun HostContext.sendCommand(command: String) {
         val hostId = host._id
         val normalized = command.trimEnd()
         if (normalized.isBlank()) throw RequestError("命令不能为空")
@@ -544,24 +779,41 @@ object HostService {
         }
     }
 
-    suspend fun Host.getServerStatus(): HostStatus {
-        val status = DockerService.getContainerStatus(_id.str)
-        if (status == HostStatus.STARTED && hostStates[_id]?.session != null) {
-            return HostStatus.PLAYABLE
+    val Host.status: HostStatus
+        get() {
+            val status = DockerService.getContainerStatus(_id.str)
+            if (status == HostStatus.STARTED && hostStates[_id]?.session != null) {
+                return HostStatus.PLAYABLE
+            }
+            return status
         }
-        return status
+
+    suspend fun findByModpackVersion(modpackId: ObjectId, verName: String): List<Host> {
+        return dbcl.find(
+            and(
+                eq("modpackId", modpackId),
+                eq("packVer", verName)
+            )
+        ).toList()
     }
 
+    suspend fun findByModpack(modpackId: ObjectId): List<Host> {
+        return dbcl.find(
+            and(
+                eq("modpackId", modpackId),
+            )
+        ).toList()
+    }
 
     // Get logs by range: [startLine, endLine), 0 means newest line
-    suspend fun HostGuardContext.getLog(startLine: Int = 0, needLines: Int): String {
+    suspend fun HostContext.getLog(startLine: Int = 0, needLines: Int): String {
         if (needLines > 200) throw RequestError("行数太多")
         val hostId = host._id
         return DockerService.getLog(hostId.str, startLine, startLine + needLines)
     }
 
     // ---------- Streaming Helper (still needs ApplicationCall for SSE) ----------
-    suspend fun HostGuardContext.listenLogs(session: ServerSSESession) {
+    suspend fun HostContext.listenLogs(session: ServerSSESession) {
         val hostId = host._id
         val containerName = hostId.str
         val lines = Channel<String>(capacity = Channel.BUFFERED)
@@ -597,81 +849,6 @@ object HostService {
         }
     }
 
-    suspend fun HostGuardContext.reloadExtraMods() {
-        host.downloadExtraMods(host.extraMods)
-    }
-
-    suspend fun HostGuardContext.addExtraMods(mods: List<Mod>) {
-        if (mods.isEmpty()) throw RequestError("mod列表不得为空")
-
-        val currentHost = getById(host._id) ?: throw RequestError("无此主机")
-        val merged = currentHost.extraMods.toMutableList()
-        val toDownload = mutableListOf<Mod>()
-
-        mods.forEach { mod ->
-            val existingIndex = merged.indexOfFirst { extra ->
-                extra.projectId == mod.projectId
-            }
-            if (existingIndex >= 0) {
-                val existing = merged[existingIndex]
-                if (existing != mod) {
-                    merged[existingIndex] = mod
-                    toDownload += mod
-                }
-            } else {
-                merged += mod
-                toDownload += mod
-            }
-        }
-        lgr.info { "准备为主机 ${host.name} 下载mod: ${toDownload}" }
-        dbcl.updateOne(
-            eq("_id", currentHost._id),
-            set(Host::extraMods.name, merged.toList())
-        )
-        host.downloadExtraMods(toDownload)
-    }
-
-    suspend fun Host.downloadExtraMods(mods: List<Mod>) {
-        if (mods.isEmpty()) return
-        modDownloadScope.launch {
-            runCatching {
-                val downloadedPaths = CurseForgeService.downloadMods(mods)
-                if (downloadedPaths.isEmpty()) return@runCatching
-                DockerService.uploadFiles(_id.str, downloadedPaths, "/opt/server/mods")
-            }.onFailure { error ->
-                lgr.warn(error) { "后台下载额外mod失败: ${error.message}" }
-            }
-        }
-    }
-
-    suspend fun HostGuardContext.delExtraMods(mods: List<Mod>) {
-        if (mods.isEmpty()) throw RequestError("mod列表不得为空")
-
-        val currentHost = getById(host._id) ?: throw RequestError("无此主机")
-        val targets = mods.toSet()
-
-        val updated = currentHost.extraMods.filterNot { it in targets }
-
-        if (updated.size == currentHost.extraMods.size) throw RequestError("没有匹配的mod可删")
-
-        dbcl.updateOne(
-            eq("_id", currentHost._id),
-            set(Host::extraMods.name, updated)
-        )
-
-        val fileNames = targets.map { it.fileName }.distinct()
-
-        fileNames.forEach { fileName ->
-            val remotePath = "/opt/server/mods/$fileName"
-            runCatching {
-                DockerService.deleteFile(currentHost._id.str, remotePath)
-            }.onFailure { err ->
-                lgr.warn(err) { "删除容器中的文件失败: $remotePath" }
-            }
-        }
-
-
-    }
 
     fun Host.hasMember(id: ObjectId): Boolean {
         return members.any { it.id == id }
@@ -680,7 +857,11 @@ object HostService {
     suspend fun RAccount.ownHosts() = HostService.listByOwner(_id)
 
 
-    suspend fun RAccount.listHostLobby(page: Int, pageSize: Int = HOSTS_PER_PAGE, myOnly: Boolean= false): List<Host.Vo> {
+    suspend fun RAccount.listHostLobby(
+        page: Int,
+        pageSize: Int = HOSTS_PER_PAGE,
+        myOnly: Boolean = false
+    ): List<Host.Vo> {
         val safePage = page.coerceAtLeast(0)
         val safeSize = pageSize.coerceIn(1, 100)
         val hosts = dbcl.find()
@@ -694,7 +875,7 @@ object HostService {
         val requesterId = _id
         val visibleHosts = hosts.filter { host ->
             if (!myOnly) {
-                val status = host.getServerStatus()
+                val status = host.status
                 if (status != HostStatus.PLAYABLE && status != HostStatus.STARTED && status != HostStatus.PAUSED) {
                     return@filter false
                 }
@@ -707,23 +888,14 @@ object HostService {
 
         if (visibleHosts.isEmpty()) return emptyList()
 
-        val ownerNames = visibleHosts.map { it.ownerId }.getPlayerNames()
-        val modpackIds = visibleHosts.map { it.modpackId }.distinct()
-        val modpackMap = if (modpackIds.isEmpty()) {
-            emptyMap()
-        } else {
-            ModpackService.dbcl.find(`in`("_id", modpackIds))
-                .toList()
-                .associate { it._id to it.name }
-        }
 
         return visibleHosts.map { host ->
             Host.Vo(
                 _id = host._id,
-                intro=host.intro,
+                intro = host.intro,
                 name = host.name,
-                ownerName = ownerNames[host.ownerId] ?: "未知玩家",
-                modpackName = modpackMap[host.modpackId] ?: "未知整合包",
+                ownerName = PlayerService.getName(host.ownerId) ?: "未知玩家",
+                modpackName = ModpackService.getById(host.modpackId)?.name ?: "未知整合包",
                 packVer = host.packVer,
                 port = host.port
             )
@@ -739,70 +911,114 @@ object HostService {
         dbcl.find(eq("worldId", worldId)).firstOrNull()
 
     suspend fun getById(id: ObjectId): Host? = dbcl.find(eq("_id", id)).firstOrNull()
+    /*
 
-    suspend fun remountWorld(host: Host, newWorldId: ObjectId?) {
-        val containerName = host._id.str
-        val wasRunning = DockerService.isStarted(containerName)
-        if (wasRunning) {
-            try {
-                DockerService.stop(containerName)
-            } catch (_: Throwable) {
+        suspend fun remountWorld(host: Host, newWorldId: ObjectId?) {
+            val containerName = host._id.str
+            val wasRunning = DockerService.isStarted(containerName)
+            if (wasRunning) {
+                try {
+                    DockerService.stop(containerName)
+                } catch (_: Throwable) {
+                }
             }
+            DockerService.deleteContainer(containerName)
+            DockerService.createContainer(host.port, containerName, newWorldId?.str, host.imageRef(),host.containerEnv)
+            dbcl.updateOne(eq("_id", host._id), set(Host::worldId.name, newWorldId))
+            if (newWorldId != null && wasRunning) {
+                DockerService.start(containerName)
+            }
+            clearShutFlag(host._id)
         }
-        DockerService.deleteContainer(containerName)
-        DockerService.createContainer(host.port, containerName, newWorldId?.str, host.imageRef(),host.containerEnv)
-        dbcl.updateOne(eq("_id", host._id), set(Host::worldId.name, newWorldId))
-        if (newWorldId != null && wasRunning) {
-            DockerService.start(containerName)
-        }
-        clearShutFlag(host._id)
-    }
+    */
 
     suspend fun stopIdleHosts() {
         runIdleMonitorTick(forceStop = true)
     }
 
-    suspend fun HostGuardContext.delMember(targetUid: ObjectId) {
+    private fun Host.overlayVolumeName() = "${_id.str}-overlay"
+    private fun Host.overlayUpperVolumeName() = "${_id.str}-overlay-upper"
+    private fun Host.overlayWorkVolumeName() = "${_id.str}-overlay-work"
 
-        val targetMember = host.members.find { it.id == targetUid } ?: throw RequestError("该用户不是成员")
+    private fun Host.overlayRootDir(): File = HOSTS_DIR.resolve(_id.str)
+
+    private fun Host.cleanupOverlayArtifacts() {
+        runCatching { DockerService.deleteVolume(overlayVolumeName()) }
+        runCatching { DockerService.deleteVolume(overlayUpperVolumeName()) }
+        runCatching { DockerService.deleteVolume(overlayWorkVolumeName()) }
+        overlayRootDir().deleteRecursively()
+    }
+
+    private fun File.ensureCleanDir(): File {
+        if (exists()) {
+            deleteRecursively()
+        }
+        mkdirs()
+        return this
+    }
+
+
+    private fun ensureLinked(source: Path, target: Path) {
+        target.parent?.let { Files.createDirectories(it) }
+        Files.deleteIfExists(target)
+        if (isWindowsHost) {
+            Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING)
+            return
+        }
+        if (runCatching { Files.createLink(target, source) }.isSuccess) return
+        if (runCatching { Files.createSymbolicLink(target, source) }.isSuccess) return
+        Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING)
+    }
+
+    private fun File.toDockerAccessiblePath(): String {
+        val canonical = canonicalFile
+        val normalized = canonical.path.replace('\\', '/')
+        if (!isWindowsHost) return normalized
+        if (normalized.length < 2 || normalized[1] != ':') return normalized
+        val drive = normalized[0].lowercaseChar()
+        val rest = normalized.substring(2).trimStart('/')
+        return "${dockerDesktopPrefix}/$drive/$rest"
+    }
+
+    suspend fun HostContext.delMember() {
         if (targetMember.role.level <= Role.ADMIN.level) {
             throw RequestError("无法踢出管理员")
         }
         dbcl.updateOne(
             eq("_id", host._id),
-            Updates.pull(Host::members.name, eq("id", targetUid))
+            Updates.pull(Host::members.name, eq("id", targetMember.id))
         )
     }
 
-    suspend fun HostGuardContext.transferOwnership(targetUid: ObjectId) {
+    suspend fun HostContext.transferOwnership() {
         val current = getById(host._id) ?: throw RequestError("无此主机")
-        if (current.ownerId == targetUid) throw RequestError("不能转给自己")
+        val recipient = targetMember
+        if (current.ownerId == recipient.id) throw RequestError("不能转给自己")
 
-        val targetMember = current.members.find { it.id == targetUid } ?: throw RequestError("只能转移给成员")
-        val ownerMember = current.members.find { it.id == current.ownerId }
+        val previousOwner = current.members.find { it.id == current.ownerId }
+            ?: throw RequestError("当前拥有者不在成员列表")
+        val hasRecipient = current.members.any { it.id == recipient.id }
+        if (!hasRecipient) throw RequestError("目标成员不在主机成员列表中")
 
-        val updates = mutableListOf<org.bson.conversions.Bson>()
-        val filters = mutableListOf<Document>()
-
-        updates += set(Host::ownerId.name, targetUid)
-        updates += Updates.set("members.$[target].role", Role.OWNER)
-        filters += Document("target.id", targetUid)
-
-        if (ownerMember != null) {
-            updates += Updates.set("members.$[currentOwner].role", Role.ADMIN)
-            filters += Document("currentOwner.id", current.ownerId)
-        } else {
-            updates += Updates.push(Host::members.name, Host.Member(current.ownerId, Role.ADMIN))
+        val updatedMembers = current.members.map { member ->
+            when (member.id) {
+                previousOwner.id -> member.copy(role = Role.ADMIN)
+                recipient.id -> member.copy(role = Role.OWNER)
+                else -> member
+            }
         }
 
         dbcl.updateOne(
             eq("_id", current._id),
-            combine(updates),
-            UpdateOptions().arrayFilters(filters)
+            combine(
+                set(Host::ownerId.name, recipient.id),
+                set(Host::members.name, updatedMembers)
+            )
         )
+
     }
 
-    suspend fun HostGuardContext.addMember( qq: String) {
+    suspend fun HostContext.addMember(qq: String) {
         val target = PlayerService.getByQQ(qq) ?: throw RequestError("无此账号")
         if (host.hasMember(target._id)) {
             throw RequestError("该用户已是成员")
@@ -813,8 +1029,7 @@ object HostService {
         )
     }
 
-    suspend fun HostGuardContext.setRole(targetUid: ObjectId, role: Role) {
-        val targetMember = host.members.find { it.id == targetUid } ?: throw RequestError("该用户不是成员")
+    suspend fun HostContext.setRole(role: Role) {
         if (targetMember.role == role) {
             throw RequestError("角色未更改")
         }
@@ -827,11 +1042,11 @@ object HostService {
         dbcl.updateOne(
             eq("_id", host._id),
             Updates.combine(
-                Updates.set("members.$[elem].role", role),
+                Updates.set("${Host::members.name}.$[elem].${Host.Member::role.name}", role),
             ),
             UpdateOptions().arrayFilters(
                 listOf(
-                    Document("elem.id", targetUid),
+                    Document("elem.id", targetMember.id),
                 )
             )
         )
