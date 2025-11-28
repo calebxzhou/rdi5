@@ -4,34 +4,29 @@ import calebxzhou.rdi.ihq.CONF
 import calebxzhou.rdi.ihq.exception.RequestError
 import calebxzhou.rdi.ihq.lgr
 import calebxzhou.rdi.ihq.model.HostStatus
+import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.api.async.ResultCallback.Adapter
-import com.github.dockerjava.api.model.Bind
-import com.github.dockerjava.api.model.BuildResponseItem
-import com.github.dockerjava.api.model.ExposedPort
-import com.github.dockerjava.api.model.Frame
-import com.github.dockerjava.api.model.HostConfig
+import com.github.dockerjava.api.command.BuildImageResultCallback
+import com.github.dockerjava.api.exception.NotFoundException
+import com.github.dockerjava.api.model.*
 import com.github.dockerjava.api.model.PortBinding.parse
-import com.github.dockerjava.api.model.StreamType
 import com.github.dockerjava.core.DefaultDockerClientConfig
 import com.github.dockerjava.core.DockerClientBuilder
-import com.github.dockerjava.httpclient5.ApacheDockerHttpClient
+import com.github.dockerjava.okhttp.OkDockerHttpClient
 import com.github.dockerjava.transport.DockerHttpClient
-import java.io.Closeable
-import java.nio.file.Files
-import java.nio.file.Path
-import java.time.Duration
-import com.github.dockerjava.api.exception.NotFoundException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream
-import org.apache.hc.client5.http.impl.classic.HttpClients
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.Closeable
 import java.io.File
+import java.nio.file.Files
+import java.nio.file.Path
 
 object DockerService {
-    private val client by lazy {
+    private val client: DockerClient by lazy {
         val dockerConfig = CONF.docker
         val configBuilder = DefaultDockerClientConfig.createDefaultConfigBuilder()
             .withDockerHost("tcp://${dockerConfig.host}:${dockerConfig.port}")
@@ -45,17 +40,24 @@ object DockerService {
         }
 
         val config = configBuilder.build()
-        val httpClient: DockerHttpClient = ApacheDockerHttpClient.Builder()
+        val httpClient: DockerHttpClient = OkDockerHttpClient.Builder()
             .dockerHost(config.dockerHost)
             .sslConfig(config.sslConfig)
-            .maxConnections(10000)
-            .connectionTimeout(Duration.ofSeconds(300))
-            .responseTimeout(Duration.ofSeconds(300))
+            .connectTimeout(300_000)
+            .readTimeout(300_000)
             .build()
 
         DockerClientBuilder.getInstance(config)
             .withDockerHttpClient(httpClient)
             .build()
+    }
+
+    val dockerRootDir: String by lazy {
+        runCatching { client.infoCmd().exec().dockerRootDir?.takeIf { it.isNotBlank() } ?: "/var/lib/docker" }
+            .getOrElse {
+                lgr.warn(it) { "无法获取 Docker Root Dir，使用默认 /var/lib/docker" }
+                "/var/lib/docker"
+            }
     }
 
     private fun findContainer(containerName: String, includeStopped: Boolean = true) =
@@ -69,24 +71,56 @@ object DockerService {
             .withShowAll(includeStopped)
             .exec()
 
-    fun createContainer(port: Int, containerName: String, volumeName: String?, image: String,env: List<String>): String {
+    fun createContainer(
+        port: Int,
+        containerName: String,
+        mounts: List<Mount>,
+        image: String,
+        env: List<String>,
+        cmd: List<String>? = null,
+        requiresSysAdmin: Boolean = false,
+        requiresFuseDevice: Boolean = false
+    ): String {
+        val capAdd = mutableListOf<Capability>()
+        if (requiresSysAdmin) capAdd += Capability.SYS_ADMIN
+
+        val devices = mutableListOf<Device>()
+        val securityOpts = mutableListOf<String>()
+        if (requiresFuseDevice) {
+            devices += Device("rwm", "/dev/fuse", "/dev/fuse")
+            securityOpts += "apparmor=unconfined"
+        }
+
         val hostConfig = HostConfig.newHostConfig()
             .withPortBindings(parse("$port:$port"))
             .withCpuCount(4L)  // Limit to 2 CPUs
             .withMemory(4L * 1024 * 1024 * 1024)  // 2GB RAM limit
             .withMemorySwap(4L * 1024 * 1024 * 1024)  //4G swap
             .withExtraHosts("host.docker.internal:host-gateway")
+            .withMounts(mounts)
 
-            
-            
-        volumeName?.let { hostConfig.withBinds(Bind.parse("$it:/data")) }
+        if (capAdd.isNotEmpty()) {
+            hostConfig.withCapAdd(*capAdd.toTypedArray())
+        }
+        if (devices.isNotEmpty()) {
+            hostConfig.withDevices(devices)
+        }
+        if (securityOpts.isNotEmpty()) {
+            hostConfig.withSecurityOpts(securityOpts)
+        }
 
-        return client.createContainerCmd(image)
+        val createCmd = client.createContainerCmd(image)
             .withName(containerName)
             .withEnv(env)
             .withExposedPorts(ExposedPort(port))
             .withHostConfig(hostConfig)
-            .exec().id
+
+
+        if (!cmd.isNullOrEmpty()) {
+            createCmd.withCmd(cmd).cmd
+        }
+
+        return createCmd.exec().id
     }
 
     fun sendCommand(containerName: String, command: String) {
@@ -268,7 +302,7 @@ object DockerService {
             ?: throw RequestError("找不到此容器")
         val started = isStarted(containerName)
         //不开机删不了文件
-        if(!started) start(containerName)
+        if (!started) start(containerName)
         val normalizedPath = remotePath.replace('\\', '/').trim()
         if (normalizedPath.isEmpty()) {
             throw RequestError("目标路径不能为空")
@@ -324,7 +358,7 @@ object DockerService {
                 lgr.warn { "deleteFile stderr for $containerName:$validatedPath -> ${stderr.toString()}" }
             }
             //如果删除之前主机是关的 现在给他关了
-            if(!started) stop(containerName)
+            if (!started) stop(containerName)
         } catch (e: Exception) {
             if (e is RequestError) throw e
             lgr.warn(e) { "deleteFile失败: $containerName -> $remotePath" }
@@ -360,14 +394,16 @@ object DockerService {
         }
 
     }
+
     fun restart(containerName: String) {
         // Check if container exists first
         val container = findContainer(containerName) ?: throw RequestError("找不到此容器")
         client.restartContainerCmd(container.id).exec()
     }
+
     // startLine/endLine are indices from the newest line (0 = newest), slicing [startLine, endLine)
     // 两个参数都是“从后往前”的行号：0 表示最新一行，返回区间为 [startLine, endLine)
-    fun getLog(containerName: String, startLine: Int =0, endLine: Int): String {
+    fun getLog(containerName: String, startLine: Int = 0, endLine: Int): String {
         return try {
             val callback = object : Adapter<Frame>() {
                 val logs = mutableListOf<String>()
@@ -487,9 +523,12 @@ object DockerService {
             HostStatus.UNKNOWN
         }
     }
-    suspend fun buildImage(name: String, contextPath: File, onLine: (String) -> Unit,
-                           onError: (Throwable) -> Unit = {},
-                           onFinished: () -> Unit = {}): String {
+
+    suspend fun buildImage(
+        name: String, contextPath: File, onLine: (String) -> Unit,
+        onError: (Throwable) -> Unit = {},
+        onFinished: () -> Unit = {}
+    ): String {
         return withContext(Dispatchers.IO) {
             try {
                 val buildCmd = client.buildImageCmd()
@@ -508,7 +547,7 @@ object DockerService {
                 }
 
                 val buildResponse = buildCmd
-                    .exec(object : com.github.dockerjava.api.command.BuildImageResultCallback() {
+                    .exec(object : BuildImageResultCallback() {
                         override fun onNext(item: BuildResponseItem) {
                             val logLine = item.stream?.trim() ?: item.errorDetail?.message?.trim().orEmpty()
                             if (logLine.isNotEmpty()) {
@@ -519,6 +558,7 @@ object DockerService {
                             }
                             super.onNext(item)
                         }
+
                         override fun onError(throwable: Throwable) {
                             try {
                                 onError(throwable)
