@@ -131,30 +131,26 @@ class ModpackUploadFragment : RFragment("上传整合包") {
                 val modpackName = manifest.name.trim()
                 val versionName = manifest.version.trim()
                 if (modpackName.isEmpty()) {
+                    close()
                     alertErr("整合包名称不能为空")
-                    progressText = "整合包名称不能为空"
-                    closable = true
                     return@ioTask
                 }
                 if (versionName.isEmpty()) {
+                    close()
                     alertErr("版本号不能为空")
-                    progressText = "版本号不能为空"
-                    closable = true
                     return@ioTask
                 }
                 manifest.name = modpackName
                 manifest.version = versionName
 
                 val modpack = getOrCreateModpack(modpackName, updateModpackId) ?: run {
-                    closable = true
                     return@ioTask
                 }
 
                 if (modpack.versions.any { it.name.equals(versionName, ignoreCase = true) }) {
                     val msg = "${modpack.name}包已经有$versionName 这个版本了"
+                    close()
                     alertErr(msg)
-                    progressText = msg
-                    closable = true
                     return@ioTask
                 }
 
@@ -215,9 +211,8 @@ class ModpackUploadFragment : RFragment("上传整合包") {
                 }
                 
                 if (!createVersionResp.ok) {
+                    close()
                     alertErr(createVersionResp.msg)
-                    progressText = createVersionResp.msg
-                    closable = true
                     return@ioTask
                 }
                 
@@ -250,8 +245,8 @@ class ModpackUploadFragment : RFragment("上传整合包") {
                 method = HttpMethod.Get
             )
             if (!myModpacksResp.ok) {
+                close()
                 alertErr(myModpacksResp.msg)
-                progressText = myModpacksResp.msg
                 return null
             }
             val myModpacks = myModpacksResp.data.orEmpty()
@@ -260,8 +255,8 @@ class ModpackUploadFragment : RFragment("上传整合包") {
                 val target = myModpacks.firstOrNull { it._id == targetModpackId }
                 if (target == null) {
                     val msg = "未找到要更新的整合包"
+                    close()
                     alertErr(msg)
-                    progressText = msg
                     return null
                 }
                 progressText = "为已有整合包 ${target.name} 上传新版"
@@ -281,8 +276,8 @@ class ModpackUploadFragment : RFragment("上传整合包") {
                 params = mapOf("name" to name)
             )
             if (!createResp.ok || createResp.data == null) {
+                close()
                 alertErr(createResp.msg)
-                progressText = createResp.msg
                 return null
             }
             return createResp.data
