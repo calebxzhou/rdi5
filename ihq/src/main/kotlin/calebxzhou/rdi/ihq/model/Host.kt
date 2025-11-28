@@ -21,7 +21,7 @@ data class Host(
     //版本可能会重新发布 此时id会变 所以不用packVerId
     val packVer: String = "latest",
     @Contextual
-    val worldId: ObjectId,
+    val worldId: ObjectId?,
     var port: Int,
     val difficulty: Int,
     val gameMode: Int,
@@ -55,5 +55,4 @@ data class Host(
         var port: Int,
     )
 }
-
 fun Host.imageRef(): String = "${modpackId}:${this.packVer}"
