@@ -67,7 +67,8 @@ object WorldService {
     }
 
     suspend fun createWorld(uid: ObjectId,name: String?, packId: ObjectId): World {
-        val name = name ?: "存档${listByOwner(uid).size + 1}"
+        val modpack = ModpackService.getById(packId)?:throw RequestError("整合包不存在")
+        val name = name ?: "存档${listByOwner(uid).size + 1}-${modpack.name}"
         if (name.displayLength > 32) throw RequestError("名称过长")
         ensureCapacity(uid)
         val world = World(name = name, ownerId = uid, modpackId = packId)
