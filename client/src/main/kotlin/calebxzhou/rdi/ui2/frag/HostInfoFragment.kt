@@ -7,6 +7,7 @@ import calebxzhou.rdi.model.pack.Mod
 import calebxzhou.rdi.model.pack.ModpackDetailedVo
 import calebxzhou.rdi.net.server
 import calebxzhou.rdi.service.CurseForgeService.fillCurseForgeVo
+import calebxzhou.rdi.service.HostClientService
 import calebxzhou.rdi.service.isAdmin
 import calebxzhou.rdi.ui2.FragmentSize
 import calebxzhou.rdi.ui2.MaterialColor
@@ -34,18 +35,17 @@ class HostInfoFragment(val hostId: ObjectId) : RFragment("主机详细信息") {
         contentViewInit = {
             server.request<Host>("host/$hostId") { resp ->
                 resp.data?.let { host ->
-                    server.request<ModpackDetailedVo>("modpack/${host.modpackId}") { resp2 ->
-                        resp2.data?.let { modpack ->
-                            val mods = (modpack.versions.find { it.name == host.packVer }?.mods?:listOf()).fillCurseForgeVo()
-                            host.load(modpack,mods)
-                        }
-                    }
+                    val resp = server.makeRequest<ModpackDetailedVo>("modpack/${host.modpackId}")
+                    val modpack = resp.data
+                    val mods = (modpack?.versions?.find { it.name == host.packVer }?.mods?:listOf()).fillCurseForgeVo()
+                    host.load(modpack,mods)
+
                 }
             }
         }
     }
 
-    private fun Host.load(modpack: ModpackDetailedVo, mods: List<Mod>) = uiThread {
+    private fun Host.load(modpack: ModpackDetailedVo?, mods: List<Mod>) = uiThread {
         val meOwner = ownerId == account._id
         val meAdmin = isAdmin(account)
         contentView.apply {
@@ -115,14 +115,37 @@ class HostInfoFragment(val hostId: ObjectId) : RFragment("主机详细信息") {
                     })
                 }
             }
-
-            textView("mod列表：")
-            this += ModGrid(context, mods = mods )
+            if(mods.isNotEmpty()){
+                textView("mod列表：")
+                this += ModGrid(context, mods = mods )
+            }
         }
         titleView.apply {
 
+
                 quickOptions {
-                    "▶ 开始游玩"
+                    if(modpack == null){
+                        textView("整合包被删除了，必须更换整合包才能继续游玩此主机。")
+                    }else{
+                        "▶ 开始游玩" colored MaterialColor.GREEN_900 with {
+                            HostClientService.play(_id,port,this@HostInfoFragment)
+                        }
+                        "\uDB80\uDD8D 后台" colored MaterialColor.TEAL_900 with { HostConsoleFragment(hostId  ).go() }
+                        if(meAdmin){
+                            "\uDB85\uDC5C 切换存档" colored MaterialColor.PINK_800 with { alertErr("没写完") }
+                            "\uDB80\uDFD6 更新整合包" colored MaterialColor.AMBER_900 with {
+                                confirm("将更新主机当前的整合包《${modpack.name}》 到最新版本。") {
+                                    server.requestU(
+                                        "host/${_id}/update",
+                                        HttpMethod.Post,
+                                        showLoading = true
+                                    ) {
+                                        toast("已更新到最新版 主机重启中")
+                                    }
+                                }
+                            }
+                        }
+                    }
 
                     "\uEA81 删除主机" colored MaterialColor.RED_900 with {
                         confirm("确认删除主机吗？\n（不删存档，其余数据清空）") {
@@ -132,23 +155,13 @@ class HostInfoFragment(val hostId: ObjectId) : RFragment("主机详细信息") {
                             }
                         }
                     }
-                    "\uDB80\uDD8D 后台" colored MaterialColor.TEAL_900 with { HostConsoleFragment(hostId  ).go() }
+                    "\uDB80\uDFD4 更换整合包" colored MaterialColor.ORANGE_900 with {
+                        ModpackListFragment(true).go()
+                    }
+
                     if (meAdmin) {
                         "\uF4FE 邀请成员" colored MaterialColor.BLUE_900 with {
                             HostInviteMemberFragment(hostId).go()
-                        }
-
-                        "\uDB85\uDC5C 切换存档" colored MaterialColor.PINK_800 with { alertErr("没写完") }
-                        "\uDB80\uDFD6 更新整合包" colored MaterialColor.AMBER_900 with {
-                            confirm("将更新主机的整合包 ${modpack.name} 到最新版本。") {
-                                server.requestU(
-                                    "host/${_id}/update",
-                                    HttpMethod.Post,
-                                    showLoading = true
-                                ) {
-                                    toast("已更新到最新版 主机重启中")
-                                }
-                            }
                         }
                     }
 
