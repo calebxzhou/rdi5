@@ -1,28 +1,22 @@
 package calebxzhou.rdi.ihq.util
 
-import calebxzhou.rdi.ihq.exception.ParamError
-import io.ktor.http.*
-import io.ktor.server.application.*
-import io.ktor.server.response.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.bson.types.ObjectId
 import java.io.File
 import java.net.URLEncoder
 import java.nio.ByteBuffer
-import java.security.MessageDigest
+import java.nio.file.Files
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.*
-import javax.crypto.Cipher
-import javax.crypto.spec.SecretKeySpec
-import kotlin.collections.joinToString
-import kotlin.reflect.KCallable
 
 /**
  * calebxzhou @ 2024-06-20 16:46
  */
-val scope = CoroutineScope(Dispatchers.IO)
+val ioScope = CoroutineScope(Dispatchers.IO)
+inline fun ioTask(crossinline handler: suspend () -> Unit) = ioScope.launch { handler() }
 /**
  * Display length where CJK (Chinese/Japanese/Korean) full‑width characters and common emoji count as 2 cells,
  * others count as 1. Useful for monospace alignment / padding.
@@ -126,10 +120,43 @@ fun ObjectId.toUUID(): UUID {
 
 val datetime
     get() = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"))
+val humanDateTime
+    get() = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
 
 fun Byte.isWhitespaceCharacter(): Boolean {
     return when (this.toInt() and 0xFF) {
         9, 10, 13, 32 -> true
         else -> false
     }
+}
+fun File.symlinkRecursively(sourceDir: File){
+
+}
+
+/**
+ * Recursively delete a directory and all its contents, but when encountering a symbolic link,
+ * only delete the link itself, not the target it points to.
+ */
+fun File.deleteRecursivelyNoSymlink() {
+    val path = this.toPath()
+    
+    if (!this.exists()) {
+        return
+    }
+    
+    // If this is a symbolic link, just delete the link itself
+    if (Files.isSymbolicLink(path)) {
+        Files.delete(path)
+        return
+    }
+    
+    // If it's a directory, recursively delete its contents first
+    if (this.isDirectory) {
+        this.listFiles()?.forEach { child ->
+            child.deleteRecursivelyNoSymlink()
+        }
+    }
+    
+    // Finally delete this file/directory
+    this.delete()
 }
