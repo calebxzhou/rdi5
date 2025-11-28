@@ -94,6 +94,8 @@ fun Route.playerRoutes() {
     }
 }
 
+suspend fun ApplicationCall.player(): RAccount = PlayerService.getById(uid) ?: throw RequestError("用户不存在")
+
 object PlayerService {
     val accountCol = DB.getCollection<RAccount>("account")
     val authLogCol = DB.getCollection<AuthLog>("auth_log")
