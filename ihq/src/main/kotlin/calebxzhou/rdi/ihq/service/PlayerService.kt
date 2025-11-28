@@ -13,28 +13,19 @@ import calebxzhou.rdi.ihq.net.*
 import calebxzhou.rdi.ihq.service.PlayerService.changeCloth
 import calebxzhou.rdi.ihq.service.PlayerService.changeProfile
 import calebxzhou.rdi.ihq.service.PlayerService.clearCloth
-import calebxzhou.rdi.ihq.util.datetime
-import calebxzhou.rdi.ihq.util.displayLength
-import calebxzhou.rdi.ihq.util.isValidHttpUrl
-import calebxzhou.rdi.ihq.util.isValidObjectId
-import calebxzhou.rdi.ihq.util.serdesJson
-import com.mongodb.client.model.Filters.`in`
+import calebxzhou.rdi.ihq.util.*
 import com.mongodb.client.model.Filters.eq
+import com.mongodb.client.model.Filters.`in`
 import com.mongodb.client.model.Updates
 import com.mongodb.client.model.Updates.combine
-import io.ktor.server.auth.authenticate
-import io.ktor.server.routing.Route
-import io.ktor.server.routing.delete
-import io.ktor.server.routing.get
-import io.ktor.server.routing.post
-import io.ktor.server.routing.put
-import io.ktor.server.routing.route
+import io.ktor.server.application.*
+import io.ktor.server.auth.*
+import io.ktor.server.routing.*
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.toList
 import org.bson.conversions.Bson
 import org.bson.types.ObjectId
 import java.io.File
-import java.util.LinkedHashSet
 
 fun Route.playerRoutes() {
     route("/player") {
