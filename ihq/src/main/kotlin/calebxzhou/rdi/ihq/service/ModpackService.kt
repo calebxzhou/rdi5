@@ -1,43 +1,47 @@
 package calebxzhou.rdi.ihq.service
 
-import calebxzhou.rdi.ihq.BASE_IMAGE_DIR
 import calebxzhou.rdi.ihq.DB
 import calebxzhou.rdi.ihq.exception.ParamError
 import calebxzhou.rdi.ihq.exception.RequestError
 import calebxzhou.rdi.ihq.lgr
+import calebxzhou.rdi.ihq.model.Host
+import calebxzhou.rdi.ihq.model.HostStatus
+import calebxzhou.rdi.ihq.model.McVersion
+import calebxzhou.rdi.ihq.model.RAccount
 import calebxzhou.rdi.ihq.model.pack.Mod
 import calebxzhou.rdi.ihq.model.pack.Modpack
 import calebxzhou.rdi.ihq.model.pack.ModpackDetailedVo
 import calebxzhou.rdi.ihq.model.pack.ModpackVo
-import calebxzhou.rdi.ihq.net.ok
-import calebxzhou.rdi.ihq.net.param
-import calebxzhou.rdi.ihq.net.response
-import calebxzhou.rdi.ihq.net.uid
-import calebxzhou.rdi.ihq.service.ModpackService.buildAsImage
+import calebxzhou.rdi.ihq.net.*
+import calebxzhou.rdi.ihq.service.HostService.SERVER_RDI_CORE_FILENAME
+import calebxzhou.rdi.ihq.service.HostService.status
 import calebxzhou.rdi.ihq.service.ModpackService.createVersion
 import calebxzhou.rdi.ihq.service.ModpackService.deleteModpack
 import calebxzhou.rdi.ihq.service.ModpackService.deleteVersion
-import calebxzhou.rdi.ihq.service.ModpackService.getVersion
 import calebxzhou.rdi.ihq.service.ModpackService.getVersionFile
 import calebxzhou.rdi.ihq.service.ModpackService.getVersionFileList
-import calebxzhou.rdi.ihq.service.ModpackService.requireVersion
-import calebxzhou.rdi.ihq.service.ModpackService.setStatus
+import calebxzhou.rdi.ihq.service.ModpackService.modpackGuardContext
+import calebxzhou.rdi.ihq.service.ModpackService.rebuildVersion
+import calebxzhou.rdi.ihq.service.ModpackService.requireAuthor
 import calebxzhou.rdi.ihq.service.ModpackService.toDetailVo
 import calebxzhou.rdi.ihq.service.PlayerService.getPlayerNames
+import calebxzhou.rdi.ihq.util.deleteRecursivelyNoSymlink
 import calebxzhou.rdi.ihq.util.humanSize
+import calebxzhou.rdi.ihq.util.ioScope
 import calebxzhou.rdi.ihq.util.safeDirSize
-import calebxzhou.rdi.ihq.util.scope
 import calebxzhou.rdi.ihq.util.serdesJson
-import calebxzhou.rdi.ihq.util.str
-import com.mongodb.client.model.Filters.eq
-import com.mongodb.client.model.Filters.regex
+import com.mongodb.client.model.Filters.*
+import com.mongodb.client.model.Projections
 import com.mongodb.client.model.UpdateOptions
 import com.mongodb.client.model.Updates
+import com.sun.org.apache.bcel.internal.Const
 import io.ktor.http.content.*
+import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.utils.io.*
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
@@ -45,9 +49,9 @@ import kotlinx.io.readByteArray
 import org.bson.Document
 import org.bson.types.ObjectId
 import java.nio.file.Files
-import java.nio.file.StandardCopyOption
 import java.nio.file.StandardOpenOption
 import java.util.zip.ZipInputStream
+import kotlin.io.path.absolute
 
 
 fun Route.modpackRoutes() {
@@ -63,55 +67,31 @@ fun Route.modpackRoutes() {
             response(data = mods)
         }
         route("/{modpackId}") {
-            install(ModpackGuardPlugin)
-            get {
 
+            get {
                 response(data = call.modpackGuardContext().modpack.toDetailVo())
             }
 
             delete {
-
-                val ctx = call.modpackGuardContext()
-                ctx.deleteModpack()
+                call.modpackGuardContext().requireAuthor().deleteModpack()
                 ok()
-
             }
 
             route("/version/{verName}") {
                 get {
-                    val ctx = call.modpackGuardContext()
-                    val verName = param("verName").trim()
-                    val version = ctx.getVersion(verName)
-                    response(data = version)
+                    call.modpackGuardContext().versionNull?.let { response(data = it) }
+                        ?: throw RequestError("无此版本")
                 }
                 delete {
-                    val ctx = call.modpackGuardContext()
-                    val verName = param("verName").trim()
-                    ctx.deleteVersion(verName)
+                    call.modpackGuardContext().requireAuthor().deleteVersion()
                     ok()
 
                 }
                 post("/rebuild") {
-                    val ctx = call.modpackGuardContext()
-                    val verName = param("verName").trim()
-                    val (pack, version) = ctx.requireVersion(verName)
+                    call.modpackGuardContext().requireAuthor().rebuildVersion()
 
                     ok()
 
-                    scope.launch {
-                        runCatching {
-                            version.setStatus(Modpack.Status.BUILDING)
-                            val mailId = MailService.sendSystemMail(
-                                uid,
-                                "重构整合包：${verName}",
-                                "开始重新构建整合包 ${pack.name} 版本${version.name}\n"
-                            )._id
-                            pack.buildAsImage(mailId, version)
-                        }.onFailure { error ->
-                            lgr.error(error) { "重构整合包 ${pack._id}:${version.name} 失败" }
-                            version.setStatus(Modpack.Status.FAIL)
-                        }
-                    }
                 }
                 post {
                     val ctx = call.modpackGuardContext()
@@ -119,13 +99,13 @@ fun Route.modpackRoutes() {
                     //limit 1 GB
                     val multipart = call.receiveMultipart(formFieldLimit = 1024 * 1024 * 1024)
                     var zipBytes: ByteArray? = null
-                    var mods: List<Mod>? = null
+                    var mods: MutableList<Mod>? = null
 
                     while (true) {
                         val part = multipart.readPart() ?: break
                         when (part) {
                             is PartData.FormItem -> if (part.name == "mods") {
-                                mods = runCatching { serdesJson.decodeFromString<List<Mod>>(part.value) }
+                                mods = runCatching { serdesJson.decodeFromString<MutableList<Mod>>(part.value) }
                                     .getOrElse { throw ParamError("mods格式错误: ${it.message}") }
                             }
 
@@ -142,30 +122,20 @@ fun Route.modpackRoutes() {
                     }
 
                     val payload = zipBytes ?: throw ParamError("缺少文件")
-                    val modList = mods ?: emptyList()
+                    val modList = mods ?: arrayListOf()
 
-                    ctx.createVersion(verName, payload, modList)
+                    ctx.requireAuthor().createVersion(verName, payload, modList)
                     ok()
 
                 }
                 get("/files") {
-
-                    val ctx = call.modpackGuardContext()
-                    val verName = param("verName").trim()
-                    val files = ctx.getVersionFileList(verName)
-                    response(data = files)
-
+                    call.modpackGuardContext().getVersionFileList().let { response(data = it) }
                 }
-
                 get("/file/{filePath...}") {
 
-                    install(ModpackGuardPlugin)
-
-                    val ctx = call.modpackGuardContext()
-                    val verName = param("verName").trim()
                     val filePath = call.parameters.getAll("filePath")?.joinToString("/")
                         ?: throw ParamError("缺少参数: filePath")
-                    val content = ctx.getVersionFile(verName, filePath)
+                    val content = call.modpackGuardContext().getVersionFile(filePath)
                     call.respondBytes(content)
 
                 }
@@ -185,13 +155,47 @@ fun Route.modpackRoutes() {
     }
 }
 
+class ModpackContext(
+    val player: RAccount,
+    val modpack: Modpack,
+    val versionNull: Modpack.Version?
+) {
+    val version get() = versionNull ?: throw ParamError("缺少版本信息")
+}
+
 object ModpackService {
     private const val MAX_MODPACK_PER_USER = 5
+    private val STEP_PROGRESS_REGEX = Regex("""^Step\s+(\d+)/(\d+)""")
     val dbcl = DB.getCollection<Modpack>("modpack")
+
+
+    val ModpackContext.isAuthor: Boolean
+        get() = modpack.authorId == player._id
+
+    fun ModpackContext.requireAuthor(): ModpackContext {
+        if (!isAuthor) throw RequestError("不是你的整合包")
+        return this
+    }
+
+    fun Modpack.isMcVer(ver: McVersion): Boolean {
+        return mcVer == ver.verStr
+    }
+
+    suspend fun ApplicationCall.modpackGuardContext(): ModpackContext {
+        val requesterId = uid
+        val player = PlayerService.getById(requesterId) ?: throw RequestError("用户不存在")
+        val modpack = ModpackService.dbcl.find(eq("_id", idParam("modpackId"))).firstOrNull()
+            ?: throw RequestError("整合包不存在")
+        val verName = paramNull("verName")?.trim()?.takeIf { it.isNotEmpty() }
+        val version = verName?.let { name ->
+            modpack.versions.firstOrNull { it.name == name }
+        }
+        return ModpackContext(player, modpack, version)
+    }
 
     suspend fun listByAuthor(uid: ObjectId): List<Modpack> = dbcl.find(eq("authorId", uid)).toList()
 
-    suspend fun get(id: ObjectId): Modpack? = dbcl.find(eq("_id", id)).firstOrNull()
+    suspend fun getById(id: ObjectId): Modpack? = dbcl.find(eq("_id", id)).firstOrNull()
 
     suspend fun searchByName(name: String): List<Modpack> {
         if (name.isBlank()) return emptyList()
@@ -212,7 +216,7 @@ object ModpackService {
                 authorId = pack.authorId,
                 authorName = authorNames[pack.authorId] ?: "未知作者",
                 modCount = pack.versions.maxOfOrNull { it.mods.size } ?: 0,
-                fileSize = pack.versions.last().totalSize ?: 0L,
+                fileSize = pack.versions.lastOrNull()?.totalSize ?: 0L,
                 icon = pack.icon,
                 info = pack.info
             )
@@ -255,18 +259,50 @@ object ModpackService {
         return modPack
     }
 
-
-    suspend fun ModpackGuardContext.getVersion(verName: String): Modpack.Version {
-        requireAuthor()
-        val (_, version) = requireVersion(verName)
-        return version
+    suspend fun ModpackContext.rebuildVersion() {
+        ioScope.launch {
+            runCatching {
+                version.setStatus(Modpack.Status.BUILDING)
+                val mailId = MailService.sendSystemMail(
+                    player._id,
+                    "重构整合包：${modpack.name} V${version.name}",
+                    "开始重新构建整合包 ${modpack.name} 版本${version.name}\n"
+                )._id
+                modpack.buildVersion(version) {
+                    lgr.info { it }
+                    MailService.changeMail(mailId, newContent = it)
+                }
+            }.onFailure { error ->
+                lgr.error(error) { "重构整合包 ${modpack._id}:${version.name} 失败" }
+                version.setStatus(Modpack.Status.FAIL)
+            }
+        }
     }
 
-    suspend fun ModpackGuardContext.getVersionFile(verName: String, filePath: String): ByteArray {
-        requireAuthor()
+    suspend fun Modpack.getVersion(verName: String): Modpack.Version? {
+        return versions.find { it.name == verName }
+    }
+
+    suspend fun getVersion(modpackId: ObjectId, verName: String): Modpack.Version? {
+        return dbcl.find(
+            and(
+                eq("_id", modpackId),
+                elemMatch(Modpack::versions.name, eq(Modpack.Version::name.name, verName))
+            )
+        )
+            .projection(
+                Projections
+                    .elemMatch(
+                        Modpack::versions.name,
+                        eq(Modpack.Version::name.name, verName)
+                    )
+            )
+            .first().versions.firstOrNull()
+    }
+
+    fun ModpackContext.getVersionFile(filePath: String): ByteArray {
         if (filePath.isBlank()) throw RequestError("文件路径不能为空")
-        val (pack, _) = requireVersion(verName)
-        val versionDir = pack.dir.resolve(verName)
+        val versionDir = version.dir
         if (!versionDir.exists() || !versionDir.isDirectory) {
             throw RequestError("版本目录不存在")
         }
@@ -283,10 +319,8 @@ object ModpackService {
         return normalized.readBytes()
     }
 
-    suspend fun ModpackGuardContext.getVersionFileList(verName: String): List<String> {
-        requireAuthor()
-        val (pack, _) = requireVersion(verName)
-        val dir = pack.dir.resolve(verName)
+    fun ModpackContext.getVersionFileList(): List<String> {
+        val dir = version.dir
         if (!dir.exists() || !dir.isDirectory) {
             throw RequestError("版本目录不存在")
         }
@@ -296,43 +330,46 @@ object ModpackService {
             .toList()
     }
 
-    suspend fun ModpackGuardContext.createVersion(verName: String, zipBytes: ByteArray, mods: List<Mod>) {
-        requireAuthor()
-        val name = verName.trim()
-        if (name.isEmpty()) throw RequestError("版本名不能为空")
-        val pack = reloadModpack()
-        if (pack.versions.any { it.name == name }) {
+    suspend fun ModpackContext.createVersion(verName: String, zipBytes: ByteArray, mods: MutableList<Mod>) {
+        if (verName.isBlank()) throw RequestError("版本名不能为空")
+        if (modpack.versions.any { it.name == verName }) {
             throw RequestError("版本已存在")
         }
 
         val version = Modpack.Version(
-            modpackId = pack._id,
-            name = name,
+            modpackId = modpack._id,
+            name = verName,
             changelog = "新上传",
-            status = Modpack.Status.BUILDING,
-            mods = mods, time = System.currentTimeMillis()
+            status = Modpack.Status.WAIT,
+            mods = mods,
+            time = System.currentTimeMillis()
         )
-
+        version.dir.mkdirs()
         version.zip.writeBytes(zipBytes)
 
-        scope.launch {
+        ioScope.launch {
             dbcl.updateOne(
-                eq("_id", pack._id),
+                eq("_id", modpack._id),
                 Updates.push(Modpack::versions.name, version)
             )
-            lgr.info { "开始构建镜像 ${pack.name}:${version.name}" }
+            lgr.info { "开始构建 ${modpack.name}:${version.name}" }
             val mailId = MailService.sendSystemMail(
                 player._id,
-                "构建整合包：${verName}",
-                "开始构建整合包 ${pack.name} 版本${version.name}\n"
+                "整合包${verName}构建中",
+                "开始构建整合包 ${modpack.name} 版本${version.name}\n"
             )._id
-            runCatching { pack.buildAsImage(mailId, version) }
+            runCatching {
+                modpack.buildVersion(version) {
+                    lgr.info { it }
+                    MailService.changeMail(mailId, newContent = it)
+                }
+            }
                 .onFailure { error ->
-                    lgr.error(error) { "镜像构建失败 ${pack.name}:${version.name}" }
+                    lgr.error(error) { "构建失败 ${modpack.name}:${version.name}" }
                     MailService.changeMail(
                         mailId,
-                        "整合包构建失败：${pack.name}",
-                        "无法构建整合包，错误原因：${error.stackTrace}"
+                        "整合包构建失败：${modpack.name}",
+                        "无法构建整合包，错误原因：${error.message}"
                     )
                 }
         }
@@ -370,72 +407,74 @@ object ModpackService {
         }
     }
 
-    suspend fun Modpack.buildAsImage(mailId: ObjectId, version: Modpack.Version) {
+    fun Modpack.Version.addKotlinForForge(modpack: Modpack) {
+        //升级kff到最新版
+        val kffMod = if (modpack.isMcVer(McVersion.V211)) {
+            Mod(
+                "cf", "351264", "kotlin-for-forge",
+                "6994056",
+                "3853038505"
+            )
+        } else if (modpack.isMcVer(McVersion.V201)) {
+            Mod(
+                "cf", "351264", "kotlin-for-forge",
+                "5402061",
+                "598972634"
+            )
+        } else throw RequestError("不支持的mc版本 无法添加kotlin for forge")
+        mods.removeIf { it.slug == "kotlin-for-forge" }
+        mods += kffMod
+    }
+
+    suspend fun Modpack.buildVersion(version: Modpack.Version, onProgress: (String) -> Unit) {
         if (!version.zip.exists()) {
             throw RequestError("版本压缩文件不存在 请重新上传")
         }
+        if (version.status == Modpack.Status.BUILDING) {
+            throw RequestError("版本正在构建中 请勿重复操作")
+        }
+        if(version.hostsUsing().isNotEmpty()) throw RequestError("有主机正在使用此版本，无法重构")
         val targetDir = version.dir
         if (targetDir.exists()) {
-            targetDir.deleteRecursively()
+            // Safely delete directory contents without following symbolic links
+            targetDir.deleteRecursivelyNoSymlink()
+            targetDir.mkdirs()
+        } else {
+            if (!targetDir.mkdirs()) {
+                throw RequestError("创建版本目录失败")
+            }
         }
-        if (!targetDir.mkdirs()) {
-            throw RequestError("创建版本目录失败")
-        }
-
+        version.addKotlinForForge(this)
         try {
-            MailService.changeMail(mailId, newContent = "正在解压...")
-            BASE_IMAGE_DIR.resolve("${mcVer}_${modloader}").copyRecursively(targetDir, true)
+            onProgress("正在解压...")
             unzipOverrides(version.zip, targetDir)
+            val modsDir = targetDir.resolve("mods").apply { mkdirs() }
             targetDir.safeDirSize.let {
                 version.setTotalSize(it)
-                MailService.changeMail(mailId, newContent = "解压完成 总尺寸${it.humanSize}")
+                onProgress("解压完成 总尺寸${it.humanSize}")
             }
-            val modsDir = targetDir.resolve("mods").apply { mkdirs() }
             val downloadedMods = CurseForgeService.downloadMods(version.mods.filter { it.side != Mod.Side.CLIENT }) {
-                scope.launch {
-                    MailService.changeMail(mailId, newContent = it)
+                ioScope.launch {
+                    onProgress(it)
                 }
             }
-            MailService.changeMail(mailId, newContent = "所有mod下载完成 开始安装。。")
+            onProgress("所有mod下载完成 开始安装。。${downloadedMods.size}个mod")
+            //不需要复制libraries了 运行时mount到host里
             downloadedMods.forEach { sourcePath ->
                 val fileName = sourcePath.fileName?.toString() ?: return@forEach
+                val absoluteSource = sourcePath.toAbsolutePath()
                 val targetPath = modsDir.resolve(fileName).toPath()
                 targetPath.parent?.let { Files.createDirectories(it) }
-                val absoluteSource = sourcePath.toAbsolutePath()
-                Files.copy(absoluteSource, targetPath, StandardCopyOption.REPLACE_EXISTING)
-            }
-
-            val imageTag = "${_id.str}:${version.name}"
-            val imageId = DockerService.buildImage(
-                imageTag,
-                targetDir,
-                onLine = { log ->
-                    scope.launch {
-                        MailService.changeMail(mailId, newContent = log)
-                    }
-                    lgr.info { "build image ${imageTag}: ${log}" }
-                },
-                onError = { throwable ->
-                    lgr.error(throwable) { "build image ${imageTag} failed" }
-                    scope.launch {
-                        MailService.changeMail(mailId, newContent = "构建失败：${throwable.message}", newTitle = "构建失败${name}")
-                        version.setStatus(Modpack.Status.FAIL)
-                    }
-                },
-                onFinished = {
-                    lgr.info { "build image ${imageTag} finished" }
-                    scope.launch {
-                        MailService.changeMail(mailId, newContent = "构建成功", newTitle = "构建成功${name}能玩了")
-                        version.setStatus(Modpack.Status.OK)
-                    }
+                if (Files.exists(targetPath)) {
+                    Files.delete(targetPath)
                 }
-            )
-
-            lgr.info { "build image $imageTag success: $imageId" }
-        } catch (e: Exception) {
-            if (targetDir.exists()) {
-                targetDir.deleteRecursively()
+                Files.copy(absoluteSource,targetPath)
             }
+            onProgress("整合包构建完成！")
+            version.setStatus(Modpack.Status.OK)
+
+        } catch (e: Exception) {
+            version.setStatus(Modpack.Status.FAIL)
             throw e
         }
     }
@@ -464,45 +503,30 @@ object ModpackService {
         )
     }
 
-    suspend fun ModpackGuardContext.deleteVersion(verName: String) {
-        requireAuthor()
-        val (pack, _) = requireVersion(verName)
-        val updated = pack.versions.filterNot { it.name == verName }
+    suspend fun Modpack.Version.hostsUsing(): List<Host> {
+        return HostService.findByModpackVersion(modpackId, name).filter { it.status != HostStatus.STOPPED }
+    }
+    suspend fun Modpack.hostsUsing(): List<Host> {
+        return HostService.findByModpack(_id).filter { it.status != HostStatus.STOPPED }
+    }
+
+    suspend fun ModpackContext.deleteVersion() {
+        if (versionNull == null) throw RequestError("无此版本")
+        val hostsUsing = version.hostsUsing()
+        if (hostsUsing.isNotEmpty()) throw RequestError("以下主机用了此版本整合包，且正在运行，无法删除：${hostsUsing.map { it.name }}")
+        versionNull.dir.deleteRecursivelyNoSymlink()
+        versionNull.zip.delete()
         dbcl.updateOne(
-            eq("_id", pack._id),
-            Updates.set(Modpack::versions.name, updated)
+            eq("_id", modpack._id),
+            Updates.pull(Modpack::versions.name, eq(Modpack.Version::name.name, versionNull.name))
         )
-        deleteImageQuietly(pack.versionImageTag(verName))
-        val dir = pack.dir.resolve(verName)
-        if (dir.exists()) {
-            pack.dir.resolve("$verName.zip").delete()
-            dir.deleteRecursively()
-        }
     }
 
-    suspend fun ModpackGuardContext.deleteModpack() {
-        requireAuthor()
-        val pack = reloadModpack()
-        pack.versions.forEach { deleteImageQuietly(pack.versionImageTag(it.name)) }
-        val result = dbcl.deleteOne(eq("_id", pack._id))
-        if (result.deletedCount == 0L) {
-            throw RequestError("整合包不存在")
-        }
-        val dir = pack.dir
-        if (dir.exists()) {
-            dir.deleteRecursively()
-        }
-    }
-
-
-    suspend fun ModpackGuardContext.reloadModpack(): Modpack =
-        get(modpack._id) ?: throw RequestError("整合包不存在")
-
-    suspend fun ModpackGuardContext.requireVersion(verName: String): Pair<Modpack, Modpack.Version> {
-        val pack = reloadModpack()
-        val version = pack.versions.firstOrNull { it.name == verName }
-            ?: throw RequestError("版本不存在")
-        return pack to version
+    suspend fun ModpackContext.deleteModpack() {
+        val hostsUsing = modpack.hostsUsing()
+        if (hostsUsing.isNotEmpty()) throw RequestError("以下主机用了此整合包，且正在运行，无法删除：${hostsUsing.map { it.name }}")
+        modpack.dir.deleteRecursivelyNoSymlink()
+        dbcl.deleteOne(eq("_id", modpack._id))
     }
 
 
@@ -518,12 +542,5 @@ object ModpackService {
         return relativeSegments.joinToString("/")
     }
 
-
-    private fun Modpack.versionImageTag(verName: String) = "${_id.str}:$verName"
-
-    private fun deleteImageQuietly(tag: String) {
-        runCatching { DockerService.deleteImage(tag) }
-            .onFailure { lgr.warn(it) { "删除Docker镜像失败: $tag" } }
-    }
 
 }
