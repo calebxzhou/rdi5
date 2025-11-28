@@ -13,6 +13,7 @@ import calebxzhou.rdi.service.selectModpackFile
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.LoadingView
 import calebxzhou.rdi.ui2.component.ModGrid
+import calebxzhou.rdi.ui2.component.alertOk
 import calebxzhou.rdi.ui2.component.closeLoading
 import calebxzhou.rdi.ui2.component.confirm
 import calebxzhou.rdi.ui2.component.showLoading
@@ -22,11 +23,9 @@ import icyllis.modernui.view.Gravity
 import io.ktor.http.*
 import org.bson.types.ObjectId
 
-class ModpackInfoFragment(val modpackId: ObjectId) : RFragment("整合包信息") {
+class ModpackInfoFragment(val modpackId: ObjectId,val changeHostId: ObjectId? = null) : RFragment("整合包信息") {
     override var fragSize = FragmentSize.FULL
-    override var preserveViewStateOnDetach: Boolean
-        get() = true
-        set(value) {}
+    override var preserveViewStateOnDetach  = true
 
     init {
         contentViewInit = {
@@ -71,16 +70,25 @@ class ModpackInfoFragment(val modpackId: ObjectId) : RFragment("整合包信息"
                     gravity = Gravity.CENTER_VERTICAL
                     padding8dp()
                     textView("V${v.name} - 上传时间：${v.time.humanDateTime} - \uF0C7${v.totalSize?.humanSize ?: ""}")
-                    if (v.status == Modpack.Status.BUILDING) textView("【正在构建中】")
+                    if (v.status == Modpack.Status.BUILDING) textView("【构建中】")
                     quickOptions {
                         if (v.status == Modpack.Status.OK) {
-                            "▶ 拿这版开服" colored MaterialColor.GREEN_900 with {
-                                HostCreateFragment(
-                                    modpackId,
-                                    name,
-                                    v.name,
-                                    v.mods.find { it.slug == "skyblock-builder" } != null
-                                ).go()
+                            changeHostId?.let { hostId->
+                                "\uDB86\uDDD8 使用此版本作主机整合包" colored MaterialColor.TEAL_900 with {
+                                    server.requestU("host/$hostId/modpack/${modpackId}/${v.name}") {
+                                        close()
+                                        alertOk("已更换主机整合包为$name ${v.name}")
+                                    }
+                                }
+                            }?:let {
+                                "▶ 用此版创建主机" colored MaterialColor.GREEN_900 with {
+                                    HostCreateFragment(
+                                        modpackId,
+                                        name,
+                                        v.name,
+                                        v.mods.find { it.slug == "skyblock-builder" } != null
+                                    ).go()
+                                }
                             }
                         }
                         "\uF1F8 删除" colored MaterialColor.RED_900 with {
