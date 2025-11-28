@@ -5,6 +5,7 @@ import calebxzhou.rdi.auth.LocalCredentials
 import calebxzhou.rdi.model.Host
 import calebxzhou.rdi.model.HostStatus
 import calebxzhou.rdi.net.server
+import calebxzhou.rdi.service.HostClientService
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.HostGrid
 import calebxzhou.rdi.ui2.component.alertErr
@@ -70,40 +71,11 @@ class HostLobbyFragment : RFragment("服务器大厅") {
         }
         contentView += HostGrid(contentView.context, hosts, { HostInfoFragment(it._id).go() }, {
             if (isMcStarted) {
-                it.play()
+                HostClientService.play(it._id,it.port,this)
             }
         })
     }
 
-    private fun Host.Vo.play() {
-        //电信以外全bgp
-        val bgp = LocalCredentials.read().carrier != 0
-        server.request<HostStatus>("host/${_id}/status"){
-            val status = it.data
-            if (status == HostStatus.STARTED) {
-                alertErr("主机正在载入中\n请稍等1~5分钟")
-                return@request
-            } else if (status == HostStatus.STOPPED) {
-                server.requestU("host/${_id}/start") {
-                    alertOk("主机已经启动\n请稍等1~5分钟")
-                    return@requestU
-                }
-            } else if(status == HostStatus.PLAYABLE){
-                Host.portNow = this.port
-                renderThread {
-                    ConnectScreen.startConnecting(
-                        this@HostLobbyFragment.mcScreen,
-                        mc,
-                        ServerAddress(if (bgp) server.bgpIp else server.ip, server.gamePort),
-                        server.mcData(bgp),
-                        false,
-                        null
-                    )
-                }
-            }
-        }
-
-    }
 
     private fun generateMockHosts(): List<Host.Vo> = List(50) { index ->
         val base = Host.Vo.TEST
