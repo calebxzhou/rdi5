@@ -41,8 +41,8 @@ dependencies {
     implementation 'org.mongodb:mongodb-driver-kotlin-coroutine:5.5.1'
     implementation("net.benwoodworth.knbt:knbt:0.11.8")
     // https://mvnrepository.com/artifact/com.github.docker-java/docker-java
-    implementation 'com.github.docker-java:docker-java:3.6.0'
-    implementation 'com.github.docker-java:docker-java-transport-httpclient5:3.6.0'
+    implementation 'com.github.docker-java:docker-java:3.7.0'
+    implementation 'com.github.docker-java:docker-java-transport-okhttp:3.7.0'
     implementation 'org.apache.commons:commons-compress:1.27.1'
 }
 ktor {
