@@ -262,7 +262,7 @@ abstract class RFragment(initialTitle: String = "") : Fragment() {
 
     // Make this a var so inheritors can either override it or assign in init {}
 
-    fun close()=uiThread {
+    open fun close()=uiThread {
         // If this fragment is being shown as an overlay child, prefer dismissing the overlay.
         overlayRemover?.let { remover ->
             overlayRemover = null
