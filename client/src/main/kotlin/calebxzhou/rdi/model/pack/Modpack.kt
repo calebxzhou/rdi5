@@ -31,7 +31,7 @@ class Modpack(
         ){
     }
     enum class Status{
-        FAIL,OK,BUILDING
+        FAIL,OK,BUILDING,WAIT,
     }
 }
 val List<Modpack.Version>.latest get() = maxBy { it.time }

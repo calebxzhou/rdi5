@@ -1,5 +1,6 @@
 package calebxzhou.rdi.ihq.model.pack
 
+import calebxzhou.rdi.ihq.GAME_LIBS_DIR
 import calebxzhou.rdi.ihq.MODPACK_DATA_DIR
 import calebxzhou.rdi.ihq.util.str
 import kotlinx.serialization.Contextual
@@ -40,6 +41,6 @@ data class Modpack(
             get() = dir.parentFile.resolve("${name}.zip")
     }
     enum class Status{
-        FAIL,OK,BUILDING
+        WAIT,FAIL,OK,BUILDING
     }
 }
