@@ -32,7 +32,7 @@ data class Modpack(
         //构建完成状态
         val status: Status,
         val totalSize: Long?=0L,
-        val mods: List<Mod> = arrayListOf(),
+        val mods: MutableList<Mod> = arrayListOf(),
 
         ){
         val dir
