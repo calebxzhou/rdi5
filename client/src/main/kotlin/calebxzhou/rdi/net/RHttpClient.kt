@@ -45,7 +45,7 @@ val ktorClient
             }
             install(SSE ){
                 maxReconnectionAttempts = 4
-                reconnectionTime = 2.seconds
+                reconnectionTime = 5.seconds
                 bufferPolicy = SSEBufferPolicy.LastEvents(10)
             }
             install(ContentEncoding) {
