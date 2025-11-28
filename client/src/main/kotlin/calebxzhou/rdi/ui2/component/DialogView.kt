@@ -27,6 +27,11 @@ fun alertOk(msg: String, parent: RFragment? = nowFragment) {
         uiThread { DialogView(parent.fctx, msg, msglvl = MessageLevel.OK).apply {  }.showOver(parent) }
     }
 }
+fun alertWarn(msg: String, parent: RFragment? = nowFragment) {
+    if (parent != null) {
+        uiThread { DialogView(parent.fctx, msg, msglvl = MessageLevel.WARN).apply {  }.showOver(parent) }
+    }
+}
 
 fun confirm(
     msg: String,
