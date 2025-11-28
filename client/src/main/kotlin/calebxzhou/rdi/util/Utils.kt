@@ -12,6 +12,7 @@ import java.net.URLEncoder
 import java.nio.ByteBuffer
 import java.security.MessageDigest
 import java.time.Instant
+import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.*
@@ -160,6 +161,8 @@ fun Byte.isWhitespaceCharacter(): Boolean {
         else -> false
     }
 }
+val humanDateTime
+    get() = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
 val Long.humanDateTime
     get() = Instant.ofEpochMilli(this).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
 fun jarResource(path: String) = RDI::class.java.classLoader.getResourceAsStream(path)
