@@ -154,9 +154,9 @@ class HostConsoleFragment(val hostId: ObjectId) : RFragment("主机后台") {
         logStreamJob = null
     }
 
-    override fun onDestroyView() {
+    override fun close() {
         stopLogStream()
-        super.onDestroyView()
+        super.close()
     }
 
 
