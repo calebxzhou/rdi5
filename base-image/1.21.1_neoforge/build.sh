@@ -1,0 +1,1 @@
+docker build -t rdi:1.21.1/neoforge .
