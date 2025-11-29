@@ -587,10 +587,6 @@ object HostService {
 
         val mounts = mutableListOf(
             Mount()
-                .withType(MountType.TMPFS)
-                .withTarget("/mnt/overlay")
-                .withTmpfsOptions(TmpfsOptions().withSizeBytes(1L * 1024 * 1024 * 1024)),
-            Mount()
                 .withType(MountType.BIND)
                 .withSource(sources.versionDir.toDockerAccessiblePath())
                 .withTarget("/mnt/modpack")
