@@ -683,6 +683,9 @@ object HostService {
 
 
     suspend fun HostContext.delete() {
+        if (host.status == HostStatus.PLAYABLE) {
+            graceStop()
+        }
         DockerService.deleteContainer(host._id.str)
         host.cleanupOverlayArtifacts()
         clearShutFlag(host._id)
@@ -723,9 +726,14 @@ object HostService {
         clearShutFlag(current._id)
     }
 
-    suspend fun HostContext.userStop() {
+    suspend fun HostContext.graceStop() {
         sendCommand("stop")
         clearShutFlag(host._id)
+    }
+
+    suspend fun HostContext.forceStop() {
+        clearShutFlag(host._id)
+        DockerService.stop(host._id.str)
     }
 
     suspend fun HostContext.restart() {
