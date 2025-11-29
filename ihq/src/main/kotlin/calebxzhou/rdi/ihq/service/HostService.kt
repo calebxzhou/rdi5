@@ -619,69 +619,6 @@ object HostService {
             requiresSysAdmin = true
         )
     }
-
-    private fun Host.makeContainerWithHostOverlay(
-        worldId: ObjectId?,
-        modpack: Modpack,
-        version: Modpack.Version
-    ) {
-        val sources = prepareOverlaySources(modpack, version)
-
-        DockerService.createVolume(overlayUpperVolumeName())
-        DockerService.createVolume(overlayWorkVolumeName())
-
-        val dockerRootDir = DockerService.dockerRootDir
-        val upperDirPath = "$dockerRootDir/volumes/${overlayUpperVolumeName()}/_data"
-        val workDirPath = "$dockerRootDir/volumes/${overlayWorkVolumeName()}/_data"
-        val lowerDirs = listOf(sources.libsDir, sources.versionDir)
-            .joinToString(":") { it.toDockerAccessiblePath() }
-
-        val overlayMount = Mount()
-            .withType(MountType.VOLUME)
-            .withSource(overlayVolumeName())
-            .withTarget("/opt/server")
-            .withReadOnly(false)
-            .withVolumeOptions(
-                VolumeOptions()
-                    .withNoCopy(true)
-                    .withDriverConfig(
-                        Driver()
-                            .withName("local")
-                            .withOptions(
-                                mapOf(
-                                    "type" to "overlay",
-                                    "device" to "overlay",
-                                    "o" to "lowerdir=${lowerDirs},upperdir=${upperDirPath},workdir=${workDirPath}"
-                                )
-                            )
-                    )
-            )
-
-        val mounts = mutableListOf(overlayMount).apply {
-            if (worldId != null) {
-                this += Mount()
-                    .withType(MountType.VOLUME)
-                    .withSource(worldId.str)
-                    .withTarget("/data")
-            } else {
-                //临时存档 关机消失
-                this += Mount()
-                    .withType(MountType.TMPFS)
-                    .withTarget("/data")
-                    .withTmpfsOptions(TmpfsOptions().withSizeBytes(512 * 1024 * 1024))
-            }
-        }
-
-        DockerService.createContainer(
-            port,
-            this._id.str,
-            mounts,
-            "rdi:${modpack.mcVer}_${modpack.modloader}",
-            buildEnv(version.mods, OverlayStrategy.HOST)
-        )
-    }
-
-
     suspend fun HostContext.delete() {
         if (host.status == HostStatus.PLAYABLE) {
             graceStop()
