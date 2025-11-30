@@ -1,5 +1,6 @@
 package calebxzhou.rdi.ui2.frag
 
+import calebxzhou.rdi.Const
 import calebxzhou.rdi.model.World
 import calebxzhou.rdi.net.server
 import calebxzhou.rdi.ui2.FragmentSize
@@ -61,9 +62,10 @@ class HostCreateFragment(val modpackId: ObjectId, val modpackName: String, val p
                             id = idCreateNewSave
                         }
                     }
-                    radioButton("不使用存档") {
+                    radioButton("不存档") {
                         id = idNoSave
                         setOnClickListener {
+                            if(!Const.DEBUG)
                             alertWarn("如果不用存档，所有的地图、背包内容都不保存，\n关服后自动删除，仅供测试使用。\n谨慎选择！")
                         }
                     }
