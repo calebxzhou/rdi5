@@ -6,6 +6,7 @@ import calebxzhou.rdi.ihq.lgr
 import calebxzhou.rdi.ihq.model.HostStatus
 import calebxzhou.rdi.ihq.util.Loggers
 import calebxzhou.rdi.ihq.util.Loggers.provideDelegate
+import calebxzhou.rdi.ihq.util.jarResource
 import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.api.async.ResultCallback.Adapter
 import com.github.dockerjava.api.command.BuildImageResultCallback
@@ -24,6 +25,7 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.Closeable
 import java.io.File
+import java.io.FileInputStream
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -55,13 +57,6 @@ object DockerService {
             .build()
     }
 
-    val dockerRootDir: String by lazy {
-        runCatching { client.infoCmd().exec().dockerRootDir?.takeIf { it.isNotBlank() } ?: "/var/lib/docker" }
-            .getOrElse {
-                lgr.warn(it) { "无法获取 Docker Root Dir，使用默认 /var/lib/docker" }
-                "/var/lib/docker"
-            }
-    }
 
     private fun findContainer(containerName: String, includeStopped: Boolean = true) =
         client.listContainersCmd()
@@ -80,37 +75,18 @@ object DockerService {
         mounts: List<Mount>,
         image: String,
         env: List<String>,
-        cmd: List<String>? = null,
-        requiresSysAdmin: Boolean = false,
-        requiresFuseDevice: Boolean = false
+        cmd: List<String>? = null
     ): String {
-        val capAdd = mutableListOf<Capability>()
-        if (requiresSysAdmin) capAdd += Capability.SYS_ADMIN
-
-        val devices = mutableListOf<Device>()
-        val securityOpts = mutableListOf<String>()
-        if (requiresFuseDevice) {
-            devices += Device("rwm", "/dev/fuse", "/dev/fuse")
-            securityOpts += "apparmor=unconfined"
-        }
 
         val hostConfig = HostConfig.newHostConfig()
             .withPortBindings(parse("$port:$port"))
             .withCpuCount(4L)  // Limit to 2 CPUs
             .withMemory(4L * 1024 * 1024 * 1024)  // 2GB RAM limit
             .withMemorySwap(4L * 1024 * 1024 * 1024)  //4G swap
+            .withPidsLimit(512L)
             .withExtraHosts("host.docker.internal:host-gateway")
             .withMounts(mounts)
 
-        if (capAdd.isNotEmpty()) {
-            hostConfig.withCapAdd(*capAdd.toTypedArray())
-        }
-        if (devices.isNotEmpty()) {
-            hostConfig.withDevices(devices)
-        }
-        if (securityOpts.isNotEmpty()) {
-            hostConfig.withSecurityOpts(securityOpts)
-        }
 
         val createCmd = client.createContainerCmd(image)
             .withName(containerName)

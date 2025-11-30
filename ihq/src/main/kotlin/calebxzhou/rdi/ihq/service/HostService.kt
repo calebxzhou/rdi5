@@ -1,11 +1,9 @@
 package calebxzhou.rdi.ihq.service
 
 import calebxzhou.rdi.ihq.DB
-import calebxzhou.rdi.ihq.DOWNLOAD_MODS_DIR
 import calebxzhou.rdi.ihq.HOSTS_DIR
 import calebxzhou.rdi.ihq.exception.ParamError
 import calebxzhou.rdi.ihq.exception.RequestError
-import calebxzhou.rdi.ihq.lgr
 import calebxzhou.rdi.ihq.model.*
 import calebxzhou.rdi.ihq.model.pack.Mod
 import calebxzhou.rdi.ihq.model.pack.Modpack
@@ -28,9 +26,11 @@ import calebxzhou.rdi.ihq.service.HostService.setRole
 import calebxzhou.rdi.ihq.service.HostService.start
 import calebxzhou.rdi.ihq.service.HostService.status
 import calebxzhou.rdi.ihq.service.HostService.transferOwnership
-import calebxzhou.rdi.ihq.service.HostService.userStop
+import calebxzhou.rdi.ihq.service.HostService.graceStop
 import calebxzhou.rdi.ihq.service.ModpackService.getVersion
+import calebxzhou.rdi.ihq.service.ModpackService.installToHost
 import calebxzhou.rdi.ihq.service.WorldService.createWorld
+import calebxzhou.rdi.ihq.util.Loggers
 import calebxzhou.rdi.ihq.util.ioScope
 import calebxzhou.rdi.ihq.util.serdesJson
 import calebxzhou.rdi.ihq.util.str
@@ -55,9 +55,6 @@ import kotlinx.coroutines.flow.toList
 import org.bson.Document
 import org.bson.types.ObjectId
 import java.io.File
-import java.nio.file.Files
-import java.nio.file.Path
-import java.nio.file.StandardCopyOption
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -98,7 +95,7 @@ fun Route.hostRoutes() = route("/host") {
             ok()
         }
         post("/stop") {
-            call.hostContext().needAdmin.userStop()
+            call.hostContext().needAdmin.graceStop()
             ok()
         }
         post("/command") {
@@ -211,9 +208,10 @@ data class HostContext(
 }
 
 object HostService {
-
+    private val lgr by Loggers
     private val isWindowsHost: Boolean = System.getProperty("os.name").contains("windows", ignoreCase = true)
-    private val dockerDesktopPrefix: String = System.getenv("DOCKER_DESKTOP_PATH_PREFIX")?.trimEnd('/') ?: "/run/desktop/mnt/host"
+    private val dockerDesktopPrefix: String =
+        System.getenv("DOCKER_DESKTOP_PATH_PREFIX")?.trimEnd('/') ?: "/run/desktop/mnt/host"
 
     val dbcl = DB.getCollection<Host>("host")
 
@@ -234,10 +232,6 @@ object HostService {
 
     private val hostStates = ConcurrentHashMap<ObjectId, HostState>()
 
-    private enum class OverlayStrategy(val envValue: String) {
-        HOST("host"),
-        IN_CONTAINER("in-container")
-    }
 
     private val Host.containerEnv
         get() = { mods: List<Mod> ->
@@ -251,14 +245,6 @@ object HostService {
             )
         }
 
-    private fun Host.buildEnv(mods: List<Mod>, strategy: OverlayStrategy, lowerDirs: String? = null): List<String> {
-        val base = this.containerEnv(mods)
-        val overlayVars = mutableListOf("RDI_OVERLAY_STRATEGY=${strategy.envValue}")
-        if (!lowerDirs.isNullOrBlank()) {
-            overlayVars += "RDI_OVERLAY_LOWERDIRS=${lowerDirs}"
-        }
-        return base + overlayVars
-    }
 
     private data class OverlaySources(
         val libsDir: File,
@@ -277,6 +263,7 @@ object HostService {
 
         return OverlaySources(libsDir, versionDir)
     }
+
     val HostContext.needAdmin get() = requireRole(Role.ADMIN)
     val HostContext.needOwner get() = requireRole(Role.OWNER)
     fun HostContext.requireRole(level: Role): HostContext {
@@ -530,6 +517,10 @@ object HostService {
             MailService.sendSystemMail(playerId, "主机创建中", "你的主机《${host.name}》正在创建中，请稍等几分钟...")._id
         ioScope.launch {
             runCatching {
+                host.dir.mkdir()
+                modpack.installToHost(packVer,host){
+                    MailService.changeMail(mailId, "主机创建失败", newContent = it)
+                }
                 host.makeContainer(world?._id, modpack, version)
                 dbcl.insertOne(host)
 
@@ -537,7 +528,6 @@ object HostService {
 
                 clearShutFlag(host._id)
             }.onFailure {
-                host.cleanupOverlayArtifacts()
                 lgr.error { it }
                 it.printStackTrace()
                 MailService.changeMail(mailId, "主机创建失败", newContent = "无法创建主机，错误：${it}")
@@ -555,7 +545,6 @@ object HostService {
         val modpack = ModpackService.getById(modpackId) ?: throw RequestError("无此整合包")
         val version = modpack.getVersion(verName) ?: throw RequestError("无此版本")
         DockerService.deleteContainer(host._id.str)
-        host.cleanupOverlayArtifacts()
         host.makeContainer(host.worldId, modpack, version)
         dbcl.updateOne(
             eq("_id", host._id), combine(
@@ -570,32 +559,12 @@ object HostService {
         modpack: Modpack,
         version: Modpack.Version
     ) {
-        if (isWindowsHost) {
-            makeContainerWithInContainerOverlay(worldId, modpack, version)
-        } else {
-            makeContainerWithHostOverlay(worldId, modpack, version)
-        }
-    }
-
-    private fun Host.makeContainerWithInContainerOverlay(
-        worldId: ObjectId?,
-        modpack: Modpack,
-        version: Modpack.Version
-    ) {
-        val sources = prepareOverlaySources(modpack, version)
-        val overlayLowerDirs = listOf("/mnt/lib", "/mnt/modpack").joinToString(":")
 
         val mounts = mutableListOf(
             Mount()
                 .withType(MountType.BIND)
-                .withSource(sources.versionDir.toDockerAccessiblePath())
-                .withTarget("/mnt/modpack")
-                .withReadOnly(true),
-            Mount()
-                .withType(MountType.BIND)
-                .withSource(sources.libsDir.toDockerAccessiblePath())
-                .withTarget("/mnt/lib")
-                .withReadOnly(true)
+                .withSource(dir.absolutePath)
+                .withTarget("/opt/server"),
         ).apply {
             if (worldId != null) {
                 this += Mount()
@@ -615,8 +584,7 @@ object HostService {
             this._id.str,
             mounts,
             "rdi:${modpack.mcVer}_${modpack.modloader}",
-            buildEnv(version.mods, OverlayStrategy.IN_CONTAINER, overlayLowerDirs),
-            requiresSysAdmin = true
+            containerEnv(version.mods)
         )
     }
     suspend fun HostContext.delete() {
@@ -624,7 +592,6 @@ object HostService {
             graceStop()
         }
         DockerService.deleteContainer(host._id.str)
-        host.cleanupOverlayArtifacts()
         clearShutFlag(host._id)
         dbcl.deleteOne(eq("_id", host._id))
     }
@@ -877,49 +844,10 @@ object HostService {
         runIdleMonitorTick(forceStop = true)
     }
 
-    private fun Host.overlayVolumeName() = "${_id.str}-overlay"
-    private fun Host.overlayUpperVolumeName() = "${_id.str}-overlay-upper"
-    private fun Host.overlayWorkVolumeName() = "${_id.str}-overlay-work"
 
     private fun Host.overlayRootDir(): File = HOSTS_DIR.resolve(_id.str)
 
-    private fun Host.cleanupOverlayArtifacts() {
-        runCatching { DockerService.deleteVolume(overlayVolumeName()) }
-        runCatching { DockerService.deleteVolume(overlayUpperVolumeName()) }
-        runCatching { DockerService.deleteVolume(overlayWorkVolumeName()) }
-        overlayRootDir().deleteRecursively()
-    }
 
-    private fun File.ensureCleanDir(): File {
-        if (exists()) {
-            deleteRecursively()
-        }
-        mkdirs()
-        return this
-    }
-
-
-    private fun ensureLinked(source: Path, target: Path) {
-        target.parent?.let { Files.createDirectories(it) }
-        Files.deleteIfExists(target)
-        if (isWindowsHost) {
-            Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING)
-            return
-        }
-        if (runCatching { Files.createLink(target, source) }.isSuccess) return
-        if (runCatching { Files.createSymbolicLink(target, source) }.isSuccess) return
-        Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING)
-    }
-
-    private fun File.toDockerAccessiblePath(): String {
-        val canonical = canonicalFile
-        val normalized = canonical.path.replace('\\', '/')
-        if (!isWindowsHost) return normalized
-        if (normalized.length < 2 || normalized[1] != ':') return normalized
-        val drive = normalized[0].lowercaseChar()
-        val rest = normalized.substring(2).trimStart('/')
-        return "${dockerDesktopPrefix}/$drive/$rest"
-    }
 
     suspend fun HostContext.delMember() {
         if (targetMember.role.level <= Role.ADMIN.level) {
