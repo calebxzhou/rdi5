@@ -70,7 +70,12 @@ class ModpackInfoFragment(val modpackId: ObjectId,val changeHostId: ObjectId? = 
                     gravity = Gravity.CENTER_VERTICAL
                     padding8dp()
                     textView("V${v.name} - 上传时间：${v.time.humanDateTime} - \uF0C7${v.totalSize?.humanSize ?: ""}")
-                    if (v.status == Modpack.Status.BUILDING) textView("【构建中】")
+                    textView(when(v.status ){
+                        Modpack.Status.OK -> "（可用）"
+                        Modpack.Status.BUILDING -> "（构建中）"
+                        Modpack.Status.FAIL -> "（构建失败）"
+                        Modpack.Status.WAIT -> "（等待构建）"
+                    })
                     quickOptions {
                         if (v.status == Modpack.Status.OK) {
                             changeHostId?.let { hostId->
