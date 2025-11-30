@@ -1,3 +1,5 @@
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 plugins {
     id 'org.jetbrains.kotlin.jvm' version '2.2.20'
     id 'org.jetbrains.kotlin.plugin.serialization' version '2.2.20'
@@ -66,9 +68,10 @@ tasks.register('出core', Copy) {
     var jar= layout.buildDirectory.file("libs/ihq.jar")
     doLast {
         var jarFile = jar.get().asFile
-        copy {
-            from(jarFile)
-            into(file("\\\\rdi5\\rdi55\\ihq"))
-        }
+        Files.copy(
+                jarFile.toPath(),
+                file("\\\\rdi5\\rdi55\\ihq").toPath(),
+                StandardCopyOption.REPLACE_EXISTING
+        )
     }
 }
