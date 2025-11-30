@@ -18,6 +18,7 @@
 
 package calebxzhou.rdi.ui2
 
+import calebxzhou.rdi.Const
 import calebxzhou.rdi.lgr
 import calebxzhou.rdi.logMarker
 import icyllis.arc3d.core.ColorInfo
@@ -186,11 +187,11 @@ class RodernUI : ModernUI(), AutoCloseable, LifecycleOwner, ViewModelStoreOwner,
 
         window = if (monitor == null) {
             lgr.info(marker, "No monitor connected")
-            ActivityWindow.createMainWindow("Modern UI", 1280, 720)
+            ActivityWindow.createMainWindow("RDI ${Const.VERSION_NUMBER}", 1280, 720)
         } else {
             val mode = monitor.currentMode
             ActivityWindow.createMainWindow(
-                "Modern UI",
+                "RDI ${Const.VERSION_NUMBER}",
                 (mode.width * 0.75).toInt(),
                 (mode.height * 0.75).toInt()
             )
