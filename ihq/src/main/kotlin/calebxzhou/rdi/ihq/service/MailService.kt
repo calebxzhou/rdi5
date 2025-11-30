@@ -13,6 +13,8 @@ import calebxzhou.rdi.ihq.service.MailService.deleteMail
 import calebxzhou.rdi.ihq.service.MailService.getInbox
 import calebxzhou.rdi.ihq.service.MailService.getMail
 import calebxzhou.rdi.ihq.service.MailService.mailId
+import calebxzhou.rdi.ihq.util.Loggers
+import calebxzhou.rdi.ihq.util.Loggers.provideDelegate
 import calebxzhou.rdi.ihq.util.humanDateTime
 import calebxzhou.rdi.ihq.util.ioScope
 import com.mongodb.client.model.Filters.and
@@ -40,6 +42,7 @@ fun Route.mailRoutes() {
     }
 }
 object MailService {
+    private val lgr by Loggers
     private const val TITLE_MAX_LEN = 120
     private const val CONTENT_MAX_LEN = 4000
     suspend fun RoutingContext.mailId() = idParam("mailId")
