@@ -5,6 +5,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.bson.types.ObjectId
 import java.io.File
+import java.io.InputStream
+import java.net.URLDecoder
 import java.net.URLEncoder
 import java.nio.ByteBuffer
 import java.nio.file.Files
@@ -64,7 +66,7 @@ private fun Int.isWideCodePoint(): Boolean {
 val String.urlEncoded
     get() = URLEncoder.encode(this, Charsets.UTF_8)
 val String.urlDecoded
-    get() = java.net.URLDecoder.decode(this, Charsets.UTF_8)
+    get() = URLDecoder.decode(this, Charsets.UTF_8)
 val String.decodeBase64
     get() = String(Base64.getDecoder().decode(this), Charsets.UTF_8)
 val String.encodeBase64
@@ -160,3 +162,4 @@ fun File.deleteRecursivelyNoSymlink() {
     // Finally delete this file/directory
     this.delete()
 }
+fun Any.jarResource(path: String): InputStream? = this::class.java.classLoader.getResourceAsStream(path)
