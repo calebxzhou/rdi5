@@ -263,6 +263,9 @@ fun ViewGroup.iconButton(
 fun ViewGroup.scrollView(
     init: ScrollView.() -> Unit = {}
 ) = ScrollView(this.context).apply(init).also { this += it }
+fun ViewGroup.scrollLinearLayout(
+    init: LinearLayout.() -> Unit = {}
+) = ScrollView(this.context).apply{linearLayout { init() }}.also { this += it }
 fun View.center(width: Int = SELF, height: Int = SELF) {
     layoutParams = when (this) {
         is LinearLayout -> {
