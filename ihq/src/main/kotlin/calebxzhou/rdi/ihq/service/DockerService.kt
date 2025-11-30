@@ -4,6 +4,8 @@ import calebxzhou.rdi.ihq.CONF
 import calebxzhou.rdi.ihq.exception.RequestError
 import calebxzhou.rdi.ihq.lgr
 import calebxzhou.rdi.ihq.model.HostStatus
+import calebxzhou.rdi.ihq.util.Loggers
+import calebxzhou.rdi.ihq.util.Loggers.provideDelegate
 import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.api.async.ResultCallback.Adapter
 import com.github.dockerjava.api.command.BuildImageResultCallback
@@ -26,6 +28,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 object DockerService {
+    private val lgr by Loggers
     private val client: DockerClient by lazy {
         val dockerConfig = CONF.docker
         val configBuilder = DefaultDockerClientConfig.createDefaultConfigBuilder()
