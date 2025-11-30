@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import kotlin.test.assertNotNull
 
-internal class ModpackTest {
+class ModpackTest {
 
 	companion object {
 		private const val TEST_USER = "123123"
@@ -68,9 +68,10 @@ internal class ModpackTest {
 		assertNotNull(modpackData.manifest)
 	}
     @Test
+    @Disabled("Requires local CurseForge modpack zip on disk")
     fun cfModFile(){
         runBlocking {
-            CurseForgeService.getModFileInfo(580181,6090721)?.let { print(it.json) }
+            CurseForgeService.getModFileInfo(351264,5402061)?.let { print(it.json) }
         }
     }
 }
