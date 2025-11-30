@@ -10,6 +10,7 @@ import calebxzhou.rdi.ihq.net.idParam
 import calebxzhou.rdi.ihq.net.ok
 import calebxzhou.rdi.ihq.net.response
 import calebxzhou.rdi.ihq.service.MailService.deleteMail
+import calebxzhou.rdi.ihq.service.MailService.deleteMails
 import calebxzhou.rdi.ihq.service.MailService.getInbox
 import calebxzhou.rdi.ihq.service.MailService.getMail
 import calebxzhou.rdi.ihq.service.MailService.mailId
@@ -17,10 +18,12 @@ import calebxzhou.rdi.ihq.util.Loggers
 import calebxzhou.rdi.ihq.util.Loggers.provideDelegate
 import calebxzhou.rdi.ihq.util.humanDateTime
 import calebxzhou.rdi.ihq.util.ioScope
+import com.mongodb.client.model.Filters
 import com.mongodb.client.model.Filters.and
 import com.mongodb.client.model.Filters.eq
 import com.mongodb.client.model.Sorts
 import com.mongodb.client.model.Updates
+import io.ktor.server.request.receive
 import io.ktor.server.routing.*
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.toList
@@ -38,6 +41,10 @@ fun Route.mailRoutes() {
                 call.player().deleteMail(mailId())
                 ok()
             }
+        }
+        delete {
+            call.player().deleteMails(call.receive())
+            ok()
         }
     }
 }
@@ -70,7 +77,7 @@ object MailService {
                 it._id,
                 if (it.senderId == SYSTEM_SENDER_ID) "系统" else PlayerService.getName(it.senderId) ?: "未知",
                 it.title,
-                it.content.substring(0, 20),
+                it.content.split("\n")[0].take(50).trim(),
                 it.unread
             )
         }
@@ -106,6 +113,14 @@ object MailService {
         if (deleteResult.deletedCount == 0L) {
             throw RequestError("未找到对应邮件")
         }
+    }
+    suspend fun RAccount.deleteMails(mailIds: List<ObjectId>) {
+        mailCol.deleteMany(
+            and(
+                eq("receiverId", this._id),
+               Filters.`in`("_id", mailIds)
+            )
+        )
     }
     suspend fun sendSystemMail(
         receiverId: ObjectId,
