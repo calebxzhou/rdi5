@@ -62,16 +62,22 @@ test {
 kotlin {
     jvmToolchain(21)
 }
-tasks.register('出core', Copy) {
-    dependsOn(tasks.named('shadowJar'))
+tasks.register('出core') {
+    dependsOn(tasks.named('buildFatJar'))
 
-    var jar= layout.buildDirectory.file("libs/ihq.jar")
     doLast {
-        var jarFile = jar.get().asFile
+        def jarFile = layout.buildDirectory.file("libs/ihq.jar").get().asFile
+        if (!jarFile.exists()) {
+            throw new GradleException("未找到构建产物: ${jarFile}")
+        }
+        def targetDir = file("\\\\rdi5\\rdi55\\ihq")
+        targetDir.mkdirs()
+        def destFile = new File(targetDir, jarFile.name)
         Files.copy(
                 jarFile.toPath(),
-                file("\\\\rdi5\\rdi55\\ihq").toPath(),
+                destFile.toPath(),
                 StandardCopyOption.REPLACE_EXISTING
         )
+        println("已复制 ${jarFile} 到 ${destFile}")
     }
 }
