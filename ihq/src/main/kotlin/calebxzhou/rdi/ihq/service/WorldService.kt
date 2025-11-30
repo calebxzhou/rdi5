@@ -13,6 +13,8 @@ import calebxzhou.rdi.ihq.net.response
 import calebxzhou.rdi.ihq.net.uid
 import calebxzhou.rdi.ihq.util.displayLength
 import calebxzhou.rdi.ihq.service.WorldService.createWorld
+import calebxzhou.rdi.ihq.util.Loggers
+import calebxzhou.rdi.ihq.util.Loggers.provideDelegate
 import com.mongodb.client.model.Filters.eq
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.delete
@@ -50,7 +52,7 @@ fun Route.worldRoutes() = route("/world") {
 
 object WorldService {
     private const val PLAYER_MAX_WORLD = 5
-
+    private val lgr by Loggers
     val dbcl = DB.getCollection<World>("world")
 
     suspend fun getById(id: ObjectId): World? = dbcl.find(eq("_id", id)).firstOrNull()
