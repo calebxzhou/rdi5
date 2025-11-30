@@ -100,7 +100,7 @@ object PlayerService {
     val accountCol = DB.getCollection<RAccount>("account")
     val authLogCol = DB.getCollection<AuthLog>("auth_log")
     val inGamePlayers = hashMapOf<Byte, RAccount>()
-
+    private val lgr by Loggers
     data class LoginResult(val account: RAccount, val token: String)
 
     suspend fun getByQQ(qq: String): RAccount? = accountCol.find(eq("qq", qq)).firstOrNull()
