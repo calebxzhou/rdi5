@@ -25,6 +25,8 @@ import calebxzhou.rdi.ihq.service.ModpackService.rebuildVersion
 import calebxzhou.rdi.ihq.service.ModpackService.requireAuthor
 import calebxzhou.rdi.ihq.service.ModpackService.toDetailVo
 import calebxzhou.rdi.ihq.service.PlayerService.getPlayerNames
+import calebxzhou.rdi.ihq.util.Loggers
+import calebxzhou.rdi.ihq.util.Loggers.provideDelegate
 import calebxzhou.rdi.ihq.util.deleteRecursivelyNoSymlink
 import calebxzhou.rdi.ihq.util.humanSize
 import calebxzhou.rdi.ihq.util.ioScope
@@ -48,8 +50,13 @@ import kotlinx.coroutines.launch
 import kotlinx.io.readByteArray
 import org.bson.Document
 import org.bson.types.ObjectId
+import java.io.File
+import java.nio.charset.Charset
+import java.nio.charset.StandardCharsets
 import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.nio.file.StandardOpenOption
+import java.util.zip.ZipFile
 import java.util.zip.ZipInputStream
 import kotlin.io.path.absolute
 
@@ -164,6 +171,7 @@ class ModpackContext(
 }
 
 object ModpackService {
+    private val lgr by Loggers
     private const val MAX_MODPACK_PER_USER = 5
     private val STEP_PROGRESS_REGEX = Regex("""^Step\s+(\d+)/(\d+)""")
     val dbcl = DB.getCollection<Modpack>("modpack")
@@ -374,13 +382,58 @@ object ModpackService {
                 }
         }
     }
+    suspend fun Modpack.installToHost(verName: String, host: Host, onProgress: (String) -> Unit) {
+        val version = getVersion(verName)
+            ?: throw RequestError("整合包版本不存在: $verName")
+        if (version.status != Modpack.Status.OK) {
+            throw RequestError("此版本未准备好或构建失败")
+        }
+        val hostDir = host.dir.canonicalFile.apply { mkdirs() }
+        if (!version.zip.exists()) {
+            throw RequestError("版本压缩文件不存在: ${version.zip}")
+        }
+        onProgress("开始安装整合包..")
+        unzipOverrides(version.zip, hostDir)
+        onProgress("解压成功 开始下载mod")
+        val modsDir = File(hostDir, "mods").apply { mkdirs() }
+        val downloadedMods = CurseForgeService.downloadMods(
+            version.mods.filter { it.side != Mod.Side.CLIENT },
+            onProgress
+        )
+        onProgress("mod全部下载成功 安装到主机..")
+        downloadedMods.forEach { sourcePath ->
+            val targetPath = File(modsDir, sourcePath.fileName.toString()).toPath()
+            Files.createDirectories(targetPath.parent)
+            Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING)
+        }
 
+        val libsSource = libsDir.canonicalFile.also {
+            if (!it.exists() || !it.isDirectory) {
+                throw RequestError("整合包依赖目录缺失: $it")
+            }
+        }
+        onProgress("安装运行库..")
+        copyDirectoryContents(libsSource, hostDir)
+    }
+
+    private fun copyDirectoryContents(sourceDir: File, targetDir: File) {
+        val entries = sourceDir.listFiles() ?: return
+        entries.forEach { entry ->
+            val target = File(targetDir, entry.name)
+            if (entry.isDirectory) {
+                entry.copyRecursively(target, overwrite = true)
+            } else {
+                target.parentFile?.mkdirs()
+                entry.copyTo(target, overwrite = true)
+            }
+        }
+    }
 
     private fun unzipOverrides(zipFile: java.io.File, targetDir: java.io.File) {
         val versionDirPath = targetDir.toPath()
-        ZipInputStream(zipFile.inputStream().buffered()).use { zipInput ->
-            var entry = zipInput.nextEntry
-            while (entry != null) {
+        // Use ZipFile with charset detection to handle Chinese filenames
+        open(zipFile).use { zip ->
+            zip.entries().asSequence().forEach { entry ->
                 val relativePath = extractOverridesRelativePath(entry.name)
                 if (relativePath != null) {
                     val resolvedPath = versionDirPath.resolve(relativePath).normalize()
@@ -392,17 +445,17 @@ object ModpackService {
                         Files.createDirectories(resolvedPath)
                     } else {
                         resolvedPath.parent?.let { Files.createDirectories(it) }
-                        Files.newOutputStream(
-                            resolvedPath,
-                            StandardOpenOption.CREATE,
-                            StandardOpenOption.TRUNCATE_EXISTING
-                        ).use { output ->
-                            zipInput.copyTo(output)
+                        zip.getInputStream(entry).use { input ->
+                            Files.newOutputStream(
+                                resolvedPath,
+                                StandardOpenOption.CREATE,
+                                StandardOpenOption.TRUNCATE_EXISTING
+                            ).use { output ->
+                                input.copyTo(output)
+                            }
                         }
                     }
                 }
-                zipInput.closeEntry()
-                entry = zipInput.nextEntry
             }
         }
     }
@@ -434,25 +487,9 @@ object ModpackService {
             throw RequestError("版本正在构建中 请勿重复操作")
         }
         if(version.hostsUsing().isNotEmpty()) throw RequestError("有主机正在使用此版本，无法重构")
-        val targetDir = version.dir
-        if (targetDir.exists()) {
-            // Safely delete directory contents without following symbolic links
-            targetDir.deleteRecursivelyNoSymlink()
-            targetDir.mkdirs()
-        } else {
-            if (!targetDir.mkdirs()) {
-                throw RequestError("创建版本目录失败")
-            }
-        }
+        version.setTotalSize(version.zip.length())
         version.addKotlinForForge(this)
         try {
-            onProgress("正在解压...")
-            unzipOverrides(version.zip, targetDir)
-            val modsDir = targetDir.resolve("mods").apply { mkdirs() }
-            targetDir.safeDirSize.let {
-                version.setTotalSize(it)
-                onProgress("解压完成 总尺寸${it.humanSize}")
-            }
             val downloadedMods = CurseForgeService.downloadMods(version.mods.filter { it.side != Mod.Side.CLIENT }) {
                 ioScope.launch {
                     onProgress(it)
@@ -460,7 +497,7 @@ object ModpackService {
             }
             onProgress("所有mod下载完成 开始安装。。${downloadedMods.size}个mod")
             //不需要复制libraries了 运行时mount到host里
-            downloadedMods.forEach { sourcePath ->
+            /*downloadedMods.forEach { sourcePath ->
                 val fileName = sourcePath.fileName?.toString() ?: return@forEach
                 val absoluteSource = sourcePath.toAbsolutePath()
                 val targetPath = modsDir.resolve(fileName).toPath()
@@ -469,7 +506,7 @@ object ModpackService {
                     Files.delete(targetPath)
                 }
                 Files.copy(absoluteSource,targetPath)
-            }
+            }*/
             onProgress("整合包构建完成！")
             version.setStatus(Modpack.Status.OK)
 
@@ -542,5 +579,33 @@ object ModpackService {
         return relativeSegments.joinToString("/")
     }
 
+    fun open(zipFile: File): ZipFile {
+        var lastError: Exception? = null
+        val attempted = mutableListOf<String>()
 
+        fun tryOpen(charset: Charset?): ZipFile? {
+            return try {
+                if (charset == null) ZipFile(zipFile) else ZipFile(zipFile, charset)
+            } catch (ex: Exception) {
+                lastError = ex
+                attempted += charset?.name() ?: "system-default"
+                null
+            }
+        }
+
+        tryOpen(null)?.let { return it }
+        buildList {
+            add(StandardCharsets.UTF_8)
+            add(Charset.defaultCharset())
+            runCatching { add(Charset.forName("GB18030")) }.getOrNull()
+            runCatching { add(Charset.forName("GBK")) }.getOrNull()
+            add(StandardCharsets.ISO_8859_1)
+        }.filterNotNull().distinct().forEach { charset ->
+            tryOpen(charset)?.let { return it }
+        }
+
+        throw RequestError(
+            "无法读取整合包: ${lastError?.message ?: "未知错误"} (尝试编码: ${attempted.joinToString()})"
+        )
+    }
 }
