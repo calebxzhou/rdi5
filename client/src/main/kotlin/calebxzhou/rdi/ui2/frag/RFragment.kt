@@ -474,11 +474,11 @@ abstract class RFragment(initialTitle: String = "") : Fragment() {
             private var initBlock: (CheckBox.() -> Unit)? = null
             private var defaultChecked: Boolean? = null
 
-            fun init(block: CheckBox.() -> Unit): CheckboxDraft = apply { initBlock = block }
+            infix fun init(block: CheckBox.() -> Unit): CheckboxDraft = apply { initBlock = block }
 
             infix fun colored(color: MaterialColor): CheckboxDraft = apply { this.color = color }
 
-            fun checked(default: Boolean = true): CheckboxDraft = apply { defaultChecked = default }
+            infix fun checked(default: Boolean = true): CheckboxDraft = apply { defaultChecked = default }
 
             infix fun with(handler: (Boolean) -> Unit) {
                 addOption(
