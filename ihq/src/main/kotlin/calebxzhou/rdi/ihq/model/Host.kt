@@ -1,6 +1,8 @@
 package calebxzhou.rdi.ihq.model
 
+import calebxzhou.rdi.ihq.HOSTS_DIR
 import calebxzhou.rdi.ihq.model.pack.Mod
+import calebxzhou.rdi.ihq.util.str
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import org.bson.types.ObjectId
@@ -34,7 +36,7 @@ data class Host(
     //整合包外的附加mod
     var extraMods: List<Mod> = arrayListOf()
 ) {
-
+    val dir get() = HOSTS_DIR.resolve(_id.str)
     @Serializable
     data class Member(
         @Contextual
