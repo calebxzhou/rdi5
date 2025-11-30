@@ -7,6 +7,8 @@ import calebxzhou.rdi.ihq.model.ChatMsg
 import calebxzhou.rdi.ihq.net.param
 import calebxzhou.rdi.ihq.net.response
 import calebxzhou.rdi.ihq.net.uid
+import calebxzhou.rdi.ihq.util.Loggers
+import calebxzhou.rdi.ihq.util.Loggers.provideDelegate
 import calebxzhou.rdi.ihq.util.serdesJson
 import com.mongodb.client.model.Sorts
 import io.ktor.server.application.call
@@ -39,7 +41,7 @@ fun Route.chatRoutes() = route("/chat") {
 object ChatService {
     private const val HISTORY_LIMIT = 50
     private val dbcl = DB.getCollection<ChatMsg>("chat_msg")
-
+    private val lgr by Loggers
     private val broadcaster = MutableSharedFlow<OutgoingMessage>(
         extraBufferCapacity = 128,
         onBufferOverflow = BufferOverflow.DROP_OLDEST
@@ -103,7 +105,7 @@ object ChatService {
         val normalized = content.trim()
         if (normalized.isEmpty()) throw ParamError("消息不能为空")
         if (normalized.length > 500) throw ParamError("消息过长")
-
+        lgr.info { "${sender.name}:${content}" }
         val message = ChatMsg(sender, normalized)
         dbcl.insertOne(message)
         val dto = message.toDto(sender)
