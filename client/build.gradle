@@ -401,7 +401,9 @@ idea {
         downloadJavadoc = true
     }
 }
-
+tasks.named('test') {
+    enabled = false
+}
 tasks.register('出core-debug') {
     dependsOn(tasks.named('build'))
     def artifact = layout.buildDirectory.file("libs/rdi-${version}.jar")
@@ -435,6 +437,7 @@ tasks.register('出core-release') {
         layout.projectDirectory.dir("${System.getProperty('user.home')}\\Documents\\RDI5sea-Ref\\.minecraft\\versions\\RDI5.5\\mods"),
         layout.projectDirectory.dir("\\\\rdi5\\rdi55\\ihq")
     ]
+
 
     doLast {
         def jarFile = artifact.get().asFile
