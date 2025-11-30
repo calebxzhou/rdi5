@@ -1,6 +1,8 @@
 package calebxzhou.rdi.ihq.service
 
 import calebxzhou.rdi.ihq.CONF
+import calebxzhou.rdi.ihq.util.Loggers
+import calebxzhou.rdi.ihq.util.Loggers.provideDelegate
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
 import com.auth0.jwt.interfaces.JWTVerifier
@@ -11,6 +13,7 @@ import java.util.Date
  * Utility responsible for issuing and verifying JWT tokens.
  */
 object JwtService {
+    private val lgr by Loggers
     private val config get() = CONF.jwt
 
     private val algorithm: Algorithm by lazy {
