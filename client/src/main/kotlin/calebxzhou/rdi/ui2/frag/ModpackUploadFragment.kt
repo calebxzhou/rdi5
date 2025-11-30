@@ -8,6 +8,7 @@ import calebxzhou.rdi.net.formatSpeed
 import calebxzhou.rdi.net.humanSize
 import calebxzhou.rdi.net.server
 import calebxzhou.rdi.service.CurseForgeService
+import calebxzhou.rdi.service.CurseForgeService.loadModpack
 import calebxzhou.rdi.service.CurseForgeService.mapMods
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.ModGrid
@@ -36,6 +37,7 @@ class ModpackUploadFragment : RFragment("上传整合包") {
     override var fragSize: FragmentSize
         get() = FragmentSize.SMALL
         set(value) {}
+
     init {
         contentViewInit = {
             textView("上传现成的整合包 大家一起玩 ")
@@ -44,9 +46,11 @@ class ModpackUploadFragment : RFragment("上传整合包") {
             progressEditText = textView("")
         }
     }
-    companion object{
+
+    companion object {
 
     }
+
     private fun selectModpackFile() = ioTask {
         val initialPath = "C:/Users/${System.getProperty("user.name")}/Downloads"
         val selected = TinyFileDialogs.tinyfd_openFileDialog(
@@ -68,42 +72,50 @@ class ModpackUploadFragment : RFragment("上传整合包") {
         loadModpack(file.absolutePath)
     }
 
-    class Confirm(var data: CurseForgeModpackData,val mods: List<Mod>,
-                  val updateModpackId: ObjectId? = null,
-                  val updateModpackName: String? = null,
-        ) : RFragment(updateModpackName?.let { "为整合包${updateModpackName}上传新版" }?:"确认整合包信息") {
-        lateinit var nameEdit : RTextField
-        lateinit var verEdit : RTextField
+    class Confirm(
+        var data: CurseForgeModpackData, val mods: List<Mod>,
+        val updateModpackId: ObjectId? = null,
+        val updateModpackName: String? = null,
+    ) : RFragment(updateModpackName?.let { "为整合包${updateModpackName}上传新版" } ?: "确认整合包信息") {
+        lateinit var nameEdit: RTextField
+        lateinit var verEdit: RTextField
 
         init {
             contentViewInit = {
                 val manifest = data.manifest
                 linearLayout {
-                    nameEdit=textField ("整合包名称") {
-                        edit.setText(updateModpackName?:manifest.name)
+                    nameEdit = textField("整合包名称") {
+                        edit.setText(updateModpackName ?: manifest.name)
 
                     }
-                    verEdit=textField ("版本") { edit.setText(manifest.version) }
+                    verEdit = textField("版本") { edit.setText(manifest.version) }
                     //如果是升级 不允许改名称
-                    if(updateModpackName != null)nameEdit.visibility =View.GONE
+                    if (updateModpackName != null) nameEdit.visibility = View.GONE
                 }
                 textView("mod列表：${mods.size}个")
-                this += ModGrid(context,mods=mods)
+                this += ModGrid(context, mods = mods)
             }
             titleViewInit = {
                 textView("${mods.size}个Mod ${data.zip.size()}个文件 共${data.file.length().humanSize}")
 
                 quickOptions {
                     "确认上传" colored MaterialColor.GREEN_900 with {
-                        data.manifest.name= nameEdit.text
-                        data.manifest.version= verEdit.text
-                        Upload(data,mods,updateModpackId).go(false)
+                        data.manifest.name = nameEdit.text
+                        data.manifest.version = verEdit.text
+                        Upload(data, mods, updateModpackId).go(false)
                     }
                 }
             }
         }
+
+        override fun close() {
+            data.close()
+            super.close()
+        }
     }
-    class Upload(val data: CurseForgeModpackData, var mods: List<Mod>, val updateModpackId: ObjectId?) : RFragment("上传整合包") {
+
+    class Upload(val data: CurseForgeModpackData, var mods: List<Mod>, val updateModpackId: ObjectId?) :
+        RFragment("上传整合包") {
         override var closable = false
         lateinit var progressEditText: TextView
         override var preserveViewStateOnDetach: Boolean
@@ -126,112 +138,117 @@ class ModpackUploadFragment : RFragment("上传整合包") {
 
 
         private fun upload() = ioTask {
-            try {
-                val manifest = data.manifest
-                val modpackName = manifest.name.trim()
-                val versionName = manifest.version.trim()
-                if (modpackName.isEmpty()) {
-                    close()
-                    alertErr("整合包名称不能为空")
-                    return@ioTask
-                }
-                if (versionName.isEmpty()) {
-                    close()
-                    alertErr("版本号不能为空")
-                    return@ioTask
-                }
-                manifest.name = modpackName
-                manifest.version = versionName
 
-                val modpack = getOrCreateModpack(modpackName, updateModpackId) ?: run {
-                    return@ioTask
-                }
+            val manifest = data.manifest
+            val modpackName = manifest.name.trim()
+            val versionName = manifest.version.trim()
+            if (modpackName.isEmpty()) {
+                close()
+                alertErr("整合包名称不能为空")
+                return@ioTask
+            }
+            if (versionName.isEmpty()) {
+                close()
+                alertErr("版本号不能为空")
+                return@ioTask
+            }
+            manifest.name = modpackName
+            manifest.version = versionName
 
-                if (modpack.versions.any { it.name.equals(versionName, ignoreCase = true) }) {
-                    val msg = "${modpack.name}包已经有$versionName 这个版本了"
-                    close()
-                    alertErr(msg)
-                    return@ioTask
-                }
+            val modpack = getOrCreateModpack(modpackName, updateModpackId) ?: run {
+                return@ioTask
+            }
 
-                val modpackId = modpack._id.toHexString()
+            if (modpack.versions.any { it.name.equals(versionName, ignoreCase = true) }) {
+                val msg = "${modpack.name}包已经有$versionName 这个版本了"
+                close()
+                alertErr(msg)
+                return@ioTask
+            }
 
-                val versionEncoded = versionName.urlEncoded
-                progressText = "创建版本 ${versionName}..."
+            val modpackId = modpack._id.toHexString()
 
-                val totalBytes = data.file.length()
+            val versionEncoded = versionName.urlEncoded
+            progressText = "创建版本 ${versionName}..."
 
-                val startTime = System.nanoTime()
-                var lastProgressUpdate = 0L
-                val modsJson = serdesJson.encodeToString(mods)
-                val boundary = "rdi-modpack-${System.currentTimeMillis()}"
-                val multipartContent = MultiPartFormDataContent(
-                    formData {
-                        append(
-                            key = "mods",
-                            value = modsJson,
-                            headers = Headers.build {
-                                append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                            }
-                        )
-                        append(
-                            key = "file",
-                            value = InputProvider { data.file.inputStream().asInput().buffered() },
-                            headers = Headers.build {
-                                append(HttpHeaders.ContentType, ContentType.Application.Zip.toString())
-                                append(HttpHeaders.ContentDisposition, "filename=\"${data.file.name}\"")
-                            }
-                        )
-                    },
-                    boundary = boundary
-                )
+            val totalBytes = data.file.length()
 
-                val createVersionResp = server.makeRequest<Unit>(
-                    path = "modpack/$modpackId/version/$versionEncoded",
-                    method = HttpMethod.Post,
-                ) {
-                    setBody(multipartContent)
-                    onUpload { bytesSentTotal, contentLength ->
-                        val now = System.nanoTime()
-                        val shouldUpdate = contentLength != null && bytesSentTotal == contentLength ||
-                                now - lastProgressUpdate > 75_000_000L
-                        if (shouldUpdate) {
-                            lastProgressUpdate = now
-                            val elapsedSeconds = (now - startTime) / 1_000_000_000.0
-                            val total = contentLength?.takeIf { it > 0 } ?: totalBytes
-                            val percent = if (total <= 0) 100 else ((bytesSentTotal * 100) / total).toInt()
-                            val speed = if (elapsedSeconds <= 0) 0.0 else bytesSentTotal / elapsedSeconds
-                            progressText = buildString {
-                                appendLine("正在上传版本 ${versionName}...")
-                                appendLine("进度：${percent.coerceIn(0, 100)}% (${bytesSentTotal.humanSize}/${total.humanSize})")
-                                appendLine("速度：${formatSpeed(speed)}")
-                            }
+            val startTime = System.nanoTime()
+            var lastProgressUpdate = 0L
+            val modsJson = serdesJson.encodeToString(mods)
+            val boundary = "rdi-modpack-${System.currentTimeMillis()}"
+            val multipartContent = MultiPartFormDataContent(
+                formData {
+                    append(
+                        key = "mods",
+                        value = modsJson,
+                        headers = Headers.build {
+                            append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                        }
+                    )
+                    append(
+                        key = "file",
+                        value = InputProvider { data.file.inputStream().asInput().buffered() },
+                        headers = Headers.build {
+                            append(HttpHeaders.ContentType, ContentType.Application.Zip.toString())
+                            append(HttpHeaders.ContentDisposition, "filename=\"${data.file.name}\"")
+                        }
+                    )
+                },
+                boundary = boundary
+            )
+
+            val createVersionResp = server.makeRequest<Unit>(
+                path = "modpack/$modpackId/version/$versionEncoded",
+                method = HttpMethod.Post,
+            ) {
+                setBody(multipartContent)
+                onUpload { bytesSentTotal, contentLength ->
+                    val now = System.nanoTime()
+                    val shouldUpdate = contentLength != null && bytesSentTotal == contentLength ||
+                            now - lastProgressUpdate > 75_000_000L
+                    if (shouldUpdate) {
+                        lastProgressUpdate = now
+                        val elapsedSeconds = (now - startTime) / 1_000_000_000.0
+                        val total = contentLength?.takeIf { it > 0 } ?: totalBytes
+                        val percent = if (total <= 0) 100 else ((bytesSentTotal * 100) / total).toInt()
+                        val speed = if (elapsedSeconds <= 0) 0.0 else bytesSentTotal / elapsedSeconds
+                        progressText = buildString {
+                            appendLine("正在上传版本 ${versionName}...")
+                            appendLine(
+                                "进度：${
+                                    percent.coerceIn(
+                                        0,
+                                        100
+                                    )
+                                }% (${bytesSentTotal.humanSize}/${total.humanSize})"
+                            )
+                            appendLine("速度：${formatSpeed(speed)}")
                         }
                     }
                 }
-                
-                if (!createVersionResp.ok) {
-                    close()
-                    alertErr(createVersionResp.msg)
-                    return@ioTask
-                }
-                
-                val elapsedSeconds = (System.nanoTime() - startTime) / 1_000_000_000.0
-                val speed = if (elapsedSeconds <= 0) 0.0 else totalBytes / elapsedSeconds
-
-                progressText = buildString {
-                    appendLine("文件大小: ${totalBytes.humanSize}")
-                    appendLine("平均速度: ${formatSpeed(speed)}")
-                    appendLine("耗时: ${"%.1f".format(elapsedSeconds)}秒")
-                    appendLine("传完了 服务器要开始构建 等5分钟 结果发你信箱里")
-                }
-                uiThread {
-                    contentView.apply { button("完成", MaterialColor.GREEN_900){ ModpackUploadFragment().go(false) } }
-                }
-                closable = true
-            } finally {
-                data.close()
             }
+
+            if (!createVersionResp.ok) {
+                close()
+                alertErr(createVersionResp.msg)
+                return@ioTask
+            }
+
+            val elapsedSeconds = (System.nanoTime() - startTime) / 1_000_000_000.0
+            val speed = if (elapsedSeconds <= 0) 0.0 else totalBytes / elapsedSeconds
+
+            progressText = buildString {
+                appendLine("文件大小: ${totalBytes.humanSize}")
+                appendLine("平均速度: ${formatSpeed(speed)}")
+                appendLine("耗时: ${"%.1f".format(elapsedSeconds)}秒")
+                appendLine("传完了 服务器要开始构建 等5分钟 结果发你信箱里")
+            }
+            uiThread {
+                closable = true
+                contentView.apply { button("完成", MaterialColor.GREEN_900) { close() } }
+            }
+
         }
 
         private suspend fun getOrCreateModpack(name: String, targetModpackId: ObjectId?): Modpack? {
