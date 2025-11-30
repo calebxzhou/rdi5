@@ -29,12 +29,13 @@ class HostLobbyFragment : RFragment("服务器大厅") {
         contentViewInit = {
             if (isMcStarted)
                 screen = this@HostLobbyFragment.mcScreen
-            loadHosts(false)
+            loadHosts(true)
         }
         titleViewInit = {
             quickOptions {
-                "\uDB81\uDC8B 我的服" make checkbox with {
+                "\uDB81\uDC8B 我的服" make checkbox checked true with {
                     loadHosts(it)
+
                 }
                 "\uEB4B 我的存档" colored MaterialColor.BLUE_900 with {
                     WorldListFragment().go()
