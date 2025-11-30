@@ -163,6 +163,8 @@ fun Byte.isWhitespaceCharacter(): Boolean {
 }
 val humanDateTime
     get() = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+val ObjectId.humanDateTime
+    get() = (this.timestamp* 1000L).humanDateTime
 val Long.humanDateTime
     get() = Instant.ofEpochMilli(this).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
 fun jarResource(path: String) = RDI::class.java.classLoader.getResourceAsStream(path)
