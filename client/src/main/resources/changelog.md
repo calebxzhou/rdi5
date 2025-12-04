@@ -1,8 +1,18 @@
-## 5.6.2
+## 5.7.1
+修了信箱界面不能往下滑动的bug
+加快主机/整合包mod列表的载入速度
+不用overlayfs把modpack+lib装入container了 安全问题很难解决
+因为需要给container+ CAP_SYS_ADMIN权限+ /dev/fuse
+改成modpack copy进host
+## 5.7
 新增信箱功能 可以在信箱里看到整合包的构建进度了
 整合包的尺寸现在按照版本显示
 修了管理员拉不了人的bug
 修了上传版本卡住的bug
+服务器大厅默认显示我的服
+新增“不使用存档”功能，测试用，不保存任何数据
+全新主机架构 10秒建包1秒开服（不需要把整合包build成image）
+
 ## 5.6.1
 修复了传包时遇到中文文件名提示invalid cen header的bug
 修复了打不开画质设置的bug
