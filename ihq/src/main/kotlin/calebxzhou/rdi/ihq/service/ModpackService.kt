@@ -89,6 +89,9 @@ fun Route.modpackRoutes() {
                     call.modpackGuardContext().versionNull?.let { response(data = it) }
                         ?: throw RequestError("无此版本")
                 }
+                get("/mods") {
+                    call.modpackGuardContext().version.mods.let { response(data = it) }
+                }
                 delete {
                     call.modpackGuardContext().requireAuthor().deleteVersion()
                     ok()
