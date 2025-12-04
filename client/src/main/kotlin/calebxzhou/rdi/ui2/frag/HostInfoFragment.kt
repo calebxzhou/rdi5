@@ -23,6 +23,7 @@ import calebxzhou.rdi.ui2.plusAssign
 import calebxzhou.rdi.ui2.textView
 import calebxzhou.rdi.ui2.toast
 import calebxzhou.rdi.ui2.uiThread
+import calebxzhou.rdi.util.ioTask
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpMethod.Companion.Delete
 import org.bson.types.ObjectId
@@ -39,7 +40,7 @@ class HostInfoFragment(val hostId: ObjectId) : RFragment("主机详细信息") {
                     val resp = server.makeRequest<ModpackDetailedVo>("modpack/${host.modpackId}")
                     val modpack = resp.data
                     val mods =
-                        (modpack?.versions?.find { it.name == host.packVer }?.mods ?: listOf()).fillCurseForgeVo()
+                        (modpack?.versions?.find { it.name == host.packVer }?.mods ?: listOf())
                     host.load(modpack, mods)
 
                 }
@@ -165,8 +166,14 @@ class HostInfoFragment(val hostId: ObjectId) : RFragment("主机详细信息") {
                 }
             }
             if (mods.isNotEmpty()) {
-                textView("mod列表：")
-                this += ModGrid(context, mods = mods)
+                val modsText = textView("正在加载mod信息...共${mods.size}个")
+                ioTask {
+                    val mods = mods.fillCurseForgeVo()
+                    uiThread {
+                        this += ModGrid(context, mods = mods)
+                        modsText.text = "Mod（共${mods.size}个）"
+                    }
+                }
             }
         }
 

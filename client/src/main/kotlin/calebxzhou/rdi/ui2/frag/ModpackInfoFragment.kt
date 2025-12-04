@@ -31,9 +31,7 @@ class ModpackInfoFragment(val modpackId: ObjectId,val changeHostId: ObjectId? = 
         contentViewInit = {
             server.request<ModpackDetailedVo>("modpack/$modpackId") {
                 it.data?.run {
-                    if (versions.isNotEmpty()) {
-                        versions.latest.mods.fillCurseForgeVo()
-                    }
+
                     load()
                 }
             }
@@ -45,7 +43,7 @@ class ModpackInfoFragment(val modpackId: ObjectId,val changeHostId: ObjectId? = 
         titleView.apply {
             quickOptions {
                 if (authorId == account._id) {
-                    "\uF1F8 删除" colored MaterialColor.RED_900 with {
+                    "\uF1F8 删除整个包" colored MaterialColor.RED_900 with {
                         confirm("确定要永久删除这个整合包吗？？无法恢复！！") {
                             server.requestU("modpack/$modpackId", HttpMethod.Delete) {
                                 toast("删完了")
@@ -96,7 +94,7 @@ class ModpackInfoFragment(val modpackId: ObjectId,val changeHostId: ObjectId? = 
                                 }
                             }
                         }
-                        "\uF1F8 删除" colored MaterialColor.RED_900 with {
+                        "\uF1F8 删除此版本" colored MaterialColor.RED_900 with {
                             confirm("确定要永久删除这个版本吗？？无法恢复！！") {
                                 server.requestU("modpack/$modpackId/version/${v.name}", HttpMethod.Delete) {
                                     toast("删完了")
@@ -116,8 +114,16 @@ class ModpackInfoFragment(val modpackId: ObjectId,val changeHostId: ObjectId? = 
                 }
             }
             if (versions.isNotEmpty()) {
-                textView("mod列表：$modCount 个")
-                this += ModGrid(context, mods = versions.latest.mods)
+                val loadText = textView("正在载入$modCount 个Mod的详细信息...")
+                ioTask {
+                    if (versions.isNotEmpty()) {
+                        val mods = versions.latest.mods.fillCurseForgeVo()
+                        uiThread {
+                            loadText.text = "载入完成，共$modCount 个Mod："
+                            this += ModGrid(context, mods = mods)
+                        }
+                    }
+                }
             } else {
                 textView("此整合包暂无可用版本，等待作者上传....")
                 button("↑ 上传新版") { btn->
