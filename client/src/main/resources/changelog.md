@@ -1,6 +1,10 @@
 ## 5.7.1
 修了信箱界面不能往下滑动的bug
 加快主机/整合包mod列表的载入速度
+修改部分界面按钮布局
+新增主机重建功能，可以重新安装整合包
+新增批量删除邮件功能
+
 不用overlayfs把modpack+lib装入container了 安全问题很难解决
 因为需要给container+ CAP_SYS_ADMIN权限+ /dev/fuse
 改成modpack copy进host
