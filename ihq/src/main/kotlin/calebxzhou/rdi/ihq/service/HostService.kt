@@ -481,6 +481,9 @@ object HostService {
         levelType: String,
     ) {
         val playerId = _id
+        if (getByOwner(playerId).size > 3) {
+            throw RequestError("最多3主机")
+        }
         val world = worldId?.let {
             val occupyHost = findByWorld(it)
             if (occupyHost != null)
@@ -762,7 +765,7 @@ object HostService {
         return members.any { it.id == id }
     }
 
-    suspend fun RAccount.ownHosts() = HostService.listByOwner(_id)
+    suspend fun RAccount.ownHosts() = HostService.getByOwner(_id)
 
 
     suspend fun RAccount.listHostLobby(
@@ -811,7 +814,7 @@ object HostService {
     }
 
     // List all hosts belonging to a team
-    suspend fun listByOwner(uid: ObjectId): List<Host> =
+    suspend fun getByOwner(uid: ObjectId): List<Host> =
         dbcl.find(eq("ownerId", uid)).toList()
 
 
