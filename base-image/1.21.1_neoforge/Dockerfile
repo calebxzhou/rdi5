@@ -15,9 +15,11 @@ RUN addgroup -S rdi \
     && adduser -S -G rdi -u 1000 -h /home/rdi -s /bin/bash rdi \
     && mkdir -p /home/rdi
 
-RUN chown -R rdi:rdi /home/rdi /opt/server /data
+COPY start-server.sh /usr/local/bin/start-server.sh
+RUN chmod +x /usr/local/bin/start-server.sh \
+    && chown -R rdi:rdi /home/rdi /opt/server /data
 
-COPY start-server.sh /opt/server/start-server.sh
+
 
 # Keep default working directory outside the overlay mount target.
 WORKDIR /
@@ -25,4 +27,4 @@ WORKDIR /
 # Configure Docker to send SIGTERM for graceful shutdown
 STOPSIGNAL SIGTERM
  
-ENTRYPOINT ["/opt/server/start-server.sh"]
+ENTRYPOINT ["/usr/local/bin/start-server.sh"]
