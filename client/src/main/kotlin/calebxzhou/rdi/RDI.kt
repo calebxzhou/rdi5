@@ -2,7 +2,6 @@ package calebxzhou.rdi
 
 import calebxzhou.rdi.localserver.LOCAL_PORT
 import calebxzhou.rdi.localserver.mainRoutes
-import calebxzhou.rdi.util.devRoutes
 import io.ktor.server.engine.*
 import io.ktor.server.jetty.jakarta.*
 import io.ktor.server.routing.*
@@ -15,7 +14,6 @@ val lgr = LoggerFactory.getLogger("rdi")
 val logMarker
     get() = {marker: String ->  MarkerFactory.getMarker(marker)}
 
-@Mod("rdi")
 class RDI {
 
     companion object {
@@ -30,7 +28,6 @@ class RDI {
         lgr.info("rdi核心连接码：$LOCAL_PORT")
         embeddedServer(Jetty,host="127.0.0.1",port=LOCAL_PORT){
             routing {
-                devRoutes()
                 mainRoutes()
             }
         }.start(wait = false)

@@ -1,22 +1,12 @@
 package calebxzhou.rdi.service
 
-import calebxzhou.rdi.auth.LocalCredentials
-import calebxzhou.rdi.model.Host
-import calebxzhou.rdi.model.HostStatus
-import calebxzhou.rdi.net.server
-import calebxzhou.rdi.ui2.component.alertErr
-import calebxzhou.rdi.ui2.component.alertOk
 import calebxzhou.rdi.ui2.frag.RFragment
-import calebxzhou.rdi.ui2.mcScreen
-import calebxzhou.rdi.util.mc
-import calebxzhou.rdi.util.renderThread
-import net.minecraft.client.gui.screens.ConnectScreen
-import net.minecraft.client.multiplayer.resolver.ServerAddress
 import org.bson.types.ObjectId
 
 object HostClientService {
     fun play(hostId: ObjectId,port:Int,parentFragment: RFragment){
-        //电信以外全bgp
+        //todo 检测整合包并启动mc
+        /*//电信以外全bgp
         val bgp = LocalCredentials.read().carrier != 0
         server.request<HostStatus>("host/${hostId}/status"){
             val status = it.data
@@ -47,6 +37,6 @@ object HostClientService {
 
                 else -> { alertErr("主机状态未知 无法连接") }
             }
-        }
+        }*/
     }
 }

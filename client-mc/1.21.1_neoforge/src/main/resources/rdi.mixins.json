@@ -1,0 +1,32 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "calebxzhou.rdi.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "mChat",
+    "mFastCreateMojangService",
+    "mFastCreateMojangService2",
+    "mHttpTexture",
+    "mJpgImage",
+    "mPlayerTabOverlay",
+    "mRAuth",
+    "mSkin",
+    "mTitleScreen"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "mixins": [
+    "mAllowChineseArgument",
+    "mAllowChineseName",
+    "mAlwaysOfflineMode",
+    "mPlayerInfoUpdate",
+    "mProxyConnect",
+    "mServerboundHelloPacket",
+    "mServiceKeyInfo",
+    "mTextureUrlChecker",
+    "gameplay.mPlayer",
+    "mui.mNoBlur"
+  ]
+}

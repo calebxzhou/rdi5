@@ -9,9 +9,6 @@ object Const {
     @JvmStatic
     var DEBUG = System.getProperty("rdi.debug").toBoolean()
     var USE_MOCK_DATA = System.getProperty("rdi.mockData").toBoolean()
-    //版本号与协议号
-    const val VERSION = 0x500
-    const val IHQ_VERSION = 0x500
     val SEED = 1145141919810L
     val DEFAULT_MODPACK_ID = ObjectId("abcdefabcdefabcdefabcdef")
     //显示版本

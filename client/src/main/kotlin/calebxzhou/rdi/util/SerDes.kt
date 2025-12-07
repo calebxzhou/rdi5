@@ -1,7 +1,5 @@
 package calebxzhou.rdi.util
 
-import com.google.gson.Gson
-import com.google.gson.GsonBuilder
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.cbor.Cbor
@@ -13,11 +11,8 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
-import net.minecraft.client.User
 import org.bson.types.ObjectId
 import java.util.*
-import kotlin.lazy
-import kotlin.reflect.KClass
 
 /**
  * calebxzhou @ 2024-06-18 14:25
@@ -34,24 +29,13 @@ val serdesJson = Json {
     isLenient = true // Allows parsing of malformed JSON
     coerceInputValues = true // Helps with default values and nulls
 }
-val serdesGson
-    get() =
-        GsonBuilder()
-            .setPrettyPrinting()
-            .registerTypeAdapter(User::class.java, mcUserAdapter)
-            .create()
 
-val Any.gson
-    get() = serdesGson.toJson(this)
 
 inline val <reified T> T.json: String
     get() = serdesJson.encodeToString<T>(this)
 @OptIn(ExperimentalSerializationApi::class)
 inline val <reified T> T.cbor: ByteArray
     get() = Cbor.encodeToByteArray<T>(this)
-inline fun <reified T : Any> KClass<T>.fromJson(json: String, gson: Gson = serdesGson): T {
-    return gson.fromJson(json, this.java)
-}
 
 object ObjectIdSerializer : KSerializer<ObjectId> {
     override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("ObjectId", PrimitiveKind.STRING)
