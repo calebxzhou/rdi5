@@ -16,8 +16,7 @@ RUN addgroup -S rdi \
     && mkdir -p /home/rdi
 
 COPY start-server.sh /usr/local/bin/start-server.sh
-RUN chmod +x /usr/local/bin/start-server.sh \
-    && chown -R rdi:rdi /home/rdi /opt/server /data
+RUN chmod +x /usr/local/bin/start-server.sh
 
 
 
