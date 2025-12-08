@@ -8,7 +8,6 @@ import calebxzhou.rdi.net.formatSpeed
 import calebxzhou.rdi.net.humanSize
 import calebxzhou.rdi.net.server
 import calebxzhou.rdi.service.CurseForgeService
-import calebxzhou.rdi.service.CurseForgeService.loadModpack
 import calebxzhou.rdi.service.CurseForgeService.mapMods
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.ModGrid

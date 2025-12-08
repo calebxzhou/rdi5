@@ -8,13 +8,6 @@ import io.ktor.server.routing.*
 /**
  * calebxzhou @ 2025-09-29 15:04
  */
-suspend fun RoutingContext.gson(obj: Any) {
-    call.respondText(
-        Response(0,"", obj).gson,
-        ContentType.Application.Json,
-        HttpStatusCode.OK
-    )
-}
 suspend fun RoutingContext.json(obj: Any) {
     response(data=obj)
 }

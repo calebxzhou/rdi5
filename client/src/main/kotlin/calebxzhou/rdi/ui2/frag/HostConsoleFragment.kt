@@ -1,7 +1,6 @@
 package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.lgr
-import calebxzhou.rdi.model.Host
 import calebxzhou.rdi.net.server
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.confirm

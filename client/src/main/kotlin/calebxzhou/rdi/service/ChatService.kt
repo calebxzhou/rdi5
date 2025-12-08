@@ -5,7 +5,10 @@ import calebxzhou.rdi.lgr
 import calebxzhou.rdi.model.ChatMsg
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.net.server
-import calebxzhou.rdi.util.*
+import calebxzhou.rdi.util.error
+import calebxzhou.rdi.util.ioTask
+import calebxzhou.rdi.util.json
+import calebxzhou.rdi.util.serdesJson
 import io.ktor.http.*
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -26,7 +29,7 @@ suspend fun main() {
             }
             val payload = event.data?.ifBlank { null } ?: return@sse
             val msg = serdesJson.decodeFromString<ChatMsg.Dto>(payload)
-            lgr.info(msg.gson)
+            lgr.info(msg.json)
         },
         onClosed = {
             lgr.info("已关闭日志流")
@@ -57,13 +60,13 @@ object ChatService {
                 val payload = event.data?.ifBlank { null } ?: return@sse
                 val msg = serdesJson.decodeFromString<ChatMsg.Dto>(payload).let { "${it.senderName}: ${it.content}" }
                 lgr.info(msg)
-                mc.addChatMessage(msg)
+                //todo 通知mc +gui msg
+              //  mc.addChatMessage(msg)
             },
             onClosed = {
                 lgr.info("已停止chat连接")
             },
             onError = { throwable ->
-                mc.addChatMessage("无法连接聊天服务器，正在尝试重连")
             })
     }
     fun stopListen(){

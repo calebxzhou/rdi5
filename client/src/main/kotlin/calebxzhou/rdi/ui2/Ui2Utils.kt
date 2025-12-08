@@ -2,11 +2,6 @@ package calebxzhou.rdi.ui2
 
 import calebxzhou.rdi.lgr
 import calebxzhou.rdi.ui2.component.*
-import calebxzhou.rdi.util.McWindowHandle
-import calebxzhou.rdi.util.isMcStarted
-import calebxzhou.rdi.util.mc
-import calebxzhou.rdi.util.rdiAsset
-import com.mojang.blaze3d.platform.NativeImage
 import icyllis.modernui.ModernUI
 import icyllis.modernui.R
 import icyllis.modernui.core.Context
@@ -14,19 +9,12 @@ import icyllis.modernui.core.Core
 import icyllis.modernui.fragment.Fragment
 import icyllis.modernui.fragment.FragmentManager
 import icyllis.modernui.fragment.FragmentTransaction
-import icyllis.modernui.graphics.Bitmap
 import icyllis.modernui.graphics.Canvas
-import icyllis.modernui.graphics.Image
 import icyllis.modernui.graphics.Paint
 import icyllis.modernui.graphics.drawable.Drawable
 import icyllis.modernui.graphics.drawable.ImageDrawable
-import icyllis.modernui.mc.neoforge.MuiForgeApi
 import icyllis.modernui.view.*
 import icyllis.modernui.widget.*
-import net.minecraft.client.gui.screens.Screen
-import net.minecraft.client.gui.screens.TitleScreen
-import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite
-import net.minecraft.resources.ResourceLocation
 import org.bson.types.ObjectId
 import org.lwjgl.PointerBuffer
 import org.lwjgl.glfw.GLFW
@@ -51,8 +39,6 @@ val BG_GRAY_BORDER
     }
 
 val BG_IMAGE_PATH = "bg/1.jpg"
-val BG_IMAGE_MC: ResourceLocation
-    get() = rdiAsset("textures/$BG_IMAGE_PATH")
 val BG_IMAGE_MUI
     get()= rdiDrawable(BG_IMAGE_PATH)
 fun uiThread(run: () -> Unit) {
@@ -82,20 +68,7 @@ operator fun ViewGroup.plusAssign(view: View) {
 }
 fun rdiDrawable(path: String) = ImageDrawable("rdi", path)
 fun iconDrawable(filename: String) = ImageDrawable("rdi","gui/icons/${filename}.png")
-val ResourceLocation.muiImage: Image
-    get() = Image.createTextureFromBitmap(bitmap) ?: MissingTextureAtlasSprite.getLocation().muiImage
 
-
-
-val ResourceLocation.bitmap: Bitmap
-    get() {
-        mc.resourceManager.getResourceOrThrow(this).open().use { inputStream ->
-            val mcimg = NativeImage.read(inputStream)
-            val bitmap = Bitmap.createBitmap(mcimg.width,mcimg.height, Bitmap.Format.RGBA_8888)
-            bitmap.setPixels(mcimg.pixelsRGBA,0,64,0,0,mcimg.width,mcimg.height)
-            return bitmap
-        }
-    }
 fun View.toast(msg: String, duration: Int = 2000)=uiThread {
     Toast.makeText(context,msg, duration).show()
 }
@@ -112,8 +85,6 @@ fun View.onPressEnterKey(handler: () -> Unit) {
         }
     }
 }
-val Fragment.mcScreen: Screen
-    get() = MuiForgeApi.get().createScreen(this,null, TitleScreen())
 
 fun linearLayoutParam(
     width: Int = PARENT,
@@ -305,7 +276,7 @@ fun FragmentManager.transaction(handler: FragmentTransaction.() -> Unit){
 }
 val layoutInflater = object : LayoutInflater(){}
 val WINDOW_HANDLE
-    get() = if(isMcStarted)McWindowHandle else ModernUI.getInstance()!!.window.handle
+    get() = ModernUI.getInstance()!!.window.handle
 fun copyToClipboard(s: String) {
     GLFW.glfwSetClipboardString(WINDOW_HANDLE, s)
 }

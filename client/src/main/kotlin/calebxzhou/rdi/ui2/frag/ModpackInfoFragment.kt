@@ -11,12 +11,9 @@ import calebxzhou.rdi.service.CurseForgeService.fillCurseForgeVo
 import calebxzhou.rdi.service.CurseForgeService.mapMods
 import calebxzhou.rdi.service.selectModpackFile
 import calebxzhou.rdi.ui2.*
-import calebxzhou.rdi.ui2.component.LoadingView
 import calebxzhou.rdi.ui2.component.ModGrid
 import calebxzhou.rdi.ui2.component.alertOk
-import calebxzhou.rdi.ui2.component.closeLoading
 import calebxzhou.rdi.ui2.component.confirm
-import calebxzhou.rdi.ui2.component.showLoading
 import calebxzhou.rdi.util.humanDateTime
 import calebxzhou.rdi.util.ioTask
 import icyllis.modernui.view.Gravity

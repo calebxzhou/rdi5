@@ -1,7 +1,7 @@
 package calebxzhou.rdi.service.convert
 
 import calebxzhou.rdi.lgr
-import calebxzhou.rdi.util.gson
+import calebxzhou.rdi.util.json
 import java.io.File
 
 /**
@@ -13,7 +13,7 @@ fun main() {
     System.setProperty("java.net.useSystemProxies","true")
     val entries = parsePclModData(File("ModData.txt").readText())
     lgr.info("已解析 ${entries.size} 条PCL模组简要信息")
-    File("pcl_mod_data.json").writeText(entries.gson)
+    File("pcl_mod_data.json").writeText(entries.json)
 }
 //from PCL2/ModComp.vb
 private fun parsePclModData(raw: String): List<PCLModBriefInfo> {

@@ -11,7 +11,10 @@ import calebxzhou.rdi.ui2.frag.LoginFragment
 import calebxzhou.rdi.ui2.frag.UpdateFragment
 import calebxzhou.rdi.ui2.goto
 import calebxzhou.rdi.ui2.nowFragment
-import calebxzhou.rdi.util.*
+import calebxzhou.rdi.util.error
+import calebxzhou.rdi.util.ioScope
+import calebxzhou.rdi.util.ioTask
+import calebxzhou.rdi.util.serdesJson
 import io.ktor.client.call.*
 import io.ktor.client.plugins.compression.*
 import io.ktor.client.plugins.sse.*
@@ -25,7 +28,6 @@ import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
-import net.minecraft.client.multiplayer.ServerData
 
 val server
     get() = RServer.now
@@ -37,14 +39,14 @@ class RServer(
     var gamePort: Int,
 ) {
     val noUpdate = System.getProperty("rdi.noUpdate").toBoolean()
-    val mcData
+    /*val mcData
         get() = { bgp: Boolean ->
             ServerData(
                 "RDI",
                 "${if (bgp) bgpIp else ip}:${gamePort}",
                 ServerData.Type.OTHER
             )
-        }
+        }*/
     val hqUrl = "http://${ip}:${hqPort}"
 
     companion object {
@@ -60,7 +62,7 @@ class RServer(
 
     fun connect() {
 
-           if (!noUpdate && isMcStarted) {
+           if (!noUpdate) {
                goto(UpdateFragment())
            } else {
         goto(LoginFragment())

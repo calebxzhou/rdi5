@@ -1,20 +1,11 @@
 package calebxzhou.rdi.model
 
 import calebxzhou.rdi.lgr
-import calebxzhou.rdi.util.serdesGson
 import calebxzhou.rdi.util.toUUID
-import com.google.common.hash.Hashing
-import com.mojang.authlib.GameProfile
-import com.mojang.authlib.minecraft.MinecraftProfileTexture
-import com.mojang.authlib.properties.Property
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
-import net.minecraft.client.User
-import net.minecraft.client.multiplayer.PlayerInfo
-import net.minecraft.resources.ResourceLocation
 import org.bson.types.ObjectId
-import java.util.*
 
 val account
     get() = RAccount.now ?: RAccount.DEFAULT.also { lgr.warn("用户未登录 使用默认账号") }
@@ -36,29 +27,6 @@ data class RAccount(
         var skin: String = "https://littleskin.cn/textures/526fe866ed25a7ee1cf894b81a2199aaa03f139803623a25a793f6ae57e22f02",
         var cape: String? = null
     ) {
-        val skinLocation: ResourceLocation
-            get() = getTextureLocation(MinecraftProfileTexture.Type.SKIN, skinTexture.hashUC)
-        val capeLocation: ResourceLocation?
-            get() = capeTexture?.let { cap -> getTextureLocation(MinecraftProfileTexture.Type.CAPE, cap.hashUC) }
-
-        val skinTexture
-            get() = MinecraftProfileTexture(
-                skin,
-                mapOf("model" to if (isSlim) "slim" else "normal")
-            )
-        val capeTexture
-            get() = cape?.let { MinecraftProfileTexture(it, mapOf()) }
-
-        val mcTextures: Map<MinecraftProfileTexture.Type, MinecraftProfileTexture>
-            get() {
-                val textureMap = mutableMapOf(
-                    MinecraftProfileTexture.Type.SKIN to skinTexture
-                )
-                capeTexture?.let { cap ->
-                    textureMap += MinecraftProfileTexture.Type.CAPE to cap
-                }
-                return textureMap
-            }
 
     }
 
@@ -69,14 +37,7 @@ data class RAccount(
         val name: String,
         val cloth: Cloth
     ) {
-        val mcProfile
-            get() = GameProfile(id.toUUID(), name).apply {
 
-                properties.put("textures", Property("textures", serdesGson.toJson(cloth)))
-
-            }
-        val mcPlayerInfo
-            get() = PlayerInfo(mcProfile, false)
 
     }
 
@@ -90,31 +51,7 @@ data class RAccount(
         @JvmField
         var now: RAccount? = null
 
-        @JvmStatic
-        val mcUserNow
-            get() = now?.mcUser ?: User(
-                "rdi",
-                UUID.randomUUID(),
-                "",
-                Optional.empty(),
-                Optional.empty(),
-                User.Type.MOJANG
-            )
 
-
-        fun getTextureLocation(type: MinecraftProfileTexture.Type, hashUC: String): ResourceLocation {
-            val prefix = when (type) {
-                MinecraftProfileTexture.Type.SKIN -> "skins"
-                MinecraftProfileTexture.Type.CAPE -> "capes"
-                MinecraftProfileTexture.Type.ELYTRA -> "elytra"
-                else -> throw IncompatibleClassChangeError()
-            }
-            return ResourceLocation.parse("$prefix/$hashUC")
-        }
-
-        val MinecraftProfileTexture.hashUC
-            //mc就是这么做的
-            get() = Hashing.sha1().hashUnencodedChars(hash).toString()
         /*@JvmStatic
         fun processSkullProfile(
             profileCache: GameProfileCache,
@@ -131,8 +68,6 @@ data class RAccount(
     @Contextual
     val uuid = _id.toUUID()
     val dto = Dto(_id, name, cloth)
-    val mcUser
-        get() = User(name, uuid, "", Optional.empty(), Optional.empty(), User.Type.MOJANG)
 
     fun logout() {
         now = null

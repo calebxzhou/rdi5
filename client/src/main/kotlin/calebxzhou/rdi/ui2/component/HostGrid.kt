@@ -1,14 +1,12 @@
 package calebxzhou.rdi.ui2.component
 
 import calebxzhou.rdi.model.Host
-import calebxzhou.rdi.ui2.MaterialColor
 import calebxzhou.rdi.ui2.*
 import icyllis.modernui.core.Context
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.view.View
 import icyllis.modernui.view.ViewGroup
 import icyllis.modernui.widget.LinearLayout
-import icyllis.modernui.widget.TextView
 import kotlin.math.max
 
 class HostGrid(

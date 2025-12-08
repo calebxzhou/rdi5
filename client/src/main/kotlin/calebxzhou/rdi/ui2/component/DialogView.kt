@@ -7,7 +7,6 @@ import icyllis.modernui.fragment.Fragment
 import icyllis.modernui.graphics.Canvas
 import icyllis.modernui.graphics.Paint
 import icyllis.modernui.graphics.drawable.Drawable
-import icyllis.modernui.mc.BlurHandler
 import icyllis.modernui.view.*
 import icyllis.modernui.widget.FrameLayout
 import org.lwjgl.util.tinyfd.TinyFileDialogs
@@ -204,11 +203,7 @@ class DialogView(
         // Manage global blur state (enable while at least one dialog is open)
         if (openCount == 0) {
             prevGlobalBlur = true
-            // enable blur effect if library supports; guard with try to avoid crash on some platforms
-            try {
-                BlurHandler.sBlurEffect = true
-            } catch (_: Throwable) {
-            }
+
         }
         openCount++
         // Add overlay to root
@@ -293,10 +288,6 @@ class DialogView(
                         // Restore blur state if this is the last dialog
                         if (openCount > 0) openCount--
                         if (openCount == 0 && !restoredBlur) {
-                            try {
-                                BlurHandler.sBlurEffect = prevGlobalBlur
-                            } catch (_: Throwable) {
-                            }
                             restoredBlur = true
                         }
                     }

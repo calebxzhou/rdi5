@@ -71,7 +71,7 @@ import kotlin.math.roundToInt
 import kotlin.system.exitProcess
 
 class RodernUI : ModernUI(), AutoCloseable, LifecycleOwner, ViewModelStoreOwner, OnBackPressedDispatcherOwner {
-    val fontsDir = "./resourcepacks/fonts/assets/modernui/font/"
+    val fontsDir = "./fonts/"
     private val marker = logMarker("ui")
 
     companion object {

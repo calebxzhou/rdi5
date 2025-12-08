@@ -3,22 +3,18 @@ package calebxzhou.rdi.service
 import calebxzhou.rdi.auth.LocalCredentials
 import calebxzhou.rdi.auth.LoginInfo
 import calebxzhou.rdi.lgr
-import calebxzhou.rdi.mixin.AMinecraft
 import calebxzhou.rdi.model.HwSpec
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.net.server
 import calebxzhou.rdi.service.PlayerService.getPlayerInfo
 import calebxzhou.rdi.ui2.frag.ProfileFragment
 import calebxzhou.rdi.ui2.go
-import calebxzhou.rdi.util.*
+import calebxzhou.rdi.util.ioTask
+import calebxzhou.rdi.util.serdesJson
 import com.github.benmanes.caffeine.cache.AsyncLoadingCache
 import com.github.benmanes.caffeine.cache.Caffeine
-import com.mojang.authlib.GameProfile
-import com.mojang.authlib.properties.Property
 import io.ktor.http.*
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket
 import org.bson.types.ObjectId
 import java.util.concurrent.TimeUnit
 
@@ -50,9 +46,6 @@ fun playerLogin(usr: String, pwd: String){
         creds.loginInfos += account._id to LoginInfo(account.qq,account.pwd)
         creds.save()
         RAccount.now = account
-
-        if (isMcStarted)
-            (mc as AMinecraft).setUser(account.mcUser)
         ProfileFragment().go()
     }
 
@@ -61,12 +54,6 @@ fun playerLogin(usr: String, pwd: String){
 object PlayerService {
 
 
-
-    @JvmStatic
-    fun getPackedTextures(profile: GameProfile): Property? {
-        return PlayerInfoCache[profile.id.objectId].mcProfile.properties["textures"].firstOrNull()
-            ?.also { profile.properties.put("textures", it) }
-    }
 
 
     suspend fun getJwt(usr: String,pwd: String): String {
@@ -81,14 +68,5 @@ object PlayerService {
         }
     }
 
-    @JvmStatic
-    fun onPlayerInfoUpdate(packet: ClientboundPlayerInfoUpdatePacket) = ioScope.launch {
-        packet.entries().mapNotNull { it.profile?.id?.objectId }.forEach {
-            launch {
-                val info = PlayerInfoCache[it]
-                lgr.info("成功接收玩家信息 $info")
-            }
-        }
-    }
 
 }

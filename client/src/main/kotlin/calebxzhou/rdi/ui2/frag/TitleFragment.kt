@@ -4,15 +4,15 @@ import calebxzhou.rdi.Const
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.ui2.*
-import calebxzhou.rdi.util.mc
-import calebxzhou.rdi.util.set
 import icyllis.modernui.animation.ObjectAnimator
 import icyllis.modernui.animation.PropertyValuesHolder
 import icyllis.modernui.animation.TimeInterpolator
 import icyllis.modernui.graphics.drawable.ColorDrawable
-import icyllis.modernui.mc.ui.CenterFragment2
 import icyllis.modernui.util.DataSet
-import icyllis.modernui.view.*
+import icyllis.modernui.view.Gravity
+import icyllis.modernui.view.LayoutInflater
+import icyllis.modernui.view.View
+import icyllis.modernui.view.ViewGroup
 import icyllis.modernui.widget.FrameLayout
 import icyllis.modernui.widget.LinearLayout
 
@@ -114,9 +114,6 @@ class TitleFragment : RFragment() {
             keyAction {
                 enter {
                     startMulti()
-                }
-                KeyEvent.KEY_KP_0{
-                    mc set CenterFragment2().mcScreen
                 }
             }
         }

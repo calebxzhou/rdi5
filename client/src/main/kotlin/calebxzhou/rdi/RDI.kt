@@ -1,11 +1,10 @@
 package calebxzhou.rdi
 
-import calebxzhou.rdi.localserver.LOCAL_PORT
-import calebxzhou.rdi.localserver.mainRoutes
-import io.ktor.server.engine.*
-import io.ktor.server.jetty.jakarta.*
-import io.ktor.server.routing.*
-import net.neoforged.fml.common.Mod
+import calebxzhou.rdi.ui2.RodernUI
+import calebxzhou.rdi.ui2.frag.RFragment
+import calebxzhou.rdi.ui2.frag.TitleFragment
+import icyllis.modernui.R
+import icyllis.modernui.audio.AudioManager
 import org.slf4j.LoggerFactory
 import org.slf4j.MarkerFactory
 import java.io.File
@@ -13,24 +12,35 @@ import java.io.File
 val lgr = LoggerFactory.getLogger("rdi")
 val logMarker
     get() = {marker: String ->  MarkerFactory.getMarker(marker)}
-
+fun main(){
+    RDI().start(TitleFragment())
+}
 class RDI {
 
     companion object {
 
-        val DIR = File("rdi")
+        val DIR = File(".")
     }
 
 
     init {
         lgr.info("RDI启动中")
         DIR.mkdir()
-        lgr.info("rdi核心连接码：$LOCAL_PORT")
-        embeddedServer(Jetty,host="127.0.0.1",port=LOCAL_PORT){
+        /*lgr.info("rdi核心连接码：$LOCAL_PORT")
+        embeddedServer(Netty,host="127.0.0.1",port=LOCAL_PORT){
             routing {
                 mainRoutes()
             }
-        }.start(wait = false)
-
+        }.start(wait = false)*/
+    }
+    fun start(fragment: RFragment){
+        System.setProperty("java.awt.headless", "true")
+        val mui =RodernUI().apply {
+            setTheme(R.style.Theme_Material3_Dark)
+            theme.applyStyle(R.style.ThemeOverlay_Material3_Dark_Rust, true)
+        }
+        mui.run(fragment)
+        AudioManager.getInstance().close()
+        System.gc()
     }
 }

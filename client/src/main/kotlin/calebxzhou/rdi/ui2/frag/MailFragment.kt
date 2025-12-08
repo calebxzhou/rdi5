@@ -2,28 +2,14 @@ package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.model.Mail
 import calebxzhou.rdi.net.server
-import calebxzhou.rdi.ui2.FragmentSize
-import calebxzhou.rdi.ui2.MaterialColor
-import calebxzhou.rdi.ui2.PARENT
-import calebxzhou.rdi.ui2.checkBox
+import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.confirm
-import calebxzhou.rdi.ui2.frameLayout
-import calebxzhou.rdi.ui2.go
-import calebxzhou.rdi.ui2.linearLayout
-import calebxzhou.rdi.ui2.linearLayoutParam
-import calebxzhou.rdi.ui2.paddingDp
-import calebxzhou.rdi.ui2.scrollLinearLayout
-import calebxzhou.rdi.ui2.scrollView
-import calebxzhou.rdi.ui2.textView
-import calebxzhou.rdi.ui2.toast
-import calebxzhou.rdi.ui2.uiThread
-import calebxzhou.rdi.ui2.vertical
 import calebxzhou.rdi.util.humanDateTime
 import calebxzhou.rdi.util.json
 import icyllis.modernui.text.Typeface
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.widget.CheckBox
-import io.ktor.http.HttpMethod
+import io.ktor.http.*
 import org.bson.types.ObjectId
 
 class MailFragment : RFragment("信箱") {

@@ -3,17 +3,9 @@ package calebxzhou.rdi.ui2.frag
 import calebxzhou.rdi.Const
 import calebxzhou.rdi.model.World
 import calebxzhou.rdi.net.server
-import calebxzhou.rdi.ui2.FragmentSize
-import calebxzhou.rdi.ui2.MaterialColor
-import calebxzhou.rdi.ui2.center
+import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.alertOk
 import calebxzhou.rdi.ui2.component.alertWarn
-import calebxzhou.rdi.ui2.horizontal
-import calebxzhou.rdi.ui2.linearLayout
-import calebxzhou.rdi.ui2.radioButton
-import calebxzhou.rdi.ui2.radioGroup
-import calebxzhou.rdi.ui2.textView
-import calebxzhou.rdi.ui2.uiThread
 import calebxzhou.rdi.util.humanDateTime
 import org.bson.types.ObjectId
 

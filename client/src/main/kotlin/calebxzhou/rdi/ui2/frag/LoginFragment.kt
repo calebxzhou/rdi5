@@ -1,17 +1,13 @@
 package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.auth.localCreds
-import calebxzhou.rdi.service.LevelService
 import calebxzhou.rdi.service.playerLogin
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.RTextField
 import calebxzhou.rdi.ui2.component.alertErr
 import calebxzhou.rdi.util.ioScope
-import calebxzhou.rdi.util.mc
-import calebxzhou.rdi.util.set
 import icyllis.modernui.view.Gravity
 import kotlinx.coroutines.launch
-import net.minecraft.client.gui.screens.options.OptionsScreen
 
 class LoginFragment : RFragment("登录") {
     private lateinit var qqInput: RTextField
@@ -50,7 +46,7 @@ class LoginFragment : RFragment("登录") {
             }
             linearLayout {
                 center()
-                textView("[单人创造]"){
+                /*textView("[单人创造]"){
                     padding8dp()
                     setOnClickListener {
                         LevelService.openFlatLevel()
@@ -59,7 +55,7 @@ class LoginFragment : RFragment("登录") {
                 textView("[设置]"){
                     padding8dp()
                     setOnClickListener { mc set OptionsScreen(this@LoginFragment.mcScreen,mc.options) }
-                }
+                }*/
 
             }
             bottomOptionsConfig = {

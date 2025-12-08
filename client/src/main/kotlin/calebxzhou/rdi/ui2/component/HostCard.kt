@@ -1,15 +1,7 @@
 package calebxzhou.rdi.ui2.component
 
 import calebxzhou.rdi.model.Host
-import calebxzhou.rdi.ui2.MaterialColor
-import calebxzhou.rdi.ui2.PARENT
-import calebxzhou.rdi.ui2.SELF
-import calebxzhou.rdi.ui2.drawable
-import calebxzhou.rdi.ui2.iconDrawable
-import calebxzhou.rdi.ui2.imageView
-import calebxzhou.rdi.ui2.linearLayout
-import calebxzhou.rdi.ui2.linearLayoutParam
-import calebxzhou.rdi.ui2.textView
+import calebxzhou.rdi.ui2.*
 import icyllis.modernui.core.Context
 import icyllis.modernui.graphics.Paint
 import icyllis.modernui.graphics.drawable.ImageDrawable

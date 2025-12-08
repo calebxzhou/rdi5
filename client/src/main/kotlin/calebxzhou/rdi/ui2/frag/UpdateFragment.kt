@@ -1,10 +1,7 @@
 package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.lgr
-import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.net.downloadFileWithProgress
-import calebxzhou.rdi.net.formatBytes
-import calebxzhou.rdi.net.formatSpeed
 import calebxzhou.rdi.net.humanSize
 import calebxzhou.rdi.net.server
 import calebxzhou.rdi.ui2.*
@@ -13,11 +10,7 @@ import calebxzhou.rdi.ui2.component.confirm
 import calebxzhou.rdi.util.ioTask
 import calebxzhou.rdi.util.notifyOs
 import calebxzhou.rdi.util.sha1
-import icyllis.modernui.view.View
-import icyllis.modernui.widget.LinearLayout
-import icyllis.modernui.widget.ScrollView
 import icyllis.modernui.widget.TextView
-import net.minecraft.advancements.critereon.MovementPredicate.speed
 import java.io.File
 import kotlin.system.exitProcess
 

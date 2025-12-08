@@ -2,13 +2,11 @@ package calebxzhou.rdi.service.convert
 
 import calebxzhou.rdi.lgr
 import calebxzhou.rdi.service.McmodService
-import calebxzhou.rdi.util.gson
+import calebxzhou.rdi.util.json
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
-import org.apache.logging.log4j.Level
-import org.apache.logging.log4j.core.config.Configurator
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
@@ -21,13 +19,12 @@ import kotlin.math.max
  * 从mc百科获取mod的中文名称 简介 图标等信息 保存到mcmod_mod_data.json
  */
 fun main() {
-    Configurator.setRootLevel(Level.DEBUG)
     //1.21.1 neoforge
     val baseUrl = "https://www.mcmod.cn/modlist.html?mcver=1.21.1&platform=1&api=13&sort=createtime"
     runBlocking {
         val mods = fetchAllPages(baseUrl)
         lgr.info("抓取完成：共 ${mods.size} 个模组")
-        File("mcmod_mod_data.json").writeText(mods.gson)
+        File("mcmod_mod_data.json").writeText(mods.json)
     }
 }
 

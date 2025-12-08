@@ -1,34 +1,19 @@
 package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.Const
-import calebxzhou.rdi.auth.LocalCredentials
 import calebxzhou.rdi.model.Host
-import calebxzhou.rdi.model.HostStatus
 import calebxzhou.rdi.net.server
-import calebxzhou.rdi.service.HostClientService
 import calebxzhou.rdi.ui2.*
 import calebxzhou.rdi.ui2.component.HostGrid
-import calebxzhou.rdi.ui2.component.alertErr
-import calebxzhou.rdi.ui2.component.alertOk
-import calebxzhou.rdi.util.ioTask
-import calebxzhou.rdi.util.isMcStarted
-import calebxzhou.rdi.util.mc
-import calebxzhou.rdi.util.renderThread
-import net.minecraft.client.gui.screens.ConnectScreen
-import net.minecraft.client.gui.screens.Screen
-import net.minecraft.client.multiplayer.resolver.ServerAddress
 import icyllis.modernui.view.Gravity
 import org.bson.types.ObjectId
 
 class HostLobbyFragment : RFragment("服务器大厅") {
     companion object {
-        var screen: Screen? = null
     }
 
     init {
         contentViewInit = {
-            if (isMcStarted)
-                screen = this@HostLobbyFragment.mcScreen
             loadHosts(true)
         }
         titleViewInit = {
@@ -71,9 +56,9 @@ class HostLobbyFragment : RFragment("服务器大厅") {
             return@uiThread
         }
         contentView += HostGrid(contentView.context, hosts, { HostInfoFragment(it._id).go() }, {
-            if (isMcStarted) {
+            /*if (isMcStarted) {
                 HostClientService.play(it._id,it.port,this)
-            }
+            }*/
         })
     }
 

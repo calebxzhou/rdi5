@@ -3,7 +3,6 @@ package calebxzhou.rdi.service
 import calebxzhou.rdi.model.Host
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.model.Role
-import calebxzhou.rdi.net.server
 import org.bson.types.ObjectId
 
 /**
