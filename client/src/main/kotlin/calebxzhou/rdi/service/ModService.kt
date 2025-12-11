@@ -1,5 +1,6 @@
 package calebxzhou.rdi.service
 
+import calebxzhou.rdi.RDI
 import calebxzhou.rdi.lgr
 import calebxzhou.rdi.model.ModBriefInfo
 import calebxzhou.rdi.model.ModCardVo
@@ -19,7 +20,10 @@ object ModService {
     const val FABRIC_CONFIG_PATH = "fabric.mod.json"
     const val FORGE_CONFIG_PATH = "META-INF/mods.toml"
 
-    val MOD_DIR = System.getProperty("rdi.modDir")?.let { File(it) } ?: File("mods")
+    val MOD_DIR = System.getProperty("rdi.modDir")
+        ?.let { File(it) }
+        ?: RDI.DIR.resolve("downloaded-mods").also { it.mkdirs() }
+    val downloadedMods =MOD_DIR.listFiles { it.extension == "jar" }?.toMutableList() ?: mutableListOf()
     var installedMods = MOD_DIR.listFiles { it.extension == "jar" }?.toMutableList() ?: mutableListOf()
     fun JarFile.readNeoForgeConfig(): CommentedConfig? {
         return getJarEntry(NEOFORGE_CONFIG_PATH)?.let { modsTomlEntry ->
