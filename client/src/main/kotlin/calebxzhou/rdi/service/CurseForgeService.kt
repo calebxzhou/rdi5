@@ -56,13 +56,14 @@ object CurseForgeService {
         if (mirrorResponse != null && mirrorResponse.status.isSuccess()) {
             return mirrorResponse
         } else {
-            lgr.warn("curseforge镜像源请求失败，${mirrorResponse?.status},${mirrorResponse?.bodyAsText()}")
+            val body = mirrorResponse?.bodyAsText()
+            lgr.warn { "curseforge镜像源请求失败，${mirrorResponse?.status},${body}" }
         }
 
         mirrorResult.exceptionOrNull()?.let {
-            lgr.warn("CurseForge mirror request failed, falling back to official API: ${it.message}")
+            lgr.warn { "CurseForge mirror request failed, falling back to official API: ${it.message}" }
         }
-        lgr.info("尝试使用官方api")
+        lgr.info { "尝试使用官方api" }
         val officialResponse = doRequest(OFFICIAL_URL)
         return officialResponse
     }
@@ -79,9 +80,9 @@ object CurseForgeService {
             CurseForgeFingerprintRequest(fingerprints = hashes)
         ).body<CurseForgeFingerprintResponse>()
         val data = response.data ?: CurseForgeFingerprintData()
-        lgr.info(
+        lgr.info {
             "CurseForge: ${data.exactMatches.size} exact matches, ${data.partialMatches.size} partial matches, ${data.unmatchedFingerprints.size} unmatched"
-        )
+        }
 
         return data
     }
@@ -103,10 +104,10 @@ object CurseForgeService {
         val foundIds = files.mapTo(mutableSetOf()) { it.id }
         val missingIds = fileIds.filterNot { foundIds.contains(it) }
         if (missingIds.isNotEmpty()) {
-            lgr.warn("没找到这些mod信息，官方api重试：${missingIds}")
+            lgr.warn { "没找到这些mod信息，官方api重试：${missingIds}" }
             files += requestModFiles(missingIds,true)
         }
-        lgr.info("mod files 找到了${files.size}/${fileIds.size}个")
+        lgr.info { "mod files 找到了${files.size}/${fileIds.size}个" }
         return files
     }
     private suspend fun requestModFiles(fileIds: List<Int>,official: Boolean=false): List<CurseForgeFile> {
