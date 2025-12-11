@@ -35,7 +35,7 @@ suspend fun main() {
             lgr.info("已关闭日志流")
         },
         onError = { throwable ->
-            lgr.error(throwable)
+            lgr.error{throwable}
         })
     RAccount.now = RAccount.TESTS[1]
     ioTask {
