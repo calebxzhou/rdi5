@@ -5,11 +5,11 @@ import calebxzhou.rdi.ui2.frag.RFragment
 import calebxzhou.rdi.ui2.frag.TitleFragment
 import icyllis.modernui.R
 import icyllis.modernui.audio.AudioManager
-import org.slf4j.LoggerFactory
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.slf4j.MarkerFactory
 import java.io.File
-
-val lgr = LoggerFactory.getLogger("rdi")
+val CONF = AppConfig.load()
+val lgr = KotlinLogging.logger {  }
 val logMarker
     get() = {marker: String ->  MarkerFactory.getMarker(marker)}
 fun main(){
@@ -19,13 +19,14 @@ class RDI {
 
     companion object {
 
-        val DIR = File(".")
+        val DIR: File = File(".").absoluteFile
     }
 
 
     init {
         lgr.info("RDI启动中")
         DIR.mkdir()
+        lgr.info((this.javaClass.protectionDomain.codeSource.location.toURI().toString()))
         /*lgr.info("rdi核心连接码：$LOCAL_PORT")
         embeddedServer(Netty,host="127.0.0.1",port=LOCAL_PORT){
             routing {
