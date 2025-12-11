@@ -127,13 +127,13 @@ class HostConsoleFragment(val hostId: ObjectId) : RFragment("主机后台") {
                         lgr.info("已关闭日志流")
                     },
                     onError = { throwable ->
-                        lgr.error(throwable)
+                        lgr.error { throwable }
                     }
                 )
             } catch (cancel: kotlinx.coroutines.CancellationException) {
                 throw cancel
             } catch (t: Throwable) {
-                lgr.error(t)
+                lgr.error { t }
                 if (isFragmentActive) {
                     uiThread {
                         toast("日志连接断开: ${t.message ?: "未知错误"}")
