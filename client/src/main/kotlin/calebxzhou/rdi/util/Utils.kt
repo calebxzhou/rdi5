@@ -8,6 +8,8 @@ import kotlinx.coroutines.launch
 import org.bson.types.ObjectId
 import org.lwjgl.util.tinyfd.TinyFileDialogs
 import java.io.File
+import java.io.InputStream
+import java.net.URLDecoder
 import java.net.URLEncoder
 import java.nio.ByteBuffer
 import java.security.MessageDigest
@@ -16,6 +18,7 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.*
+import kotlin.jvm.optionals.getOrNull
 
 /**
  * calebxzhou @ 2025-04-16 12:23
@@ -68,7 +71,7 @@ fun ObjectId.toUUID(): UUID {
 val String.urlEncoded
     get() = URLEncoder.encode(this, Charsets.UTF_8)
 val String.urlDecoded
-    get() = java.net.URLDecoder.decode(this, Charsets.UTF_8)
+    get() = URLDecoder.decode(this, Charsets.UTF_8)
 val String.decodeBase64
     get() = String(Base64.getDecoder().decode(this), Charsets.UTF_8)
 val String.encodeBase64
@@ -85,7 +88,9 @@ fun File.digest(algo: String): String {
     }
     return digest.digest().joinToString("") { "%02x".format(it) }
 }
-
+val javaExePath = ProcessHandle.current()
+    .info()
+    .command().orElseThrow { IllegalArgumentException("找不到java运行路径") }
 val File.sha1: String
     get() = digest("SHA-1")
 val File.sha256: String
@@ -167,4 +172,14 @@ val ObjectId.humanDateTime
     get() = (this.timestamp* 1000L).humanDateTime
 val Long.humanDateTime
     get() = Instant.ofEpochMilli(this).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
-fun jarResource(path: String) = RDI::class.java.classLoader.getResourceAsStream(path)
+fun jarResource(path: String): InputStream = RDI::class.java.classLoader.getResourceAsStream(path)?:run{
+    throw IllegalArgumentException("Resource not found: $path")}
+fun exportJarResource(path: String, dest: File?=null): File {
+    jarResource(path).use { input ->
+        val dest = dest?: RDI.DIR.resolve(path)
+        dest.outputStream().use { output ->
+            input.copyTo(output)
+        }
+        return dest
+    }
+}
