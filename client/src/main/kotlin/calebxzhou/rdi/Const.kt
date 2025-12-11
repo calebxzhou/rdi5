@@ -1,5 +1,6 @@
 package calebxzhou.rdi
 
+import com.ibm.icu.impl.LocaleUtility.fallback
 import org.bson.types.ObjectId
 
 object Const {
@@ -12,7 +13,7 @@ object Const {
     val SEED = 1145141919810L
     val DEFAULT_MODPACK_ID = ObjectId("abcdefabcdefabcdefabcdef")
     //显示版本
-    const val VERSION_NUMBER = "5.7.1"
+    val VERSION_NUMBER: String = loadVersionNumber()
 
     val CF_AKEY = byteArrayOf(
         36, 50, 97, 36, 49, 48, 36, 55, 87, 87, 86, 49, 87, 69, 76, 99, 119, 88, 56, 88,
@@ -20,7 +21,14 @@ object Const {
         83, 121, 110, 121, 101, 83, 121, 77, 104, 49, 114, 115, 69, 56, 57, 110, 73,
         97, 48, 57, 122, 79
     ).let { String(it) }
-    @JvmStatic
-    val VERSION_DISP = "RDI ${if(DEBUG )"DEBUG" else ""} $VERSION_NUMBER"
+
+    private fun loadVersionNumber(): String {
+        val manifestVersion = Const::class.java.`package`?.implementationVersion?.takeIf { it.isNotBlank() }
+        return manifestVersion
+            ?: System.getProperty("rdi.version")
+            ?: "dev"
+    }
+
+
 
 }
