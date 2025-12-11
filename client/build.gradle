@@ -5,10 +5,12 @@ plugins {
     id 'java-library'
     id 'maven-publish'
     id 'idea'
+    id 'application'
     // Adds the Kotlin Gradle plugin
     id 'org.jetbrains.kotlin.jvm' version "${kotlin_version}"
     // OPTIONAL Kotlin Serialization plugin
     id 'org.jetbrains.kotlin.plugin.serialization' version "${kotlin_version}"
+    id("com.gradleup.shadow") version "9.3.0+"
 }
 
 tasks.named('wrapper', Wrapper).configure {
@@ -20,8 +22,8 @@ tasks.named('wrapper', Wrapper).configure {
     distributionType = Wrapper.DistributionType.BIN
 }
 
-version = mod_version
-group = mod_group_id
+def rdiVersion = project.findProperty('rdi_version').toString()
+version = rdiVersion
 
 repositories {
     mavenLocal()
@@ -39,9 +41,25 @@ repositories {
 }
 
 base {
-    archivesName = mod_id
+    archivesName = "rdi-5-client"
 }
 
+jar {
+    archiveFileName = "rdi-5-client.jar"
+    manifest {
+        attributes(
+                'Implementation-Title': project.name,
+                'Implementation-Version': project.version,   // ← this is the key
+                'Built-By': System.getProperty('user.name'),
+                'Build-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ss'Z'"),
+                'Created-By': "Gradle ${gradle.gradleVersion}"
+        )
+    }
+}
+shadowJar {
+    archiveClassifier.set("") // removes "-all" suffix
+    archiveFileName.set("rdi-5-client.jar")
+}
 // Mojang ships Java 21 to end users starting in 1.20.5, so mods should target Java 21.
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
@@ -90,9 +108,12 @@ dependencies {
     testImplementation "icyllis.modernui:ModernUI-Markflow:3.12.0"
 // https://mvnrepository.com/artifact/com.github.oshi/oshi-core
     implementation("com.github.oshi:oshi-core:6.9.1")
-
+// https://mvnrepository.com/artifact/com.electronwill.night-config/toml
+    implementation("com.electronwill.night-config:toml:3.8.3")
 // https://mvnrepository.com/artifact/ch.qos.logback/logback-classic
-    testImplementation("ch.qos.logback:logback-classic:1.5.21")
+    implementation("ch.qos.logback:logback-classic:1.5.21")
+    implementation 'io.github.oshai:kotlin-logging-jvm:7.0.6'
+    implementation("net.peanuuutz.tomlkt:tomlkt:0.5.0")
     mcLibs.each { lib ->
         implementation(lib)
     }
@@ -189,4 +210,8 @@ tasks.register('出core-release') {
             )
         }
     }
+}
+
+application {
+    mainClass = 'calebxzhou.rdi.RDIKt'
 }
