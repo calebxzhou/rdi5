@@ -179,7 +179,7 @@ class RServer(
         bufferPolicy: SSEBufferPolicy? = null,
         configureRequest: HttpRequestBuilder.() -> Unit = {},
         onError: (Throwable) -> Unit = { throwable ->
-            lgr.error(throwable)
+            lgr.error{throwable}
         },
         onClosed: suspend () -> Unit = {},
         onEvent: suspend (ServerSentEvent) -> Unit,

@@ -21,6 +21,8 @@ package calebxzhou.rdi.ui2
 import calebxzhou.rdi.Const
 import calebxzhou.rdi.lgr
 import calebxzhou.rdi.logMarker
+import calebxzhou.rdi.util.Loggers
+import calebxzhou.rdi.util.Loggers.provideDelegate
 import icyllis.arc3d.core.ColorInfo
 import icyllis.arc3d.core.ColorSpace
 import icyllis.arc3d.core.ImageInfo
@@ -96,7 +98,7 @@ class RodernUI : ModernUI(), AutoCloseable, LifecycleOwner, ViewModelStoreOwner,
         fun getInstance(): RodernUI = instance!!
 
     }
-
+    private val lgr by Loggers
     private lateinit var window: ActivityWindow
     private lateinit var viewRoot: ViewRootImpl
     private lateinit var decor: WindowGroup
@@ -155,16 +157,16 @@ class RodernUI : ModernUI(), AutoCloseable, LifecycleOwner, ViewModelStoreOwner,
 
         Core.initialize()
 
-        lgr.debug(marker, "Preparing main thread")
+        lgr.debug("Preparing main thread")
         Looper.prepareMainLooper()
 
         val loadTypefaceFuture = CompletableFuture.runAsync { loadDefaultTypeface() }
 
-        lgr.debug(marker, "Initializing window system")
+        lgr.debug( "Initializing window system")
         val monitor = Monitor.getPrimary()
 
         Configuration.OPENGL_LIBRARY_NAME.get()?.let { name ->
-            lgr.debug(marker, "OpenGL library: {}", name)
+            lgr.debug( "OpenGL library: {}", name)
             Objects.requireNonNull(GL.getFunctionProvider(), "Implicit OpenGL loading is required")
         }
 
@@ -186,7 +188,7 @@ class RodernUI : ModernUI(), AutoCloseable, LifecycleOwner, ViewModelStoreOwner,
         }
 
         window = if (monitor == null) {
-            lgr.info(marker, "No monitor connected")
+            lgr.info( "No monitor connected")
             ActivityWindow.createMainWindow("RDI ${Const.VERSION_NUMBER}", 1280, 720)
         } else {
             val mode = monitor.currentMode
@@ -199,7 +201,7 @@ class RodernUI : ModernUI(), AutoCloseable, LifecycleOwner, ViewModelStoreOwner,
 
         val latch = CountDownLatch(1)
 
-        lgr.debug(marker, "Preparing render thread")
+        lgr.debug( "Preparing render thread")
         renderThread = Thread({ runRender(latch) }, "Render-Thread").also { it.start() }
 
         windowCallback?.accept(window.handle)
@@ -212,7 +214,7 @@ class RodernUI : ModernUI(), AutoCloseable, LifecycleOwner, ViewModelStoreOwner,
                     BitmapFactory.decodeStream(getResourceStream(ID, "AppLogo48x.png"))
                 )
             } catch (t: Throwable) {
-                lgr.info(marker, "Failed to load window icons", t)
+                lgr.info( "Failed to load window icons", t)
                 null
             }
         }.thenAcceptAsync({ icons ->
@@ -234,7 +236,7 @@ class RodernUI : ModernUI(), AutoCloseable, LifecycleOwner, ViewModelStoreOwner,
             metrics.xdpi = 25.4f * mode.width / physWidth[0]
             metrics.ydpi = 25.4f * mode.height / physHeight[0]
             lgr.info(
-                marker,
+                
                 "Primary monitor physical size: {}x{} mm, xScale: {}, yScale: {}",
                 physWidth[0],
                 physHeight[0],
@@ -245,12 +247,12 @@ class RodernUI : ModernUI(), AutoCloseable, LifecycleOwner, ViewModelStoreOwner,
             metrics.density = densityBase * DisplayMetrics.DENSITY_DEFAULT_SCALE
             metrics.densityDpi = densityBase
             metrics.scaledDensity = metrics.density
-            lgr.info(marker, "Display metrics: {}", metrics)
+            lgr.info( "Display metrics: {}", metrics)
             resourcesInternal.updateMetrics(metrics)
         }
 
         glfwSetWindowCloseCallback(window.handle) {
-            lgr.debug(marker, "Window closed from callback")
+            lgr.debug( "Window closed from callback")
             window.setShouldClose(true)
             stop()
         }
@@ -262,7 +264,7 @@ class RodernUI : ModernUI(), AutoCloseable, LifecycleOwner, ViewModelStoreOwner,
             throw RuntimeException(e)
         }
 
-        lgr.debug(marker, "Initializing UI system")
+        lgr.debug( "Initializing UI system")
 
         Core.initUiThread()
 
@@ -291,7 +293,7 @@ class RodernUI : ModernUI(), AutoCloseable, LifecycleOwner, ViewModelStoreOwner,
 
         viewRoot.view = decor
 
-        lgr.debug(marker, "Installing view protocol")
+        lgr.debug( "Installing view protocol")
         window.install(viewRoot)
 
         lifecycleRegistry = LifecycleRegistry(this)
@@ -325,14 +327,14 @@ class RodernUI : ModernUI(), AutoCloseable, LifecycleOwner, ViewModelStoreOwner,
 
         loadTypefaceFuture.join()
 
-        lgr.info(marker, "Looping main thread")
+        lgr.info( "Looping main thread")
         try {
             Looper.loop()
         }catch (e: Exception){e.printStackTrace()} finally {
             viewRoot.surface = RefCnt.move(viewRoot.surface)
             Core.requireUiRecordingContext().unref()
             close()
-            lgr.info(marker, "Quited main thread")
+            lgr.info( "Quited main thread")
             exitProcess(0)
         }
     }
@@ -348,10 +350,10 @@ class RodernUI : ModernUI(), AutoCloseable, LifecycleOwner, ViewModelStoreOwner,
             for ((major, minor) in versions) {
                 glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, major)
                 glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, minor)
-                lgr.debug(marker, "Trying OpenGL {}.{}", major, minor)
+                lgr.debug( "Trying OpenGL {}.{}", major, minor)
                 tempWindow = glfwCreateWindow(640, 480, "System Testing", 0, 0)
                 if (tempWindow != 0L) {
-                    lgr.info(marker, "Will use OpenGL {}.{} Core Profile", major, minor)
+                    lgr.info( "Will use OpenGL {}.{} Core Profile", major, minor)
                     return
                 }
             }
@@ -382,7 +384,7 @@ class RodernUI : ModernUI(), AutoCloseable, LifecycleOwner, ViewModelStoreOwner,
         }
 
         renderWindow.swapInterval(1)
-        lgr.info(marker, "Looping render thread")
+        lgr.info( "Looping render thread")
 
         try {
             Looper.loop()
@@ -396,7 +398,7 @@ class RodernUI : ModernUI(), AutoCloseable, LifecycleOwner, ViewModelStoreOwner,
         }
 
         Core.requireImmediateContext().unref()
-        lgr.info(marker, "Quited render thread")
+        lgr.info( "Quited render thread")
     }
 
     override fun getLifecycle(): Lifecycle = lifecycleRegistry
@@ -465,7 +467,7 @@ class RodernUI : ModernUI(), AutoCloseable, LifecycleOwner, ViewModelStoreOwner,
             }
             if (::window.isInitialized) {
                 window.close()
-                lgr.debug(marker, "Closed main window")
+                lgr.debug( "Closed main window")
             }
             glfwSetMonitorCallback(null)?.free()
         } finally {
@@ -625,7 +627,7 @@ class RodernUI : ModernUI(), AutoCloseable, LifecycleOwner, ViewModelStoreOwner,
                 context.submit()
                 this@RodernUI.window.swapBuffers()
             } else {
-                lgr.error(marker, "Failed to add draw commands")
+                lgr.error( "Failed to add draw commands")
             }
         }
 
