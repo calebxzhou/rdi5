@@ -25,6 +25,7 @@ class UpdateFragment() : RFragment("正在检查更新") {
     override var closable = false
 
     init {
+
         titleViewInit = {
             quickOptions {
                 "> 跳过更新" with { LoginFragment().go() }
@@ -39,7 +40,6 @@ class UpdateFragment() : RFragment("正在检查更新") {
         val explicit = System.getProperty("rdi.coreJar")?.let { File(it) }
         val candidates = buildList {
             explicit?.let { add(it) }
-            add(File("mods/rdi-5-client.jar"))
         }.map { it.normalize().absoluteFile }
         return candidates.firstOrNull { it.exists() } ?: candidates.first()
     }
