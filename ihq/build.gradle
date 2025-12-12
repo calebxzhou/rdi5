@@ -55,7 +55,7 @@ ktor {
     }
 }
 application {
-    mainClass = 'calebxzhou.rdi.ihq.MainKt'
+    mainClass = 'calebxzhou.rdi.ihq.RDIKt'
 }
 tasks.named('test') {
     enabled = false

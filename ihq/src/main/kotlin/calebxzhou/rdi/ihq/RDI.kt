@@ -46,6 +46,7 @@ val DOWNLOAD_MODS_DIR = File("download-mods")
 val MODPACK_DATA_DIR = File("modpack")
 val HOSTS_DIR = File("hosts")
 val GAME_LIBS_DIR = File("game-libs")
+class RDI {}
 fun main(): Unit =runBlocking {
     CRASH_REPORT_DIR.mkdir()
     DOWNLOAD_MODS_DIR.mkdir()
