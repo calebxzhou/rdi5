@@ -2,11 +2,8 @@ package calebxzhou.rdi.ihq.service
 
 import calebxzhou.rdi.ihq.CONF
 import calebxzhou.rdi.ihq.exception.RequestError
-import calebxzhou.rdi.ihq.lgr
 import calebxzhou.rdi.ihq.model.HostStatus
 import calebxzhou.rdi.ihq.util.Loggers
-import calebxzhou.rdi.ihq.util.Loggers.provideDelegate
-import calebxzhou.rdi.ihq.util.jarResource
 import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.api.async.ResultCallback.Adapter
 import com.github.dockerjava.api.command.BuildImageResultCallback
@@ -25,7 +22,6 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.Closeable
 import java.io.File
-import java.io.FileInputStream
 import java.nio.file.Files
 import java.nio.file.Path
 
