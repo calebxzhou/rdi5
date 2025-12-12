@@ -24,6 +24,9 @@ val serdesJson = Json {
     encodeDefaults = true
     explicitNulls = false
 }
+
+inline val <reified T> T.json: String
+    get() = serdesJson.encodeToString<T>(this)
 object ObjectIdSerializer : KSerializer<ObjectId> {
     override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("ObjectId", PrimitiveKind.STRING)
 
