@@ -1,7 +1,7 @@
 package calebxzhou.rdi.ui2.frag
 
 import calebxzhou.rdi.lgr
-import calebxzhou.rdi.net.downloadFileWithProgress
+import calebxzhou.rdi.net.downloadFile
 import calebxzhou.rdi.net.humanSize
 import calebxzhou.rdi.net.server
 import calebxzhou.rdi.ui2.*
@@ -94,7 +94,7 @@ class UpdateFragment() : RFragment("正在检查更新") {
         }
 
         val downloadUrl = "${server.hqUrl}/update/core"
-        val downloadSuccess = downloadFileWithProgress(downloadUrl, tempFile.toPath()) { dl ->
+        val downloadSuccess = downloadFile(downloadUrl, tempFile.toPath()) { dl ->
 
             uiThread {
                 progressView?.text =
