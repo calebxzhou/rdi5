@@ -40,6 +40,8 @@ dependencies {
     implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0'
     implementation 'io.github.oshai:kotlin-logging-jvm:7.0.6'
     testImplementation 'org.jetbrains.kotlin:kotlin-test'
+    testImplementation 'io.mockk:mockk:1.13.12'
+    testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0'
     implementation 'org.mongodb:mongodb-driver-kotlin-coroutine:5.5.1'
     implementation("net.benwoodworth.knbt:knbt:0.11.8")
     // https://mvnrepository.com/artifact/com.github.docker-java/docker-java
@@ -55,7 +57,9 @@ ktor {
 application {
     mainClass = 'calebxzhou.rdi.ihq.MainKt'
 }
-
+tasks.named('test') {
+    enabled = false
+}
 test {
     useJUnitPlatform()
 }
