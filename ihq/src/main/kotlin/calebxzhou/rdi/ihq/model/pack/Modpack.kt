@@ -43,6 +43,8 @@ data class Modpack(
             get() = MODPACK_DATA_DIR.resolve(modpackId.str).resolve(name)
         val zip
             get() = dir.parentFile.resolve("${name}.zip")
+        val clientZip
+            get() = dir.parentFile.resolve("${name}-client.zip")
     }
     enum class Status{
         WAIT,FAIL,OK,BUILDING

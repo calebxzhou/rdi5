@@ -32,11 +32,12 @@ import calebxzhou.rdi.ihq.util.humanSize
 import calebxzhou.rdi.ihq.util.ioScope
 import calebxzhou.rdi.ihq.util.safeDirSize
 import calebxzhou.rdi.ihq.util.serdesJson
+import calebxzhou.rdi.ihq.util.sha1
 import com.mongodb.client.model.Filters.*
 import com.mongodb.client.model.Projections
 import com.mongodb.client.model.UpdateOptions
 import com.mongodb.client.model.Updates
-import com.sun.org.apache.bcel.internal.Const
+import com.mongodb.kotlin.client.coroutine.MongoCollection
 import io.ktor.http.content.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
@@ -50,6 +51,11 @@ import kotlinx.coroutines.launch
 import kotlinx.io.readByteArray
 import org.bson.Document
 import org.bson.types.ObjectId
+import java.awt.Color
+import java.awt.image.BufferedImage
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import java.io.File
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
@@ -57,7 +63,12 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.nio.file.StandardOpenOption
 import java.util.zip.ZipFile
+import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
+import java.util.zip.ZipOutputStream
+import javax.imageio.IIOImage
+import javax.imageio.ImageIO
+import javax.imageio.ImageWriteParam
 import kotlin.io.path.absolute
 
 
@@ -88,6 +99,12 @@ fun Route.modpackRoutes() {
                 get {
                     call.modpackGuardContext().versionNull?.let { response(data = it) }
                         ?: throw RequestError("无此版本")
+                }
+                get("/client") {
+                    call.modpackGuardContext().version.clientZip.let { call.respondFile(it) }
+                }
+                get("/client/hash") {
+                    call.modpackGuardContext().version.clientZip.let { response(data=it.sha1) }
                 }
                 get("/mods") {
                     call.modpackGuardContext().version.mods.let { response(data = it) }
@@ -177,8 +194,17 @@ object ModpackService {
     private val lgr by Loggers
     private const val MAX_MODPACK_PER_USER = 5
     private val STEP_PROGRESS_REGEX = Regex("""^Step\s+(\d+)/(\d+)""")
-    val dbcl = DB.getCollection<Modpack>("modpack")
-
+    private val realDbcl = DB.getCollection<Modpack>("modpack")
+    internal var testDbcl: MongoCollection<Modpack>? = null
+    val dbcl: MongoCollection<Modpack>
+        get() = testDbcl ?: realDbcl
+    private val clientNeedDirs = listOf("config","mods","defaultconfigs","kubejs","global_packs","resourcepacks")
+    private val disallowedClientPaths = setOf("config/fancymenu")
+    private val allowedQuestLangFiles = setOf("en_us.snbt", "zh_cn.snbt")
+    private const val QUEST_LANG_PREFIX = "config/ftbquests/quests/lang/"
+    private const val RESOURCEPACK_MAX_SIZE_BYTES = 1024L * 1024
+    private const val PNG_COMPRESSION_THRESHOLD_BYTES = 50 * 1024
+    private const val PNG_COMPRESSION_JPEG_QUALITY = 0.5f
 
     val ModpackContext.isAuthor: Boolean
         get() = modpack.authorId == player._id
@@ -432,7 +458,7 @@ object ModpackService {
         }
     }
 
-    private fun unzipOverrides(zipFile: java.io.File, targetDir: java.io.File) {
+    private fun unzipOverrides(zipFile: File, targetDir: File) {
         val versionDirPath = targetDir.toPath()
         // Use ZipFile with charset detection to handle Chinese filenames
         open(zipFile).use { zip ->
@@ -491,6 +517,7 @@ object ModpackService {
         }
         if(version.hostsUsing().isNotEmpty()) throw RequestError("有主机正在使用此版本，无法重构")
         version.setTotalSize(version.zip.length())
+        //todo 删除ftb backup
         version.addKotlinForForge(this)
         try {
             val downloadedMods = CurseForgeService.downloadMods(version.mods.filter { it.side != Mod.Side.CLIENT }) {
@@ -499,17 +526,9 @@ object ModpackService {
                 }
             }
             onProgress("所有mod下载完成 开始安装。。${downloadedMods.size}个mod")
-            //不需要复制libraries了 运行时mount到host里
-            /*downloadedMods.forEach { sourcePath ->
-                val fileName = sourcePath.fileName?.toString() ?: return@forEach
-                val absoluteSource = sourcePath.toAbsolutePath()
-                val targetPath = modsDir.resolve(fileName).toPath()
-                targetPath.parent?.let { Files.createDirectories(it) }
-                if (Files.exists(targetPath)) {
-                    Files.delete(targetPath)
-                }
-                Files.copy(absoluteSource,targetPath)
-            }*/
+            onProgress("构建客户端版。。")
+            buildClientZip(version)
+            onProgress("客户端版本构建完成")
             onProgress("整合包构建完成！")
             version.setStatus(Modpack.Status.OK)
 
@@ -518,6 +537,186 @@ object ModpackService {
             throw e
         }
     }
+    private fun buildClientZip(version: Modpack.Version) {
+        val sourceZip = version.zip
+        if (!sourceZip.exists()) return
+        val clientZip = version.clientZip
+        clientZip.parentFile?.mkdirs()
+        if (clientZip.exists()) clientZip.delete()
+
+        val neededDirs = clientNeedDirs.toSet()
+        var entriesCopied = 0
+
+        open(sourceZip).use { source ->
+            ZipOutputStream(clientZip.outputStream()).use { output ->
+                val addedDirs = mutableSetOf<String>()
+                source.entries().asSequence().forEach { entry ->
+                    val relative = extractOverridesRelativePath(entry.name) ?: return@forEach
+                    val relativeLower = relative.lowercase()
+                    if (disallowedClientPaths.any { relativeLower.startsWith(it) }) {
+                        return@forEach
+                    }
+                    if (relativeLower.endsWith(".ogg")) {
+                        return@forEach
+                    }
+                    if (isQuestLangEntryDisallowed(relativeLower, entry.isDirectory)) {
+                        return@forEach
+                    }
+                    val topLevel = relative.substringBefore('/', relative)
+                    if (topLevel !in neededDirs) return@forEach
+
+                    if (entry.isDirectory) {
+                        if (addDirectoryEntry(relative, output, addedDirs)) {
+                            entriesCopied++
+                        }
+                        return@forEach
+                    }
+
+                    if (topLevel == "resourcepacks") {
+                        val bytes = readResourcepackEntry(source, entry, relativeLower) ?: return@forEach
+                        ensureZipParents(relative, output, addedDirs)
+                        val clientEntry = ZipEntry(relative).apply { time = entry.time }
+                        output.putNextEntry(clientEntry)
+                        output.write(bytes)
+                        output.closeEntry()
+                        entriesCopied++
+                    } else {
+                        ensureZipParents(relative, output, addedDirs)
+                        val clientEntry = ZipEntry(relative).apply { time = entry.time }
+                        output.putNextEntry(clientEntry)
+                        val isPng = relativeLower.endsWith(".png")
+                        if (isPng) {
+                            val bytes = source.getInputStream(entry).use { it.readBytes() }
+                            val processed = compressPngIfNeeded(bytes)
+                            output.write(processed)
+                        } else {
+                            source.getInputStream(entry).use { input ->
+                                input.copyTo(output)
+                            }
+                        }
+                        output.closeEntry()
+                        entriesCopied++
+                    }
+                }
+            }
+        }
+
+        if (entriesCopied == 0) {
+            clientZip.delete()
+        }
+    }
+
+    private fun addDirectoryEntry(
+        rawPath: String,
+        output: ZipOutputStream,
+        addedDirs: MutableSet<String>
+    ): Boolean {
+        val sanitized = rawPath.trim('/').ifEmpty { return false }
+        ensureZipParents(sanitized, output, addedDirs)
+        val dirEntry = "$sanitized/"
+        if (addedDirs.add(dirEntry)) {
+            output.putNextEntry(ZipEntry(dirEntry))
+            output.closeEntry()
+            return true
+        }
+        return false
+    }
+
+    private fun ensureZipParents(path: String, output: ZipOutputStream, addedDirs: MutableSet<String>) {
+        val normalized = path.trim('/').ifEmpty { return }
+        val parts = normalized.split('/')
+        if (parts.size <= 1) return
+        var current = ""
+        for (i in 0 until parts.size - 1) {
+            val part = parts[i]
+            if (part.isEmpty()) continue
+            current = if (current.isEmpty()) part else "$current/$part"
+            val dirEntry = "$current/"
+            if (addedDirs.add(dirEntry)) {
+                output.putNextEntry(ZipEntry(dirEntry))
+                output.closeEntry()
+            }
+        }
+    }
+
+    private fun readBytesWithLimit(input: InputStream, limit: Long): ByteArray? {
+        val buffer = ByteArrayOutputStream()
+        val chunk = ByteArray(DEFAULT_BUFFER_SIZE)
+        var total = 0L
+        while (true) {
+            val read = input.read(chunk)
+            if (read == -1) break
+            total += read
+            if (total > limit) {
+                return null
+            }
+            buffer.write(chunk, 0, read)
+        }
+        return buffer.toByteArray()
+    }
+
+    private fun isQuestLangEntryDisallowed(relativeLower: String, isDirectory: Boolean): Boolean {
+        if (!relativeLower.startsWith(QUEST_LANG_PREFIX)) return false
+        val remainder = relativeLower.removePrefix(QUEST_LANG_PREFIX)
+        if (remainder.isEmpty()) return false
+        if (isDirectory) return true
+        if (remainder.contains('/')) return true
+        return remainder !in allowedQuestLangFiles
+    }
+
+    private fun readResourcepackEntry(source: ZipFile, entry: ZipEntry, relativeLower: String): ByteArray? {
+        if (entry.size != -1L && entry.size > RESOURCEPACK_MAX_SIZE_BYTES) {
+            return null
+        }
+        val rawBytes = source.getInputStream(entry).use { input ->
+            when {
+                entry.size == -1L -> readBytesWithLimit(input, RESOURCEPACK_MAX_SIZE_BYTES)
+                entry.size > Int.MAX_VALUE -> return null
+                entry.size > RESOURCEPACK_MAX_SIZE_BYTES -> return null
+                else -> input.readNBytes(entry.size.toInt())
+            }
+        } ?: return null
+        val processed = if (relativeLower.endsWith(".png")) compressPngIfNeeded(rawBytes) else rawBytes
+        if (processed.size > RESOURCEPACK_MAX_SIZE_BYTES) return null
+        return processed
+    }
+
+    private fun compressPngIfNeeded(bytes: ByteArray): ByteArray {
+        if (bytes.size <= PNG_COMPRESSION_THRESHOLD_BYTES) return bytes
+        return runCatching {
+            val original = ImageIO.read(ByteArrayInputStream(bytes)) ?: return bytes
+            val rgbImage = if (original.type == BufferedImage.TYPE_INT_RGB) original else {
+                val converted = BufferedImage(original.width, original.height, BufferedImage.TYPE_INT_RGB)
+                val graphics = converted.createGraphics()
+                graphics.color = Color.WHITE
+                graphics.fillRect(0, 0, converted.width, converted.height)
+                graphics.drawImage(original, 0, 0, null)
+                graphics.dispose()
+                converted
+            }
+            val writerIterator = ImageIO.getImageWritersByFormatName("jpg")
+            if (!writerIterator.hasNext()) return bytes
+            val writer = writerIterator.next()
+            try {
+                val params = writer.defaultWriteParam
+                if (params.canWriteCompressed()) {
+                    params.compressionMode = ImageWriteParam.MODE_EXPLICIT
+                    params.compressionQuality = PNG_COMPRESSION_JPEG_QUALITY
+                }
+                ByteArrayOutputStream().use { baos ->
+                    val imageOut = ImageIO.createImageOutputStream(baos) ?: return bytes
+                    imageOut.use { outputStream ->
+                        writer.output = outputStream
+                        writer.write(null, IIOImage(rgbImage, null, null), params)
+                    }
+                    baos.toByteArray()
+                }
+            } finally {
+                writer.dispose()
+            }
+        }.getOrElse { bytes }
+    }
+
 
     suspend fun Modpack.Version.setStatus(status: Modpack.Status) {
         dbcl.updateOne(
