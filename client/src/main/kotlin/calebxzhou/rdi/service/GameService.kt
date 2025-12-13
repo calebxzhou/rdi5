@@ -2,6 +2,7 @@ package calebxzhou.rdi.service
 
 import calebxzhou.rdi.CONF
 import calebxzhou.rdi.RDI
+import calebxzhou.rdi.model.LibraryOsArch.Companion.detectHostOs
 import calebxzhou.rdi.model.McVersion
 import calebxzhou.rdi.model.ModLoader
 import calebxzhou.rdi.model.MojangAssetIndex
@@ -9,12 +10,9 @@ import calebxzhou.rdi.model.MojangAssetIndexFile
 import calebxzhou.rdi.model.MojangAssetObject
 import calebxzhou.rdi.model.MojangDownloadArtifact
 import calebxzhou.rdi.model.MojangLibrary
-import calebxzhou.rdi.model.MojangLibraryDownloads
-import calebxzhou.rdi.model.MojangRule
 import calebxzhou.rdi.model.MojangRuleAction
-import calebxzhou.rdi.model.MojangRuleOs
 import calebxzhou.rdi.model.MojangVersionManifest
-import calebxzhou.rdi.net.downloadFileWithProgress
+import calebxzhou.rdi.net.downloadFile
 import calebxzhou.rdi.net.httpRequest
 import calebxzhou.rdi.util.Loggers
 import calebxzhou.rdi.util.exportJarResource
@@ -42,12 +40,12 @@ import kotlinx.serialization.Serializable
 
 object GameService {
     private val lgr by Loggers
-    private val DIR = File(RDI.DIR, "mc").apply { mkdirs() }
+    val DIR = File(RDI.DIR, "mc").apply { mkdirs() }
     private val libsDir = DIR.resolve("libraries").apply { mkdirs() }
     private val assetsDir = DIR.resolve("assets").apply { mkdirs() }
     private val assetIndexesDir = assetsDir.resolve("indexes").apply { mkdirs() }
     private val assetObjectsDir = assetsDir.resolve("objects").apply { mkdirs() }
-    private val versionsDir = DIR.resolve("versions").apply { mkdirs() }
+    val versionsDir = DIR.resolve("versions").apply { mkdirs() }
     private val hostOs = detectHostOs()
     private val launcherFeatures: Map<String, Boolean> = emptyMap()
     private val locale = Locale.SIMPLIFIED_CHINESE
@@ -63,7 +61,7 @@ object GameService {
         "https://launcher.mojang.com" to "https://bmclapi2.bangbang93.com",
         "http://resources.download.minecraft.net" to "https://bmclapi2.bangbang93.com/assets",
         "https://libraries.minecraft.net" to "https://bmclapi2.bangbang93.com/maven",
-        )
+    )
     private val bracketedLibraryRegex = Regex("^\\[(.+)]$")
     internal val String.rewriteMirrorUrl: String
         get() {
@@ -90,10 +88,39 @@ object GameService {
         val manifest = httpRequest { url(manifestUrl) }.body<MojangVersionManifest>()
         downloadClient(manifest, onProgress)
         downloadLibraries(manifest, onProgress)
+        extractNatives(manifest,onProgress)
         downloadAssets(manifest, onProgress)
         onProgress("$version 所需文件下载完成")
     }
+    private fun extractNatives(manifest: MojangVersionManifest, onProgress: (String) -> Unit){
+        val nativesDir = versionsDir.resolve(manifest.id).resolve("natives").apply { mkdirs() }
+        manifest.libraries.filterNativeOnly.forEach { library ->
+            val jarFile = library.file
+            if(!jarFile.exists()){
+                onProgress("运行库${library.name}下载失败，无法提取")
+                return@forEach
+            }
+            onProgress("提取 ${library.name} 的原生库")
+            ZipFile(jarFile).use { zip ->
+                zip.entries().asSequence()
+                    .filter { !it.isDirectory && it.name.isNativeLibraryName() }
+                    .forEach { entry ->
+                        val target = nativesDir.resolve(entry.name.substringAfterLast('/'))
+                        target.parentFile?.mkdirs()
+                        zip.getInputStream(entry).use { input ->
+                            target.outputStream().use { output ->
+                                input.copyTo(output)
+                            }
+                        }
+                    }
+            }
+        }
+    }
 
+    private fun String.isNativeLibraryName(): Boolean {
+        val lower = lowercase(Locale.ROOT)
+        return lower.endsWith(".dll") || lower.endsWith(".so") || lower.endsWith(".dylib")
+    }
 
     private suspend fun downloadClient(manifest: MojangVersionManifest, onProgress: (String) -> Unit) {
         val client = manifest.downloads?.client ?: return
@@ -120,7 +147,8 @@ object GameService {
         coroutineScope {
             val semaphore = Semaphore(MAX_PARALLEL_LIBRARY_DOWNLOADS)
             libraries
-                .filter { it.isAllowed(hostOs) }
+                .filter { it.shouldDownloadByArch() }
+                .apply { onProgress("需要下载的库文件: ${this.size}个： ${this.joinToString("\n") { it.name }}") }
                 .map { library ->
                     async(Dispatchers.IO) {
                         semaphore.withPermit {
@@ -129,20 +157,25 @@ object GameService {
                     }
                 }.awaitAll()
         }
-
-    private suspend fun downloadLibraryArtifacts(library: MojangLibrary, onProgress: (String) -> Unit) {
-        library.downloads.artifact?.let { artifact ->
-            val relativePath = artifact.path ?: library.derivePath()
-            val target = File(libsDir, relativePath)
-            downloadArtifact(library.name, artifact, target, onProgress)
-        }
-
-        val classifier = library.downloads.classifierFor(hostOs)
-        classifier?.let { nativeArtifact ->
-            val relativePath = nativeArtifact.path ?: library.derivePath(suffix = "natives")
-            val target = File(libsDir, relativePath)
-            downloadArtifact("${library.name} (natives)", nativeArtifact, target, onProgress)
-        }
+    private fun MojangLibrary.shouldDownloadByArch(): Boolean {
+        //没有系统要求的直接下载
+        if(rules == null) return true
+        val allowOs = rules.filter { it.action== MojangRuleAction.allow }.mapNotNull { it.os?.name }
+        return hostOs.ruleOsName in allowOs && this.name.endsWith(hostOs.archSuffix)
+    }
+    //只有native的lib
+    private val List<MojangLibrary>.filterNativeOnly
+        get()= this.filter { it.rules!=null }
+            .filter { it.shouldDownloadByArch()  }
+    val MojangLibrary.file get() = File(libsDir, this.downloads.artifact.path!!)
+    private suspend fun downloadLibraryArtifacts(library: MojangLibrary, onProgress: (String) -> Unit): File {
+        library.downloads.artifact
+            .let { artifact ->
+                val relativePath = artifact.path!!
+                val target = File(libsDir, relativePath)
+                downloadArtifact(library.name, artifact, target, onProgress)
+                return target
+            }
     }
 
     private suspend fun downloadArtifact(
@@ -161,7 +194,7 @@ object GameService {
 
         target.parentFile?.mkdirs()
         onProgress("下载 $label...")
-        val success = downloadFileWithProgress(artifact.url.rewriteMirrorUrl, target.toPath()) { progress ->
+        val success = downloadFile(artifact.url.rewriteMirrorUrl, target.toPath()) { progress ->
             val percent = progress.percent.takeIf { it >= 0 }
                 ?.let { String.format(locale, "%.1f%%", it) }
                 ?: "--"
@@ -178,91 +211,8 @@ object GameService {
         }
     }
 
-    private fun MojangLibrary.isAllowed(os: HostOs): Boolean {
-        val ruleSet = rules ?: return true
-        var allowed = true
-        ruleSet.forEach { rule ->
-            if (rule.applies(os)) {
-                allowed = rule.action == MojangRuleAction.allow
-            }
-        }
-        return allowed
-    }
-
-    private fun MojangRule.applies(os: HostOs): Boolean {
-        if (!osMatches(os, this.os)) return false
-        if (!featuresMatch(features)) return false
-        return true
-    }
-
-    private fun osMatches(os: HostOs, osSpec: MojangRuleOs?): Boolean {
-        osSpec ?: return true
-        osSpec.name?.let { if (!os.name.equals(it, true)) return false }
-        osSpec.arch?.let { if (!os.arch.equals(it, true)) return false }
-        osSpec.version?.let {
-            val regex = runCatching { Regex(it) }.getOrNull()
-            if (regex != null) {
-                if (!regex.containsMatchIn(os.version)) return false
-            } else if (!os.version.contains(it, true)) {
-                return false
-            }
-        }
-        return true
-    }
-
-    private fun featuresMatch(required: Map<String, Boolean>?): Boolean {
-        required ?: return true
-        if (required.isEmpty()) return true
-        return required.all { (key, value) -> launcherFeatures[key] == value }
-    }
-
-    private fun MojangLibraryDownloads.classifierFor(os: HostOs): MojangDownloadArtifact? {
-        val map = classifiers ?: return null
-        val archSuffix = if (os.arch.contains("64")) "-64" else ""
-        val candidates = listOf(
-            "natives-${os.name}$archSuffix",
-            "natives-${os.name}",
-            os.name,
-        )
-        candidates.forEach { candidate ->
-            map[candidate]?.let { return it }
-        }
-        return null
-    }
-
-    private fun MojangLibrary.derivePath(suffix: String? = null): String {
-        val parts = name.split(":")
-        if (parts.size < 3) return name.replace(':', '/') + (suffix?.let { "-$it" } ?: "") + ".jar"
-        val (group, artifact, version) = parts
-        val classifierSuffix = suffix?.let { "-$it" } ?: ""
-        val base = group.replace('.', '/')
-        return "$base/$artifact/$version/$artifact-$version$classifierSuffix.jar"
-    }
-
-    private data class HostOs(val name: String, val arch: String, val version: String)
-
-    private fun detectHostOs(): HostOs {
-        val osName = System.getProperty("os.name")?.lowercase(Locale.ROOT) ?: ""
-        val normalizedName = when {
-            osName.contains("win") -> "windows"
-            osName.contains("mac") || osName.contains("os x") -> "osx"
-            else -> "linux"
-        }
-        val rawArch = System.getProperty("os.arch")?.lowercase(Locale.ROOT) ?: ""
-        val normalizedArch = when {
-            rawArch.contains("arm") && rawArch.contains("64") -> "arm64"
-            rawArch.contains("arm") -> "arm"
-            rawArch.contains("64") -> "x86_64"
-            rawArch.contains("86") -> "x86"
-            else -> rawArch
-        }
-        val version = System.getProperty("os.version") ?: ""
-        return HostOs(normalizedName, normalizedArch, version)
-    }
-
-
     private suspend fun downloadAssets(manifest: MojangVersionManifest, onProgress: (String) -> Unit) {
-        val assetIndexMeta = manifest.assetIndex?: let { onProgress("找不到资源") ;return }
+        val assetIndexMeta = manifest.assetIndex ?: let { onProgress("找不到资源"); return }
         val indexFile = assetIndexesDir.resolve("${assetIndexMeta.id}.json")
         val indexJson = fetchAssetIndex(assetIndexMeta, indexFile, onProgress)
         val index = serdesJson.decodeFromString<MojangAssetIndexFile>(indexJson)
@@ -329,29 +279,29 @@ object GameService {
         targetDir.mkdirs()
         var lastError: String? = null
         var completed = false
-            val downloadUrl = buildAssetUrl(hash)
-            onProgress("下载资源 $path ...")
-            val success = try {
-                downloadFileWithProgress(downloadUrl, targetFile.toPath()) { progress ->
-                    val percent = progress.percent.takeIf { it >= 0 }
-                        ?.let { String.format(locale, "%.1f%%", it) }
-                        ?: "--"
-                    onProgress("资源 $path 下载中 $percent")
-                }
-            } catch (ex: Exception) {
-                lastError = "异常: ${ex.message ?: ex::class.simpleName}"
-                targetFile.delete()
+        val downloadUrl = buildAssetUrl(hash)
+        onProgress("下载资源 $path ...")
+        val success = try {
+            downloadFile(downloadUrl, targetFile.toPath()) { progress ->
+                val percent = progress.percent.takeIf { it >= 0 }
+                    ?.let { String.format(locale, "%.1f%%", it) }
+                    ?: "--"
+                onProgress("资源 $path 下载中 $percent")
             }
-            if (!success) {
-                lastError = "下载失败"
-                targetFile.delete()
-            }
-            val downloadedSha = targetFile.sha1
-            if (!downloadedSha.equals(hash, true)) {
-                lastError = "校验失败"
-                targetFile.delete()
-            }
-            completed = true
+        } catch (ex: Exception) {
+            lastError = "异常: ${ex.message ?: ex::class.simpleName}"
+            targetFile.delete()
+        }
+        if (!success) {
+            lastError = "下载失败"
+            targetFile.delete()
+        }
+        val downloadedSha = targetFile.sha1
+        if (!downloadedSha.equals(hash, true)) {
+            lastError = "校验失败"
+            targetFile.delete()
+        }
+        completed = true
 
         if (!completed) {
             throw IllegalStateException(lastError ?: "资源 $path 下载失败")
@@ -422,7 +372,7 @@ object GameService {
         installer: File,
         onProgress: (String) -> Unit
     ) {
-        val classpathSeparator = if (hostOs.name == "windows") ";" else ":"
+        val classpathSeparator = if (hostOs.isWindows) ";" else ":"
         val classpath = listOf(installBooter.absolutePath, installer.absolutePath).joinToString(classpathSeparator)
         val command = listOf(
             javaExePath,
@@ -445,8 +395,8 @@ object GameService {
         val exitCode = process.waitFor()
         if (exitCode != 0) {
             throw IllegalStateException("Loader installation failed with code: $exitCode")
-        }else
-        onProgress("Loader installed successfully!")
+        } else
+            onProgress("Loader installed successfully!")
     }
 
     private fun libraryKey(library: MojangLibrary): String {
@@ -482,13 +432,13 @@ object GameService {
     }
 
     private fun buildAssetUrl(hash: String): String {
-        val base = "http://resources.download.minecraft.net"
+        val base = "http://resources.download.minecraft.net".rewriteMirrorUrl
         val sub = hash.take(2)
         return "$base/$sub/$hash"
     }
 
     suspend fun downloadLoader(version: McVersion, loader: ModLoader, onProgress: (String) -> Unit) {
-        val loaderMeta = version.loaderInstallerUrl[loader]
+        val loaderMeta = version.loaderVersions[loader]
             ?: error("未配置 $loader 安装器下载链接")
         exportJarResource("launcher_profiles.json")
         val installBooter = exportJarResource("forge-install-bootstrapper.jar")
@@ -496,7 +446,7 @@ object GameService {
         installer.parentFile?.mkdirs()
         onProgress("下载 $version $loader 安装器...")
         if (!installer.exists() || installer.sha1 != loaderMeta.installerSha1) {
-            downloadFileWithProgress(loaderMeta.installerUrl.rewriteMirrorUrl, installer.toPath()) { progress ->
+            downloadFile(loaderMeta.installerUrl.rewriteMirrorUrl, installer.toPath()) { progress ->
                 onProgress("$loader 安装器 ${progress.percent.toFixed(2)}%")
             }
         }
@@ -520,5 +470,8 @@ object GameService {
         downloadMojmapIfNeeded(installProfile, vanillaManifest, onProgress)
 
         runInstallerBootstrapper(installBooter, installer, onProgress)
+    }
+    fun start(versionId: String){
+
     }
 }
