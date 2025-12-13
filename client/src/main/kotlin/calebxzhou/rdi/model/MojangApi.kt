@@ -41,11 +41,13 @@ data class MojangVersionDownloads(
 	@SerialName("server_mappings") val serverMappings: MojangDownloadArtifact? = null,
 )
 
+
 @Serializable
 data class MojangDownloadArtifact(
 	val sha1: String,
 	val size: Long,
 	val url: String,
+    //如果是library 则path不可能为null
 	val path: String? = null,
 )
 
@@ -99,7 +101,7 @@ data class MojangLibrary(
 
 @Serializable
 data class MojangLibraryDownloads(
-	val artifact: MojangDownloadArtifact? = null,
+	val artifact: MojangDownloadArtifact,
 	val classifiers: Map<String, MojangDownloadArtifact>? = null,
 )
 
