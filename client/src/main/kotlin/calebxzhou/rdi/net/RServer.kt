@@ -171,7 +171,9 @@ class RServer(
         }
     }
 
-
+    suspend fun download(path: String, saveTo: java.nio.file.Path, onProgress: (DownloadProgress)->Unit){
+        downloadFile("${hqUrl}/${path}",saveTo,onProgress)
+    }
 
     fun sse(
         path: String,
