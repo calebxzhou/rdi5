@@ -52,7 +52,7 @@ private const val MIN_PARALLEL_DOWNLOAD_SIZE = 2L * 1024 * 1024 // 2MB
 private const val TARGET_RANGE_CHUNK_SIZE = 2L * 1024 * 1024 // 2MB per chunk
 private val MAX_PARALLEL_RANGE_REQUESTS = max(2, Runtime.getRuntime().availableProcessors())
 
-suspend fun downloadFileWithProgress(
+suspend fun downloadFile(
     url: String,
     targetPath: Path,
     onProgress: (DownloadProgress) -> Unit
@@ -63,7 +63,7 @@ suspend fun downloadFileWithProgress(
         val canUseRanges = info?.let { it.acceptRanges && it.contentLength >= MIN_PARALLEL_DOWNLOAD_SIZE } == true
         if (canUseRanges) {
             runCatching {
-                downloadWithRanges(url, targetPath, info!!.contentLength, onProgress)
+                downloadWithRanges(url, targetPath, info.contentLength, onProgress)
             }.getOrElse { error ->
                 lgr.warn( "Parallel download failed, falling back to single stream" )
                 downloadSingleStream(url, targetPath, onProgress)
