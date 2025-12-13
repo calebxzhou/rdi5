@@ -1,5 +1,6 @@
 package calebxzhou.rdi.ihq.util
 
+import calebxzhou.rdi.ihq.RDI
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -13,11 +14,16 @@ import java.nio.file.Files
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.*
+import kotlin.jvm.java
 
 /**
  * calebxzhou @ 2024-06-20 16:46
  */
-val ioScope = CoroutineScope(Dispatchers.IO)
+private val realIoScope = CoroutineScope(Dispatchers.IO)
+@Volatile
+internal var testIoScope: CoroutineScope? = null
+val ioScope: CoroutineScope
+    get() = testIoScope ?: realIoScope
 inline fun ioTask(crossinline handler: suspend () -> Unit) = ioScope.launch { handler() }
 /**
  * Display length where CJK (Chinese/Japanese/Korean) full‑width characters and common emoji count as 2 cells,
@@ -134,7 +140,8 @@ fun Byte.isWhitespaceCharacter(): Boolean {
 fun File.symlinkRecursively(sourceDir: File){
 
 }
-
+fun jarResource(path: String): InputStream = RDI::class.java.classLoader.getResourceAsStream(path)?:run{
+    throw IllegalArgumentException("Resource not found: $path")}
 /**
  * Recursively delete a directory and all its contents, but when encountering a symbolic link,
  * only delete the link itself, not the target it points to.
@@ -162,4 +169,3 @@ fun File.deleteRecursivelyNoSymlink() {
     // Finally delete this file/directory
     this.delete()
 }
-fun Any.jarResource(path: String): InputStream? = this::class.java.classLoader.getResourceAsStream(path)
