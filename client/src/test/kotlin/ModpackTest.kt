@@ -60,7 +60,6 @@ class ModpackTest {
 	}
 
 	@Test
-	@Disabled("Requires local CurseForge modpack zip on disk")
 	fun loadCurseForgeModpack(): Unit = runBlocking {
 		val zipPath = "C:\\Users\\calebxzhou\\Downloads\\ftb-skies-2-1.9.2.zip"
 		val modpackData = CurseForgeService.loadModpack(zipPath)
@@ -68,7 +67,6 @@ class ModpackTest {
 		assertNotNull(modpackData.manifest)
 	}
     @Test
-    @Disabled("Requires local CurseForge modpack zip on disk")
     fun cfModFile(){
         runBlocking {
             CurseForgeService.getModFileInfo(351264,5402061)?.let { print(it.json) }
