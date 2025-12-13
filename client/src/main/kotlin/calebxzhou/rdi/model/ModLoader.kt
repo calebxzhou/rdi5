@@ -2,7 +2,9 @@ package calebxzhou.rdi.model
 
 enum class ModLoader {
     FORGE,NEOFORGE;
-    class Meta(
+    class Version(
+        //version目录的名字
+        val id: String,
         val installerUrl: String,
         val installerSha1: String
     )
