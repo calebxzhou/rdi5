@@ -1,17 +1,22 @@
 import calebxzhou.rdi.lgr
 import calebxzhou.rdi.model.RAccount
+import calebxzhou.rdi.model.pack.Mod
 import calebxzhou.rdi.model.pack.Modpack
 import calebxzhou.rdi.net.server
 import calebxzhou.rdi.service.CurseForgeService
 import calebxzhou.rdi.service.CurseForgeService.mapMods
+import calebxzhou.rdi.service.ModpackService
 import calebxzhou.rdi.service.PlayerService
+import calebxzhou.rdi.util.jarResource
 import calebxzhou.rdi.util.json
+import calebxzhou.rdi.util.serdesJson
 import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
 import org.bson.types.ObjectId
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
+import kotlin.collections.toMutableList
 import kotlin.test.assertNotNull
 
 class ModpackTest {
@@ -41,7 +46,12 @@ class ModpackTest {
 			method = HttpMethod.Post
 		)
 	}
-
+    private fun loadTestMods(): MutableList<Mod> {
+        val json = jarResource("test_mod_list.json").use { stream ->
+            stream.readBytes().toString(Charsets.UTF_8)
+        }
+        return serdesJson.decodeFromString<List<Mod>>(json).toMutableList()
+    }
 	@Test
 	@Disabled("Integration test that creates a modpack on the backend")
 	fun createModpackVersion(): Unit = runBlocking {
@@ -71,5 +81,15 @@ class ModpackTest {
         runBlocking {
             CurseForgeService.getModFileInfo(351264,5402061)?.let { print(it.json) }
         }
+    }
+    @Test
+    fun install() : Unit = runBlocking {
+        ModpackService.installVersion(
+            ObjectId("693bda0ed294de2450aa7caf"),"1.9.2",loadTestMods()){ println(it) }
+    }
+    @Test
+    fun downloadClient() : Unit = runBlocking {
+        ModpackService.downloadVersionClientPack(
+            ObjectId("693bda0ed294de2450aa7caf"),"1.9.2",){ println(it) }
     }
 }
