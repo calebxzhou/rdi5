@@ -21,7 +21,7 @@ data class MojangVersionManifest(
 	val libraries: List<MojangLibrary> = emptyList(),
 	val logging: Map<String, MojangLoggingConfig>? = null,
 	val minimumLauncherVersion: Int? = null,
-	val arguments: MojangArguments? = null,
+	val arguments: MojangArguments,
 	val inheritsFrom: String? = null,
 	val jar: String? = null,
 	val javaVersion: MojangJavaVersion? = null,
