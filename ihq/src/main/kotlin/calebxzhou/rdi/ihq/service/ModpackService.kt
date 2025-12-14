@@ -383,7 +383,8 @@ object ModpackService {
         )
         version.dir.mkdirs()
         version.zip.writeBytes(zipBytes)
-
+        version.mods.removeIf { it.slug.contains("backup") }
+        version.addKotlinForForge(modpack)
         ioScope.launch {
             dbcl.updateOne(
                 eq("_id", modpack._id),
@@ -518,7 +519,6 @@ object ModpackService {
         if(version.hostsUsing().isNotEmpty()) throw RequestError("有主机正在使用此版本，无法重构")
         version.setTotalSize(version.zip.length())
         //todo 删除ftb backup
-        version.addKotlinForForge(this)
         try {
             val downloadedMods = CurseForgeService.downloadMods(version.mods.filter { it.side != Mod.Side.CLIENT }) {
                 ioScope.launch {
