@@ -19,7 +19,7 @@ class RDI {
 
     companion object {
 
-        val DIR: File = File(".").absoluteFile
+        val DIR: File = File(System.getProperty("user.dir")).absoluteFile
     }
 
 
