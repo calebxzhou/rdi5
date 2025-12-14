@@ -5,7 +5,7 @@ plugins {
     id 'java-library'
     id 'maven-publish'
     id 'idea'
-    id 'net.neoforged.moddev' version '2.0.115'
+    id 'net.neoforged.moddev' version '2.0.124'
     // Adds the Kotlin Gradle plugin
     id 'org.jetbrains.kotlin.jvm' version "${kotlin_version}"
     // OPTIONAL Kotlin Serialization plugin
@@ -89,33 +89,13 @@ neoForge {
             programArgument '1440'
             // Comma-separated list of namespaces to load gametests from. Empty = all namespaces.
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
-            systemProperty 'rdi.debug', "true"
-            systemProperty 'rdi.noUpdate', "true"
+            systemProperty 'rdi.ihq.url', "http://127.0.0.1:65231"
+            systemProperty 'rdi.game.ip', "127.0.0.1:65232"
+            systemProperty 'rdi.host.name', "测试测试12123主机"
+            systemProperty 'rdi.host.port', "55000"
 
         }
-       /* server {
-            server()
-            programArgument '--nogui'
-            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
-        }
 
-        // This run config launches GameTestServer and runs all registered gametests, then exits.
-        // By default, the server will crash when no gametests are provided.
-        // The gametest system is also enabled by default for other run configs under the /test command.
-        gameTestServer {
-            type = "gameTestServer"
-            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
-        }
-*/
-        data {
-            data()
-
-            // example of overriding the workingDirectory set in configureEach above, uncomment if you want to use it
-            // gameDirectory = project.file('run-data')
-
-            // Specify the modid for data generation, where to output the resulting resource, and where to look for existing resources.
-            programArguments.addAll '--mod', project.mod_id, '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()
-        }
 
         // applies to all the run configs above
         configureEach {
@@ -181,14 +161,9 @@ def mcLibs = [
 'org.mongodb:bson:5.1.0',
 // https://mvnrepository.com/artifact/com.github.ben-manes.caffeine/caffeine
 'com.github.ben-manes.caffeine:caffeine:3.2.2',
-"io.ktor:ktor-server-core:$ktor_version",
-"io.ktor:ktor-server-jetty-jakarta:$ktor_version",
 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0',
-'org.jetbrains.kotlinx:kotlinx-serialization-cbor:1.9.0',
 "io.ktor:ktor-client-content-negotiation:$ktor_version",
 "io.ktor:ktor-serialization-kotlinx-json:$ktor_version"
-]
-def mcLibExportOnly = [
 ]
 def modrinthMods = [
         "justenoughcharacters:4.5.15",
@@ -196,59 +171,17 @@ def modrinthMods = [
         "imblocker-original:5.0.2",
         "sodium:mc1.21.1-0.6.13-neoforge"
 ]
-def modrinthModsCompileOnly = [
-]
 def curseMods = [
 ]
-def curseExportOnly = [
-]
 dependencies {
-    // Example optional mod dependency with JEI
-    // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
-    // compileOnly "mezz.jei:jei-${mc_version}-common-api:${jei_version}"
-    // compileOnly "mezz.jei:jei-${mc_version}-neoforge-api:${jei_version}"
-    // We add the full version to localRuntime, not runtimeOnly, so that we do not publish a dependency on it
-    // localRuntime "mezz.jei:jei-${mc_version}-neoforge:${jei_version}"
-
-    // Example mod dependency using a mod jar from ./libs with a flat dir repository
-    // This maps to ./libs/coolmod-${mc_version}-${coolmod_version}.jar
-    // The group id is ignored when searching -- in this case, it is "blank"
-    // implementation "blank:coolmod-${mc_version}:${coolmod_version}"
-
-    // Example mod dependency using a file as dependency
-    // implementation files("libs/coolmod-${mc_version}-${coolmod_version}.jar")
-
-    // Example project dependency using a sister or child project:
-    // implementation project(":myproject")
-
-    // For more info:
-    // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
-    // http://www.gradle.org/docs/current/userguide/dependency_management.html
-    /**/
     testImplementation 'org.jetbrains.kotlin:kotlin-test'
-    // https://mvnrepository.com/artifact/io.netty/netty-all
-    testImplementation 'io.netty:netty-all:4.1.97.Final'
-
-    def lwjglVersion = '3.3.3'
-    def components = ['', 'glfw', 'opengl', 'openal', 'stb', 'tinyfd', 'jemalloc',]
-
-    components.forEach { component ->
-        testImplementation "org.lwjgl:lwjgl${component ? "-$component" : ''}:$lwjglVersion"
-        testImplementation "org.lwjgl:lwjgl${component ? "-$component" : ''}:$lwjglVersion:natives-windows"
-    }
+// https://mvnrepository.com/artifact/org.jetbrains.kotlin/kotlin-reflect
     implementation('org.hotswapagent:hotswap-agent-core:2.0.1')
-    //implementation 'thedarkcolour:kotlinforforge-neoforge:5.7.0:slim'
-    //implementation 'thedarkcolour:kotlinforforge-neoforge:5.10.0'
-    implementation 'thedarkcolour:kfflang-neoforge:5.10.0'
+    //runtimeOnly 'thedarkcolour:kotlinforforge-neoforge:5.10.0'
+    /*implementation 'thedarkcolour:kfflang-neoforge:5.10.0'
     implementation 'thedarkcolour:kfflib-neoforge:5.10.0'
-    implementation 'thedarkcolour:kffmod-neoforge:5.10.0' 
+    implementation 'thedarkcolour:kffmod-neoforge:5.10.0'*/
 
-    // compile against the JEI API but do not include it at runtime
-    compileOnly("mezz.jei:jei-${minecraft_version}-neoforge-api:${jei_version}")
-    // at runtime, use the full JEI jar for NeoForge
-    runtimeOnly("mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}")
-
-// https://mvnrepository.com/artifact/ch.qos.logback/logback-classic
     testImplementation("ch.qos.logback:logback-classic:1.5.21")
     //循环添加deps
     def jarJarVisited = new LinkedHashSet<String>()
@@ -256,7 +189,6 @@ dependencies {
     def jarJarExcludeCoords = [
             'org.slf4j:slf4j-api',
             'com.google.errorprone:error_prone_annotations',
-
             'org.ow2.asm:asm',
             'org.ow2.asm:asm-commons',
             'org.ow2.asm:asm-tree',
@@ -309,21 +241,10 @@ dependencies {
         implementation("maven.modrinth:$dep")
 
     }
-    modrinthModsCompileOnly.each { dep ->
-        compileOnly("maven.modrinth:$dep")
-    }
     curseMods.each { dep ->
         implementation "curse.maven:$dep-deobf"
     }
-    curseExportOnly.each { dep ->
-    }
-    //for modernui
-    configurations.configureEach {
-        resolutionStrategy {
-            force 'com.ibm.icu:icu4j:76.1'
-            force 'it.unimi.dsi:fastutil:8.5.15'
-        }
-    }
+
 }
 
 // This block of code expands all declared replace properties in the specified resource targets.
@@ -431,7 +352,7 @@ tasks.register('出core-release') {
             def destFile = new File(targetDir, jarFile.name)
             java.nio.file.Files.copy(
                 jarFile.toPath(), 
-                destFile.toPath(), 
+                destFile.toPath(),
                 java.nio.file.StandardCopyOption.REPLACE_EXISTING
             )
         }
