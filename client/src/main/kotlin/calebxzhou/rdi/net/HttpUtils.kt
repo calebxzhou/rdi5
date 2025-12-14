@@ -57,7 +57,7 @@ suspend fun downloadFile(
     targetPath: Path,
     onProgress: (DownloadProgress) -> Unit
 ): Boolean {
-    lgr.info ( "try download $url" )
+    lgr.info { "try download $url" }
     return try {
         val info = fetchRemoteFileInfo(url)
         val canUseRanges = info?.let { it.acceptRanges && it.contentLength >= MIN_PARALLEL_DOWNLOAD_SIZE } == true
@@ -65,14 +65,14 @@ suspend fun downloadFile(
             runCatching {
                 downloadWithRanges(url, targetPath, info.contentLength, onProgress)
             }.getOrElse { error ->
-                lgr.warn( "Parallel download failed, falling back to single stream" )
+                lgr.warn { "Parallel download failed, falling back to single stream" }
                 downloadSingleStream(url, targetPath, onProgress)
             }
         } else {
             downloadSingleStream(url, targetPath, onProgress)
         }
     } catch (e: Exception) {
-        lgr.error("Download failed for $url", e)
+        lgr.error(e) { "${"Download failed for $url"}" }
         false
     }
 }
@@ -82,6 +82,7 @@ private suspend fun fetchRemoteFileInfo(url: String): RemoteFileInfo? = try {
         method = HttpMethod.Head
         url(url)
         header(HttpHeaders.UserAgent, WEB_USER_AGENT)
+        if(url.startsWith(server.hqUrl)) accountAuthHeader()
         timeout {
             requestTimeoutMillis = 30_000
             socketTimeoutMillis = 30_000
@@ -106,12 +107,14 @@ private suspend fun downloadSingleStream(
 ): Boolean {
     return ktorClient.prepareGet(url) {
         header(HttpHeaders.UserAgent, WEB_USER_AGENT)
+        if(url.startsWith(server.hqUrl)) accountAuthHeader()
         timeout {
             requestTimeoutMillis = 600_000
             socketTimeoutMillis = 600_000
         }
     }.execute { response ->
         if (!response.status.isSuccess()) {
+            lgr.warn { "download failed for ${url}, status ${response.status}" }
             return@execute false
         }
 
@@ -228,6 +231,7 @@ private suspend fun downloadRangeChunk(
         header(HttpHeaders.UserAgent,  WEB_USER_AGENT)
         header(HttpHeaders.Range, "bytes=$start-$end")
         header(HttpHeaders.AcceptEncoding, "identity")
+        if(url.startsWith(server.hqUrl)) accountAuthHeader()
         timeout {
             requestTimeoutMillis = 600_000
             socketTimeoutMillis = 600_000
