@@ -5,13 +5,9 @@
   "compatibilityLevel": "JAVA_21",
   "client": [
     "mChat",
-    "mFastCreateMojangService",
-    "mFastCreateMojangService2",
     "mHttpTexture",
     "mJpgImage",
     "mPlayerTabOverlay",
-    "mRAuth",
-    "mSkin",
     "mTitleScreen"
   ],
   "injectors": {
@@ -20,13 +16,9 @@
   "mixins": [
     "mAllowChineseArgument",
     "mAllowChineseName",
-    "mAlwaysOfflineMode",
-    "mPlayerInfoUpdate",
     "mProxyConnect",
     "mServerboundHelloPacket",
-    "mServiceKeyInfo",
     "mTextureUrlChecker",
-    "gameplay.mPlayer",
-    "mui.mNoBlur"
+    "mYggHost",
   ]
 }
