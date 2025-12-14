@@ -1,5 +1,8 @@
 package calebxzhou.rdi.model
 
+import calebxzhou.rdi.service.GameService
+import calebxzhou.rdi.util.serdesJson
+
 enum class McVersion(
     val mcVer: String,
     val metaUrl: String,
@@ -20,4 +23,10 @@ enum class McVersion(
             ModLoader.NEOFORGE to ModLoader.Version("neoforge-21.1.216","https://maven.neoforged.net/releases/net/neoforged/neoforge/21.1.216/neoforge-21.1.216-installer.jar","62118f0aed41e5a5c2b1b9e4feb35a22c4609548")
         )
     )
+    ;
+    val baseDir get() = GameService.versionListDir.resolve(mcVer)
+    val nativesDir get() = baseDir.resolve("natives")
+    val firstLoader get() = loaderVersions.values.first()
+    val manifest: MojangVersionManifest get() = GameService.versionListDir.resolve(mcVer).resolve("$mcVer.json").let { serdesJson.decodeFromString(it.readText()) }
+    val loaderManifest: MojangVersionManifest get() = GameService.versionListDir.resolve(firstLoader.id).resolve(firstLoader.id + ".json").let { serdesJson.decodeFromString(it.readText()) }
 }
