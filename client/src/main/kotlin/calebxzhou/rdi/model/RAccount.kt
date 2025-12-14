@@ -42,7 +42,7 @@ data class RAccount(
     }
 
     companion object {
-        val DEFAULT = RAccount(ObjectId(), "未登录", "123456", "12345", 0)
+        val DEFAULT = RAccount(ObjectId(), "test", "123456", "12345", 0)
         val TESTS = listOf(
             RAccount(ObjectId("68b314bbadaf52ddab96b5ed"), "测试1", "123123", "123123", 0),
             RAccount(ObjectId("68c901f07c76a32fa7dc270a"), "测试2", "456456", "456456", 0)
