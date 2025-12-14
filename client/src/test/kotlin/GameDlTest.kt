@@ -26,7 +26,10 @@ class GameDlTest {
 
         GameService.downloadVersion(McVersion.V201) { println(it) }
     }
-
+    @Test
+    fun start21(): Unit = runBlocking {
+        GameService.start(McVersion.V211, "neoforge-21.1.216") { println(it) }
+    }
     @Test
     fun installLoader21(): Unit = runBlocking {
         GameService.downloadLoader(McVersion.V211, ModLoader.NEOFORGE) { println(it) }
