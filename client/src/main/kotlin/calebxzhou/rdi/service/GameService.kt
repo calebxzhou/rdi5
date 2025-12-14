@@ -414,7 +414,7 @@ object GameService {
     }
 
     private fun libraryKey(library: MojangLibrary): String {
-        val artifactPath = library.downloads.artifact?.path.orEmpty()
+        val artifactPath = library.downloads.artifact.path.orEmpty()
         val classifierKey = library.downloads.classifiers?.keys?.sorted()?.joinToString(";").orEmpty()
         return "${library.name}|$artifactPath|$classifierKey"
     }
@@ -521,7 +521,7 @@ object GameService {
                 .replace($$"${launcher_version}", Const.VERSION_NUMBER)
                 .replace($$"${classpath}", classpath)
                 .replace($$"${classpath_separator}", File.pathSeparator)
-        }
+        }.toMutableList().apply { this += "-Xmx8G" }
 
         lgr.info { "JVM Args: ${processedJvmArgs.joinToString(" ")}" }
         lgr.info { "Game Args: ${gameArgs.joinToString(" ")}" }
