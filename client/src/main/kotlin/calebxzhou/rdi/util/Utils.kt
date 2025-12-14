@@ -1,6 +1,8 @@
 package calebxzhou.rdi.util
 
 import calebxzhou.rdi.RDI
+import calebxzhou.rdi.net.formatBytes
+import calebxzhou.rdi.net.formatSpeed
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -166,6 +168,12 @@ fun Byte.isWhitespaceCharacter(): Boolean {
         else -> false
     }
 }
+val Long.humanSize: String
+    get() = formatBytes(this)
+val Int.humanSize: String
+    get() = toLong().humanSize
+val Double.humanSpeed:String
+    get() = formatSpeed(this)
 val humanDateTime
     get() = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
 val ObjectId.humanDateTime
