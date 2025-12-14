@@ -16,7 +16,7 @@ data class MojangVersionManifest(
 	val mainClass: String? = null,
 	val downloads: MojangVersionDownloads?=null,
 	val assetIndex: MojangAssetIndex?=null,
-	val assets: String?=null,
+	val assets: String? = null,
 	val complianceLevel: Int? = null,
 	val libraries: List<MojangLibrary> = emptyList(),
 	val logging: Map<String, MojangLoggingConfig>? = null,
@@ -29,8 +29,8 @@ data class MojangVersionManifest(
 
 @Serializable
 data class MojangArguments(
-	val game: List<JsonElement> = emptyList(),
-	val jvm: List<JsonElement> = emptyList(),
+    val game: List<JsonElement> = emptyList(),
+    val jvm: List<JsonElement> = emptyList(),
 )
 
 @Serializable
