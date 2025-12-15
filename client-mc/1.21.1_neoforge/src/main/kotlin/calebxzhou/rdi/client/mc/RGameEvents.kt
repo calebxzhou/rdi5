@@ -1,4 +1,4 @@
-package calebxzhou.rdi
+package calebxzhou.rdi.client.mc
 
 import net.neoforged.bus.api.SubscribeEvent
 import net.neoforged.fml.common.EventBusSubscriber

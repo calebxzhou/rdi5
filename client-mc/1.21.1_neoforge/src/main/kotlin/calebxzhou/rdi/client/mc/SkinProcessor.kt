@@ -1,4 +1,4 @@
-package calebxzhou.rdi
+package calebxzhou.rdi.client.mc
 
 import com.mojang.blaze3d.platform.NativeImage
 

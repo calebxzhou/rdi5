@@ -1,4 +1,4 @@
-package calebxzhou.rdi
+package calebxzhou.rdi.client.mc
 
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
@@ -9,7 +9,7 @@ import io.netty.util.ReferenceCountUtil
 class RawBytes(val buf: ByteBuf)
 
 // Encoder that only triggers for RawBytes; normal Packets bypass this handler entirely.
-class RawByteHandler : io.netty.handler.codec.MessageToByteEncoder<RawBytes>() {
+class RawByteHandler : MessageToByteEncoder<RawBytes>() {
     override fun encode(ctx: ChannelHandlerContext, msg: RawBytes, out: ByteBuf) {
         out.writeBytes(msg.buf)
         // Release the wrapped buffer to avoid leaks
