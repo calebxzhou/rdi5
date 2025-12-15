@@ -1,9 +1,14 @@
-package calebxzhou.rdi
+package calebxzhou.rdi.client.mc
 
+import com.google.common.net.HostAndPort
 import com.mojang.util.UndashedUuid
 import net.minecraft.Util
 import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.screens.ConnectScreen
 import net.minecraft.client.gui.screens.Screen
+import net.minecraft.client.gui.screens.TitleScreen
+import net.minecraft.client.multiplayer.ServerData
+import net.minecraft.client.multiplayer.resolver.ServerAddress
 import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite
 import net.minecraft.client.server.IntegratedServer
 import net.minecraft.core.BlockPos
@@ -42,7 +47,7 @@ val mcn : Minecraft
     get() = Minecraft.getInstance()
 val mcs: IntegratedServer?
     get() = mc.singleplayerServer
-fun renderThread(run: () -> Unit) {
+fun mainThread(run: () -> Unit) {
     mc.execute(run)
 }
 
@@ -52,7 +57,7 @@ val ResourceLocation.isTextureReady
     get() = mc.textureManager.getTexture(this, MissingTextureAtlasSprite.getTexture()) != MissingTextureAtlasSprite.getTexture()
 
 infix fun Minecraft.set(screen: Screen?) {
-    renderThread {
+    mainThread {
         setScreen(screen)
     }
 }
@@ -75,7 +80,7 @@ val Int.asChunkPos: ChunkPos
 fun String.openAsUri(){
     Util.getPlatform().openUri(this)
 }
-fun Minecraft.addChatMessage(msg: String) {
+fun Minecraft.addChatMessage(msg: String)= mainThread {
     msg.split("\n").forEach {
         gui.chat.addMessage(it.mcComp)
     }
@@ -92,7 +97,16 @@ fun Minecraft.sendCommand(cmd: String){
         lgr.warn("no connection fail send command")
     }
 }
-
+fun Minecraft.connectServer(ip:String){
+    ConnectScreen.startConnecting(
+        TitleScreen(),
+        this,
+        HostAndPort.fromString(ip).let { ServerAddress(it.host, it.port) },
+        ServerData("rdi",ip, ServerData.Type.OTHER),
+        false,
+        null
+    )
+}
 private fun parseUuidFlexible(raw: String): UUID? {
     return try {
         UUID.fromString(raw)
