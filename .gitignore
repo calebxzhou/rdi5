@@ -1,4 +1,4 @@
 *.log
-client_ui2
+*.toml
+client-ui2
 .gradle
-rdi
