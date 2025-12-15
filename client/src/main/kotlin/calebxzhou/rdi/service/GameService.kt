@@ -493,7 +493,7 @@ object GameService {
         val versionDir = versionListDir.resolve(versionId)
         val gameArgs = resolveArgumentList(manifest.arguments.game + loaderManifest.arguments.game).map {
             it.replace($$"${auth_player_name}", account.name)
-                .replace($$"${version_name}", mcVer.mcVer)
+                .replace($$"${version_name}", versionId)
                 .replace($$"${game_directory}", versionDir.absolutePath)
                 .replace($$"${assets_root}", assetsDir.absolutePath)
                 .replace($$"${assets_index_name}", manifest.assets!!)
