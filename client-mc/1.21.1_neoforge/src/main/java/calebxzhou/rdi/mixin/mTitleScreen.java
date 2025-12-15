@@ -1,6 +1,8 @@
 package calebxzhou.rdi.mixin;
 
-import calebxzhou.rdi.RDI;
+import calebxzhou.rdi.client.mc.McUtilsKt;
+import calebxzhou.rdi.client.mc.RDI;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
@@ -36,7 +38,7 @@ public class mTitleScreen extends Screen {
     }
     @Inject(method = "lambda$createNormalMenuOptions$8",at=@At("HEAD"), cancellable = true)
     private void RDI$onClickMultiplayer(Button p_280833_, CallbackInfo ci){
-        RDI.connectServer();
+        McUtilsKt.connectServer(Minecraft.getInstance(),RDI.GAME_IP);
         ci.cancel();
     }
 }

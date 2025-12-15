@@ -1,6 +1,6 @@
 package calebxzhou.rdi.mixin;
 
-import calebxzhou.rdi.SkinProcessor;
+import calebxzhou.rdi.client.mc.SkinProcessor;
 import com.mojang.blaze3d.platform.NativeImage;
 import net.minecraft.client.renderer.texture.HttpTexture;
 import org.spongepowered.asm.mixin.Mixin;

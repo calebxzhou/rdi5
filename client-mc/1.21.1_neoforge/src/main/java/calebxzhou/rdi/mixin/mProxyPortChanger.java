@@ -1,8 +1,8 @@
 package calebxzhou.rdi.mixin;
 
-import calebxzhou.rdi.RDI;
-import calebxzhou.rdi.RawByteHandler;
-import calebxzhou.rdi.RawBytes;
+import calebxzhou.rdi.client.mc.RDI;
+import calebxzhou.rdi.client.mc.RawByteHandler;
+import calebxzhou.rdi.client.mc.RawBytes;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelPipeline;

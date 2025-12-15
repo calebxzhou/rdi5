@@ -1,6 +1,6 @@
 package calebxzhou.rdi.mixin;
 
-import calebxzhou.rdi.RDI;
+import calebxzhou.rdi.client.mc.RDI;
 import com.mojang.authlib.Environment;
 import com.mojang.authlib.yggdrasil.YggdrasilEnvironment;
 import org.spongepowered.asm.mixin.Mixin;
