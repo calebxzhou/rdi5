@@ -1,0 +1,35 @@
+plugins {
+	id 'base'
+	// Adds the Kotlin Gradle plugin
+	id 'org.jetbrains.kotlin.jvm' version "${kotlin_version}" apply false
+}
+
+subprojects {
+	apply plugin: 'org.jetbrains.kotlin.jvm'
+	apply plugin: 'org.jetbrains.kotlin.plugin.serialization'
+
+	dependencies {
+		testImplementation 'org.jetbrains.kotlin:kotlin-test'
+	}
+}
+ext {
+	aggregatedTasks = [
+			build: ':build',
+			clean: ':clean',
+			test : ':test'
+	]
+}
+
+aggregatedTasks.each { aggName, taskPath ->
+	tasks.register("${aggName}All") {
+		group = 'rdi5'
+		description = "Execute ${aggName} on all included builds"
+		gradle.includedBuilds.each { included ->
+			dependsOn(included.task(taskPath))
+		}
+	}
+}
+
+tasks.named('build').configure {
+	dependsOn(tasks.named('buildAll'))
+}
