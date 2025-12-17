@@ -4,6 +4,7 @@ import calebxzhou.rdi.Const
 import calebxzhou.rdi.RDI
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.service.PlayerService
+import calebxzhou.rdi.ui2.frag.LoginFragment
 import calebxzhou.rdi.ui2.frag.ProfileFragment
 import org.bson.types.ObjectId
 
@@ -21,7 +22,7 @@ suspend fun main() {
     RAccount.now = RAccount(ObjectId("68b314bbadaf52ddab96b5ed"),"123123","123123","123123")
     RAccount.now!!.jwt = PlayerService.getJwt("123123","123123")
 
-    val frag = ProfileFragment ()
+    val frag = LoginFragment ()
         //HostCreateFragment(ObjectId(),"测试测试测试","1.0",true)
         //SelectAccountFragment(RServer.now)
         //ServerFragment()
