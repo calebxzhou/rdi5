@@ -6,6 +6,8 @@ import calebxzhou.rdi.client.mc.RawBytes;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelPipeline;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.ConnectScreen;
 import net.minecraft.network.BandwidthDebugMonitor;
 import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.PacketFlow;
@@ -36,13 +38,16 @@ class mProxyConnect {
             //        at = @At(  value = "INVOKE", target = "Lnet/minecraft/network/Connection;sendPacket(Lnet/minecraft/network/protocol/Packet;Lnet/minecraft/network/PacketSendListener;Z)V")
     )
     private void RDI$BeforeSendIntention(CallbackInfo ci) {
-        try {
-            var data = Unpooled.directBuffer();
-            data.writeShort(RDI.HOST_PORT);
-            channel().writeAndFlush(new RawBytes(data));
-            Thread.sleep(100);
-        } catch (Exception e) {
-            e.printStackTrace();
+        //单人不加端口
+        if (Minecraft.getInstance().screen instanceof ConnectScreen) {
+            try {
+                var data = Unpooled.directBuffer();
+                data.writeShort(RDI.HOST_PORT);
+                channel().writeAndFlush(new RawBytes(data));
+                Thread.sleep(100);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 }
