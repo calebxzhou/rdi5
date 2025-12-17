@@ -36,7 +36,7 @@ import java.util.*
 val String.mcComp: MutableComponent
     get() = Component.literal(this)
 val isMcStarted
-    get() = Minecraft.getInstance() != null
+    get() = isClassLoaded("net.minecraft.client.Minecraft") && Minecraft.getInstance() != null
 
 val mc: Minecraft
     get() = Minecraft.getInstance() ?: run {
