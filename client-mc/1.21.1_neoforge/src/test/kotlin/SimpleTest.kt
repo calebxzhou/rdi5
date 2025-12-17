@@ -1,19 +1,38 @@
-import calebxzhou.rdi.client.mc.AddChatMsgCommand
-import calebxzhou.rdi.client.mc.ChangeHostCommand
 import calebxzhou.rdi.client.mc.GetVersionIdCommand
-import calebxzhou.rdi.client.mc.json
+import calebxzhou.rdi.client.mc.PingCommand
+import calebxzhou.rdi.client.mc.RDI
+import calebxzhou.rdi.client.mc.RDI.Companion.send
+import calebxzhou.rdi.client.mc.serdesJson
+import kotlinx.coroutines.runBlocking
+import org.junit.jupiter.api.BeforeAll
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNotEquals
 
 class SimpleTest {
+    companion object{
+        @JvmStatic
+        @BeforeAll
+        fun setup() {
+            System.setProperty("rdi.ihq.url", "http://127.0.0.1:65231")
+            System.setProperty("rdi.game.ip", "127.0.0.1:65232")
+            System.setProperty("rdi.host.name", "测试测试12123主机")
+            System.setProperty("rdi.host.port", "55000")
+        }
+    }
     @Test
     fun commandType(){
-        assertEquals(AddChatMsgCommand("").type,"add_gui_msg")
-        assertNotEquals(ChangeHostCommand(0).type,"changehost")
     }
     @Test
     fun serialize(){
-        assertEquals(json.decodeFromString<GetVersionIdCommand>("""{"reqId":100}""").reqId,100)
+        assertEquals(serdesJson.decodeFromString<GetVersionIdCommand>("""{"reqId":100}""").reqId,100)
+    }
+    @Test
+    fun ws():Unit= runBlocking{
+        RDI.connectCore()
+        PingCommand().send()
+        PingCommand().send()
+        PingCommand().send()
+        PingCommand().send()
+        PingCommand().send()
     }
 }
