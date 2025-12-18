@@ -1,7 +1,5 @@
 *.log
 *.toml
-/.idea/
-**/.idea/
 .vscode
 client-ui2
 .gradle
