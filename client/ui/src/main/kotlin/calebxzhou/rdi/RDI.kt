@@ -29,12 +29,7 @@ class RDI {
         lgr.info("RDI启动中")
         DIR.mkdir()
         lgr.info((this.javaClass.protectionDomain.codeSource.location.toURI().toString()))
-        /*lgr.info("rdi核心连接码：$LOCAL_PORT")
-        embeddedServer(Netty,host="127.0.0.1",port=LOCAL_PORT){
-            routing {
-                mainRoutes()
-            }
-        }.start(wait = false)*/
+
     }
     fun start(fragment: RFragment){
         startLocalServer()
