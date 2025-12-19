@@ -258,15 +258,15 @@ idea {
 fun registerCopyTask(name: String, extraDestination: File? = null) {
     tasks.register(name) {
         dependsOn(tasks.named("build"))
-        val artifact = layout.buildDirectory.file("libs/rdi-${'$'}{version}.jar")
+        val artifact = layout.buildDirectory.file($$"libs/rdi-${version}.jar")
         val destinations = mutableListOf(
-            layout.projectDirectory.dir("..${'$'}{File.separator}ihq${'$'}{File.separator}run").asFile,
+            layout.projectDirectory.dir("${System.getProperty("user.home")}\\Documents\\coding\\rdi5\\server\\master\\run").asFile,
             File(System.getProperty("user.home"), "Documents\\RDI5sea-Ref\\.minecraft\\versions\\RDI5.5\\mods")
         )
         extraDestination?.let { destinations.add(it) }
         doLast {
             val jarFile = artifact.get().asFile
-            check(jarFile.exists()) { "未找到构建产物: ${'$'}jarFile" }
+            check(jarFile.exists()) { $$"未找到构建产物: $jarFile" }
             destinations.forEach { targetDir ->
                 targetDir.mkdirs()
                 val destFile = File(targetDir, jarFile.name)
