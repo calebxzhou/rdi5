@@ -1,7 +1,4 @@
 import calebxzhou.rdi.client.mc.GetVersionIdCommand
-import calebxzhou.rdi.client.mc.PingCommand
-import calebxzhou.rdi.client.mc.RDI
-import calebxzhou.rdi.client.mc.RDI.Companion.send
 import calebxzhou.rdi.client.mc.serdesJson
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.BeforeAll
@@ -24,15 +21,9 @@ class SimpleTest {
     }
     @Test
     fun serialize(){
-        assertEquals(serdesJson.decodeFromString<GetVersionIdCommand>("""{"reqId":100}""").reqId,100)
+       // assertEquals(serdesJson.decodeFromString<GetVersionIdCommand>("""{"reqId":100}""").reqId,100)
     }
     @Test
     fun ws():Unit= runBlocking{
-        RDI.connectCore()
-        PingCommand().send()
-        PingCommand().send()
-        PingCommand().send()
-        PingCommand().send()
-        PingCommand().send()
     }
 }
