@@ -5,7 +5,6 @@ import calebxzhou.rdi.lgr
 import calebxzhou.rdi.model.ChatMsg
 import calebxzhou.rdi.model.RAccount
 import calebxzhou.rdi.net.server
-import calebxzhou.rdi.util.error
 import calebxzhou.rdi.util.ioTask
 import calebxzhou.rdi.util.json
 import calebxzhou.rdi.util.serdesJson
