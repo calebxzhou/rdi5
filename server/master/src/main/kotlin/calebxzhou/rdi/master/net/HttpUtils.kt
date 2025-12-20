@@ -41,22 +41,6 @@ val httpClient
     }
 
 
-suspend fun ApplicationCall.e400(msg: String? = null) {
-    err(msg)
-}
-
-suspend fun ApplicationCall.e401(msg: String? = null) {
-    err(msg)
-}
-
-suspend fun ApplicationCall.e404(msg: String? = null) {
-    err(msg)
-}
-
-suspend fun ApplicationCall.e500(msg: String? = null) {
-    err(msg)
-}
-
 suspend fun ApplicationCall.err(msg: String? = null) {
     msg?.run {
         respondText(this, status = HttpStatusCode.OK)
@@ -182,28 +166,6 @@ suspend fun ApplicationCall.param(vararg names: String): String {
     throw ParamError("缺少参数: ${names.joinToString("/")}")
 }
 
-/** Convenience typed accessors. Provide default if missing (no exception). */
-suspend fun ApplicationCall.intParam(name: String, default: Int? = null): Int {
-    val v = paramNull(name) ?: return default ?: throw ParamError("缺少参数: $name")
-    return v.toIntOrNull() ?: throw ParamError("参数 $name 不是整数")
-}
-
-suspend fun ApplicationCall.longParam(name: String, default: Long? = null): Long {
-    val v = paramNull(name) ?: return default ?: throw ParamError("缺少参数: $name")
-    return v.toLongOrNull() ?: throw ParamError("参数 $name 不是长整数")
-}
-
-suspend fun ApplicationCall.boolParam(name: String, default: Boolean? = null): Boolean {
-    val v = paramNull(name) ?: return default ?: throw ParamError("缺少参数: $name")
-    return when (v.lowercase()) {
-        "true", "1", "yes", "y", "on" -> true
-        "false", "0", "no", "n", "off" -> false
-        else -> throw ParamError("参数 $name 不是布尔值")
-    }
-}
-
-suspend fun ApplicationCall.initPostParams() = receiveParameters()
-suspend fun ApplicationCall.initGetParams() = request.queryParameters
 val ApplicationCall.clientIp
     get() = this.request.origin.remoteAddress
 
