@@ -15,6 +15,7 @@ group = "calebxzhou.rdi"
 version = "1.0-SNAPSHOT"
 
 repositories {
+    mavenLocal()
     mavenCentral()
     maven {
         name = "Github Packages"
@@ -46,6 +47,11 @@ dependencies {
     implementation("com.github.docker-java:docker-java:3.7.0")
     implementation("com.github.docker-java:docker-java-transport-okhttp:3.7.0")
     implementation("org.apache.commons:commons-compress:1.27.1")
+
+    implementation("calebxzhou.mykotutils:std:0.1")
+    implementation("calebxzhou.mykotutils:log:0.1")
+    implementation("calebxzhou.mykotutils:ktor:0.1")
+
 
     testImplementation(kotlin("test"))
     testImplementation("io.mockk:mockk:1.13.12")

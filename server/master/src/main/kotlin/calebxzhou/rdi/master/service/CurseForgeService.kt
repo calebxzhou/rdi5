@@ -1,18 +1,18 @@
 package calebxzhou.rdi.master.service
 
+import calebxzhou.mykotutils.ktor.downloadFileFrom
+import calebxzhou.mykotutils.log.Loggers
+import calebxzhou.mykotutils.std.humanSpeed
+import calebxzhou.mykotutils.std.murmur2
+import calebxzhou.mykotutils.std.toFixed
 import calebxzhou.rdi.master.CONF
 import calebxzhou.rdi.master.DOWNLOAD_MODS_DIR
 import calebxzhou.rdi.master.exception.RequestError
 import calebxzhou.rdi.master.model.CurseForgeFile
 import calebxzhou.rdi.master.model.CurseForgeFileResponse
 import calebxzhou.rdi.master.model.pack.Mod
-import calebxzhou.rdi.master.net.downloadFileWithProgress
 import calebxzhou.rdi.master.net.httpRequest
 import calebxzhou.rdi.master.net.json
-import calebxzhou.rdi.master.util.Loggers
-import calebxzhou.rdi.master.util.humanSpeed
-import calebxzhou.rdi.master.util.murmur2
-import calebxzhou.rdi.master.util.toFixed
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.http.*
@@ -60,7 +60,7 @@ object CurseForgeService {
         /*downloadUrl = downloadUrl.replace("edge.forgecdn.net", "mod.mcimirror.top").
         replace("mediafilez.forgecdn.net", "mod.mcimirror.top").
         replace("media.forgecdn.net", "mod.mcimirror.top")*/
-        val success = downloadFileWithProgress(downloadUrl, targetFile.toPath()) { progress ->
+        val success = targetFile.toPath().downloadFileFrom(downloadUrl) { progress ->
             "mod下载中： ${mod.slug} ${progress.percent.toFixed(2)}% ${progress.speedBytesPerSecond.humanSpeed}".run {
                 lgr.info { this }
                 onProgress(this)

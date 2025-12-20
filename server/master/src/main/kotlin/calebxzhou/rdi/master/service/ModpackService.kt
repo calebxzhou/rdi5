@@ -1,5 +1,7 @@
 package calebxzhou.rdi.master.service
 
+import calebxzhou.mykotutils.log.Loggers
+import calebxzhou.mykotutils.std.sha1
 import calebxzhou.rdi.master.DB
 import calebxzhou.rdi.master.exception.ParamError
 import calebxzhou.rdi.master.exception.RequestError

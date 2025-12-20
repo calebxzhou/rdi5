@@ -1,5 +1,6 @@
 @file:OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 
+import calebxzhou.mykotutils.std.jarResource
 import calebxzhou.rdi.master.MODPACK_DATA_DIR
 import calebxzhou.rdi.master.model.Mail
 import calebxzhou.rdi.master.model.McVersion
@@ -333,7 +334,7 @@ class ModpackTest {
     )
 
     private fun loadTestMods(): MutableList<Mod> {
-        val json = jarResource("test_mod_list.json").use { stream ->
+        val json = this.jarResource("test_mod_list.json").use { stream ->
             stream.readBytes().toString(Charsets.UTF_8)
         }
         return serdesJson.decodeFromString<List<Mod>>(json).toMutableList()

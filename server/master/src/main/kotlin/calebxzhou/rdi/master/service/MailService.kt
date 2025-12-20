@@ -1,5 +1,6 @@
 package calebxzhou.rdi.master.service
 
+import calebxzhou.mykotutils.std.humanDateTimeNow
 import calebxzhou.rdi.master.DB
 import calebxzhou.rdi.master.SYSTEM_SENDER_ID
 import calebxzhou.rdi.master.exception.ParamError
@@ -14,8 +15,7 @@ import calebxzhou.rdi.master.service.MailService.deleteMails
 import calebxzhou.rdi.master.service.MailService.getInbox
 import calebxzhou.rdi.master.service.MailService.getMail
 import calebxzhou.rdi.master.service.MailService.mailId
-import calebxzhou.rdi.master.util.Loggers
-import calebxzhou.rdi.master.util.humanDateTime
+import calebxzhou.mykotutils.log.Loggers
 import calebxzhou.rdi.master.util.ioScope
 import com.mongodb.client.model.Filters
 import com.mongodb.client.model.Filters.and
@@ -157,7 +157,7 @@ object MailService {
         val normalizedContent = newContent?.let { content ->
             if (append) {
                 val existing = mail.content.ifBlank { "" }
-                if (existing.isBlank()) content else "$existing\n[${humanDateTime}] $content"
+                if (existing.isBlank()) content else "$existing\n[${humanDateTimeNow}] $content"
             } else content
         }
 

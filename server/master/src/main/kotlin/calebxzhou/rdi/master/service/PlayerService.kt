@@ -1,5 +1,9 @@
 package calebxzhou.rdi.master.service
 
+import calebxzhou.mykotutils.log.Loggers
+import calebxzhou.mykotutils.std.dateTimeNow
+import calebxzhou.mykotutils.std.displayLength
+import calebxzhou.mykotutils.std.isValidHttpUrl
 import calebxzhou.rdi.master.CRASH_REPORT_DIR
 import calebxzhou.rdi.master.DB
 import calebxzhou.rdi.master.exception.AuthError
@@ -106,7 +110,7 @@ object PlayerService {
     suspend fun getByName(name: String): RAccount? = accountCol.find(eq("name", name)).firstOrNull()
 
     suspend fun get(usr: String): RAccount? {
-        if (usr.isValidObjectId()) {
+        if (ObjectId.isValid(usr)) {
             return getById(ObjectId(usr))
         }
         return getByQQ(usr) ?: getByName(usr)
@@ -226,7 +230,7 @@ object PlayerService {
 
     suspend fun saveCrashReport(uid: ObjectId, report: String) {
         val account = getById(uid)
-        val fileName = "${account?.name ?: "未知"}-${account?.qq ?: "0"}-${datetime}.txt"
+        val fileName = "${account?.name ?: "未知"}-${account?.qq ?: "0"}-${dateTimeNow}.txt"
         File(CRASH_REPORT_DIR, fileName).writeText(report)
     }
 }

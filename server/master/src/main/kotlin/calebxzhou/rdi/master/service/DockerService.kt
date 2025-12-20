@@ -3,7 +3,7 @@ package calebxzhou.rdi.master.service
 import calebxzhou.rdi.master.CONF
 import calebxzhou.rdi.master.exception.RequestError
 import calebxzhou.rdi.master.model.HostStatus
-import calebxzhou.rdi.master.util.Loggers
+import calebxzhou.mykotutils.log.Loggers
 import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.api.async.ResultCallback.Adapter
 import com.github.dockerjava.api.command.BuildImageResultCallback
