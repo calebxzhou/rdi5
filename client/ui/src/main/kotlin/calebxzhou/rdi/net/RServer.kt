@@ -11,7 +11,6 @@ import calebxzhou.rdi.ui2.frag.LoginFragment
 import calebxzhou.rdi.ui2.frag.UpdateFragment
 import calebxzhou.rdi.ui2.goto
 import calebxzhou.rdi.ui2.nowFragment
-import calebxzhou.rdi.util.error
 import calebxzhou.rdi.util.ioScope
 import calebxzhou.rdi.util.ioTask
 import calebxzhou.rdi.util.serdesJson

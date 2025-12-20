@@ -1,51 +1,36 @@
 package calebxzhou.rdi.service
 
+import calebxzhou.mykotutils.std.exportFromJarResource
+import calebxzhou.mykotutils.std.javaExePath
+import calebxzhou.mykotutils.std.sha1
+import calebxzhou.mykotutils.std.toFixed
 import calebxzhou.rdi.CONF
 import calebxzhou.rdi.Const
 import calebxzhou.rdi.RDI
+import calebxzhou.rdi.model.*
 import calebxzhou.rdi.model.LibraryOsArch.Companion.detectHostOs
-import calebxzhou.rdi.model.McVersion
-import calebxzhou.rdi.model.ModLoader
-import calebxzhou.rdi.model.MojangAssetIndex
-import calebxzhou.rdi.model.MojangAssetIndexFile
-import calebxzhou.rdi.model.MojangAssetObject
-import calebxzhou.rdi.model.MojangDownloadArtifact
-import calebxzhou.rdi.model.MojangLibrary
-import calebxzhou.rdi.model.MojangRule
-import calebxzhou.rdi.model.MojangRuleAction
-import calebxzhou.rdi.model.MojangVersionManifest
-import calebxzhou.rdi.model.account
 import calebxzhou.rdi.net.downloadFile
 import calebxzhou.rdi.net.httpRequest
 import calebxzhou.rdi.util.Loggers
-import calebxzhou.rdi.util.exportJarResource
-import calebxzhou.rdi.util.javaExePath
 import calebxzhou.rdi.util.json
 import calebxzhou.rdi.util.serdesJson
-import calebxzhou.rdi.util.sha1
-import calebxzhou.rdi.util.toFixed
 import calebxzhou.rdi.util.toUUID
-import io.ktor.client.call.body
-import io.ktor.client.request.url
-import io.ktor.client.statement.bodyAsText
-import java.io.File
-import java.nio.charset.StandardCharsets
-import java.util.Collections
-import java.util.Locale
-import java.util.zip.ZipFile
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.supervisorScope
+import io.ktor.client.call.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
-import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import java.io.File
+import java.nio.charset.StandardCharsets
+import java.util.*
+import java.util.zip.ZipFile
 
 object GameService {
     private val lgr by Loggers
@@ -454,8 +439,8 @@ object GameService {
     suspend fun downloadLoader(version: McVersion, loader: ModLoader, onProgress: (String) -> Unit) {
         val loaderMeta = version.loaderVersions[loader]
             ?: error("未配置 $loader 安装器下载链接")
-        exportJarResource("launcher_profiles.json")
-        val installBooter = exportJarResource("forge-install-bootstrapper.jar")
+        "launcher_profiles.json".let {  File(it).apply { this.exportFromJarResource(it) }}
+        val installBooter = "forge-install-bootstrapper.jar".let {  File(it).apply { this.exportFromJarResource(it) }}
         val installer = DIR.resolve("${version.mcVer}-$loader-installer.jar")
         installer.parentFile?.mkdirs()
         onProgress("下载 $version $loader 安装器...")

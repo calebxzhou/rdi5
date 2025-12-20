@@ -1,8 +1,8 @@
 package calebxzhou.rdi.master.service
 
 import calebxzhou.mykotutils.log.Loggers
-import calebxzhou.mykotutils.std.dateTimeNow
 import calebxzhou.mykotutils.std.displayLength
+import calebxzhou.mykotutils.std.getDateTimeNow
 import calebxzhou.mykotutils.std.isValidHttpUrl
 import calebxzhou.rdi.master.CRASH_REPORT_DIR
 import calebxzhou.rdi.master.DB
@@ -16,7 +16,7 @@ import calebxzhou.rdi.master.net.*
 import calebxzhou.rdi.master.service.PlayerService.changeCloth
 import calebxzhou.rdi.master.service.PlayerService.changeProfile
 import calebxzhou.rdi.master.service.PlayerService.clearCloth
-import calebxzhou.rdi.master.util.*
+import calebxzhou.rdi.master.util.serdesJson
 import com.mongodb.client.model.Filters.eq
 import com.mongodb.client.model.Filters.`in`
 import com.mongodb.client.model.Updates
@@ -230,7 +230,7 @@ object PlayerService {
 
     suspend fun saveCrashReport(uid: ObjectId, report: String) {
         val account = getById(uid)
-        val fileName = "${account?.name ?: "未知"}-${account?.qq ?: "0"}-${dateTimeNow}.txt"
+        val fileName = "${account?.name ?: "未知"}-${account?.qq ?: "0"}-${getDateTimeNow("yyyyMMdd-HHmmss")}.txt"
         File(CRASH_REPORT_DIR, fileName).writeText(report)
     }
 }

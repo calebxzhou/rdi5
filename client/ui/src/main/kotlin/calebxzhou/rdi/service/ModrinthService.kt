@@ -1,5 +1,6 @@
 package calebxzhou.rdi.service
 
+import calebxzhou.mykotutils.std.sha1
 import calebxzhou.rdi.model.ModBriefInfo
 import calebxzhou.rdi.model.ModrinthProject
 import calebxzhou.rdi.model.ModrinthVersionInfo
@@ -9,7 +10,6 @@ import calebxzhou.rdi.net.json
 import calebxzhou.rdi.service.ModService.briefInfo
 import calebxzhou.rdi.util.Loggers
 import calebxzhou.rdi.util.json
-import calebxzhou.rdi.util.sha1
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*

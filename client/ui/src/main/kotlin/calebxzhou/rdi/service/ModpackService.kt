@@ -1,14 +1,12 @@
 package calebxzhou.rdi.service
 
+import calebxzhou.mykotutils.std.sha1
+import calebxzhou.mykotutils.std.toFixed
 import calebxzhou.rdi.RDI
 import calebxzhou.rdi.exception.ModpackException
 import calebxzhou.rdi.model.pack.Mod
-import calebxzhou.rdi.model.pack.Modpack
-import calebxzhou.rdi.net.downloadFile
 import calebxzhou.rdi.net.server
 import calebxzhou.rdi.ui2.pointerBuffer
-import calebxzhou.rdi.util.sha1
-import calebxzhou.rdi.util.toFixed
 import org.bson.types.ObjectId
 import org.lwjgl.util.tinyfd.TinyFileDialogs
 import java.io.File
