@@ -75,23 +75,6 @@ allprojects {
     }
 }
 
-val mcLibs = listOf(
-    "io.ktor:ktor-client-okhttp:$ktorVersion",
-    "io.ktor:ktor-client-core:$ktorVersion",
-    "io.ktor:ktor-client-auth:$ktorVersion",
-    "io.ktor:ktor-client-encoding:$ktorVersion",
-    "org.jsoup:jsoup:1.19.1",
-    "org.mongodb:bson:5.1.0",
-    "com.github.ben-manes.caffeine:caffeine:3.2.2",
-    "io.ktor:ktor-server-core:$ktorVersion",
-    "io.ktor:ktor-server-websockets:$ktorVersion",
-    "io.ktor:ktor-server-netty:$ktorVersion",
-    "org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0",
-    "org.jetbrains.kotlinx:kotlinx-serialization-cbor:1.9.0",
-    "io.ktor:ktor-client-content-negotiation:$ktorVersion",
-    "io.ktor:ktor-serialization-kotlinx-json:$ktorVersion"
-)
-
 dependencies {
     testImplementation(kotlin("test"))
     implementation("io.netty:netty-all:4.2.7.Final")
@@ -114,9 +97,26 @@ dependencies {
     implementation("ch.qos.logback:logback-classic:1.5.21")
     implementation("io.github.oshai:kotlin-logging-jvm:7.0.6")
     implementation("net.peanuuutz.tomlkt:tomlkt:0.5.0")
-    mcLibs.forEach { dependency ->
-        implementation(dependency)
-    }
+
+    implementation("calebxzhou.mykotutils:std:0.1")
+    implementation("calebxzhou.mykotutils:log:0.1")
+    implementation("calebxzhou.mykotutils:ktor:0.1")
+
+    // Expanded mcLibs dependencies
+    implementation("io.ktor:ktor-client-okhttp:$ktorVersion")
+    implementation("io.ktor:ktor-client-core:$ktorVersion")
+    implementation("io.ktor:ktor-client-auth:$ktorVersion")
+    implementation("io.ktor:ktor-client-encoding:$ktorVersion")
+    implementation("org.jsoup:jsoup:1.19.1")
+    implementation("org.mongodb:bson:5.1.0")
+    implementation("com.github.ben-manes.caffeine:caffeine:3.2.2")
+    implementation("io.ktor:ktor-server-core:$ktorVersion")
+    implementation("io.ktor:ktor-server-websockets:$ktorVersion")
+    implementation("io.ktor:ktor-server-netty:$ktorVersion")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-cbor:1.9.0")
+    implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
 }
 
 configurations.configureEach {
