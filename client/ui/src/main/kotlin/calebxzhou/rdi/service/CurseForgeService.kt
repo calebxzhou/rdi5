@@ -1,5 +1,8 @@
 package calebxzhou.rdi.service
 
+import calebxzhou.mykotutils.std.humanSpeed
+import calebxzhou.mykotutils.std.murmur2
+import calebxzhou.mykotutils.std.toFixed
 import calebxzhou.rdi.CONF
 import calebxzhou.rdi.Const
 import calebxzhou.rdi.exception.ModpackException
@@ -17,10 +20,7 @@ import calebxzhou.rdi.service.ModService.toVo
 import calebxzhou.rdi.service.ModrinthService.mapModrinthProjects
 import calebxzhou.rdi.service.ModrinthService.mr2CfSlug
 import calebxzhou.rdi.util.Loggers
-import calebxzhou.rdi.util.humanSpeed
-import calebxzhou.rdi.util.murmur2
 import calebxzhou.rdi.util.serdesJson
-import calebxzhou.rdi.util.toFixed
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -37,7 +37,6 @@ import java.nio.file.Path
 import java.util.jar.JarFile
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.toString
 
 
 object CurseForgeService {
