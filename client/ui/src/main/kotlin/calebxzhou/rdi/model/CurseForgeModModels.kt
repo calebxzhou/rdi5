@@ -1,7 +1,7 @@
 package calebxzhou.rdi.model
 
+import calebxzhou.mykotutils.std.urlEncoded
 import calebxzhou.rdi.model.pack.Mod
-import calebxzhou.rdi.util.urlEncoded
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.io.Closeable
