@@ -1,5 +1,6 @@
 package calebxzhou.rdi.service
 
+import calebxzhou.mykotutils.ktor.downloadFileFrom
 import calebxzhou.mykotutils.std.exportFromJarResource
 import calebxzhou.mykotutils.std.javaExePath
 import calebxzhou.mykotutils.std.sha1
@@ -9,7 +10,6 @@ import calebxzhou.rdi.Const
 import calebxzhou.rdi.RDI
 import calebxzhou.rdi.model.*
 import calebxzhou.rdi.model.LibraryOsArch.Companion.detectHostOs
-import calebxzhou.rdi.net.downloadFile
 import calebxzhou.rdi.net.httpRequest
 import calebxzhou.rdi.util.Loggers
 import calebxzhou.rdi.util.json
@@ -193,7 +193,7 @@ object GameService {
 
         target.parentFile?.mkdirs()
         onProgress("下载 $label...")
-        val success = downloadFile(artifact.url.rewriteMirrorUrl, target.toPath()) { progress ->
+        val success =  target.toPath().downloadFileFrom(artifact.url.rewriteMirrorUrl,) { progress ->
             val percent = progress.percent.takeIf { it >= 0 }
                 ?.let { String.format(locale, "%.1f%%", it) }
                 ?: "--"
@@ -281,7 +281,7 @@ object GameService {
         val downloadUrl = buildAssetUrl(hash)
         onProgress("下载资源 $path ...")
         val success = try {
-            downloadFile(downloadUrl, targetFile.toPath()) { progress ->
+            targetFile.toPath().downloadFileFrom(downloadUrl ) { progress ->
                 val percent = progress.percent.takeIf { it >= 0 }
                     ?.let { String.format(locale, "%.1f%%", it) }
                     ?: "--"
@@ -445,7 +445,7 @@ object GameService {
         installer.parentFile?.mkdirs()
         onProgress("下载 $version $loader 安装器...")
         if (!installer.exists() || installer.sha1 != loaderMeta.installerSha1) {
-            downloadFile(loaderMeta.installerUrl.rewriteMirrorUrl, installer.toPath()) { progress ->
+            installer.toPath().downloadFileFrom(loaderMeta.installerUrl.rewriteMirrorUrl) { progress ->
                 onProgress("$loader 安装器 ${progress.percent.toFixed(2)}%")
             }
         }

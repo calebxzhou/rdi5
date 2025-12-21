@@ -1,5 +1,7 @@
 package calebxzhou.rdi.net
 
+import calebxzhou.mykotutils.ktor.DownloadProgress
+import calebxzhou.mykotutils.ktor.downloadFileFrom
 import calebxzhou.rdi.Const
 import calebxzhou.rdi.exception.RequestError
 import calebxzhou.rdi.lgr
@@ -171,7 +173,7 @@ class RServer(
     }
 
     suspend inline fun download(path: String, saveTo: java.nio.file.Path, noinline onProgress: (DownloadProgress)->Unit){
-        downloadFile("${hqUrl}/${path}",saveTo,onProgress)
+        saveTo.downloadFileFrom("${hqUrl}/${path}",onProgress)
     }
 
     fun sse(
