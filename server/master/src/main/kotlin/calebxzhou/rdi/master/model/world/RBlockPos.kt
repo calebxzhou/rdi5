@@ -1,3 +1,3 @@
-package calebxzhou.rdi.master.model
+package calebxzhou.rdi.master.model.world
 
 data class RBlockPos(val x:Int,val y:Int,val z:Int)

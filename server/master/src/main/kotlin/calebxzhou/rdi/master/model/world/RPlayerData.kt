@@ -1,4 +1,4 @@
-package calebxzhou.rdi.master.model
+package calebxzhou.rdi.master.model.world
 
 import net.benwoodworth.knbt.NbtCompound
 import org.bson.types.ObjectId
