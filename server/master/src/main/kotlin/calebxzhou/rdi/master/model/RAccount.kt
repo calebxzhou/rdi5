@@ -15,8 +15,6 @@ data class RAccount(
     val score: Int = 0,
     val cloth: Cloth = Cloth(),
 ) {
-    @Transient
-    var gameContext: GameContext? = null
 
     @Serializable
     data class Cloth(
