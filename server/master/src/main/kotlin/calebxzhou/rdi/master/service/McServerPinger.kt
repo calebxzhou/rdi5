@@ -183,10 +183,6 @@ object McServerPinger {
         output.flush()
 
         input.readVarInt() // response length, ignored
-        val packetId = input.readVarInt()
-        /*if (packetId != PING_PACKET_ID) {
-            throw RequestError("Minecraft 服务器返回了未知的 ping 包 (id=$packetId)")
-        }*/
         val echoedTimestamp = input.readLong()
         return (System.currentTimeMillis() - echoedTimestamp).coerceAtLeast(0)
     }
