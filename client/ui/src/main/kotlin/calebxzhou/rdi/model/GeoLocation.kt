@@ -1,7 +1,6 @@
 package calebxzhou.rdi.model
 
 import calebxzhou.rdi.lgr
-import calebxzhou.rdi.net.WEB_USER_AGENT
 import calebxzhou.rdi.util.serdesJson
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -39,7 +38,6 @@ data class GeoLocation(
                 url("https://qifu.baidu.com/ip/local/geo/v1/district")
                 method = io.ktor.http.HttpMethod.Get
                 header("Referer", "https://qifu.baidu.com/?activeKey=SEARCH_IP&trace=apistore_ip_aladdin&activeId=SEARCH_IP_ADDRESS&ip=")
-                header("User-Agent", WEB_USER_AGENT)
                 header("Host", "qifu.baidu.com")
                 header("Content-Type", "application/json")
             }
