@@ -1,7 +1,10 @@
 package calebxzhou.rdi.master.service
 
+import calebxzhou.mykotutils.curseforge.CFDownloadMod
+import calebxzhou.mykotutils.curseforge.CurseForgeApi
 import calebxzhou.mykotutils.log.Loggers
 import calebxzhou.mykotutils.std.sha1
+import calebxzhou.mykotutils.std.toFixed
 import calebxzhou.rdi.master.DB
 import calebxzhou.rdi.master.exception.ParamError
 import calebxzhou.rdi.master.exception.RequestError
@@ -61,6 +64,7 @@ import java.util.zip.ZipOutputStream
 import javax.imageio.IIOImage
 import javax.imageio.ImageIO
 import javax.imageio.ImageWriteParam
+import kotlin.io.path.name
 
 
 fun Route.modpackRoutes() {
@@ -95,7 +99,7 @@ fun Route.modpackRoutes() {
                     call.modpackGuardContext().version.clientZip.let { call.respondFile(it) }
                 }
                 get("/client/hash") {
-                    call.modpackGuardContext().version.clientZip.let { response(data=it.sha1) }
+                    call.modpackGuardContext().version.clientZip.let { response(data = it.sha1) }
                 }
                 get("/mods") {
                     call.modpackGuardContext().version.mods.let { response(data = it) }
@@ -189,7 +193,7 @@ object ModpackService {
     internal var testDbcl: MongoCollection<Modpack>? = null
     val dbcl: MongoCollection<Modpack>
         get() = testDbcl ?: realDbcl
-    private val clientNeedDirs = listOf("config","mods","defaultconfigs","kubejs","global_packs","resourcepacks")
+    private val clientNeedDirs = listOf("config", "mods", "defaultconfigs", "kubejs", "global_packs", "resourcepacks")
     private val disallowedClientPaths = setOf("config/fancymenu")
     private val allowedQuestLangFiles = setOf("en_us.snbt", "zh_cn.snbt")
     private const val QUEST_LANG_PREFIX = "config/ftbquests/quests/lang/"
@@ -403,6 +407,7 @@ object ModpackService {
                 }
         }
     }
+
     suspend fun Modpack.installToHost(verName: String, host: Host, onProgress: (String) -> Unit) {
         val version = getVersion(verName)
             ?: throw RequestError("整合包版本不存在: $verName")
@@ -416,16 +421,23 @@ object ModpackService {
         onProgress("开始安装整合包..")
         unzipOverrides(version.zip, hostDir)
         onProgress("解压成功 开始下载mod")
-        val modsDir = File(hostDir, "mods").apply { mkdirs() }
-        val downloadedMods = CurseForgeService.downloadMods(
-            version.mods.filter { it.side != Mod.Side.CLIENT },
-            onProgress
-        )
+        val hostModsDir = hostDir.resolve("mods").apply { mkdirs() }
+        val mods = version.mods.filter { it.side != Mod.Side.CLIENT }
+            .map { CFDownloadMod(it.projectId.toInt(), it.fileId.toInt(), it.slug,it.targetPath) }
+        val downloadedMods = CurseForgeApi.downloadMods(
+            mods,
+        ) { cfm, prog ->
+            onProgress("${cfm.slug} mod下载中 ${prog.percent.toFixed(2)}%")
+        }.getOrThrow()
         onProgress("mod全部下载成功 安装到主机..")
-        downloadedMods.forEach { sourcePath ->
-            val targetPath = File(modsDir, sourcePath.fileName.toString()).toPath()
-            Files.createDirectories(targetPath.parent)
-            Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING)
+        downloadedMods.forEach { mod ->
+                Files.createDirectories(mod.path.parent)
+                Files.copy(
+                    mod.path,
+                    hostModsDir.resolve(mod.path.fileName.name).toPath(),
+                    StandardCopyOption.REPLACE_EXISTING
+                )
+
         }
 
         val libsSource = libsDir.canonicalFile.also {
@@ -507,15 +519,14 @@ object ModpackService {
         if (version.status == Modpack.Status.BUILDING) {
             throw RequestError("版本正在构建中 请勿重复操作")
         }
-        if(version.hostsUsing().isNotEmpty()) throw RequestError("有主机正在使用此版本，无法重构")
+        if (version.hostsUsing().isNotEmpty()) throw RequestError("有主机正在使用此版本，无法重构")
         version.setTotalSize(version.zip.length())
         //todo 删除ftb backup
         try {
-            val downloadedMods = CurseForgeService.downloadMods(version.mods.filter { it.side != Mod.Side.CLIENT }) {
-                ioScope.launch {
-                    onProgress(it)
-                }
-            }
+            val downloadedMods = CurseForgeApi.downloadMods(version.mods.filter { it.side != Mod.Side.CLIENT }
+                .map { CFDownloadMod(it.projectId.toInt(), it.fileId.toInt(),it.slug, it.targetPath) }) { cfmod, prog ->
+                onProgress("mod下载中：${cfmod.slug} ${prog.percent.toFixed(2)}")
+            }.getOrThrow()
             onProgress("所有mod下载完成 开始安装。。${downloadedMods.size}个mod")
             onProgress("构建客户端版。。")
             buildClientZip(version)
@@ -528,6 +539,7 @@ object ModpackService {
             throw e
         }
     }
+
     private fun buildClientZip(version: Modpack.Version) {
         val sourceZip = version.zip
         if (!sourceZip.exists()) return
@@ -736,6 +748,7 @@ object ModpackService {
     suspend fun Modpack.Version.hostsUsing(): List<Host> {
         return HostService.findByModpackVersion(modpackId, name).filter { it.status != HostStatus.STOPPED }
     }
+
     suspend fun Modpack.hostsUsing(): List<Host> {
         return HostService.findByModpack(_id).filter { it.status != HostStatus.STOPPED }
     }

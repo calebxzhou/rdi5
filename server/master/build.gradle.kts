@@ -51,6 +51,7 @@ dependencies {
     implementation("calebxzhou.mykotutils:std:0.1")
     implementation("calebxzhou.mykotutils:log:0.1")
     implementation("calebxzhou.mykotutils:ktor:0.1")
+    implementation("calebxzhou.mykotutils:curseforge:0.1")
 
 
     testImplementation(kotlin("test"))

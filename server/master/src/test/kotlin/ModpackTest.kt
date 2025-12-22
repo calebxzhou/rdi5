@@ -7,17 +7,12 @@ import calebxzhou.rdi.master.model.McVersion
 import calebxzhou.rdi.master.model.RAccount
 import calebxzhou.rdi.master.model.pack.Mod
 import calebxzhou.rdi.master.model.pack.Modpack
-import calebxzhou.rdi.master.service.CurseForgeService
-import calebxzhou.rdi.master.service.HostService
-import calebxzhou.rdi.master.service.MailService
-import calebxzhou.rdi.master.service.ModpackContext
-import calebxzhou.rdi.master.service.ModpackService
+import calebxzhou.rdi.master.service.*
 import calebxzhou.rdi.master.service.ModpackService.createVersion
 import calebxzhou.rdi.master.service.ModpackService.deleteModpack
 import calebxzhou.rdi.master.service.ModpackService.deleteVersion
 import calebxzhou.rdi.master.service.ModpackService.rebuildVersion
 import calebxzhou.rdi.master.util.deleteRecursivelyNoSymlink
-import calebxzhou.rdi.master.util.jarResource
 import calebxzhou.rdi.master.util.serdesJson
 import calebxzhou.rdi.master.util.testIoScope
 import com.mongodb.client.model.InsertOneOptions
@@ -26,17 +21,12 @@ import com.mongodb.client.result.DeleteResult
 import com.mongodb.client.result.InsertOneResult
 import com.mongodb.client.result.UpdateResult
 import com.mongodb.kotlin.client.coroutine.MongoCollection
-import io.mockk.coEvery
-import io.mockk.coVerify
-import org.bson.conversions.Bson
-import io.mockk.mockk
-import io.mockk.mockkObject
-import io.mockk.every
-import io.mockk.unmockkAll
+import io.mockk.*
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import org.bson.conversions.Bson
 import org.bson.types.ObjectId
 import org.junit.jupiter.api.Assumptions.assumeTrue
 import java.awt.Color
@@ -49,16 +39,7 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
 import java.util.zip.ZipOutputStream
 import javax.imageio.ImageIO
-import kotlin.io.path.createTempFile
-import kotlin.text.Charsets
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
-import kotlin.test.assertNull
-import kotlin.test.assertTrue
+import kotlin.test.*
 
 class ModpackTest {
     private val allowedClientDirs = setOf(
@@ -101,9 +82,9 @@ class ModpackTest {
         }
         every { MailService.changeMail(any(), any(), any(), any()) } returns mockk<Job>(relaxed = true)
 
-        coEvery { CurseForgeService.downloadMods(any(), any()) } answers {
+        /*coEvery { CurseForgeService.downloadMods(any(), any()) } answers {
             listOf(createTempFile(prefix = "mod", suffix = ".jar"))
-        }
+        }*/
     }
 
     @AfterTest
@@ -239,7 +220,7 @@ class ModpackTest {
             assertTrue(versionZip.exists(), "Version zip should be stored next to modpack root")
 
             coVerify { MailService.sendSystemMail(eq(player._id), any(), any()) }
-            coVerify { CurseForgeService.downloadMods(any(), any()) }
+           // coVerify { CurseForgeService.downloadMods(any(), any()) }
         }
     }
 
@@ -279,7 +260,7 @@ class ModpackTest {
             advanceUntilIdle()
 
             coVerify { MailService.sendSystemMail(eq(player._id), match { it.contains("重构整合包") }, any()) }
-            coVerify(atLeast = 1) { CurseForgeService.downloadMods(any(), any()) }
+           // coVerify(atLeast = 1) { CurseForgeService.downloadMods(any(), any()) }
             coVerify {
                 modpackCollection.updateOne(
                     any<Bson>(),

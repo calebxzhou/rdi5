@@ -1,7 +1,9 @@
 package calebxzhou.rdi.service
 
+import calebxzhou.mykotutils.ktor.downloadFileFrom
 import calebxzhou.mykotutils.std.humanSpeed
 import calebxzhou.mykotutils.std.murmur2
+import calebxzhou.mykotutils.std.openChineseZip
 import calebxzhou.mykotutils.std.toFixed
 import calebxzhou.rdi.CONF
 import calebxzhou.rdi.Const
@@ -9,7 +11,6 @@ import calebxzhou.rdi.exception.ModpackException
 import calebxzhou.rdi.exception.RequestError
 import calebxzhou.rdi.model.*
 import calebxzhou.rdi.model.pack.Mod
-import calebxzhou.rdi.net.downloadFile
 import calebxzhou.rdi.net.httpRequest
 import calebxzhou.rdi.net.json
 import calebxzhou.rdi.service.ModService.briefInfo
@@ -44,13 +45,13 @@ object CurseForgeService {
     private val lgr by Loggers
 
     //镜像源可能会缺mod  比如McJtyLib - 1.21-9.0.14
-    const val BASE_URL = "https://mod.mcimirror.top/curseforge/v1"
+    const val MIRROR_URL = "https://mod.mcimirror.top/curseforge/v1"
     const val OFFICIAL_URL = "https://api.curseforge.com/v1"
-    suspend fun cfreq(
+    suspend fun makeRequest(
         path: String,
         method: HttpMethod = HttpMethod.Get,
         body: Any? = null,
-        onlyOfficial: Boolean = false
+        ignoreMirror: Boolean = false
     ): HttpResponse {
         suspend fun doRequest(base: String) = httpRequest {
             url("${base}/${path}")
@@ -60,11 +61,11 @@ object CurseForgeService {
             this.method = method
         }
 
-        if (onlyOfficial) {
+        if (ignoreMirror) {
             return doRequest(OFFICIAL_URL)
         }
 
-        val mirrorResult = runCatching<HttpResponse> { doRequest(BASE_URL) }
+        val mirrorResult = runCatching<HttpResponse> { doRequest(MIRROR_URL) }
         val mirrorResponse = mirrorResult.getOrNull()
         if (mirrorResponse != null && mirrorResponse.status.isSuccess()) {
             return mirrorResponse
@@ -86,7 +87,7 @@ object CurseForgeService {
         @Serializable
         data class CurseForgeFingerprintRequest(val fingerprints: List<Long>)
 
-        val response = cfreq(
+        val response = makeRequest(
             //432代表mc
             "fingerprints/432",
             HttpMethod.Post,
@@ -127,11 +128,11 @@ object CurseForgeService {
         @Serializable
         data class CFFileIdsRequest(val fileIds: List<Int>)
 
-        return cfreq(
+        return makeRequest(
             "mods/files",
             HttpMethod.Post,
             CFFileIdsRequest(fileIds),
-            onlyOfficial = official,
+            ignoreMirror = official,
         ).body<CurseForgeFileListResponse>().data
     }
     private suspend fun requestMods(modIds: List<Int>,official: Boolean=false): List<CurseForgeModInfo> {
@@ -140,7 +141,7 @@ object CurseForgeService {
 
         @Serializable
         data class CFModsResponse(val data: List<CurseForgeModInfo>? = null)
-        return cfreq("mods", HttpMethod.Post, CFModsRequest(modIds),official).body<CFModsResponse>().data!!.filter { it.isMod }
+        return makeRequest("mods", HttpMethod.Post, CFModsRequest(modIds),official).body<CFModsResponse>().data!!.filter { it.isMod }
 
     }
     //从mod project id列表获取cf mod信息
@@ -161,7 +162,7 @@ object CurseForgeService {
     }
 
     suspend fun getModFileInfo(modId: Int, fileId: Int): CurseForgeFile? {
-        return cfreq("mods/${modId}/files/${fileId}").body<CurseForgeFileResponse>().data
+        return makeRequest("mods/${modId}/files/${fileId}").body<CurseForgeFileResponse>().data
     }
 
 
@@ -365,7 +366,7 @@ object CurseForgeService {
             throw ModpackException("找不到整合包文件: ${zipFile.path}")
         }
 
-        val zip = ModpackService.open(zipFile)
+        val zip = zipFile.openChineseZip()
 
         try {
             val entries = zip.entries().asSequence().toList()
@@ -454,74 +455,6 @@ object CurseForgeService {
             return info.modrinthSlugs.firstOrNull { it.isNotBlank() }?.trim() ?: this
         }
 
-    suspend fun downloadMod(mod: Mod,onProgress: (String) -> Unit = {}): Path {
-        val targetFile = File(ModpackService.DL_MODS_DIR, mod.fileName)
-        if (targetFile.exists()
-            && targetFile.murmur2.toString() == mod.hash
-            && mod.platform == "cf"
-        ) {
-            lgr.info { "mod已存在，跳过下载： ${mod.slug}" }
-            return targetFile.toPath()
-        }
-        var downloadUrl = getModFileInfo(mod.projectId.toInt(), mod.fileId.toInt())?.realDownloadUrl
-        if (downloadUrl.isNullOrBlank()) {
-            throw RequestError("无法获取下载链接: ${mod.slug}")
-        }
-        if(CONF.useMirror){
-            downloadUrl = downloadUrl.replace("edge.forgecdn.net", "mod.mcimirror.top").
-            replace("mediafilez.forgecdn.net", "mod.mcimirror.top").
-            replace("media.forgecdn.net", "mod.mcimirror.top")
-        }
-        val success = downloadFile(downloadUrl, targetFile.toPath()) { progress ->
-            "mod下载中： ${mod.slug} ${progress.percent.toFixed(2)}% ${progress.speedBytesPerSecond.humanSpeed}".run {
-                lgr.info { this }
-                onProgress(this)
-            }
-        }
-
-        if (!success) {
-            "下载mod失败: ${mod.slug}".run { onProgress(this); lgr.error { this } }
-        }
-        lgr.info { "下载完成：$mod" }
-        return targetFile.toPath()
-    }
-
-    suspend fun downloadMods(mods: List<Mod>,onProgress: (String) -> Unit = {}): List<Path> {
-        if (mods.isEmpty()) return emptyList()
-        val parallelism = min(MAX_PARALLEL_DOWNLOADS, mods.size)
-        onProgress("下载${mods.size}个Mod：${mods.map { it.slug }}")
-        lgr.info { "下载${mods.size}个mod，最大并发：$parallelism" }
-        val semaphore = Semaphore(parallelism)
-        val downloaded = mutableListOf<Path>()
-        val failures = mutableListOf<Pair<Mod, Throwable>>()
-
-        coroutineScope {
-            val outcomes = mods.map { mod ->
-                async(Dispatchers.IO) {
-                    semaphore.withPermit {
-                        mod to runCatching {
-                            downloadMod(mod)
-                        }
-                    }
-                }
-            }.awaitAll()
-
-            outcomes.forEach { (mod, result) ->
-                result
-                    .onSuccess { downloaded.add(it) }
-                    .onFailure { error ->
-                        failures += mod to error
-                        lgr.error(error) { "下载mod失败: ${mod.slug}" }
-                    }
-            }
-        }
-
-        if (failures.isNotEmpty()) {
-            val failedNames = failures.joinToString { it.first.slug }
-            throw RequestError("部分mod下载失败: $failedNames")
-        }
-        return downloaded
-    }
 
 }
 
