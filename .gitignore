@@ -4,3 +4,7 @@
 client-ui2
 .gradle
 **/.idea/
+**/build/
+**/bin/
+**/run/
+**/out/
