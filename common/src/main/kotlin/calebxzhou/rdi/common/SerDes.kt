@@ -1,18 +1,15 @@
-package calebxzhou.rdi.util
+package calebxzhou.rdi.common
 
-import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
-import kotlinx.serialization.cbor.Cbor
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
-import kotlinx.serialization.encodeToByteArray
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
 import org.bson.types.ObjectId
-import java.util.*
+import java.util.UUID
 
 /**
  * calebxzhou @ 2024-06-18 14:25
@@ -33,10 +30,6 @@ val serdesJson = Json {
 
 inline val <reified T> T.json: String
     get() = serdesJson.encodeToString<T>(this)
-@OptIn(ExperimentalSerializationApi::class)
-inline val <reified T> T.cbor: ByteArray
-    get() = Cbor.encodeToByteArray<T>(this)
-
 object ObjectIdSerializer : KSerializer<ObjectId> {
     override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("ObjectId", PrimitiveKind.STRING)
 
