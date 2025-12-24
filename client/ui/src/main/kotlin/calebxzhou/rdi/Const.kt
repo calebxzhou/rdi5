@@ -15,12 +15,6 @@ object Const {
     //显示版本
     val VERSION_NUMBER: String = loadVersionNumber()
 
-    val CF_AKEY = byteArrayOf(
-        36, 50, 97, 36, 49, 48, 36, 55, 87, 87, 86, 49, 87, 69, 76, 99, 119, 88, 56, 88,
-        112, 55, 100, 54, 56, 77, 72, 115, 46, 53, 103, 114, 84, 121, 90, 86, 97, 54,
-        83, 121, 110, 121, 101, 83, 121, 77, 104, 49, 114, 115, 69, 56, 57, 110, 73,
-        97, 48, 57, 122, 79
-    ).let { String(it) }
 
     private fun loadVersionNumber(): String {
         val manifestVersion = Const::class.java.`package`?.implementationVersion?.takeIf { it.isNotBlank() }
