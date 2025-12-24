@@ -1,7 +1,7 @@
-package calebxzhou.rdi.service
+package calebxzhou.rdi.common.extension
 
-import calebxzhou.rdi.model.Host
-import calebxzhou.rdi.model.RAccount
+import calebxzhou.rdi.common.model.Host
+import calebxzhou.rdi.common.model.RAccount
 import calebxzhou.rdi.model.Role
 import org.bson.types.ObjectId
 

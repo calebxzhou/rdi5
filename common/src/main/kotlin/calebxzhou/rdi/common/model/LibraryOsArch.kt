@@ -1,6 +1,8 @@
-package calebxzhou.rdi.model
+package calebxzhou.rdi.common.model
 
 import java.util.Locale
+import kotlin.text.contains
+import kotlin.text.lowercase
 
 enum class LibraryOsArch(val archSuffix: String,val ruleOsName: String) {
     WIN_X64("-windows","windows"),

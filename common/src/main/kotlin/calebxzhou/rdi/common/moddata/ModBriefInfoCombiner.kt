@@ -1,8 +1,10 @@
 package calebxzhou.rdi.service.convert
 
-import calebxzhou.rdi.model.ModBriefInfo
-import calebxzhou.rdi.util.json
-import calebxzhou.rdi.util.serdesJson
+import calebxzhou.rdi.common.json
+import calebxzhou.rdi.common.moddata.McmodModBriefInfo
+import calebxzhou.rdi.common.moddata.PCLModBriefInfo
+import calebxzhou.rdi.common.model.ModBriefInfo
+import calebxzhou.rdi.common.serdesJson
 import java.io.File
 
 /**

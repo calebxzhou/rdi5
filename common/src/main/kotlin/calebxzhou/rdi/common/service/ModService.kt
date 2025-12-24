@@ -1,15 +1,17 @@
-package calebxzhou.rdi.service
+package calebxzhou.rdi.common.service
 
-import calebxzhou.rdi.RDI
-import calebxzhou.rdi.lgr
-import calebxzhou.rdi.model.ModBriefInfo
-import calebxzhou.rdi.model.ModCardVo
-import calebxzhou.rdi.util.serdesJson
+import calebxzhou.mykotutils.log.Loggers
+import calebxzhou.rdi.common.DL_MOD_DIR
+import calebxzhou.rdi.common.RDI
+import calebxzhou.rdi.common.model.ModBriefInfo
+import calebxzhou.rdi.common.model.ModCardVo
+import calebxzhou.rdi.common.serdesJson
 import com.electronwill.nightconfig.core.CommentedConfig
 import com.electronwill.nightconfig.core.Config
 import com.electronwill.nightconfig.toml.TomlFormat
 import java.io.ByteArrayInputStream
 import java.io.File
+import java.io.InputStream
 import java.util.jar.JarFile
 import java.util.jar.JarInputStream
 
@@ -19,12 +21,10 @@ object ModService {
     const val NEOFORGE_CONFIG_PATH = "META-INF/neoforge.mods.toml"
     const val FABRIC_CONFIG_PATH = "fabric.mod.json"
     const val FORGE_CONFIG_PATH = "META-INF/mods.toml"
+    private val lgr by Loggers
 
-    val MOD_DIR = System.getProperty("rdi.modDir")
-        ?.let { File(it) }
-        ?: RDI.DIR.resolve("downloaded-mods").also { it.mkdirs() }
-    val downloadedMods =MOD_DIR.listFiles { it.extension == "jar" }?.toMutableList() ?: mutableListOf()
-    var installedMods = MOD_DIR.listFiles { it.extension == "jar" }?.toMutableList() ?: mutableListOf()
+    val downloadedMods =DL_MOD_DIR.listFiles { it.extension == "jar" }?.toMutableList() ?: mutableListOf()
+    var installedMods = DL_MOD_DIR.listFiles { it.extension == "jar" }?.toMutableList() ?: mutableListOf()
     fun JarFile.readNeoForgeConfig(): CommentedConfig? {
         return getJarEntry(NEOFORGE_CONFIG_PATH)?.let { modsTomlEntry ->
             getInputStream(modsTomlEntry).bufferedReader().use { reader ->
@@ -182,7 +182,7 @@ object ModService {
         }
     }
 
-    private fun collectModIdsFromNestedJar(inputStream: java.io.InputStream, installedModIds: MutableSet<String>) {
+    private fun collectModIdsFromNestedJar(inputStream: InputStream, installedModIds: MutableSet<String>) {
         JarInputStream(inputStream).use { nestedJar ->
             var entry = nestedJar.nextJarEntry
             while (entry != null) {
@@ -237,16 +237,16 @@ object ModService {
             ModService::class.java.classLoader.getResourceAsStream(resourcePath)?.bufferedReader()
                 ?.use { it.readText() }
         }.onFailure {
-            lgr.error("Failed to read $resourcePath", it)
+            lgr.error(it) { "Failed to read $resourcePath" }
         }.getOrNull()
 
         if (raw.isNullOrBlank()) {
-            lgr.warn("mod_brief_info.json is missing or empty; fallback to empty brief info list")
+            lgr.warn { "mod_brief_info.json is missing or empty; fallback to empty brief info list" }
             return emptyList()
         }
 
         return runCatching { serdesJson.decodeFromString<List<ModBriefInfo>>(raw) }
-            .onFailure { err -> lgr.error("Failed to decode mod_brief_info.json", err) }
+            .onFailure { err -> lgr.error(err) { "Failed to decode mod_brief_info.json" } }
             .getOrElse { emptyList() }
     }
 
@@ -264,7 +264,7 @@ object ModService {
                     val normalized = slug.lowercase()
                     val previous = map.put(normalized, info)
                     if (previous != null && previous !== info) {
-                        lgr.debug("Duplicated slug '$slug' now mapped to ${info.mcmodId}, previously ${previous.mcmodId}")
+                        lgr.debug { "Duplicated slug '$slug' now mapped to ${info.mcmodId}, previously ${previous.mcmodId}" }
                     }
                 }
         }

@@ -4,27 +4,6 @@ object Mcmod {
 
     const val SERVER_PAGE = "https://play.mcmod.cn/sv20188037.html"
     const val searchUrl = "https://search.mcmod.cn/s?key="
-    val headers
-        get() =
-            """  
-Host: search.mcmod.cn
-User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:137.0) Gecko/20100101 Firefox/137.0
-Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
-Accept-Language: zh-CN,zh;q=0.5
-Accept-Encoding: 1
-Connection: keep-alive
-Cookie: MCMOD_SEED=${
-                (1..26)
-                    .map { ('a'..'z') + ('0'..'9').random() } // Pick a random character from the allowed set
-                    .joinToString("")
-            }; search_history_list=
-Upgrade-Insecure-Requests: 1
-Sec-Fetch-Dest: document
-Sec-Fetch-Mode: navigate
-Sec-Fetch-Site: none
-Sec-Fetch-User: ?1
-Priority: u=0, i
-        """.trimIndent().split("\n").map { it.split(": ") }.map { it[0] to it[1] }
 
 /*
     suspend fun search(id: ResourceLocation, name: String): String? {

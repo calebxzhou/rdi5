@@ -1,9 +1,11 @@
-package calebxzhou.rdi.model
+package calebxzhou.rdi.common.model
 
-import calebxzhou.rdi.lgr
-import calebxzhou.rdi.util.serdesJson
+import calebxzhou.mykotutils.log.Loggers
+import calebxzhou.rdi.common.net.httpRequest
+import calebxzhou.rdi.common.serdesJson
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
+import io.ktor.http.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -21,6 +23,7 @@ data class GeoLocation(
     val district: String
 ){
     companion object{
+        val lgr by Loggers
         val DEFAULT =  GeoLocation(
             continent = "未知",
             country = "未知",
@@ -34,10 +37,13 @@ data class GeoLocation(
         )
         var now = DEFAULT
         suspend fun get(): GeoLocation {
-            val resp = calebxzhou.rdi.net.httpRequest {
+            val resp = httpRequest {
                 url("https://qifu.baidu.com/ip/local/geo/v1/district")
-                method = io.ktor.http.HttpMethod.Get
-                header("Referer", "https://qifu.baidu.com/?activeKey=SEARCH_IP&trace=apistore_ip_aladdin&activeId=SEARCH_IP_ADDRESS&ip=")
+                method = HttpMethod.Get
+                header(
+                    "Referer",
+                    "https://qifu.baidu.com/?activeKey=SEARCH_IP&trace=apistore_ip_aladdin&activeId=SEARCH_IP_ADDRESS&ip="
+                )
                 header("Host", "qifu.baidu.com")
                 header("Content-Type", "application/json")
             }
@@ -48,14 +54,14 @@ data class GeoLocation(
 
                 val dataElement = jsonObject["data"]
                 if (dataElement == null || dataElement.jsonPrimitive.content.isEmpty()) {
-                    lgr.error("Empty data field in response")
+                    lgr.error { "Empty data field in response" }
                     return DEFAULT
                 }
                 // Extract location fields from the data object
                 return serdesJson.decodeFromString<GeoLocation>(dataElement.jsonPrimitive.content).also { now=it }
             } catch (e: Exception) {
-                lgr.error("无法获取位置信息 ${e.message}")
-                lgr.error(resp.bodyAsText())
+                lgr.error { "无法获取位置信息 ${e.message}" }
+                lgr.error ( resp.bodyAsText() )
                 return DEFAULT
             }
         }

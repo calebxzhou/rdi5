@@ -1,7 +1,7 @@
-package calebxzhou.rdi.service.convert
+package calebxzhou.rdi.common.moddata
 
-import calebxzhou.rdi.lgr
-import calebxzhou.rdi.util.json
+import calebxzhou.rdi.common.json
+import kotlinx.serialization.Serializable
 import java.io.File
 
 /**
@@ -15,6 +15,14 @@ fun main() {
     lgr.info("已解析 ${entries.size} 条PCL模组简要信息")
     File("pcl_mod_data.json").writeText(entries.json)
 }
+@Serializable
+data class PCLModBriefInfo(
+    val mcmodId: Int,
+    val nameCn: String?=null,
+    // mod通名
+    val curseforgeSlugs: List<String>,
+    val modrinthSlugs: List<String>,
+)
 //from PCL2/ModComp.vb
 private fun parsePclModData(raw: String): List<PCLModBriefInfo> {
     val normalized = raw.replace("\r\n", "\n").replace("\r", "")

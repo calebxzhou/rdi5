@@ -1,12 +1,15 @@
-package calebxzhou.rdi.service.convert
+package calebxzhou.rdi.common.moddata
 
-import calebxzhou.rdi.lgr
+import calebxzhou.mykotutils.log.Loggers
+import calebxzhou.rdi.common.json
 import calebxzhou.rdi.service.McmodService
-import calebxzhou.rdi.util.json
+import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
+import io.ktor.http.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.Serializable
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
@@ -18,15 +21,28 @@ import kotlin.math.max
  * calebxzhou @ 2025-10-14 14:40
  * 从mc百科获取mod的中文名称 简介 图标等信息 保存到mcmod_mod_data.json
  */
+val lgr by Loggers
 fun main() {
     //1.21.1 neoforge
     val baseUrl = "https://www.mcmod.cn/modlist.html?mcver=1.21.1&platform=1&api=13&sort=createtime"
     runBlocking {
         val mods = fetchAllPages(baseUrl)
-        lgr.info("抓取完成：共 ${mods.size} 个模组")
+        lgr.info { "抓取完成：共 ${mods.size} 个模组" }
         File("mcmod_mod_data.json").writeText(mods.json)
     }
 }
+//mc百科的mod信息
+@Serializable
+data class McmodModBriefInfo(
+    //页面id  /class/{id}.html
+    val id: Int,
+    val logoUrl: String,
+    val name:String,
+    //中文名
+    val nameCn: String?=null,
+    //一句话介绍
+    val intro: String,
+)
 
 private suspend fun fetchAllPages(baseUrl: String): List<McmodModBriefInfo> {
     val results = arrayListOf<McmodModBriefInfo>()
@@ -72,9 +88,9 @@ private fun buildPageUrl(baseUrl: String, page: Int?): String {
 
 private suspend fun loadPageDocument(url: String): Document? {
     val headers = headersForUrl(url)
-    val response = calebxzhou.rdi.net.httpRequest {
+    val response = HttpClient().request {
         url(url)
-        method = io.ktor.http.HttpMethod.Get
+        method = HttpMethod.Get
         headers.forEach { (name, value) -> header(name, value) }
     }
     if (response.status.value !in 200..299) {

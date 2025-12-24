@@ -1,7 +1,7 @@
-package calebxzhou.rdi.net
+package calebxzhou.rdi.common.net
 
-import calebxzhou.rdi.RDI
-import calebxzhou.rdi.util.serdesJson
+import calebxzhou.rdi.common.DIR
+import calebxzhou.rdi.common.serdesJson
 import io.ktor.client.*
 import io.ktor.client.engine.okhttp.*
 import io.ktor.client.plugins.*
@@ -17,12 +17,9 @@ import java.net.ProxySelector
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.seconds
 
-suspend inline  fun httpRequest(crossinline builder: HttpRequestBuilder.() -> Unit): HttpResponse = ktorClient.request(builder)
+suspend inline fun httpRequest(crossinline builder: HttpRequestBuilder.() -> Unit): HttpResponse = ktorClient.request(builder)
 fun HttpRequestBuilder.json() = contentType(ContentType.Application.Json)
-private val httpCacheDirectory by lazy {
-    java.io.File(java.io.File(RDI.DIR, "cache"), "http").apply { mkdirs() }
-}
-
+private val CACHE_DIR = DIR.resolve("cache").resolve("http").apply { mkdirs() }
 private const val HTTP_CACHE_SIZE_BYTES = 1024L * 1024 * 1024 // 1GB
 
 val ktorClient
@@ -35,7 +32,7 @@ val ktorClient
                     connectTimeout(10, TimeUnit.SECONDS)
                     readTimeout(0, TimeUnit.SECONDS)
                     ProxySelector.getDefault()?.let { proxySelector(it) }
-                    cache(Cache(httpCacheDirectory, HTTP_CACHE_SIZE_BYTES))
+                    cache(Cache(CACHE_DIR, HTTP_CACHE_SIZE_BYTES))
                 }
             }
             BrowserUserAgent()
@@ -43,7 +40,7 @@ val ktorClient
                 json(serdesJson)
 
             }
-            install(SSE ){
+            install(SSE) {
                 maxReconnectionAttempts = 4
                 reconnectionTime = 5.seconds
                 bufferPolicy = SSEBufferPolicy.LastEvents(10)

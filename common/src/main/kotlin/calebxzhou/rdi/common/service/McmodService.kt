@@ -1,9 +1,5 @@
 package calebxzhou.rdi.service
 
-import calebxzhou.rdi.RDI
-import java.io.File
-import java.net.URI
-
 object McmodService {
     val mcmodSearchUrl = "https://search.mcmod.cn/s?key="
     val mcmodHeader
@@ -27,7 +23,7 @@ Sec-Fetch-Site: none
 Sec-Fetch-User: ?1
 Priority: u=0, i
         """.trimIndent().split("\n").map { it.split(": ") }.map { it[0] to it[1] }
-    private val mcmodCacheRoot by lazy { File(File(RDI.DIR, "cache"), "mcmod").apply { mkdirs() } }
+   /* private val mcmodCacheRoot by lazy { File(File(RDI.DIR, "cache"), "mcmod").apply { mkdirs() } }
 
     private fun mcmodCacheFile(url: String): File? {
         val path = runCatching { URI(url).path }.getOrNull()?.trimStart('/') ?: return null
@@ -38,7 +34,7 @@ Priority: u=0, i
         }
         val relativePath = safeSegments.joinToString(File.separator)
         return File(mcmodCacheRoot, relativePath)
-    }
+    }*/
     /*suspend fun getInfoMcmod(modId: String,modName: String): McmodInfo? {
 
             val modUrl = httpStringRequest(url = "${mcmodSearchUrl}${"$modId $modName".urlEncoded}", headers = mcmodHeader).body

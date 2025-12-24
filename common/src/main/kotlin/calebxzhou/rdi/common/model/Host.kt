@@ -1,10 +1,9 @@
-package calebxzhou.rdi.model
+package calebxzhou.rdi.common.model
 
-import calebxzhou.rdi.model.pack.Mod
+import calebxzhou.rdi.model.Role
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import org.bson.types.ObjectId
-
 
 
 @Serializable

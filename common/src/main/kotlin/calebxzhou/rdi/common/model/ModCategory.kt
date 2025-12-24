@@ -1,4 +1,4 @@
-package calebxzhou.rdi.model
+package calebxzhou.rdi.common.model
 
 object ModCategory {
     //curseforge 分类

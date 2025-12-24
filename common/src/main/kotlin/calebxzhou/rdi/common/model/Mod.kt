@@ -1,6 +1,5 @@
-package calebxzhou.rdi.model.pack
+package calebxzhou.rdi.common.model
 
-import calebxzhou.rdi.model.ModCardVo
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import java.io.File
@@ -12,7 +11,7 @@ data class Mod(
     val slug: String,
     val fileId: String,
     val hash: String,
-    val side: Side= Mod.Side.BOTH,
+    val side: Side= Side.BOTH,
 ) {
     val fileName = "${slug}_${platform}_${hash}.jar"
     enum class Side{

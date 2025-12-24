@@ -1,43 +1,24 @@
-package calebxzhou.rdi.service
+package calebxzhou.rdi.common.service
 
-import calebxzhou.mykotutils.ktor.downloadFileFrom
-import calebxzhou.mykotutils.std.humanSpeed
+import calebxzhou.mykotutils.curseforge.CurseForgeApi
+import calebxzhou.mykotutils.curseforge.CurseForgeApi.getModsInfo
+import calebxzhou.mykotutils.curseforge.CurseForgeFingerprintData
+import calebxzhou.mykotutils.curseforge.CurseForgeModInfo
+import calebxzhou.mykotutils.log.Loggers
+import calebxzhou.mykotutils.modrinth.ModrinthApi.mapModrinthProjects
 import calebxzhou.mykotutils.std.murmur2
 import calebxzhou.mykotutils.std.openChineseZip
-import calebxzhou.mykotutils.std.toFixed
-import calebxzhou.rdi.CONF
-import calebxzhou.rdi.Const
-import calebxzhou.rdi.exception.ModpackException
-import calebxzhou.rdi.exception.RequestError
-import calebxzhou.rdi.model.*
-import calebxzhou.rdi.model.pack.Mod
-import calebxzhou.rdi.net.httpRequest
-import calebxzhou.rdi.net.json
-import calebxzhou.rdi.service.ModService.briefInfo
-import calebxzhou.rdi.service.ModService.modDescription
-import calebxzhou.rdi.service.ModService.modLogo
-import calebxzhou.rdi.service.ModService.readNeoForgeConfig
-import calebxzhou.rdi.service.ModService.toVo
-import calebxzhou.rdi.service.ModrinthService.mapModrinthProjects
+import calebxzhou.rdi.common.exception.ModpackException
+import calebxzhou.rdi.common.model.*
+import calebxzhou.rdi.common.serdesJson
+import calebxzhou.rdi.common.service.ModService.briefInfo
+import calebxzhou.rdi.common.service.ModService.modDescription
+import calebxzhou.rdi.common.service.ModService.modLogo
+import calebxzhou.rdi.common.service.ModService.readNeoForgeConfig
+import calebxzhou.rdi.common.service.ModService.toVo
 import calebxzhou.rdi.service.ModrinthService.mr2CfSlug
-import calebxzhou.rdi.util.Loggers
-import calebxzhou.rdi.util.serdesJson
-import io.ktor.client.call.*
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
-import io.ktor.http.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
-import kotlinx.serialization.Serializable
 import java.io.File
-import java.nio.file.Path
 import java.util.jar.JarFile
-import kotlin.math.max
-import kotlin.math.min
 
 
 object CurseForgeService {
@@ -47,124 +28,17 @@ object CurseForgeService {
     //镜像源可能会缺mod  比如McJtyLib - 1.21-9.0.14
     const val MIRROR_URL = "https://mod.mcimirror.top/curseforge/v1"
     const val OFFICIAL_URL = "https://api.curseforge.com/v1"
-    suspend fun makeRequest(
-        path: String,
-        method: HttpMethod = HttpMethod.Get,
-        body: Any? = null,
-        ignoreMirror: Boolean = false
-    ): HttpResponse {
-        suspend fun doRequest(base: String) = httpRequest {
-            url("${base}/${path}")
-            json()
-            header("x-api-key", Const.CF_AKEY)
-            body?.let { setBody(it) }
-            this.method = method
-        }
 
-        if (ignoreMirror) {
-            return doRequest(OFFICIAL_URL)
-        }
 
-        val mirrorResult = runCatching<HttpResponse> { doRequest(MIRROR_URL) }
-        val mirrorResponse = mirrorResult.getOrNull()
-        if (mirrorResponse != null && mirrorResponse.status.isSuccess()) {
-            return mirrorResponse
-        } else {
-            val body = mirrorResponse?.bodyAsText()
-            lgr.warn { "curseforge镜像源请求失败，${mirrorResponse?.status},${body}" }
-        }
-
-        mirrorResult.exceptionOrNull()?.let {
-            lgr.warn { "CurseForge mirror request failed, falling back to official API: ${it.message}" }
-        }
-        lgr.info { "尝试使用官方api" }
-        val officialResponse = doRequest(OFFICIAL_URL)
-        return officialResponse
-    }
-
-    //传入一堆murmur2格式的hash 返回cf匹配到的fingerprint data
-    suspend fun matchFingerprintData(hashes: List<Long>): CurseForgeFingerprintData {
-        @Serializable
-        data class CurseForgeFingerprintRequest(val fingerprints: List<Long>)
-
-        val response = makeRequest(
-            //432代表mc
-            "fingerprints/432",
-            HttpMethod.Post,
-            CurseForgeFingerprintRequest(fingerprints = hashes)
-        ).body<CurseForgeFingerprintResponse>()
-        val data = response.data ?: CurseForgeFingerprintData()
-        lgr.info {
-            "CurseForge: ${data.exactMatches.size} exact matches, ${data.partialMatches.size} partial matches, ${data.unmatchedFingerprints.size} unmatched"
-        }
-
-        return data
-    }
 
     suspend fun List<File>.loadInfoCurseForge(): CurseForgeLocalResult {
         val hashToFile = this.associateBy { it.murmur2 }
         val hashes = hashToFile.keys.toList()
-        val fingerprintData = CurseForgeService.matchFingerprintData(hashes)
-        val result = CurseForgeService.getInfosFromHash(hashToFile, fingerprintData)
+        val fingerprintData = CurseForgeApi.matchFingerprintData(hashes)
+        val result = getInfosFromHash(hashToFile, fingerprintData)
         //cache loaded info
         return result
     }
-
-
-    suspend fun getModFilesInfo(fileIds: List<Int>): List<CurseForgeFile> {
-        if (fileIds.isEmpty()) return emptyList()
-
-        val files = requestModFiles(fileIds).toMutableList()
-        val foundIds = files.mapTo(mutableSetOf()) { it.id }
-        val missingIds = fileIds.filterNot { foundIds.contains(it) }
-        if (missingIds.isNotEmpty()) {
-            lgr.warn { "没找到这些mod信息，官方api重试：${missingIds}" }
-            files += requestModFiles(missingIds,true)
-        }
-        lgr.info { "mod files 找到了${files.size}/${fileIds.size}个" }
-        return files
-    }
-    private suspend fun requestModFiles(fileIds: List<Int>,official: Boolean=false): List<CurseForgeFile> {
-        @Serializable
-        data class CFFileIdsRequest(val fileIds: List<Int>)
-
-        return makeRequest(
-            "mods/files",
-            HttpMethod.Post,
-            CFFileIdsRequest(fileIds),
-            ignoreMirror = official,
-        ).body<CurseForgeFileListResponse>().data
-    }
-    private suspend fun requestMods(modIds: List<Int>,official: Boolean=false): List<CurseForgeModInfo> {
-        @Serializable
-        data class CFModsRequest(val modIds: List<Int>, val filterPcOnly: Boolean = true)
-
-        @Serializable
-        data class CFModsResponse(val data: List<CurseForgeModInfo>? = null)
-        return makeRequest("mods", HttpMethod.Post, CFModsRequest(modIds),official).body<CFModsResponse>().data!!.filter { it.isMod }
-
-    }
-    //从mod project id列表获取cf mod信息
-    suspend fun getModsInfo(modIds: List<Int>): List<CurseForgeModInfo> {
-
-        if (modIds.isEmpty()) return emptyList()
-
-        val mods = requestMods(modIds).toMutableList()
-        val foundIds = mods.mapTo(mutableSetOf()) { it.id }
-        val missingIds = modIds.filterNot { foundIds.contains(it) }
-        if (missingIds.isNotEmpty()) {
-            lgr.warn("没找到这些mod信息，官方api重试：${missingIds}")
-            mods += requestMods(missingIds,true)
-        }
-        lgr.info("mods   找到了${mods.size}/${modIds.size}个")
-
-        return mods
-    }
-
-    suspend fun getModFileInfo(modId: Int, fileId: Int): CurseForgeFile? {
-        return makeRequest("mods/${modId}/files/${fileId}").body<CurseForgeFileResponse>().data
-    }
-
 
 
     //从完整的cf mod信息取得card vo
@@ -302,7 +176,7 @@ object CurseForgeService {
             cfInfo.slug.cf2MrSlug
         }.mapModrinthProjects().associateBy { it.slug.mr2CfSlug }
 
-        val fileInfoMap = getModFilesInfo(map { it.fileId })
+        val fileInfoMap = CurseForgeApi.getModFilesInfo(map { it.fileId })
             .associateBy { it.id }
         val libraryModSlugs = arrayListOf<String>()
         // Join the data by matching projectId and fileId
@@ -428,24 +302,6 @@ object CurseForgeService {
         }
     }
 
-
-
-
-    private val MAX_PARALLEL_DOWNLOADS = max(4, Runtime.getRuntime().availableProcessors() * 2)
-
-    fun handleCurseForgeDownloadUrls(url: String): List<String> {
-        val variants = listOf(
-            url.replace("-service.overwolf.wtf", ".forgecdn.net")
-                .replace("://edge.", "://mediafilez.")
-                .replace("://media.", "://mediafilez."),
-            url.replace("://edge.", "://mediafilez.")
-                .replace("://media.", "://mediafilez."),
-            url.replace("-service.overwolf.wtf", ".forgecdn.net"),
-            url.replace("://media.", "://edge."),
-            url
-        )
-        return variants.distinct()
-    }
 
     //cf - mr
     val String.cf2MrSlug: String
