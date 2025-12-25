@@ -1,11 +1,8 @@
+import calebxzhou.rdi.common.model.ModLoader
 import calebxzhou.rdi.model.McVersion
-import calebxzhou.rdi.model.ModLoader
-import calebxzhou.rdi.model.pack.Modpack
 import calebxzhou.rdi.service.GameService
 import calebxzhou.rdi.service.GameService.rewriteMirrorUrl
-import calebxzhou.rdi.service.ModpackService
 import kotlinx.coroutines.runBlocking
-import org.bson.types.ObjectId
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

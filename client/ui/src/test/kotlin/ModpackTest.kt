@@ -1,22 +1,22 @@
-import calebxzhou.rdi.lgr
-import calebxzhou.rdi.model.RAccount
-import calebxzhou.rdi.model.pack.Mod
-import calebxzhou.rdi.model.pack.Modpack
+import calebxzhou.mykotutils.curseforge.CurseForgeApi
+import calebxzhou.mykotutils.std.jarResource
+import calebxzhou.rdi.common.json
+import calebxzhou.rdi.common.model.Mod
+import calebxzhou.rdi.common.model.Modpack
+import calebxzhou.rdi.common.model.RAccount
+import calebxzhou.rdi.common.serdesJson
+import calebxzhou.rdi.common.service.CurseForgeService
+import calebxzhou.rdi.common.service.CurseForgeService.mapMods
+import calebxzhou.rdi.net.loggedAccount
 import calebxzhou.rdi.net.server
-import calebxzhou.rdi.service.CurseForgeService
-import calebxzhou.rdi.service.CurseForgeService.mapMods
 import calebxzhou.rdi.service.ModpackService
 import calebxzhou.rdi.service.PlayerService
-import calebxzhou.rdi.util.jarResource
-import calebxzhou.rdi.util.json
-import calebxzhou.rdi.util.serdesJson
 import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
 import org.bson.types.ObjectId
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
-import kotlin.collections.toMutableList
 import kotlin.test.assertNotNull
 
 class ModpackTest {
@@ -34,7 +34,7 @@ class ModpackTest {
             System.setProperty("logging.level.root","DEBUG")
 			val account = RAccount(TEST_ACCOUNT_ID, TEST_USER, TEST_PASSWORD, TEST_USER)
 			account.jwt = PlayerService.getJwt(TEST_USER, TEST_PASSWORD)
-			RAccount.now = account
+			loggedAccount = account
 		}
 	}
 
@@ -79,7 +79,7 @@ class ModpackTest {
     @Test
     fun cfModFile(){
         runBlocking {
-            CurseForgeService.getModFileInfo(351264,5402061)?.let { print(it.json) }
+            CurseForgeApi.getModFileInfo(351264,5402061)?.let { print(it.json) }
         }
     }
     @Test
