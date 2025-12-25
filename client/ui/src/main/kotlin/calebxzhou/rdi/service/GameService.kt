@@ -1,6 +1,7 @@
 package calebxzhou.rdi.service
 
 import calebxzhou.mykotutils.ktor.downloadFileFrom
+import calebxzhou.mykotutils.log.Loggers
 import calebxzhou.mykotutils.std.exportFromJarResource
 import calebxzhou.mykotutils.std.javaExePath
 import calebxzhou.mykotutils.std.sha1
@@ -8,13 +9,14 @@ import calebxzhou.mykotutils.std.toFixed
 import calebxzhou.rdi.CONF
 import calebxzhou.rdi.Const
 import calebxzhou.rdi.RDI
+import calebxzhou.rdi.common.json
+import calebxzhou.rdi.common.model.LibraryOsArch.Companion.detectHostOs
+import calebxzhou.rdi.common.model.ModLoader
+import calebxzhou.rdi.common.net.httpRequest
+import calebxzhou.rdi.common.serdesJson
+import calebxzhou.rdi.common.util.toUUID
 import calebxzhou.rdi.model.*
-import calebxzhou.rdi.model.LibraryOsArch.Companion.detectHostOs
-import calebxzhou.rdi.net.httpRequest
-import calebxzhou.rdi.util.Loggers
-import calebxzhou.rdi.util.json
-import calebxzhou.rdi.util.serdesJson
-import calebxzhou.rdi.util.toUUID
+import calebxzhou.rdi.net.loggedAccount
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -193,15 +195,14 @@ object GameService {
 
         target.parentFile?.mkdirs()
         onProgress("下载 $label...")
-        val success =  target.toPath().downloadFileFrom(artifact.url.rewriteMirrorUrl,) { progress ->
+        val success = target.toPath().downloadFileFrom(artifact.url.rewriteMirrorUrl) { progress ->
             val percent = progress.percent.takeIf { it >= 0 }
                 ?.let { String.format(locale, "%.1f%%", it) }
                 ?: "--"
             onProgress("$label 下载中 $percent")
-        }
-        if (!success) {
+        }.getOrElse {
             target.delete()
-            throw IllegalStateException("下载 $label 失败")
+            throw it
         }
         val downloadedSha = target.sha1
         if (!downloadedSha.equals(artifact.sha1, true)) {
@@ -280,21 +281,17 @@ object GameService {
         var completed = false
         val downloadUrl = buildAssetUrl(hash)
         onProgress("下载资源 $path ...")
-        val success = try {
-            targetFile.toPath().downloadFileFrom(downloadUrl ) { progress ->
+        val success =
+            targetFile.toPath().downloadFileFrom(downloadUrl) { progress ->
                 val percent = progress.percent.takeIf { it >= 0 }
                     ?.let { String.format(locale, "%.1f%%", it) }
                     ?: "--"
                 onProgress("资源 $path 下载中 $percent")
+            }.getOrElse {
+                lastError = "下载失败: ${it.message ?: it::class.simpleName}"
+                targetFile.delete()
+                false
             }
-        } catch (ex: Exception) {
-            lastError = "异常: ${ex.message ?: ex::class.simpleName}"
-            targetFile.delete()
-        }
-        if (!success) {
-            lastError = "下载失败"
-            targetFile.delete()
-        }
         val downloadedSha = targetFile.sha1
         if (!downloadedSha.equals(hash, true)) {
             lastError = "校验失败"
@@ -439,8 +436,8 @@ object GameService {
     suspend fun downloadLoader(version: McVersion, loader: ModLoader, onProgress: (String) -> Unit) {
         val loaderMeta = version.loaderVersions[loader]
             ?: error("未配置 $loader 安装器下载链接")
-        "launcher_profiles.json".let {  File(it).apply { this.exportFromJarResource(it) }}
-        val installBooter = "forge-install-bootstrapper.jar".let {  File(it).apply { this.exportFromJarResource(it) }}
+        "launcher_profiles.json".let { File(it).apply { this.exportFromJarResource(it) } }
+        val installBooter = "forge-install-bootstrapper.jar".let { File(it).apply { this.exportFromJarResource(it) } }
         val installer = DIR.resolve("${version.mcVer}-$loader-installer.jar")
         installer.parentFile?.mkdirs()
         onProgress("下载 $version $loader 安装器...")
@@ -477,13 +474,13 @@ object GameService {
         val nativesDir = mcVer.nativesDir
         val versionDir = versionListDir.resolve(versionId)
         val gameArgs = resolveArgumentList(manifest.arguments.game + loaderManifest.arguments.game).map {
-            it.replace($$"${auth_player_name}", account.name)
+            it.replace($$"${auth_player_name}", loggedAccount.name)
                 .replace($$"${version_name}", versionId)
                 .replace($$"${game_directory}", versionDir.absolutePath)
                 .replace($$"${assets_root}", assetsDir.absolutePath)
                 .replace($$"${assets_index_name}", manifest.assets!!)
-                .replace($$"${auth_uuid}", account._id.toUUID().toString().replace("-", ""))
-                .replace($$"${auth_access_token}", account.jwt ?: "")
+                .replace($$"${auth_uuid}", loggedAccount._id.toUUID().toString().replace("-", ""))
+                .replace($$"${auth_access_token}", loggedAccount.jwt ?: "")
                 .replace($$"${user_type}", "msa")
                 .replace($$"${version_type}", "RDI")
                 .replace($$"${resolution_width}", "1280")

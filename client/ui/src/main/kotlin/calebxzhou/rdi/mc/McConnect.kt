@@ -1,7 +1,7 @@
 package calebxzhou.rdi.mc
 
+import calebxzhou.rdi.common.util.ioTask
 import calebxzhou.rdi.lgr
-import calebxzhou.rdi.util.ioTask
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*

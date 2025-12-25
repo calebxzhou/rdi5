@@ -1,7 +1,7 @@
 package calebxzhou.rdi.auth
 
 import calebxzhou.rdi.RDI
-import calebxzhou.rdi.util.serdesJson
+import calebxzhou.rdi.common.serdesJson
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import org.bson.types.ObjectId

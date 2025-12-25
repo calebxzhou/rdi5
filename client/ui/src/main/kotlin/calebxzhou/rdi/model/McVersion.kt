@@ -1,7 +1,8 @@
 package calebxzhou.rdi.model
 
+import calebxzhou.rdi.common.model.ModLoader
+import calebxzhou.rdi.common.serdesJson
 import calebxzhou.rdi.service.GameService
-import calebxzhou.rdi.util.serdesJson
 
 enum class McVersion(
     val mcVer: String,

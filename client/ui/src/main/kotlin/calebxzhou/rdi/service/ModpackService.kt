@@ -6,7 +6,8 @@ import calebxzhou.mykotutils.std.openChineseZip
 import calebxzhou.mykotutils.std.sha1
 import calebxzhou.mykotutils.std.toFixed
 import calebxzhou.rdi.RDI
-import calebxzhou.rdi.model.pack.Mod
+import calebxzhou.rdi.common.DL_MOD_DIR
+import calebxzhou.rdi.common.model.Mod
 import calebxzhou.rdi.net.server
 import calebxzhou.rdi.ui2.pointerBuffer
 import org.bson.types.ObjectId
@@ -24,12 +25,11 @@ val selectModpackFile
     false
 )
 object ModpackService {
-    val DL_MODS_DIR = RDI.DIR.resolve("dl-mods").apply { mkdirs() }
     suspend fun installVersion(modpackId: ObjectId, verName: String, mods: List<Mod>, onProgress: (String) -> Unit){
         val versionDir = GameService.versionListDir.resolve("${modpackId}_${verName}")
         val mods = CurseForgeApi.downloadMods(
             mods.map {
-                CFDownloadMod(it.projectId.toInt(), it.fileId.toInt(),it.slug, DL_MODS_DIR.resolve(it.fileName).toPath())
+                CFDownloadMod(it.projectId.toInt(), it.fileId.toInt(),it.slug, DL_MOD_DIR.resolve(it.fileName).toPath())
             }
         ){ cfmod,prog->
             onProgress("mod下载中：${cfmod.slug} ${prog.percent.toFixed(2)}")

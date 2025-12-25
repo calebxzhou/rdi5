@@ -1,16 +1,17 @@
 package calebxzhou.rdi.service
 
+import calebxzhou.mykotutils.hwspec.HwSpec
 import calebxzhou.rdi.auth.LocalCredentials
 import calebxzhou.rdi.auth.LoginInfo
+import calebxzhou.rdi.common.model.RAccount
+import calebxzhou.rdi.common.serdesJson
+import calebxzhou.rdi.common.util.ioTask
 import calebxzhou.rdi.lgr
-import calebxzhou.rdi.model.HwSpec
-import calebxzhou.rdi.model.RAccount
+import calebxzhou.rdi.net.loggedAccount
 import calebxzhou.rdi.net.server
 import calebxzhou.rdi.service.PlayerService.getPlayerInfo
 import calebxzhou.rdi.ui2.frag.ProfileFragment
 import calebxzhou.rdi.ui2.go
-import calebxzhou.rdi.util.ioTask
-import calebxzhou.rdi.util.serdesJson
 import com.github.benmanes.caffeine.cache.AsyncLoadingCache
 import com.github.benmanes.caffeine.cache.Caffeine
 import io.ktor.http.*
@@ -34,7 +35,7 @@ object PlayerInfoCache {
 }
 fun playerLogin(usr: String, pwd: String){
     val creds = LocalCredentials.read()
-    val spec = serdesJson.encodeToString<HwSpec>(HwSpec.now)
+    val spec = serdesJson.encodeToString<HwSpec>(HwSpec.get())
     val params = mutableMapOf("usr" to usr, "pwd" to pwd, "spec" to spec)
     ioTask {
         val account = server.makeRequest<RAccount>(
@@ -45,7 +46,7 @@ fun playerLogin(usr: String, pwd: String){
         account.jwt = PlayerService.getJwt(usr,pwd)
         creds.loginInfos += account._id to LoginInfo(account.qq,account.pwd)
         creds.save()
-        RAccount.now = account
+        loggedAccount = account
         ProfileFragment().go()
     }
 
