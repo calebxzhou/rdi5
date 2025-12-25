@@ -20,6 +20,7 @@ val ktorVersion = "3.3.3"
 val kotlinLoggingVersion = "7.0.6"
 repositories {
     mavenLocal()
+    mavenCentral()
 }
 dependencies {
     implementation("calebxzhou.mykotutils:std:0.1")
@@ -43,6 +44,8 @@ dependencies {
 
     implementation("io.github.oshai:kotlin-logging-jvm:${kotlinLoggingVersion}")
     testImplementation("io.github.oshai:kotlin-logging-jvm:${kotlinLoggingVersion}")
+
+    implementation("net.benwoodworth.knbt:knbt:0.11.8")
 
 	testImplementation(kotlin("test"))
 }

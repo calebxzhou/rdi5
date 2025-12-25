@@ -3,8 +3,8 @@ package calebxzhou.rdi.master.service
 import calebxzhou.mykotutils.std.displayLength
 import calebxzhou.rdi.master.DB
 import calebxzhou.rdi.master.exception.RequestError
-import calebxzhou.rdi.master.model.RAccount
-import calebxzhou.rdi.master.model.World
+import calebxzhou.rdi.common.model.World
+import calebxzhou.rdi.common.model.RAccount
 import calebxzhou.rdi.master.net.*
 import calebxzhou.rdi.master.service.WorldService.createWorld
 import calebxzhou.mykotutils.log.Loggers

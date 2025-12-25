@@ -1,5 +1,6 @@
 package calebxzhou.rdi.common.model
 
+import calebxzhou.rdi.common.DL_MOD_DIR
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import java.io.File
@@ -14,6 +15,8 @@ data class Mod(
     val side: Side= Side.BOTH,
 ) {
     val fileName = "${slug}_${platform}_${hash}.jar"
+    val targetPath get() = DL_MOD_DIR.resolve(fileName).toPath()
+
     enum class Side{
         CLIENT,SERVER,BOTH
     }

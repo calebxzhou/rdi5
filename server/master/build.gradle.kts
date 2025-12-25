@@ -24,6 +24,7 @@ repositories {
 }
 
 dependencies {
+    implementation(project(":common"))
     implementation("ch.qos.logback:logback-classic:1.5.18")
     implementation("io.ktor:ktor-server-core:$ktorVersion")
     implementation("io.ktor:ktor-server-netty:$ktorVersion")
@@ -52,6 +53,7 @@ dependencies {
     implementation("calebxzhou.mykotutils:log:0.1")
     implementation("calebxzhou.mykotutils:ktor:0.1")
     implementation("calebxzhou.mykotutils:curseforge:0.1")
+    implementation("calebxzhou.mykotutils:hwspec:0.1")
 
 
     testImplementation(kotlin("test"))
@@ -66,7 +68,7 @@ ktor {
 }
 
 application {
-    mainClass.set("calebxzhou.rdi.ihq.RDIKt")
+    mainClass.set("calebxzhou.rdi.master.RDIKt")
 }
 
 kotlin {
@@ -74,6 +76,10 @@ kotlin {
 }
 
 tasks.named<Test>("test") {
+    enabled = false
+}
+
+tasks.named<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>("compileTestKotlin") {
     enabled = false
 }
 

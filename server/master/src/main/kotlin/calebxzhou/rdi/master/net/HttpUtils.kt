@@ -3,7 +3,7 @@ package calebxzhou.rdi.master.net
 import calebxzhou.rdi.master.exception.AuthError
 import calebxzhou.rdi.master.exception.ParamError
 import calebxzhou.rdi.master.model.Response
-import calebxzhou.rdi.master.util.serdesJson
+import calebxzhou.rdi.common.serdesJson
 import io.ktor.client.*
 import io.ktor.client.plugins.*
 import io.ktor.client.plugins.contentnegotiation.*

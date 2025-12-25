@@ -3,19 +3,19 @@ package calebxzhou.rdi.master.service
 import calebxzhou.mykotutils.curseforge.CFDownloadMod
 import calebxzhou.mykotutils.curseforge.CurseForgeApi
 import calebxzhou.mykotutils.log.Loggers
+import calebxzhou.mykotutils.std.deleteRecursivelyNoSymlink
 import calebxzhou.mykotutils.std.sha1
 import calebxzhou.mykotutils.std.toFixed
+import calebxzhou.rdi.common.model.*
+import calebxzhou.rdi.common.serdesJson
+import calebxzhou.rdi.common.util.ioScope
+import calebxzhou.rdi.common.util.str
 import calebxzhou.rdi.master.DB
+import calebxzhou.rdi.master.GAME_LIBS_DIR
+import calebxzhou.rdi.master.MODPACK_DATA_DIR
 import calebxzhou.rdi.master.exception.ParamError
 import calebxzhou.rdi.master.exception.RequestError
-import calebxzhou.rdi.master.model.Host
-import calebxzhou.rdi.master.model.HostStatus
 import calebxzhou.rdi.master.model.McVersion
-import calebxzhou.rdi.master.model.RAccount
-import calebxzhou.rdi.master.model.pack.Mod
-import calebxzhou.rdi.master.model.pack.Modpack
-import calebxzhou.rdi.master.model.pack.ModpackDetailedVo
-import calebxzhou.rdi.master.model.pack.ModpackVo
 import calebxzhou.rdi.master.net.*
 import calebxzhou.rdi.master.service.HostService.status
 import calebxzhou.rdi.master.service.ModpackService.createVersion
@@ -28,7 +28,6 @@ import calebxzhou.rdi.master.service.ModpackService.rebuildVersion
 import calebxzhou.rdi.master.service.ModpackService.requireAuthor
 import calebxzhou.rdi.master.service.ModpackService.toDetailVo
 import calebxzhou.rdi.master.service.PlayerService.getPlayerNames
-import calebxzhou.rdi.master.util.*
 import com.mongodb.client.model.Filters.*
 import com.mongodb.client.model.Projections
 import com.mongodb.client.model.UpdateOptions
@@ -66,7 +65,18 @@ import javax.imageio.ImageIO
 import javax.imageio.ImageWriteParam
 import kotlin.io.path.name
 
-
+val Modpack.dir
+    get() = MODPACK_DATA_DIR.resolve(_id.str)
+val Modpack.libsDir
+    get() = GAME_LIBS_DIR
+        .resolve(mcVer)
+        .resolve(modloader)
+val Modpack.Version.dir
+    get() = MODPACK_DATA_DIR.resolve(modpackId.str).resolve(name)
+val Modpack.Version.zip
+    get() = dir.parentFile.resolve("${name}.zip")
+val Modpack.Version.clientZip
+    get() = dir.parentFile.resolve("${name}-client.zip")
 fun Route.modpackRoutes() {
     route("/modpack") {
         get {

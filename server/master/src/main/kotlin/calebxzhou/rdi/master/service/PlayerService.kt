@@ -1,6 +1,7 @@
 package calebxzhou.rdi.master.service
 
 import calebxzhou.mykotutils.log.Loggers
+import calebxzhou.mykotutils.hwspec.HwSpec
 import calebxzhou.mykotutils.std.displayLength
 import calebxzhou.mykotutils.std.getDateTimeNow
 import calebxzhou.mykotutils.std.isValidHttpUrl
@@ -10,13 +11,12 @@ import calebxzhou.rdi.master.exception.AuthError
 import calebxzhou.rdi.master.exception.ParamError
 import calebxzhou.rdi.master.exception.RequestError
 import calebxzhou.rdi.master.model.AuthLog
-import calebxzhou.rdi.master.model.HwSpec
-import calebxzhou.rdi.master.model.RAccount
+import calebxzhou.rdi.common.serdesJson
+import calebxzhou.rdi.common.model.RAccount
 import calebxzhou.rdi.master.net.*
 import calebxzhou.rdi.master.service.PlayerService.changeCloth
 import calebxzhou.rdi.master.service.PlayerService.changeProfile
 import calebxzhou.rdi.master.service.PlayerService.clearCloth
-import calebxzhou.rdi.master.util.serdesJson
 import com.mongodb.client.model.Filters.eq
 import com.mongodb.client.model.Filters.`in`
 import com.mongodb.client.model.Updates
@@ -162,7 +162,7 @@ object PlayerService {
         if (pwd.length !in 6..16) {
             throw RequestError("密码长度须在6~16个字符")
         }
-        val account = RAccount(name = name, pwd = pwd, qq = qq)
+        val account = RAccount(_id = ObjectId(), name = name, pwd = pwd, qq = qq)
         accountCol.insertOne(account)
         return account
     }
@@ -223,10 +223,10 @@ object PlayerService {
         return names
     }
 
-    suspend fun getInfo(uid: ObjectId): RAccount.Dto = getById(uid)?.dto ?: RAccount.Dto()
+    suspend fun getInfo(uid: ObjectId): RAccount.Dto = getById(uid)?.dto ?: RAccount.DEFAULT.dto
 
     suspend fun getInfoByNames(names: List<String>): List<RAccount.Dto> =
-        names.map { getByName(it)?.dto ?: RAccount.Dto() }
+        names.map { getByName(it)?.dto ?: RAccount.DEFAULT.dto }
 
     suspend fun saveCrashReport(uid: ObjectId, report: String) {
         val account = getById(uid)

@@ -1,4 +1,4 @@
-package calebxzhou.rdi.master.model.world
+package calebxzhou.rdi.common.model.world
 
 data class RChunkPos(
     val x: Short, val z:Short

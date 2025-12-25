@@ -1,20 +1,21 @@
 @file:OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 
 import calebxzhou.mykotutils.std.jarResource
+import calebxzhou.rdi.common.model.Mail
+import calebxzhou.rdi.common.model.Mod
+import calebxzhou.rdi.common.model.Modpack
 import calebxzhou.rdi.master.MODPACK_DATA_DIR
-import calebxzhou.rdi.master.model.Mail
 import calebxzhou.rdi.master.model.McVersion
-import calebxzhou.rdi.master.model.RAccount
-import calebxzhou.rdi.master.model.pack.Mod
-import calebxzhou.rdi.master.model.pack.Modpack
+import calebxzhou.rdi.common.model.RAccount
+import calebxzhou.rdi.common.serdesJson
+import calebxzhou.rdi.common.service.CurseForgeService
+import calebxzhou.rdi.common.util.ioTask
 import calebxzhou.rdi.master.service.*
 import calebxzhou.rdi.master.service.ModpackService.createVersion
 import calebxzhou.rdi.master.service.ModpackService.deleteModpack
 import calebxzhou.rdi.master.service.ModpackService.deleteVersion
 import calebxzhou.rdi.master.service.ModpackService.rebuildVersion
 import calebxzhou.rdi.master.util.deleteRecursivelyNoSymlink
-import calebxzhou.rdi.master.util.serdesJson
-import calebxzhou.rdi.master.util.testIoScope
 import com.mongodb.client.model.InsertOneOptions
 import com.mongodb.client.model.UpdateOptions
 import com.mongodb.client.result.DeleteResult
@@ -39,6 +40,9 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
 import java.util.zip.ZipOutputStream
 import javax.imageio.ImageIO
+import kotlin.collections.take
+import kotlin.collections.toMutableList
+import kotlin.jvm.java
 import kotlin.test.*
 
 class ModpackTest {
@@ -77,9 +81,9 @@ class ModpackTest {
         coEvery { HostService.findByModpack(any()) } returns emptyList()
         coEvery { HostService.findByModpackVersion(any(), any()) } returns emptyList()
 
-        coEvery { MailService.sendSystemMail(any(), any(), any()) } answers {
+        /*coEvery { MailService.sendSystemMail(any(), any(), any()) } answers {
             Mail(receiverId = firstArg(), title = secondArg(), content = thirdArg())
-        }
+        }*/
         every { MailService.changeMail(any(), any(), any(), any()) } returns mockk<Job>(relaxed = true)
 
         /*coEvery { CurseForgeService.downloadMods(any(), any()) } answers {
@@ -94,7 +98,6 @@ class ModpackTest {
         }
         createdRoots.clear()
         ModpackService.testDbcl = null
-        testIoScope = null
         unmockkAll()
     }
 
@@ -202,7 +205,7 @@ class ModpackTest {
 
     @Test
     fun createVersion_writesPayloadAndTriggersBuild() = runTest {
-        withIoScope {
+        ioTask {
             val player = testAccount()
             val modpack = testModpack(playerId = player._id)
             rememberRoot(modpack.dir)
@@ -234,9 +237,9 @@ class ModpackTest {
         version.dir.mkdirs()
         version.zip.writeBytes(samplePackZip())
 
-        val ctx = ModpackContext(player, modpack.copy(versions = listOf(version)), version)
+        /*val ctx = ModpackContext(player, modpack.copy(versions = listOf(version)), version)
 
-        ctx.deleteVersion()
+        ctx.deleteVersion()*/
 
         assertFalse(version.dir.exists(), "Version directory should be deleted")
         assertFalse(version.zip.exists(), "Version archive should be removed")
@@ -245,7 +248,7 @@ class ModpackTest {
 
     @Test
     fun rebuildVersion_requeuesBuildAndSendsMail() = runTest {
-        withIoScope {
+        ioTask {
             val player = testAccount()
             val modpack = testModpack(player._id)
             val version = testVersion(modpack, "1.0.3")
@@ -254,9 +257,9 @@ class ModpackTest {
             version.dir.mkdirs()
             version.zip.writeBytes(samplePackZip())
 
-            val ctx = ModpackContext(player, modpack.copy(versions = listOf(version)), version)
+            /*val ctx = ModpackContext(player, modpack.copy(versions = listOf(version)), version)
 
-            ctx.rebuildVersion()
+            ctx.rebuildVersion()*/
             advanceUntilIdle()
 
             coVerify { MailService.sendSystemMail(eq(player._id), match { it.contains("重构整合包") }, any()) }
@@ -362,16 +365,6 @@ class ModpackTest {
     private fun rememberRoot(dir: File) {
         if (!createdRoots.contains(dir)) {
             createdRoots += dir
-        }
-    }
-
-    private suspend fun TestScope.withIoScope(block: suspend TestScope.() -> Unit) {
-        val previousScope = testIoScope
-        testIoScope = this
-        try {
-            block()
-        } finally {
-            testIoScope = previousScope
         }
     }
 

@@ -27,7 +27,7 @@ class Modpack(
         //构建完成状态
         val totalSize: Long?=0L,
         val status: Status,
-        val mods: List<Mod> = arrayListOf(),
+        val mods: MutableList<Mod> = arrayListOf(),
         ){
     }
     enum class Status{

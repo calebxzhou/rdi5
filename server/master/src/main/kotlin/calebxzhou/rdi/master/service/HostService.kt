@@ -4,9 +4,10 @@ import calebxzhou.rdi.master.DB
 import calebxzhou.rdi.master.HOSTS_DIR
 import calebxzhou.rdi.master.exception.ParamError
 import calebxzhou.rdi.master.exception.RequestError
-import calebxzhou.rdi.master.model.*
-import calebxzhou.rdi.master.model.pack.Mod
-import calebxzhou.rdi.master.model.pack.Modpack
+import calebxzhou.rdi.common.model.Host
+import calebxzhou.rdi.common.model.HostStatus
+import calebxzhou.rdi.common.model.Mod
+import calebxzhou.rdi.common.model.Modpack
 import calebxzhou.rdi.master.net.*
 import calebxzhou.rdi.master.service.HostService.addMember
 import calebxzhou.rdi.master.service.HostService.changeModpack
@@ -31,9 +32,12 @@ import calebxzhou.rdi.master.service.ModpackService.getVersion
 import calebxzhou.rdi.master.service.ModpackService.installToHost
 import calebxzhou.rdi.master.service.WorldService.createWorld
 import calebxzhou.mykotutils.log.Loggers
-import calebxzhou.rdi.master.util.ioScope
-import calebxzhou.rdi.master.util.serdesJson
-import calebxzhou.rdi.master.util.str
+import calebxzhou.rdi.common.serdesJson
+import calebxzhou.rdi.common.model.RAccount
+import calebxzhou.rdi.common.util.str
+import calebxzhou.rdi.common.util.ioScope
+import calebxzhou.rdi.model.Role
+import calebxzhou.rdi.master.model.WsMessage
 import com.github.dockerjava.api.model.Mount
 import com.github.dockerjava.api.model.MountType
 import com.github.dockerjava.api.model.TmpfsOptions
@@ -57,8 +61,10 @@ import org.bson.Document
 import org.bson.types.ObjectId
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.collections.joinToString
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
+val Host.dir get() = HOSTS_DIR.resolve(_id.str)
 
 // ---------- Routing DSL (mirrors teamRoutes style) ----------
 fun Route.hostRoutes() = route("/host") {

@@ -3,12 +3,12 @@ package calebxzhou.rdi.master.service
 import calebxzhou.rdi.master.DB
 import calebxzhou.rdi.master.exception.AuthError
 import calebxzhou.rdi.master.exception.ParamError
-import calebxzhou.rdi.master.model.ChatMsg
 import calebxzhou.rdi.master.net.param
 import calebxzhou.rdi.master.net.response
 import calebxzhou.rdi.master.net.uid
 import calebxzhou.mykotutils.log.Loggers
-import calebxzhou.rdi.master.util.serdesJson
+import calebxzhou.rdi.common.serdesJson
+import calebxzhou.rdi.common.model.ChatMsg
 import com.mongodb.client.model.Sorts
 import io.ktor.server.routing.*
 import io.ktor.server.sse.*

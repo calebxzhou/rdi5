@@ -6,7 +6,7 @@ import calebxzhou.rdi.master.exception.RequestError
 import calebxzhou.rdi.master.net.response
 import calebxzhou.rdi.master.service.*
 import calebxzhou.rdi.master.service.PlayerService.accountCol
-import calebxzhou.rdi.master.util.serdesJson
+import calebxzhou.rdi.common.serdesJson
 import com.mongodb.MongoClientSettings
 import com.mongodb.ServerAddress
 import com.mongodb.client.model.IndexOptions

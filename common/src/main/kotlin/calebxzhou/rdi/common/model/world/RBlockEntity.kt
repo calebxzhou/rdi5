@@ -1,4 +1,4 @@
-package calebxzhou.rdi.master.model.world
+package calebxzhou.rdi.common.model.world
 
 import kotlinx.serialization.Serializable
 import net.benwoodworth.knbt.NbtCompound

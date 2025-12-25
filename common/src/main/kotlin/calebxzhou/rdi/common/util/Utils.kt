@@ -5,7 +5,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.bson.types.ObjectId
+import java.io.File
 import java.nio.ByteBuffer
+import java.nio.file.Files
 import java.util.UUID
 
 fun ObjectId.toUUID(): UUID {
@@ -20,3 +22,5 @@ val ioScope: CoroutineScope
     }
     )
 fun ioTask(handler: suspend () -> Unit) = ioScope.launch { handler() }
+
+val ObjectId.str get() = toHexString()

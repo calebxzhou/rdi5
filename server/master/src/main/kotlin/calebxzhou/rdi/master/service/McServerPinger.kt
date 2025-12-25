@@ -1,7 +1,7 @@
 package calebxzhou.rdi.master.service
 
 import calebxzhou.rdi.master.exception.RequestError
-import calebxzhou.rdi.master.util.serdesJson
+import calebxzhou.rdi.common.serdesJson
 import kotlinx.coroutines.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
