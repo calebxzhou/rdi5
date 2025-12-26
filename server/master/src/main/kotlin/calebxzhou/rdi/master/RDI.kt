@@ -7,6 +7,7 @@ import calebxzhou.rdi.master.net.response
 import calebxzhou.rdi.master.service.*
 import calebxzhou.rdi.master.service.PlayerService.accountCol
 import calebxzhou.rdi.common.serdesJson
+import calebxzhou.rdi.master.ygg.yggdrasilRoutes
 import com.mongodb.MongoClientSettings
 import com.mongodb.ServerAddress
 import com.mongodb.client.model.IndexOptions
@@ -126,6 +127,7 @@ fun startHttp(){
         routing {
             playerRoutes()
             updateRoutes()
+            yggdrasilRoutes()
             /*get("/sponsors") {
                 call.respondText("""
                     2025-04-11,ChenQu,100
