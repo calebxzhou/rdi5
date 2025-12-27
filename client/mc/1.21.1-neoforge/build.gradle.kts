@@ -146,11 +146,9 @@ val mcLibs = listOf(
     "io.ktor:ktor-client-core:$ktorVersion",
     "io.ktor:ktor-client-websockets:$ktorVersion",
     "io.ktor:ktor-client-encoding:$ktorVersion",
-    "org.jsoup:jsoup:1.19.1",
-    "org.mongodb:bson:5.1.0",
-    "com.github.ben-manes.caffeine:caffeine:3.2.2",
     "org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0",
-    "io.ktor:ktor-serialization-kotlinx-json:$ktorVersion"
+    "io.ktor:ktor-serialization-kotlinx-json:$ktorVersion",
+    "calebxzhou.mykotutils:log:0.1"
 )
 
 val modrinthMods = listOf(
@@ -212,7 +210,7 @@ dependencies {
     testImplementation(kotlin("test"))
     implementation("org.hotswapagent:hotswap-agent-core:2.0.1")
     testImplementation("ch.qos.logback:logback-classic:1.5.21")
-
+    implementation("io.github.oshai:kotlin-logging-jvm:7.0.6")
     mcLibs.forEach { lib ->
         add("libraries", lib)
         autoEmbedJarJarTransitivesExtension.include(lib)
@@ -258,15 +256,15 @@ idea {
 fun registerCopyTask(name: String, extraDestination: File? = null) {
     tasks.register(name) {
         dependsOn(tasks.named("build"))
-        val artifact = layout.buildDirectory.file($$"libs/rdi-${version}.jar")
+        val artifact = layout.buildDirectory.file("libs/rdi-${'$'}{version}.jar")
         val destinations = mutableListOf(
-            layout.projectDirectory.dir("${System.getProperty("user.home")}\\Documents\\coding\\rdi5\\server\\master\\run").asFile,
+            layout.projectDirectory.dir("..${'$'}{File.separator}ihq${'$'}{File.separator}run").asFile,
             File(System.getProperty("user.home"), "Documents\\RDI5sea-Ref\\.minecraft\\versions\\RDI5.5\\mods")
         )
         extraDestination?.let { destinations.add(it) }
         doLast {
             val jarFile = artifact.get().asFile
-            check(jarFile.exists()) { $$"未找到构建产物: $jarFile" }
+            check(jarFile.exists()) { "未找到构建产物: ${'$'}jarFile" }
             destinations.forEach { targetDir ->
                 targetDir.mkdirs()
                 val destFile = File(targetDir, jarFile.name)

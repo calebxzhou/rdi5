@@ -79,6 +79,7 @@ dependencies {
     testImplementation(kotlin("test"))
     implementation("io.netty:netty-all:4.2.7.Final")
     implementation(project(":common"))
+    implementation(project(":client-common"))
     val lwjglVersion = "3.3.3"
     val components = listOf("", "glfw", "opengl", "openal", "stb", "tinyfd", "jemalloc")
     components.forEach { component ->
