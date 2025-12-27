@@ -388,8 +388,7 @@ object ModpackService {
         )
         version.dir.mkdirs()
         version.zip.writeBytes(zipBytes)
-        version.mods.removeIf { it.slug.contains("backup") }
-        version.addKotlinForForge(modpack)
+        version.processMods(modpack)
         ioScope.launch {
             dbcl.updateOne(
                 eq("_id", modpack._id),
@@ -503,7 +502,7 @@ object ModpackService {
         }
     }
 
-    fun Modpack.Version.addKotlinForForge(modpack: Modpack) {
+    fun Modpack.Version.processMods(modpack: Modpack) {
         //升级kff到最新版
         val kffMod = if (modpack.isMcVer(McVersion.V211)) {
             Mod(
@@ -514,12 +513,21 @@ object ModpackService {
         } else if (modpack.isMcVer(McVersion.V201)) {
             Mod(
                 "cf", "351264", "kotlin-for-forge",
-                "5402061",
-                "598972634"
+                "7291067",
+                "2392977662"
             )
         } else throw RequestError("不支持的mc版本 无法添加kotlin for forge")
         mods.removeIf { it.slug == "kotlin-for-forge" }
         mods += kffMod
+        //移除备份有关的
+        mods.removeIf { it.slug.contains("backup") }
+        //移除fancymenu以及相关的
+        mods.removeIf { it.slug.contains("fancymenu") }
+        mods.removeIf { it.slug.contains("spiffyhud") }
+        mods.removeIf { it.slug.contains("drippy-loading-screen") }
+        mods.removeIf { it.slug.contains("tbs-main-menu-override") }
+        mods.removeIf { it.slug.contains("welcome-screen") }
+
     }
 
     suspend fun Modpack.buildVersion(version: Modpack.Version, onProgress: (String) -> Unit) {
