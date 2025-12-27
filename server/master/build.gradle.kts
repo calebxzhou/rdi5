@@ -43,6 +43,7 @@ dependencies {
     implementation("net.peanuuutz.tomlkt:tomlkt:0.5.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
     implementation("io.github.oshai:kotlin-logging-jvm:7.0.6")
+    implementation("org.mongodb:bson-kotlinx:5.5.1")
     implementation("org.mongodb:mongodb-driver-kotlin-coroutine:5.5.1")
     implementation("net.benwoodworth.knbt:knbt:0.11.8")
     implementation("com.github.docker-java:docker-java:3.7.0")
