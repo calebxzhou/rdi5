@@ -16,6 +16,20 @@ fun ObjectId.toUUID(): UUID {
     bb.put(objectIdBytes)
     return UUID(bb.getLong(0), bb.getLong(8))
 }
+fun UUID.toBytes(): ByteArray {
+    val bb = ByteBuffer.wrap(ByteArray(16))
+    bb.putLong(this.mostSignificantBits)
+    bb.putLong(this.leastSignificantBits)
+    return bb.array()
+}
+
+val UUID.objectId : ObjectId
+    get() {
+        val uuidBytes = this.toBytes()
+        val objectIdBytes = uuidBytes.sliceArray(0..11)
+        return ObjectId(objectIdBytes)
+
+    }
 val ioScope: CoroutineScope
     get() = CoroutineScope(Dispatchers.IO + CoroutineExceptionHandler { _, throwable ->
         throwable.printStackTrace()
