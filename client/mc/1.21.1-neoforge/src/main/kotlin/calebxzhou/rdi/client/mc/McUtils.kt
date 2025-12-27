@@ -1,5 +1,7 @@
 package calebxzhou.rdi.client.mc
 
+import calebxzhou.mykotutils.log.Loggers
+import calebxzhou.mykotutils.log.Loggers.provideDelegate
 import com.google.common.net.HostAndPort
 import com.mojang.util.UndashedUuid
 import net.minecraft.Util
@@ -37,7 +39,7 @@ val String.mcComp: MutableComponent
     get() = Component.literal(this)
 val isMcStarted
     get() = isClassLoaded("net.minecraft.client.Minecraft") && Minecraft.getInstance() != null
-
+private val lgr by Loggers
 val mc: Minecraft
     get() = Minecraft.getInstance() ?: run {
         throw IllegalStateException("Minecraft Not Start !")

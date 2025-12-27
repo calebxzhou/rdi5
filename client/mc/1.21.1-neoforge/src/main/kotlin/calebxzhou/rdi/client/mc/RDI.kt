@@ -1,14 +1,13 @@
 package calebxzhou.rdi.client.mc
 
+import calebxzhou.mykotutils.log.Loggers
 import calebxzhou.rdi.client.mc.connect.WsClient.connectCore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import net.neoforged.fml.common.Mod
-import org.slf4j.LoggerFactory
 
-val lgr = LoggerFactory.getLogger("rdi")
 val scope = CoroutineScope(Dispatchers.IO)
 val serdesJson = Json {
     ignoreUnknownKeys = true  // Good for forward compatibility
@@ -19,6 +18,7 @@ inline val <reified T> T.json: String
 
 @Mod("rdi")
 class RDI {
+    private val lgr by Loggers
     companion object {
         @JvmField val IHQ_URL = System.getProperty("rdi.ihq.url") ?: throw IllegalArgumentException("启动方式错误：找不到服务器地址1")
         @JvmField val GAME_IP = System.getProperty("rdi.game.ip") ?: throw IllegalArgumentException("启动方式错误：找不到服务器地址2")
@@ -30,12 +30,12 @@ class RDI {
 
 
     init {
-        lgr.info("RDI启动中")
+        lgr.info { "RDI启动中" }
         scope.launch {
             runCatching {
                 connectCore()
             }.onFailure { error ->
-                lgr.error("WebSocket connection failed", error)
+                lgr.error(error) { "${"WebSocket connection failed"}" }
             }
         }
     }
