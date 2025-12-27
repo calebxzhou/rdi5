@@ -1,5 +1,9 @@
 package calebxzhou.rdi.mc
 
+import calebxzhou.rdi.client.common.protocol.PingCommand
+import calebxzhou.rdi.client.common.protocol.WsMessage
+import calebxzhou.rdi.client.common.protocol.WsRequest
+import calebxzhou.rdi.client.common.protocol.WsResponse
 import calebxzhou.rdi.common.util.ioTask
 import calebxzhou.rdi.lgr
 import io.ktor.server.application.*
@@ -13,7 +17,6 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
@@ -21,11 +24,17 @@ import java.util.concurrent.atomic.AtomicInteger
 /**
  * calebxzhou @ 2025-12-15 23:38
  */
-val pending = ConcurrentHashMap<Int, CompletableDeferred<String>>()
+private val requestCounter = AtomicInteger(1)
+private val mcJson = Json {
+    ignoreUnknownKeys = true
+    classDiscriminator = "type"
+}
+
+val pending = ConcurrentHashMap<Int, CompletableDeferred<WsResponse<*>>>()
 var mcSession: DefaultWebSocketServerSession? = null
 private val sendMutex = Mutex()
-fun startLocalServer(wait: Boolean = false){
-    embeddedServer(Netty, host = "127.0.0.1", port = 65240){
+fun startLocalServer(wait: Boolean = false) {
+    embeddedServer(Netty, host = "127.0.0.1", port = 65240) {
         install(WebSockets)
         routing {
             webSocket("/") {
@@ -40,6 +49,7 @@ fun startLocalServer(wait: Boolean = false){
                                 mcSession = null
                                 return@launch
                             }
+
                             else -> lgr.warn { "Unsupported WebSocket frame: ${frame.frameType}" }
                         }
                     }
@@ -55,6 +65,7 @@ fun startLocalServer(wait: Boolean = false){
         }
     }.start(wait = wait)
 }
+
 private suspend fun DefaultWebSocketServerSession.runProtocol() {
     val version = testConnection()
     if (version != null) {
@@ -63,44 +74,64 @@ private suspend fun DefaultWebSocketServerSession.runProtocol() {
         lgr.warn { "MC client no response, end " }
     }
 }
-private val requestCounter = AtomicInteger(1)
-private val mcJson = Json {
-    ignoreUnknownKeys = true
-    classDiscriminator = "type"
-}
 
 private fun DefaultWebSocketServerSession.handleClientFrame(
     text: String
 ) {
-    runCatching { mcJson.decodeFromString<LocalWsMessage>(text) }
+    runCatching { mcJson.decodeFromString<WsMessage>(text) }
         .onFailure { error -> lgr.error(error) { "Failed to decode client payload: $text" } }
         .onSuccess { payload ->
-            when (payload) {
-                is Response -> pending.remove(payload.reqId)?.complete(payload.data)
-                    ?: lgr.warn { "No pending request for response ${payload.reqId}" }
-                else -> lgr.info { "Client sent unsupported command type ${payload}" }
-            }
+            payload.handle()
         }
 }
-fun LocalWsMessage.send()= ioTask{
-    mcSession?.sendMessage(this)
+
+fun WsMessage.send() = ioTask {
+    mcSession?.send(this)
 }
-suspend fun DefaultWebSocketServerSession.sendMessage(msg: LocalWsMessage) {
+
+suspend fun DefaultWebSocketServerSession.send(msg: WsMessage) {
     val payload = mcJson.encodeToString(msg)
     sendMutex.withLock {
         send(Frame.Text(payload))
     }
 }
 
-private suspend fun DefaultWebSocketServerSession.testConnection(
-): String? {
+suspend fun <T : Any> DefaultWebSocketServerSession.request(msg: WsMessage): WsResponse<T> {
     val reqId = requestCounter.getAndIncrement()
-    val deferred = CompletableDeferred<String>()
-    pending[reqId] = deferred
-    sendMessage(PingCommand().apply { this.reqId=reqId })
-    return withTimeoutOrNull(5000) {
-        deferred.await()
-    }.also {
+    val deferred = CompletableDeferred<WsResponse<T>>()
+    @Suppress("UNCHECKED_CAST")
+    pending[reqId] = deferred as CompletableDeferred<WsResponse<*>>
+    send(WsRequest(reqId, msg))
+    return deferred.await().also {
         pending.remove(reqId)
     }
+}
+
+private suspend fun DefaultWebSocketServerSession.testConnection(
+): Boolean {
+    val resp = request<String>(PingCommand())
+    return resp.msg == "ok"
+}
+
+private fun WsMessage.handle() {
+    when (this) {
+        is WsResponse<*> -> {
+            val deferred = pending[reqId]
+            if (deferred != null) {
+                deferred.complete(this)
+            } else {
+                lgr.warn { "Unexpected ws response for req $reqId" }
+            }
+        }
+        is WsRequest<*> -> {
+
+        }
+
+        else -> {
+            lgr.warn { "ws-server not support frame $this" }
+        }
+    }
+}
+private fun <T : WsMessage> WsRequest<T>.handle() {
+
 }
