@@ -13,9 +13,6 @@ import java.util.Optional;
 /**
  * calebxzhou @ 2024-05-31 20:09
  */
-public class mProtocol {
-}
-
 @Mixin(ServerboundHelloPacket.class)
 abstract class mLoginProtocol1 {
 
