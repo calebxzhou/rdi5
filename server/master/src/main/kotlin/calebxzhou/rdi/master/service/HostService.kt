@@ -32,6 +32,7 @@ import calebxzhou.rdi.master.service.ModpackService.getVersion
 import calebxzhou.rdi.master.service.ModpackService.installToHost
 import calebxzhou.rdi.master.service.WorldService.createWorld
 import calebxzhou.mykotutils.log.Loggers
+import calebxzhou.rdi.common.extension.owner
 import calebxzhou.rdi.common.serdesJson
 import calebxzhou.rdi.common.model.RAccount
 import calebxzhou.rdi.common.util.str
@@ -792,6 +793,9 @@ object HostService {
 
         val requesterId = _id
         val visibleHosts = hosts.filter { host ->
+            //官服永远显示
+            if(PlayerService.getName(host.ownerId)=="davickk")
+                return@filter true
             if (!myOnly) {
                 val status = host.status
                 if (status != HostStatus.PLAYABLE && status != HostStatus.STARTED && status != HostStatus.PAUSED) {
