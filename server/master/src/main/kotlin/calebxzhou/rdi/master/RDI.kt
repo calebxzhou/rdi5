@@ -30,6 +30,9 @@ import io.ktor.server.websocket.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.bson.UuidRepresentation
+import org.bson.codecs.configuration.CodecRegistries.fromProviders
+import org.bson.codecs.configuration.CodecRegistries.fromRegistries
+import org.bson.codecs.pojo.PojoCodecProvider
 import java.io.File
 import kotlin.time.Duration.Companion.seconds
 
@@ -41,6 +44,14 @@ val DB = MongoClient.create(
             builder.hosts(listOf(ServerAddress(CONF.database.host, CONF.database.port)))
         }
         .uuidRepresentation(UuidRepresentation.STANDARD)
+        .codecRegistry(
+            fromRegistries(
+                MongoClientSettings.getDefaultCodecRegistry(),
+                fromProviders(
+                    PojoCodecProvider.builder().automatic(true).build()
+                )
+            )
+        )
         .build()).getDatabase(CONF.database.name)
 val CRASH_REPORT_DIR = File("crash-report")
 val DOWNLOAD_MODS_DIR = File("download-mods")
