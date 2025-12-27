@@ -1,8 +1,11 @@
 package calebxzhou.rdi.service
 
+import calebxzhou.rdi.client.common.protocol.AddChatMsgCommand
 import calebxzhou.rdi.common.model.ChatMsg
 import calebxzhou.rdi.common.serdesJson
 import calebxzhou.rdi.lgr
+import calebxzhou.rdi.mc.mcSession
+import calebxzhou.rdi.mc.send
 import calebxzhou.rdi.net.server
 import io.ktor.http.*
 import kotlinx.coroutines.Job
@@ -20,9 +23,8 @@ object ChatService {
             onEvent = { event ->
                 val payload = event.data?.ifBlank { null } ?: return@sse
                 val msg = serdesJson.decodeFromString<ChatMsg.Dto>(payload).let { "${it.senderName}: ${it.content}" }
-                lgr.info(msg)
-                //todo 通知mc +gui msg
-              //  mc.addChatMessage(msg)
+                lgr.info { msg }
+                mcSession?.send(AddChatMsgCommand(msg))
             },
             onClosed = {
                 lgr.info("已停止chat连接")
