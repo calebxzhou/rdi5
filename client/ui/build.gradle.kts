@@ -37,7 +37,7 @@ repositories {
 }
 
 base {
-    archivesName.set("rdi-5-client")
+    archivesName.set("rdi-5-ui")
 }
 
 tasks.named<Jar>("jar") {
@@ -46,7 +46,7 @@ tasks.named<Jar>("jar") {
 
 tasks.named<ShadowJar>("shadowJar") {
     archiveClassifier.set("")
-    archiveFileName.set("rdi-5-client.jar")
+    archiveFileName.set("rdi-5-ui.jar")
     manifest {
         attributes(
             mapOf(
