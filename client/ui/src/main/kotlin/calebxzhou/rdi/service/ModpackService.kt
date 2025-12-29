@@ -213,7 +213,7 @@ object ModpackService {
                 GameService.start(
                     mcVersion, "${modpackId.str}_${version.name}",
                     "-Drdi.ihq.url=${server.hqUrl}",
-                    "-Drdi.game.ip=${if (bgp) server.bgpIp else server.ip}:65230",
+                    "-Drdi.game.ip=${if (bgp) server.bgpIp else server.ip}:${server.gamePort}",
                     "-Drdi.host.name=${this@startPlay.name}",
                     "-Drdi.host.port=${this@startPlay.port}"
                 ) {
