@@ -1,7 +1,5 @@
-import calebxzhou.rdi.mc.AddChatMsgCommand
-import calebxzhou.rdi.mc.mcSession
+import calebxzhou.rdi.client.common.protocol.AddChatMsgCommand
 import calebxzhou.rdi.mc.send
-import calebxzhou.rdi.mc.sendMessage
 import calebxzhou.rdi.mc.startLocalServer
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
