@@ -33,8 +33,8 @@ class mProxyConnect {
     }
 
     //c->s第一个包是intention 发送之前决定proxy端口
-    @Inject(method = "initiateServerboundConnection",
-            at = @At(value = "HEAD")
+    @Inject(method = "runOnceConnected",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/network/Connection;flushQueue()V")
             //        at = @At(  value = "INVOKE", target = "Lnet/minecraft/network/Connection;sendPacket(Lnet/minecraft/network/protocol/Packet;Lnet/minecraft/network/PacketSendListener;Z)V")
     )
     private void RDI$BeforeSendIntention(CallbackInfo ci) {
