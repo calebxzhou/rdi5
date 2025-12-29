@@ -10,7 +10,7 @@ import calebxzhou.rdi.common.net.json
 import calebxzhou.rdi.common.net.ktorClient
 import calebxzhou.rdi.common.serdesJson
 import calebxzhou.rdi.common.util.ioTask
-import calebxzhou.rdi.exception.RequestError
+import calebxzhou.rdi.common.exception.RequestError
 import calebxzhou.rdi.lgr
 import calebxzhou.rdi.ui2.component.alertErr
 import calebxzhou.rdi.ui2.component.closeLoading
@@ -35,6 +35,7 @@ import kotlinx.serialization.json.JsonPrimitive
 val server
     get() = RServer.now
 var loggedAccount: RAccount = RAccount.DEFAULT
+
 class RServer(
     val ip: String,
     val bgpIp: String,
@@ -42,6 +43,7 @@ class RServer(
     var gamePort: Int,
 ) {
     val noUpdate = System.getProperty("rdi.noUpdate").toBoolean()
+
     /*val mcData
         get() = { bgp: Boolean ->
             ServerData(
@@ -66,11 +68,11 @@ class RServer(
 
     fun connect() {
 
-           if (!noUpdate) {
-               goto(UpdateFragment())
-           } else {
-        goto(LoginFragment())
-          }
+        if (!noUpdate) {
+            goto(UpdateFragment())
+        } else {
+            goto(LoginFragment())
+        }
     }
 
     suspend inline fun createRequest(
@@ -86,11 +88,11 @@ class RServer(
                 json()
                 setBody(
                     serdesJson.encodeToString(
-                    MapSerializer(String.serializer(), JsonElement.serializer()),
-                    params.mapValues {
-                        JsonPrimitive(it.value.toString())
-                    }
-                ))
+                        MapSerializer(String.serializer(), JsonElement.serializer()),
+                        params.mapValues {
+                            JsonPrimitive(it.value.toString())
+                        }
+                    ))
                 compress("deflate")
             } else if (method == HttpMethod.Get && params.isNotEmpty()) {
                 params.forEach {
@@ -111,7 +113,7 @@ class RServer(
         if (Const.DEBUG) {
             val paramsStr =
                 if (params.isEmpty()) "{}" else params.entries.joinToString(", ", "{", "}") { "${it.key}=${it.value}" }
-            lgr.info("[HQ REQ] ${method.value} /$path $paramsStr")
+            lgr.info { "[HQ REQ] ${method.value} /$path $paramsStr" }
         }
         val response = createRequest(path, method, params, builder).body<Response<T>>()
         if (Const.DEBUG) {
@@ -125,27 +127,27 @@ class RServer(
         }
         return response
     }
-    fun HttpRequestBuilder.accountAuthHeader(){
-        loggedAccount?.let {
-            header(HttpHeaders.Authorization, "Bearer ${it.jwt}")
-        }
+
+    fun HttpRequestBuilder.accountAuthHeader() {
+        header(HttpHeaders.Authorization, "Bearer ${loggedAccount.jwt}")
     }
+
     inline fun requestU(
         path: String,
         method: HttpMethod = HttpMethod.Post,
         params: Map<String, Any> = mapOf(),
         showLoading: Boolean = true,
-        body: String?=null,
+        body: String? = null,
         crossinline onErr: (Response<Unit>) -> Unit = { alertErr(it.msg) },
         crossinline onOk: (Response<Unit>) -> Unit,
-    ) = request<Unit>(path, method, params, showLoading, body,onErr, onOk)
+    ) = request<Unit>(path, method, params, showLoading, body, onErr, onOk)
 
     inline fun <reified T> request(
         path: String,
         method: HttpMethod = HttpMethod.Get,
         params: Map<String, Any> = mapOf(),
         showLoading: Boolean = true,
-        body: String?=null,
+        body: String? = null,
         crossinline onErr: (Response<T>) -> Unit = { alertErr(it.msg) },
         crossinline onOk: suspend (Response<T>) -> Unit,
     ) {
@@ -154,7 +156,7 @@ class RServer(
         }
         ioTask {
             try {
-                val req = makeRequest<T>(path, method, params){
+                val req = makeRequest<T>(path, method, params) {
                     body?.let {
                         json()
                         setBody(it)
@@ -179,8 +181,16 @@ class RServer(
         }
     }
 
-    suspend inline fun download(path: String, saveTo: java.nio.file.Path, noinline onProgress: (DownloadProgress)->Unit){
-        saveTo.downloadFileFrom("${hqUrl}/${path}",onProgress)
+    suspend inline fun download(
+        path: String,
+        saveTo: java.nio.file.Path,
+        noinline onProgress: (DownloadProgress) -> Unit
+    ) {
+        saveTo.downloadFileFrom(
+            "${hqUrl}/${path}",
+            mapOf(HttpHeaders.Authorization to "Bearer ${loggedAccount.jwt}"),
+            onProgress,
+        )
     }
 
     fun sse(
@@ -189,7 +199,7 @@ class RServer(
         bufferPolicy: SSEBufferPolicy? = null,
         configureRequest: HttpRequestBuilder.() -> Unit = {},
         onError: (Throwable) -> Unit = { throwable ->
-            lgr.error{throwable}
+            lgr.error { throwable }
         },
         onClosed: suspend () -> Unit = {},
         onEvent: suspend (ServerSentEvent) -> Unit,
