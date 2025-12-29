@@ -1,6 +1,7 @@
 package calebxzhou.rdi.client.mc
 
 import calebxzhou.mykotutils.log.Loggers
+import calebxzhou.rdi.client.mc.RDI
 import calebxzhou.rdi.client.mc.connect.WsClient.connectCore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -24,7 +25,7 @@ class RDI {
         @JvmField val GAME_IP = System.getProperty("rdi.game.ip") ?: throw IllegalArgumentException("启动方式错误：找不到服务器地址2")
         @JvmField val HOST_NAME = System.getProperty("rdi.host.name") ?: throw IllegalArgumentException("启动方式错误：找不到主机名")
         @JvmField var HOST_PORT = System.getProperty("rdi.host.port")?.toInt() ?: throw IllegalArgumentException("启动方式错误：找不到服务器端口")
-
+        @JvmField val ENV = com.mojang.authlib.Environment(RDI.IHQ_URL, RDI.IHQ_URL, "PROD")
 
     }
 
