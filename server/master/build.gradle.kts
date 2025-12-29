@@ -76,6 +76,7 @@ kotlin {
     jvmToolchain(21)
 }
 
+/*
 tasks.named<Test>("test") {
     enabled = false
 }
@@ -83,6 +84,7 @@ tasks.named<Test>("test") {
 tasks.named<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>("compileTestKotlin") {
     enabled = false
 }
+*/
 
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
@@ -106,4 +108,7 @@ tasks.register("出core") {
         )
         println("已复制 $jarFile 到 $destFile")
     }
+}
+tasks.test {
+    testLogging.showStandardStreams = true
 }

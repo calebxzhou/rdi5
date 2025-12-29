@@ -1,5 +1,6 @@
 @file:OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 
+import calebxzhou.mykotutils.std.deleteRecursivelyNoSymlink
 import calebxzhou.mykotutils.std.jarResource
 import calebxzhou.rdi.common.model.Mail
 import calebxzhou.rdi.common.model.Mod
@@ -15,7 +16,6 @@ import calebxzhou.rdi.master.service.ModpackService.createVersion
 import calebxzhou.rdi.master.service.ModpackService.deleteModpack
 import calebxzhou.rdi.master.service.ModpackService.deleteVersion
 import calebxzhou.rdi.master.service.ModpackService.rebuildVersion
-import calebxzhou.rdi.master.util.deleteRecursivelyNoSymlink
 import com.mongodb.client.model.InsertOneOptions
 import com.mongodb.client.model.UpdateOptions
 import com.mongodb.client.result.DeleteResult
