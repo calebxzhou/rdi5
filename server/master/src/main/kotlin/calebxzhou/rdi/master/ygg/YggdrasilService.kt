@@ -12,6 +12,7 @@ import calebxzhou.rdi.master.ygg.YggdrasilService.getProfiles
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
+import io.ktor.server.response.respondText
 import io.ktor.server.routing.*
 import java.util.*
 
@@ -67,7 +68,11 @@ object YggdrasilService {
                     }
                 }
             )
-            return GameProfile(_id.toUUID().undashedString,this.name,listOf(Property(value = texturesPayload.json.encodeBase64)))
+            return GameProfile(
+                _id.toUUID().undashedString,
+                this.name,
+                listOf(Property(name = "textures", value = texturesPayload.json.encodeBase64))
+            )
         }
     suspend fun ApplicationCall.getProfile(uuid: String){
         val uid = uuid.fromUndashedUuid

@@ -13,7 +13,7 @@ data class GameProfile(
 }
 @Serializable
 data class Property(
-    val name: String = "textures",
+    val name: String,
     val value: String
 ) {
 }
