@@ -30,4 +30,8 @@ enum class McVersion(
     val firstLoader get() = loaderVersions.values.first()
     val manifest: MojangVersionManifest get() = GameService.versionListDir.resolve(mcVer).resolve("$mcVer.json").let { serdesJson.decodeFromString(it.readText()) }
     val loaderManifest: MojangVersionManifest get() = GameService.versionListDir.resolve(firstLoader.id).resolve(firstLoader.id + ".json").let { serdesJson.decodeFromString(it.readText()) }
+
+    companion object{
+        fun from(mcVer: String): McVersion? = entries.firstOrNull { it.mcVer == mcVer }
+    }
 }
