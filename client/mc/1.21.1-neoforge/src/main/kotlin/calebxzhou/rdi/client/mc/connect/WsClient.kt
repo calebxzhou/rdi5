@@ -34,7 +34,7 @@ object WsClient {
                 lgr.info { "WebSocket channel closed, stop receiving commands" }
                 return
             } catch (throwable: Throwable) {
-                lgr.error(throwable) { "${"Failed to parse command"}" }
+                lgr.error(throwable) { "Failed to parse command" }
                 return
             }
             lgr.info { "incoming msg: ${msg.json}" }
