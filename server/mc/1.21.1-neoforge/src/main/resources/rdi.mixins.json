@@ -14,8 +14,6 @@
     "mEula",
     "mLoginProtocol1",
     "mNoChunkLoad",
-    "mNoVersionCheck",
-    "mNoVersionCheck2",
     "mPackListener",
     "mSaveBandwidth",
     "mServerLoginPacketListener",
