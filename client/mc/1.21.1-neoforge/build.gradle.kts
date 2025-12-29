@@ -102,9 +102,9 @@ neoForge {
             programArgument("1440")
             systemProperty("neoforge.enabledGameTestNamespaces", modId)
             systemProperty("rdi.ihq.url", "http://127.0.0.1:65231")
-            systemProperty("rdi.game.ip", "127.0.0.1:65232")
+            systemProperty("rdi.game.ip", "127.0.0.1:65230")
             systemProperty("rdi.host.name", "测试测试12123主机")
-            systemProperty("rdi.host.port", "55000")
+            systemProperty("rdi.host.port", "65232")
         }
 
         configureEach {
