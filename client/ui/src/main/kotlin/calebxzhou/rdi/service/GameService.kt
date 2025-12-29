@@ -468,7 +468,7 @@ object GameService {
         runInstallerBootstrapper(installBooter, installer, onProgress)
     }
 
-    fun start(mcVer: McVersion, versionId: String, onProgress: (String) -> Unit) {
+    fun start(mcVer: McVersion, versionId: String,vararg jvmArgs: String,onProgress: (String) -> Unit) {
         val loaderManifest = mcVer.loaderManifest
         val manifest = mcVer.manifest
         val nativesDir = mcVer.nativesDir
@@ -503,7 +503,10 @@ object GameService {
                 .replace($$"${launcher_version}", Const.VERSION_NUMBER)
                 .replace($$"${classpath}", classpath)
                 .replace($$"${classpath_separator}", File.pathSeparator)
-        }.toMutableList().apply { this += "-Xmx8G" }
+        }.toMutableList().apply {
+            this += "-Xmx8G"
+            this += jvmArgs
+        }
 
         lgr.info { "JVM Args: ${processedJvmArgs.joinToString(" ")}" }
         lgr.info { "Game Args: ${gameArgs.joinToString(" ")}" }
