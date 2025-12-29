@@ -18,7 +18,7 @@ data class AppConfig(
                 try {
                     Toml.decodeFromString(serializer(), configFile.readText())
                 } catch (e: Exception) {
-                    lgr.warn("read config failed, use default and save")
+                    lgr.warn { "read config failed, use default and save" }
                     e.printStackTrace()
                     AppConfig().also { save(it) }
                 }
