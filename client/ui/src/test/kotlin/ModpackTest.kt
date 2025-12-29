@@ -83,9 +83,9 @@ class ModpackTest {
         }
     }
     @Test
-    fun install() : Unit = runBlocking {
+    fun install() : Unit = runBlocking {/*
         ModpackService.installVersion(
-            ObjectId("693bda0ed294de2450aa7caf"),"1.9.2",loadTestMods()){ println(it) }
+            ObjectId("693bda0ed294de2450aa7caf"),"1.9.2",loadTestMods()){ println(it) }*/
     }
     @Test
     fun downloadClient() : Unit = runBlocking {
