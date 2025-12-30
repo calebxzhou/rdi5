@@ -3,9 +3,10 @@ package calebxzhou.rdi.service
 import calebxzhou.mykotutils.hwspec.HwSpec
 import calebxzhou.rdi.auth.LocalCredentials
 import calebxzhou.rdi.auth.LoginInfo
+import calebxzhou.rdi.common.exception.RequestError
 import calebxzhou.rdi.common.model.RAccount
+import calebxzhou.rdi.common.model.Response
 import calebxzhou.rdi.common.serdesJson
-import calebxzhou.rdi.common.util.ioTask
 import calebxzhou.rdi.lgr
 import calebxzhou.rdi.net.loggedAccount
 import calebxzhou.rdi.net.server
@@ -14,6 +15,7 @@ import calebxzhou.rdi.ui2.frag.ProfileFragment
 import calebxzhou.rdi.ui2.go
 import com.github.benmanes.caffeine.cache.AsyncLoadingCache
 import com.github.benmanes.caffeine.cache.Caffeine
+import io.ktor.client.call.*
 import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
 import org.bson.types.ObjectId
@@ -33,38 +35,45 @@ object PlayerInfoCache {
         return cache.get(uid).join()
     }
 }
-fun playerLogin(usr: String, pwd: String){
+suspend fun playerLogin(usr: String, pwd: String): Result<RAccount> = runCatching {
     val creds = LocalCredentials.read()
     val spec = serdesJson.encodeToString<HwSpec>(HwSpec.get())
-    val params = mutableMapOf("usr" to usr, "pwd" to pwd, "spec" to spec)
-    ioTask {
-        val account = server.makeRequest<RAccount>(
-            path = "player/login",
-            method = HttpMethod.Post,
-            params = params
-        ).data!!
-        account.jwt = PlayerService.getJwt(usr,pwd)
-        creds.loginInfos += account._id to LoginInfo(account.qq,account.pwd)
-        creds.save()
-        loggedAccount = account
-        ProfileFragment().go()
+
+    val resp = server.createRequest(
+        path = "player/login",
+        method = HttpMethod.Post,
+        params = mutableMapOf("usr" to usr, "pwd" to pwd, "spec" to spec)
+    )
+    val account = resp.body<Response<RAccount>>().run {
+        data ?: run {
+            throw RequestError(msg)
+        }
     }
-
-
+    account.jwt = resp.headers["jwt"]
+    val loginInfo = LoginInfo(account.qq, account.pwd)
+    creds.loginInfos += account._id to loginInfo
+    creds.save()
+    loggedAccount = account
+    ProfileFragment().go()
+    account
 }
+
 object PlayerService {
 
 
-
-
-    suspend fun getJwt(usr: String,pwd: String): String {
-        return server.makeRequest<String>("player/jwt", HttpMethod.Post,  params = mapOf("usr" to usr, "pwd" to pwd)).data!!
+    suspend fun getJwt(usr: String, pwd: String): String {
+        return server.makeRequest<String>(
+            "player/jwt",
+            HttpMethod.Post,
+            params = mapOf("usr" to usr, "pwd" to pwd)
+        ).data!!
     }
+
     suspend fun getPlayerInfo(uid: ObjectId): RAccount.Dto {
         return try {
-            server.makeRequest<RAccount.Dto>( "player/${uid}/info").data?: RAccount.DEFAULT.dto
+            server.makeRequest<RAccount.Dto>("player/${uid}/info").data ?: RAccount.DEFAULT.dto
         } catch (e: Exception) {
-            lgr.warn("获取玩家信息失败",e)
+            lgr.warn("获取玩家信息失败", e)
             RAccount.DEFAULT.dto
         }
     }

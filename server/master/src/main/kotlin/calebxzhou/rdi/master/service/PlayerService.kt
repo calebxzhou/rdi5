@@ -23,6 +23,7 @@ import com.mongodb.client.model.Updates
 import com.mongodb.client.model.Updates.combine
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
+import io.ktor.server.response.header
 import io.ktor.server.routing.*
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.toList
@@ -65,6 +66,7 @@ fun Route.playerRoutes() {
         }
         post("/login") {
             val result = PlayerService.login(param("usr"), param("pwd"), paramNull("spec"), call.clientIp)
+            call.response.header("jwt", JwtService.generateToken(result._id))
             response(data = result)
         }
         post("/crash-report") {
