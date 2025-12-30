@@ -1,5 +1,6 @@
 package calebxzhou.rdi.common.model
 
+import calebxzhou.rdi.common.UNKNOWN_PLAYER_ID
 import calebxzhou.rdi.common.util.toUUID
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
@@ -34,7 +35,7 @@ data class RAccount(
         val cloth: Cloth
     )
     companion object {
-        val DEFAULT = RAccount(ObjectId(), "test", "123456", "12345", 0)
+        val DEFAULT = RAccount(UNKNOWN_PLAYER_ID, "未知", "123456", "12345", 0)
         val TESTS = listOf(
             RAccount(ObjectId("68b314bbadaf52ddab96b5ed"), "测试1", "123123", "123123", 0),
             RAccount(ObjectId("68c901f07c76a32fa7dc270a"), "测试2", "456456", "456456", 0)
