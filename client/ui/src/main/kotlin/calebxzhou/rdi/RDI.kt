@@ -26,9 +26,9 @@ class RDI {
 
 
     init {
-        lgr.info("RDI启动中")
+        lgr.info { "RDI启动中" }
         DIR.mkdir()
-        lgr.info((this.javaClass.protectionDomain.codeSource.location.toURI().toString()))
+        lgr.info { (javaClass.protectionDomain.codeSource.location.toURI().toString()) }
 
     }
     fun start(fragment: RFragment){
