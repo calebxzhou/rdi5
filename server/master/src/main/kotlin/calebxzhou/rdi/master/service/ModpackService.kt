@@ -69,8 +69,7 @@ val Modpack.dir
     get() = MODPACK_DATA_DIR.resolve(_id.str)
 val Modpack.libsDir
     get() = GAME_LIBS_DIR
-        .resolve(mcVer)
-        .resolve(modloader)
+        .resolve("${mcVer}-${modloader}")
 val Modpack.Version.dir
     get() = MODPACK_DATA_DIR.resolve(modpackId.str).resolve(name)
 val Modpack.Version.zip
