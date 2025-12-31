@@ -9,6 +9,8 @@
   },
   "mixins": [
     "AServerEntity",
+    "mAuth",
+    "mChatMsg",
     "mChinesePlayerName",
     "mDedicatedServer",
     "mEula",
@@ -18,6 +20,9 @@
     "mSaveBandwidth",
     "mServerLoginPacketListener",
     "mServerProps",
-    "mServerProps2"
+    "mServerProps2",
+    "mYggHost",
+    "mYggHost2",
+    "mYggHost3"
   ]
 }

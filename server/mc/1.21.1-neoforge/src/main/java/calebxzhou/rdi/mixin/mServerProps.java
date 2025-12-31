@@ -23,10 +23,10 @@ public abstract class mServerProps  {
     public boolean isFlightAllowed() {
         return true;
     }
-    @Overwrite
+    /*@Overwrite
     public boolean usesAuthentication() {
         return false;
-    }
+    }*/
 
 }
 @Mixin(DedicatedServerProperties.class)
