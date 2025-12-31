@@ -1,5 +1,9 @@
 package calebxzhou.rdi.master.ygg
 
+import calebxzhou.mykotutils.std.encodeBase64
+import calebxzhou.rdi.common.json
+import calebxzhou.rdi.common.model.RAccount
+import calebxzhou.rdi.common.serdesJson
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import java.util.*
@@ -10,6 +14,34 @@ data class GameProfile(
     val name: String,
     val properties: List<Property>
 ) {
+    companion object{
+        fun getDefault(id: String): GameProfile{
+            val default = RAccount.DEFAULT
+            return GameProfile(
+                id = id,
+                name = "Player${id.take(5)}",
+                properties = listOf(
+                    Property(
+                        name = "textures",
+                        value =
+                                MinecraftTexturesPayload(
+                                    timestamp = System.currentTimeMillis(),
+                                    profileId = id,
+                                    profileName = "Player${id.take(5)}",
+                                    isPublic = true,
+                                    textures = mapOf(
+                                        MinecraftProfileTexture.Type.SKIN to MinecraftProfileTexture(
+                                            url = default.cloth.skin
+                                        )
+                                    )
+                                ).json.encodeBase64
+
+                        )
+                    )
+
+            )
+        }
+    }
 }
 @Serializable
 data class Property(
