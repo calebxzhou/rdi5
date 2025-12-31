@@ -1,6 +1,7 @@
 package calebxzhou.rdi.master.ygg
 
 import calebxzhou.mykotutils.std.encodeBase64
+import calebxzhou.rdi.common.UNKNOWN_PLAYER_ID
 import calebxzhou.rdi.common.json
 import calebxzhou.rdi.common.model.RAccount
 import calebxzhou.rdi.common.util.objectId
@@ -23,6 +24,7 @@ fun Route.yggdrasilRoutes() {
     get("/session/minecraft/profile/{uuid}"){
         call.getProfile(param("uuid"))
     }
+    //todo key verify service
     get("/publickeys"){
         call.respondText("""
             {
@@ -76,12 +78,12 @@ object YggdrasilService {
         }
     suspend fun ApplicationCall.getProfile(uuid: String){
         val uid = uuid.fromUndashedUuid
-        val account = PlayerService.getById(uid.objectId) ?: RAccount.DEFAULT
-        respond(account.gameProfile)
+        val account = PlayerService.getById(uid.objectId)
+        respond(account?.gameProfile?: GameProfile.getDefault(uuid))
     }
     suspend fun ApplicationCall.getProfiles(names: List<String>){
         val profiles = names.map { name ->
-             PlayerService.getByName(name) ?: RAccount.DEFAULT
+             PlayerService.getByName(name) ?: RAccount(UNKNOWN_PLAYER_ID, name,"","")
         }.map { it.gameProfile }
         respond(profiles)
     }
