@@ -23,11 +23,14 @@ import calebxzhou.rdi.model.McVersion
 import calebxzhou.rdi.net.server
 import calebxzhou.rdi.ui2.component.alertErr
 import calebxzhou.rdi.ui2.component.alertOk
+import calebxzhou.rdi.ui2.component.alertWarn
 import calebxzhou.rdi.ui2.component.confirm
 import calebxzhou.rdi.ui2.frag.TaskFragment
 import calebxzhou.rdi.ui2.go
 import calebxzhou.rdi.ui2.pointerBuffer
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.bson.types.ObjectId
 import org.lwjgl.util.tinyfd.TinyFileDialogs
 import java.io.File
@@ -49,9 +52,16 @@ object ModpackService {
         return GameService.versionListDir.resolve("${modpackId}_${verName}")
     }
 
-    suspend fun installVersion(mcVersion: McVersion,modLoader: ModLoader,modpackId: ObjectId, verName: String, mods: List<Mod>, onProgress: (String) -> Unit) {
+    suspend fun installVersion(
+        mcVersion: McVersion,
+        modLoader: ModLoader,
+        modpackId: ObjectId,
+        verName: String,
+        mods: List<Mod>,
+        onProgress: (String) -> Unit
+    ) {
         val versionDir = getVersionDir(modpackId, verName)
-        val mods = CurseForgeApi.downloadMods(
+        val downloadedMods = CurseForgeApi.downloadMods(
             mods.map {
                 CFDownloadMod(
                     it.projectId.toInt(),
@@ -61,7 +71,7 @@ object ModpackService {
                 )
             }
         ) { cfmod, prog ->
-            onProgress("mod下载中：${cfmod.slug} ${prog.percent.toFixed(2)}")
+            onProgress("mod下载中：${cfmod.slug} ${prog.percent.toFixed(2)}%")
         }.getOrElse {
             if (it is CFDownloadModException) {
                 it.failed.forEach { (mod, ex) ->
@@ -75,6 +85,7 @@ object ModpackService {
             }
             return
         }
+        onProgress("所有Mod下载完成，准备下载客户端包...")
         val clientPack = downloadVersionClientPack(modpackId, verName, onProgress)
         if (clientPack == null) {
             onProgress("客户端包下载失败，安装终止")
@@ -104,15 +115,17 @@ object ModpackService {
         onProgress("建立mods软链接...")
         val modsDir = versionDir.resolve("mods").apply { mkdirs() }
 
-        mods.forEach { dlmod ->
+        downloadedMods.forEach { dlmod ->
             Files.createSymbolicLink(modsDir.resolve(dlmod.path.fileName.name).toPath(), dlmod.path)
         }
         val mcSlug = "${mcVersion.mcVer}-${modLoader.name.lowercase()}"
         val mcCoreTarget = DL_MOD_DIR.resolve("rdi-5-mc-client-$mcSlug.jar").toPath()
         val mcCoreLink = modsDir.resolve("rdi-5-mc-client-$mcSlug.jar").toPath()
         if (mcCoreTarget.toFile().exists()) {
-            Files.deleteIfExists(mcCoreLink)
-            Files.createSymbolicLink(mcCoreLink, mcCoreTarget)
+            withContext(Dispatchers.IO) {
+                Files.deleteIfExists(mcCoreLink)
+                Files.createSymbolicLink(mcCoreLink, mcCoreTarget)
+            }
         } else {
             onProgress("缺少核心文件: ${mcCoreTarget.toFile().absolutePath}")
             return
@@ -133,8 +146,11 @@ object ModpackService {
             return file
         }
         onProgress("下载客户端整合包...")
-        server.download("modpack/$modpackId/version/$verName/client", file.toPath()) {
-            onProgress(it.percent.toFixed(2))
+        server.download("modpack/$modpackId/version/$verName/client", file.toPath()) { prog ->
+            val pct = if (prog.totalBytes > 0) {
+                (prog.bytesDownloaded.toDouble() / prog.totalBytes * 100.0).toFixed(2)
+            } else "--"
+            onProgress(pct)
         }
 
         if (hash != file.sha1) {
@@ -198,7 +214,7 @@ object ModpackService {
         if (status != HostStatus.PLAYABLE) {
             when (status) {
                 HostStatus.STARTED -> {
-                    alertErr("主机正在载入中\n请稍等1~2分钟")
+                    alertOk("主机正在载入中\n请稍等1~2分钟")
                 }
 
                 HostStatus.STOPPED -> {
@@ -209,24 +225,28 @@ object ModpackService {
 
                 else -> {
                     alertErr("主机状态未知，无法游玩")
+                    return@ioTask
                 }
             }
-            return@ioTask
-        }
-        val bgp = LocalCredentials.read().carrier != 0
-        McVersion.from(modpack.mcVer)?.let { mcVersion ->
-            TaskFragment("启动mc中") {
-                GameService.start(
-                    mcVersion, "${modpackId.str}_${version.name}",
-                    "-Drdi.ihq.url=${server.hqUrl}",
-                    "-Drdi.game.ip=${if (bgp) server.bgpIp else server.ip}:${server.gamePort}",
-                    "-Drdi.host.name=${this@startPlay.name}",
-                    "-Drdi.host.port=${this@startPlay.port}"
-                ) {
-                    this.log(it)
-                }
-            }.go()
-        } ?: alertErr("不支持的MC版本:${modpack.mcVer}  无法游玩")
 
+        }
+        if (!GameService.started) {
+            val bgp = LocalCredentials.read().carrier != 0
+            McVersion.from(modpack.mcVer)?.let { mcVersion ->
+                TaskFragment("启动mc中") {
+                    GameService.start(
+                        mcVersion, "${modpackId.str}_${version.name}",
+                        "-Drdi.ihq.url=${server.hqUrl}",
+                        "-Drdi.game.ip=${if (bgp) server.bgpIp else server.ip}:${server.gamePort}",
+                        "-Drdi.host.name=${this@startPlay.name}",
+                        "-Drdi.host.port=${this@startPlay.port}"
+                    ) {
+                        this.log(it)
+                    }
+                }.go()
+            } ?: alertErr("不支持的MC版本:${modpack.mcVer}  无法游玩")
+        } else{
+            alertErr("mc已在运行中，如需切换主机，请先关闭mc")
+        }
     }
 }
