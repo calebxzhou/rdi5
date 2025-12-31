@@ -530,7 +530,7 @@ object HostService {
             runCatching {
                 host.dir.mkdir()
                 modpack.installToHost(packVer,host){
-                    MailService.changeMail(mailId, "主机创建失败", newContent = it)
+                    MailService.changeMail(mailId, "主机创建中", newContent = it)
                 }
                 host.makeContainer(world?._id, modpack, version)
                 dbcl.insertOne(host)
