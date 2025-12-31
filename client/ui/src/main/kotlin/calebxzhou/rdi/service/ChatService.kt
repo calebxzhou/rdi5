@@ -1,9 +1,9 @@
 package calebxzhou.rdi.service
 
+import calebxzhou.mykotutils.log.Loggers
 import calebxzhou.rdi.client.common.protocol.AddChatMsgCommand
 import calebxzhou.rdi.common.model.ChatMsg
 import calebxzhou.rdi.common.serdesJson
-import calebxzhou.rdi.lgr
 import calebxzhou.rdi.mc.mcSession
 import calebxzhou.rdi.mc.send
 import calebxzhou.rdi.net.server
@@ -11,6 +11,7 @@ import io.ktor.http.*
 import kotlinx.coroutines.Job
 
 object ChatService {
+    private val lgr by Loggers
     //0-全局聊天 1-岛内成员聊天
     var chatMode = 0
     var job: Job?=null
@@ -27,7 +28,7 @@ object ChatService {
                 mcSession?.send(AddChatMsgCommand(msg))
             },
             onClosed = {
-                lgr.info("已停止chat连接")
+                lgr.info { "已停止chat连接" }
             },
             onError = { throwable ->
             })
