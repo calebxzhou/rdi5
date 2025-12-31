@@ -101,6 +101,7 @@ neoForge {
             programArgument("--height")
             programArgument("1440")
             systemProperty("neoforge.enabledGameTestNamespaces", modId)
+            systemProperty("mixin.hotSwap", "true")
             systemProperty("rdi.ihq.url", "http://127.0.0.1:65231")
             systemProperty("rdi.game.ip", "127.0.0.1:65230")
             systemProperty("rdi.host.name", "测试测试12123主机")
