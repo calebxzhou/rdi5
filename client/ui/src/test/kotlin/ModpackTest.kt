@@ -2,11 +2,13 @@ import calebxzhou.mykotutils.curseforge.CurseForgeApi
 import calebxzhou.mykotutils.std.jarResource
 import calebxzhou.rdi.common.json
 import calebxzhou.rdi.common.model.Mod
+import calebxzhou.rdi.common.model.ModLoader
 import calebxzhou.rdi.common.model.Modpack
 import calebxzhou.rdi.common.model.RAccount
 import calebxzhou.rdi.common.serdesJson
 import calebxzhou.rdi.common.service.CurseForgeService
 import calebxzhou.rdi.common.service.CurseForgeService.mapMods
+import calebxzhou.rdi.model.McVersion
 import calebxzhou.rdi.net.loggedAccount
 import calebxzhou.rdi.net.server
 import calebxzhou.rdi.service.ModpackService
@@ -62,7 +64,7 @@ class ModpackTest {
 		).data!!
 
 		val response = server.makeRequest<Unit>(
-			path = "modpack/${'$'}{modpack._id}/version/1.8.4",
+			path = "modpack/${modpack._id}/version/1.8.4",
 			method = HttpMethod.Post
 		).msg
 
@@ -79,14 +81,17 @@ class ModpackTest {
     @Test
     fun cfModFile(){
         runBlocking {
-            CurseForgeApi.getModFileInfo(351264,5402061)?.let { print(it.json) }
+            CurseForgeApi.getModFileInfo(1150640,6743799)?.let { print(it.json)
+			print(it.realDownloadUrl)}
         }
     }
     @Test
-    fun install() : Unit = runBlocking {/*
-        ModpackService.installVersion(
-            ObjectId("693bda0ed294de2450aa7caf"),"1.9.2",loadTestMods()){ println(it) }*/
-    }
+    fun install() : Unit = runBlocking {
+		/*ModpackService.installVersion(
+			McVersion.V211,
+			ModLoader.NEOFORGE,
+			ObjectId("695519fec0e579e94b5c40c5"),"1.9.2",loadTestMods()){ println(it) }
+*/		 }
     @Test
     fun downloadClient() : Unit = runBlocking {
         ModpackService.downloadVersionClientPack(
