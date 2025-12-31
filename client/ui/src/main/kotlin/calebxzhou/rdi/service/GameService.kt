@@ -36,6 +36,8 @@ import java.util.zip.ZipFile
 
 object GameService {
     private val lgr by Loggers
+    var started = false
+        private set
     val DIR = File(RDI.DIR, "mc").apply { mkdirs() }
     private val libsDir = DIR.resolve("libraries").apply { mkdirs() }
     private val assetsDir = DIR.resolve("assets").apply { mkdirs() }
@@ -520,18 +522,23 @@ object GameService {
             .directory(versionDir)
             .redirectErrorStream(true)
             .start()
-        process.inputStream.bufferedReader(StandardCharsets.UTF_8).useLines { lines ->
-            lines.forEach { line ->
-                if (line.isNotBlank()) {
-                    onProgress(line)
+        started = true
+        try {
+            process.inputStream.bufferedReader(StandardCharsets.UTF_8).useLines { lines ->
+                lines.forEach { line ->
+                    if (line.isNotBlank()) {
+                        onProgress(line)
+                    }
                 }
             }
+            val exitCode = process.waitFor()
+            if (exitCode != 0) {
+                onProgress("启动失败，退出代码: $exitCode")
+            } else
+                onProgress("已退出")
+        } finally {
+            started = false
         }
-        val exitCode = process.waitFor()
-        if (exitCode != 0) {
-            onProgress("启动失败，退出代码: $exitCode")
-        } else
-            onProgress("已退出")
         // Actual process launch (auth, tokens, etc.) will be wired separately.
     }
 
