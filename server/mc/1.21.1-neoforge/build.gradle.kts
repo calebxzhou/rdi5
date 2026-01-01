@@ -5,6 +5,8 @@ import org.gradle.kotlin.dsl.register
 import org.gradle.kotlin.dsl.the
 import org.gradle.language.jvm.tasks.ProcessResources
 import java.io.File
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 
 val kotlinVersion: String by project// = providers.gradleProperty("kotlin_version").get()
 val ktorVersion = providers.gradleProperty("ktor_version").get()
@@ -236,16 +238,32 @@ idea {
     }
 }
 
-tasks.register<Copy>("出imgBuild") {
-    dependsOn(tasks.named("build"))
-    notCompatibleWithConfigurationCache("Executes build.bat post copy")
-    val targetDir = File(System.getProperty("user.home"), "Documents\\rdi5skypro\\server_image_test")
-    from(layout.buildDirectory.file("libs/rdi-${'$'}{version}.jar"))
-    into(File(targetDir, "mods"))
-    doLast {
-        /*project.exec {
-            workingDir = targetDir
-            commandLine("cmd", "/c", "build.bat")
-        }*/
+fun registerCopyTask(name: String, extraDestinations: List<String> = emptyList()) {
+    tasks.register(name) {
+        dependsOn(tasks.named("build"))
+        val artifact = layout.buildDirectory.file("libs/rdi-5-mc-server.jar")
+        val baseDestinations = listOf(
+            layout.projectDirectory.dir("..\\..\\master\\run\\game-libs\\1.21.1-neoforge\\mods")
+        )
+        val destinationDirs = baseDestinations + extraDestinations.map { layout.projectDirectory.dir(it) }
+
+        doLast {
+            val jarFile = artifact.get().asFile
+            if (!jarFile.exists()) {
+                throw GradleException("未找到构建产物: $jarFile")
+            }
+            destinationDirs.forEach { target ->
+                val targetDir = target.asFile
+                targetDir.mkdirs()
+                val destFile = targetDir.resolve(jarFile.name)
+                Files.copy(
+                    jarFile.toPath(),
+                    destFile.toPath(),
+                    StandardCopyOption.REPLACE_EXISTING
+                )
+            }
+        }
     }
 }
+registerCopyTask("出core-local")
+registerCopyTask("出core-release", listOf("\\\\rdi5\\rdi55\\ihq\\game-libs\\1.21.1-neoforge\\mods"))
