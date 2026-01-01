@@ -57,7 +57,7 @@ data class RAccount(
     }
 
     @Contextual
-    val uuid = _id.toUUID()
+    val uuid get() = _id.toUUID()
     val dto = Dto(_id, name, cloth)
 
 }
