@@ -1,6 +1,7 @@
 package calebxzhou.rdi.master.service
 
 import calebxzhou.mykotutils.curseforge.CFDownloadMod
+import calebxzhou.mykotutils.curseforge.CFDownloadModException
 import calebxzhou.mykotutils.curseforge.CurseForgeApi
 import calebxzhou.mykotutils.log.Loggers
 import calebxzhou.mykotutils.std.deleteRecursivelyNoSymlink
@@ -436,7 +437,19 @@ object ModpackService {
             mods,
         ) { cfm, prog ->
             onProgress("${cfm.slug} mod下载中 ${prog.percent.toFixed(2)}%")
-        }.getOrThrow()
+        }.getOrElse {
+            if (it is CFDownloadModException) {
+                it.failed.forEach { (mod, ex) ->
+                    onProgress("Mod $mod 下载失败:${ex.message}，安装终止")
+                    ex.printStackTrace()
+                }
+            } else {
+                it.printStackTrace()
+                onProgress("未知错误:${it.message}，安装终止")
+
+            }
+            return
+        }
         onProgress("mod全部下载成功 安装到主机..")
         downloadedMods.forEach { mod ->
                 Files.createDirectories(mod.path.parent)
