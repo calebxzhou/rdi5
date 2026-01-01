@@ -115,8 +115,18 @@ object ModpackService {
         onProgress("建立mods软链接...")
         val modsDir = versionDir.resolve("mods").apply { mkdirs() }
 
+        fun linkOrCopy(src: java.nio.file.Path, dst: java.nio.file.Path) {
+            runCatching {
+                Files.createSymbolicLink(dst, src)
+            }.onFailure {
+                runCatching {
+                    Files.copy(src, dst, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+                }
+            }
+        }
+
         downloadedMods.forEach { dlmod ->
-            Files.createSymbolicLink(modsDir.resolve(dlmod.path.fileName.name).toPath(), dlmod.path)
+            linkOrCopy(dlmod.path, modsDir.resolve(dlmod.path.fileName.name).toPath())
         }
         val mcSlug = "${mcVersion.mcVer}-${modLoader.name.lowercase()}"
         val mcCoreTarget = DL_MOD_DIR.resolve("rdi-5-mc-client-$mcSlug.jar").toPath()
@@ -124,7 +134,7 @@ object ModpackService {
         if (mcCoreTarget.toFile().exists()) {
             withContext(Dispatchers.IO) {
                 Files.deleteIfExists(mcCoreLink)
-                Files.createSymbolicLink(mcCoreLink, mcCoreTarget)
+                linkOrCopy(mcCoreTarget, mcCoreLink)
             }
         } else {
             onProgress("缺少核心文件: ${mcCoreTarget.toFile().absolutePath}")
@@ -169,7 +179,7 @@ object ModpackService {
             return
         }
 
-        TaskFragment("下载整合包 ${modpackName ?: ""} ${totalSize?.humanFileSize} ") {
+        TaskFragment("完整下载整合包 ${modpackName ?: ""} ${totalSize?.humanFileSize} ") {
             ModpackService.installVersion(mcVersion, modLoader, modpackId, this@startInstall.name, mods) { progress ->
                 this.log(progress)
             }
