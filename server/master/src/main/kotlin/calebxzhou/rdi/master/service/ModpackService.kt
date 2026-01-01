@@ -526,6 +526,14 @@ object ModpackService {
         mods.removeIf { it.slug.contains("drippy-loading-screen") }
         mods.removeIf { it.slug.contains("tbs-main-menu-override") }
         mods.removeIf { it.slug.contains("welcome-screen") }
+        //移除powerful-dummy 不兼容
+        mods.removeIf { it.slug=="powerful-dummy" }
+        //重度机械症c6c compatibility
+        //不给这个mod服务端装上去会class not found
+        mods.find { it.slug=="loot-beams-refork" }?.side = Mod.Side.BOTH
+        //没有的话整理背包会卡服
+        mods.find { it.slug=="inventory-profiles-next" }?.side = Mod.Side.BOTH
+
 
     }
 
