@@ -7,7 +7,6 @@ import calebxzhou.rdi.master.net.response
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import java.io.File
-import java.util.jar.JarFile
 
 private val CLIENT_LIBS_DIR = File("client-libs").also { it.mkdirs() }
 
