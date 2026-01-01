@@ -2,12 +2,14 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
+import org.gradle.api.GradleException
+import org.gradle.api.tasks.Exec
 import org.gradle.api.tasks.testing.Test
 import org.gradle.jvm.tasks.Jar
 
 val ktorVersion = "3.3.3"
-val version = "5.8"
-
+val version = "5.8.1"
+project.version = version
 plugins {
     kotlin("jvm") version "2.2.21"
     kotlin("plugin.serialization") version "2.2.21"
@@ -153,17 +155,17 @@ idea {
 fun registerCopyTask(name: String, extraDestinations: List<String> = emptyList()) {
     tasks.register(name) {
         dependsOn(tasks.named("build"))
-        val artifact = layout.buildDirectory.file("libs/rdi-${'$'}{version}.jar")
+        val artifact = layout.buildDirectory.file("libs/rdi-5-ui.jar")
         val baseDestinations = listOf(
-            layout.projectDirectory.dir("..${'$'}{File.separator}ihq${'$'}{File.separator}run"),
-            layout.projectDirectory.dir("${System.getProperty("user.home")}\\Documents\\RDI5sea-Ref\\.minecraft\\versions\\RDI5.5\\mods")
+            layout.projectDirectory.dir("..\\..\\server\\master\\run\\client-libs"),
+            layout.projectDirectory.dir("${System.getProperty("user.home")}\\Documents\\rdi5ship")
         )
         val destinationDirs = baseDestinations + extraDestinations.map { layout.projectDirectory.dir(it) }
 
         doLast {
             val jarFile = artifact.get().asFile
             if (!jarFile.exists()) {
-                throw GradleException("未找到构建产物: ${'$'}jarFile")
+                throw GradleException("未找到构建产物: $jarFile")
             }
             destinationDirs.forEach { target ->
                 val targetDir = target.asFile
@@ -178,9 +180,44 @@ fun registerCopyTask(name: String, extraDestinations: List<String> = emptyList()
         }
     }
 }
+tasks.register<Exec>("makeShipPack") {
+    dependsOn(tasks.named("出core-local"))
 
-registerCopyTask("出core-debug")
-registerCopyTask("出core-release", listOf("\\\\rdi5\\rdi55\\ihq"))
+    val shipDir = layout.projectDirectory.dir("${System.getProperty("user.home")}\\Documents\\rdi5ship")
+    val filesNeed = listOf("rdi-5-ui.jar", "双击启动.cmd", "fonts", "jre")
+    val zipFile = shipDir.file("rdi5ship.zip")
+
+    workingDir = shipDir.asFile
+
+    doFirst {
+        val shipDirFile = shipDir.asFile
+        val sevenZip = File("C:\\Program Files\\7-Zip\\7z.exe")
+        if (!sevenZip.exists()) throw GradleException("未找到 7-Zip: $sevenZip")
+        if (!shipDirFile.exists()) throw GradleException("未找到 ship 目录: $shipDirFile")
+
+        filesNeed.forEach { name ->
+            val target = File(shipDirFile, name)
+            if (!target.exists()) throw GradleException("缺少文件或目录: $target")
+        }
+
+        val zipTarget = zipFile.asFile
+        if (zipTarget.exists() && !zipTarget.delete()) {
+            throw GradleException("无法删除旧压缩包: $zipTarget")
+        }
+
+        commandLine(
+            sevenZip.absolutePath,
+            "a",
+            "-tzip",
+            "-mmt",
+
+            zipTarget.absolutePath,
+            *filesNeed.toTypedArray()
+        )
+    }
+}
+registerCopyTask("出core-local")
+registerCopyTask("出core-release", listOf("\\\\rdi5\\rdi55\\ihq\\client-libs"))
 
 application {
     mainClass.set("calebxzhou.rdi.RDIKt")
