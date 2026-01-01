@@ -1,6 +1,7 @@
 package calebxzhou.rdi.model
 
 import calebxzhou.mykotutils.std.jarResource
+import calebxzhou.mykotutils.std.readAllString
 import calebxzhou.rdi.common.model.ModLoader
 import calebxzhou.rdi.common.serdesJson
 import calebxzhou.rdi.service.GameService
@@ -25,7 +26,7 @@ enum class McVersion(
         )
     )
     ;
-    val metadata get() = this.jarResource("mcmeta/$mcVer.json").readAllBytes().decodeToString().let { serdesJson.decodeFromString<MojangVersionManifest>(it) }
+    val metadata get() = this.jarResource("mcmeta/$mcVer.json").readAllString().let { serdesJson.decodeFromString<MojangVersionManifest>(it) }
     val baseDir get() = GameService.versionListDir.resolve(mcVer)
     val nativesDir get() = baseDir.resolve("natives")
     val firstLoader get() = loaderVersions.values.first()
