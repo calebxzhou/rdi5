@@ -12,7 +12,7 @@ data class Mod(
     val slug: String,
     val fileId: String,
     val hash: String,
-    val side: Side= Side.BOTH,
+    var side: Side= Side.BOTH,
 ) {
     val fileName = "${slug}_${platform}_${hash}.jar"
     val targetPath get() = DL_MOD_DIR.resolve(fileName).toPath()
