@@ -125,8 +125,12 @@ fun startHttp(){
             }
         }
         install(Compression) {
-            gzip()
-            deflate()
+            gzip {
+                matchContentType(ContentType.Text.Any, ContentType.Application.Json)
+            }
+            deflate {
+                matchContentType(ContentType.Text.Any, ContentType.Application.Json)
+            }
         }
         install(SSE)
         install(WebSockets){
