@@ -16,10 +16,6 @@ import java.util.Locale;
 @Mixin(MinecraftServer.class)
 public abstract class mServerProps  {
     @Overwrite
-    public int getPort() {
-        return Const.SERVER_PORT;
-    }
-    @Overwrite
     public boolean isFlightAllowed() {
         return true;
     }
@@ -33,8 +29,6 @@ public abstract class mServerProps  {
 class mServerProps2  {
     @Mutable @Shadow @Final
     public final int spawnProtection =0;
-    @Mutable @Shadow @Final
-    public final int serverPort = Const.SERVER_PORT;
 
     @Redirect(method = "lambda$new$3",at= @At(value = "INVOKE",target = "Ljava/lang/String;toLowerCase(Ljava/util/Locale;)Ljava/lang/String;"
     ))
