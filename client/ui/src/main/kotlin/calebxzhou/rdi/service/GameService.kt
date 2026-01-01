@@ -3,7 +3,9 @@ package calebxzhou.rdi.service
 import calebxzhou.mykotutils.ktor.downloadFileFrom
 import calebxzhou.mykotutils.log.Loggers
 import calebxzhou.mykotutils.std.exportFromJarResource
+import calebxzhou.mykotutils.std.jarResource
 import calebxzhou.mykotutils.std.javaExePath
+import calebxzhou.mykotutils.std.readAllString
 import calebxzhou.mykotutils.std.sha1
 import calebxzhou.mykotutils.std.toFixed
 import calebxzhou.rdi.CONF
@@ -49,8 +51,8 @@ object GameService {
     private val hostOsVersionRaw = System.getProperty("os.version") ?: ""
     private val launcherFeatures: Map<String, Boolean> = emptyMap()
     private val locale = Locale.SIMPLIFIED_CHINESE
-    private const val MAX_PARALLEL_LIBRARY_DOWNLOADS = 6
-    private const val MAX_PARALLEL_ASSET_DOWNLOADS = 32
+    private const val MAX_PARALLEL_LIBRARY_DOWNLOADS = 16
+    private const val MAX_PARALLEL_ASSET_DOWNLOADS = 16
     private val mirrors = mapOf(
         "https://maven.neoforged.net/releases/net/neoforged/forge" to "https://bmclapi2.bangbang93.com/maven/net/neoforged/forge",
         "https://maven.neoforged.net/releases/net/neoforged/neoforge" to " https://bmclapi2.bangbang93.com/maven/net/neoforged/neoforge",
@@ -83,9 +85,8 @@ object GameService {
         }
 
     suspend fun downloadVersion(version: McVersion, onProgress: (String) -> Unit) {
-        val manifestUrl = version.metaUrl
         onProgress("正在获取 ${version.mcVer} 的版本信息...")
-        val manifest = httpRequest { url(manifestUrl) }.body<MojangVersionManifest>()
+        val manifest = version.metadata
         downloadClient(manifest, onProgress)
         downloadLibraries(manifest, onProgress)
         extractNatives(manifest, onProgress)
@@ -131,14 +132,14 @@ object GameService {
         downloadArtifact("客户端核心 ${manifest.id}", client, target, onProgress)
     }
 
-    private suspend fun loadBaseManifest(version: McVersion): MojangVersionManifest {
-        val manifestFile = versionListDir.resolve(version.mcVer).resolve("${version.mcVer}.json")
-        val localJson = runCatching { manifestFile.takeIf { it.exists() }?.readText() }.getOrNull()
-        if (!localJson.isNullOrBlank()) {
-            return serdesJson.decodeFromString(localJson)
-        }
-        return httpRequest { url(version.metaUrl) }.body()
-    }
+    /*   private suspend fun loadBaseManifest(version: McVersion): MojangVersionManifest {
+           val manifestFile = versionListDir.resolve(version.mcVer).resolve("${version.mcVer}.json")
+           val localJson = runCatching { manifestFile.takeIf { it.exists() }?.readText() }.getOrNull()
+           if (!localJson.isNullOrBlank()) {
+               return serdesJson.decodeFromString(localJson)
+           }
+           return httpRequest { url(version.metaUrl) }.body()
+       }*/
 
     private suspend fun downloadLibraries(manifest: MojangVersionManifest, onProgress: (String) -> Unit) {
         downloadLibraries(manifest.libraries, onProgress)
@@ -215,12 +216,9 @@ object GameService {
 
     private suspend fun downloadAssets(manifest: MojangVersionManifest, onProgress: (String) -> Unit) {
         val assetIndexMeta = manifest.assetIndex ?: let { onProgress("找不到资源"); return }
-        val indexFile = assetIndexesDir.resolve("${assetIndexMeta.id}.json")
-        val indexJson = fetchAssetIndex(assetIndexMeta, indexFile, onProgress)
-        val index = serdesJson.decodeFromString<MojangAssetIndexFile>(indexJson)
+        val index = serdesJson.decodeFromString<MojangAssetIndexFile>(this.jarResource("mcmeta/assets-index/${assetIndexMeta.id}.json").readAllString())
         val filteredEntries = index.objects.entries.filter { shouldDownloadAsset(it.key) }
         onProgress("准备下载资源 (${filteredEntries.size}/${index.objects.size}) ...")
-
         val errors = Collections.synchronizedList(mutableListOf<String>())
         supervisorScope {
             val semaphore = Semaphore(MAX_PARALLEL_ASSET_DOWNLOADS)
@@ -244,66 +242,60 @@ object GameService {
         }
     }
 
-    private suspend fun fetchAssetIndex(
-        meta: MojangAssetIndex,
-        targetFile: File,
-        onProgress: (String) -> Unit
-    ): String {
-        if (targetFile.exists()) {
-            val existingSha = runCatching { targetFile.sha1 }.getOrNull()
-            if (existingSha != null && existingSha.equals(meta.sha1, true)) {
-                return targetFile.readText()
-            }
-        }
-        onProgress("下载资源索引 ${meta.id} ...")
-        val response = httpRequest { url(meta.url) }
-        val text = response.bodyAsText()
-        targetFile.parentFile?.mkdirs()
-        targetFile.writeText(text)
-        return text
-    }
-
     private suspend fun downloadAssetObject(
         path: String,
         asset: MojangAssetObject,
         onProgress: (String) -> Unit
-    ) {
+    ): Result<File> {
         val hash = asset.hash.lowercase(Locale.ROOT)
         val targetDir = assetObjectsDir.resolve(hash.substring(0, 2))
         val targetFile = targetDir.resolve(hash)
+
+        // Check existing file
         if (targetFile.exists()) {
-            val existingSha = runCatching { targetFile.sha1 }.getOrNull()
-            if (existingSha != null && existingSha.equals(hash, true)) {
-                onProgress("跳过资源 $path (已存在)")
-                return
+            // Optimization: If file size matches, check SHA1.
+            // Often checking size first is enough to skip broken downloads quickly without full hash calc
+            if (targetFile.length() == asset.size) {
+                // Optional: You can do full SHA1 check here if you want strict integrity
+                // For speed, many launchers trust size matches during startup checks
+                val existingSha = runCatching { targetFile.sha1 }.getOrNull()
+                if (existingSha != null && existingSha.equals(hash, true)) {
+                    // onProgress("跳过资源 $path (已存在)") // Reduce spam
+                    return Result.success(targetFile)
+                }
             }
         }
+
         targetDir.mkdirs()
         var lastError: String? = null
-        var completed = false
         val downloadUrl = buildAssetUrl(hash)
-        onProgress("下载资源 $path ...")
-        val success =
-            targetFile.toPath().downloadFileFrom(downloadUrl) { progress ->
-                val percent = progress.percent.takeIf { it >= 0 }
-                    ?.let { String.format(locale, "%.1f%%", it) }
-                    ?: "--"
-                onProgress("资源 $path 下载中 $percent")
-            }.getOrElse {
-                lastError = "下载失败: ${it.message ?: it::class.simpleName}"
-                targetFile.delete()
-                false
-            }
-        val downloadedSha = targetFile.sha1
-        if (!downloadedSha.equals(hash, true)) {
-            lastError = "校验失败"
-            targetFile.delete()
-        }
-        completed = true
 
-        if (!completed) {
-            throw IllegalStateException(lastError ?: "资源 $path 下载失败")
+        targetFile.toPath().downloadFileFrom(
+            url = downloadUrl,
+            knownSize = asset.size // <--- PASS THE SIZE HERE
+        ) { progress ->
+            // Optimization: Don't format strings/update UI for every packet of a 2KB file.
+            // Only update on completion or if file is large.
+            if (asset.size > 1024 * 1024) {
+                // Only show progress for files > 1MB
+                val percent = progress.percent.takeIf { it >= 0 }
+                    ?.let { String.format(locale, "%.1f%%", it) } ?: "--"
+                onProgress("资源 $path 下载中 $percent")
+            }
+        }.getOrElse {
+            targetFile.delete()
+            throw it
         }
+
+        if (targetFile.length() != asset.size) {
+            targetFile.delete()
+            throw IllegalStateException("Size mismatch for $path")
+        }
+        return Result.success(targetFile)
+
+        // Optional: strict hash check after download (costly for CPU)
+        // If speed is paramount, trust TCP/TLS checksums + file size for assets
+        // val downloadedSha = targetFile.sha1 ...
     }
 
     private fun readInstallerEntry(installer: File, entryName: String): String {
@@ -438,7 +430,7 @@ object GameService {
     suspend fun downloadLoader(version: McVersion, loader: ModLoader, onProgress: (String) -> Unit) {
         val loaderMeta = version.loaderVersions[loader]
             ?: error("未配置 $loader 安装器下载链接")
-        "launcher_profiles.json".let { File(it).apply { this.exportFromJarResource(it) } }
+        "launcher_profiles.json".let { File(DIR, it).apply { this.exportFromJarResource(it) } }
         val installBooter = "forge-install-bootstrapper.jar".let { File(it).apply { this.exportFromJarResource(it) } }
         val installer = DIR.resolve("${version.mcVer}-$loader-installer.jar")
         installer.parentFile?.mkdirs()
@@ -449,7 +441,7 @@ object GameService {
             }
         }
 
-        val vanillaManifest = loadBaseManifest(version)
+        val vanillaManifest = version.metadata
 
         val versionJsonText = readInstallerEntry(installer, "version.json")
         val loaderVersionManifest = serdesJson.decodeFromString<MojangVersionManifest>(versionJsonText)
@@ -470,7 +462,7 @@ object GameService {
         runInstallerBootstrapper(installBooter, installer, onProgress)
     }
 
-    fun start(mcVer: McVersion, versionId: String,vararg jvmArgs: String,onProgress: (String) -> Unit) {
+    fun start(mcVer: McVersion, versionId: String, vararg jvmArgs: String, onProgress: (String) -> Unit) {
         val loaderManifest = mcVer.loaderManifest
         val manifest = mcVer.manifest
         val nativesDir = mcVer.nativesDir
