@@ -105,7 +105,7 @@ neoForge {
             systemProperty("rdi.ihq.url", "http://127.0.0.1:65231")
             systemProperty("rdi.game.ip", "127.0.0.1:65230")
             systemProperty("rdi.host.name", "测试测试12123主机")
-            systemProperty("rdi.host.port", "65232")
+            systemProperty("rdi.host.port", "25565")
         }
 
         configureEach {
@@ -253,27 +253,32 @@ idea {
         isDownloadJavadoc = true
     }
 }
-
-fun registerCopyTask(name: String, extraDestination: File? = null) {
+fun registerCopyTask(name: String, extraDestinations: List<String> = emptyList()) {
     tasks.register(name) {
         dependsOn(tasks.named("build"))
-        val artifact = layout.buildDirectory.file("libs/rdi-${'$'}{version}.jar")
-        val destinations = mutableListOf(
-            layout.projectDirectory.dir("..${'$'}{File.separator}ihq${'$'}{File.separator}run").asFile,
-            File(System.getProperty("user.home"), "Documents\\RDI5sea-Ref\\.minecraft\\versions\\RDI5.5\\mods")
+        val artifact = layout.buildDirectory.file("libs/rdi-5-mc-client-1.21.1-neoforge.jar")
+        val baseDestinations = listOf(
+            layout.projectDirectory.dir("..\\..\\..\\server\\master\\run\\client-libs")
         )
-        extraDestination?.let { destinations.add(it) }
+        val destinationDirs = baseDestinations + extraDestinations.map { layout.projectDirectory.dir(it) }
+
         doLast {
             val jarFile = artifact.get().asFile
-            check(jarFile.exists()) { "未找到构建产物: ${'$'}jarFile" }
-            destinations.forEach { targetDir ->
+            if (!jarFile.exists()) {
+                throw GradleException("未找到构建产物: $jarFile")
+            }
+            destinationDirs.forEach { target ->
+                val targetDir = target.asFile
                 targetDir.mkdirs()
-                val destFile = File(targetDir, jarFile.name)
-                Files.copy(jarFile.toPath(), destFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
+                val destFile = targetDir.resolve(jarFile.name)
+                Files.copy(
+                    jarFile.toPath(),
+                    destFile.toPath(),
+                    StandardCopyOption.REPLACE_EXISTING
+                )
             }
         }
     }
 }
-
-registerCopyTask("出core-debug")
-registerCopyTask("出core-release", File("\\\\rdi5\\rdi55\\ihq"))
+registerCopyTask("出core-local")
+registerCopyTask("出core-release", listOf("\\\\rdi5\\rdi55\\ihq\\client-libs\\"))
