@@ -1,9 +1,9 @@
 package calebxzhou.rdi
 
 import calebxzhou.rdi.mc.startLocalServer
-import calebxzhou.rdi.ui2.RodernUI
-import calebxzhou.rdi.ui2.frag.RFragment
-import calebxzhou.rdi.ui2.frag.TitleFragment
+import calebxzhou.rdi.ui.RodernUI
+import calebxzhou.rdi.ui.frag.RFragment
+import calebxzhou.rdi.ui.frag.TitleFragment
 import icyllis.modernui.R
 import icyllis.modernui.audio.AudioManager
 import io.github.oshai.kotlinlogging.KotlinLogging

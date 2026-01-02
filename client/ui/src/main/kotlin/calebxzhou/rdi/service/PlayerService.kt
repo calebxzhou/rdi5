@@ -11,8 +11,8 @@ import calebxzhou.rdi.lgr
 import calebxzhou.rdi.net.loggedAccount
 import calebxzhou.rdi.net.server
 import calebxzhou.rdi.service.PlayerService.getPlayerInfo
-import calebxzhou.rdi.ui2.frag.ProfileFragment
-import calebxzhou.rdi.ui2.go
+import calebxzhou.rdi.ui.frag.ProfileFragment
+import calebxzhou.rdi.ui.go
 import com.github.benmanes.caffeine.cache.AsyncLoadingCache
 import com.github.benmanes.caffeine.cache.Caffeine
 import io.ktor.client.call.*
