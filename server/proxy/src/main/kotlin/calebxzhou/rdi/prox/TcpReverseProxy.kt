@@ -120,7 +120,7 @@ class DynamicProxyFrontendHandler(
                 val port = buffer.readUnsignedShort()
                 portReceived = true
                 
-                if (port in 50000..65535) {
+                if (port in 50000..59999 || port == 25565) {
                     lgr.info { "Port received: $port, connecting to backend 127.0.0.1:$port" }
                     currentBackendHost = "127.0.0.1"
                     currentBackendPort = port

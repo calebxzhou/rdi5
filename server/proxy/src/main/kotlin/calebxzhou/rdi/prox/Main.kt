@@ -11,5 +11,5 @@ val lgr = KotlinLogging.logger {  }
 fun main() {
     // Start the basic proxy with binary control packet support
     val proxy = TcpReverseProxy()
-    proxy.start("0.0.0.0", Const.SERVER_PORT, "127.0.0.1", 65232)
+    proxy.start("0.0.0.0", Const.SERVER_PORT, "127.0.0.1", 25565)
 }
