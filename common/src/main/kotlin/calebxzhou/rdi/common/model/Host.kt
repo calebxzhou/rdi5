@@ -18,14 +18,14 @@ data class Host(
     @Contextual
     val modpackId: ObjectId,
     //版本可能会重新发布 此时id会变 所以不用packVerId
-    val packVer: String = "latest",
+    var packVer: String = "latest",
     @Contextual
     val worldId: ObjectId?=null,
     var port: Int,
     val difficulty: Int,
     val gameMode: Int,
     val levelType: String,
-    val gameRules: Map<String,String> = mapOf(),
+    val gameRules: MutableMap<String,String> = mutableMapOf(),
     //白名单 只有成员才能进
     val whitelist: Boolean=false,
     val members: List<Member> = arrayListOf(),
