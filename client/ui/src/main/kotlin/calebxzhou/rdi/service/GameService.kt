@@ -51,8 +51,8 @@ object GameService {
     private val hostOsVersionRaw = System.getProperty("os.version") ?: ""
     private val launcherFeatures: Map<String, Boolean> = emptyMap()
     private val locale = Locale.SIMPLIFIED_CHINESE
-    private const val MAX_PARALLEL_LIBRARY_DOWNLOADS = 16
-    private const val MAX_PARALLEL_ASSET_DOWNLOADS = 16
+    private const val MAX_PARALLEL_LIBRARY_DOWNLOADS = 32
+    private const val MAX_PARALLEL_ASSET_DOWNLOADS = 32
     private val mirrors = mapOf(
         "https://maven.neoforged.net/releases/net/neoforged/forge" to "https://bmclapi2.bangbang93.com/maven/net/neoforged/forge",
         "https://maven.neoforged.net/releases/net/neoforged/neoforge" to " https://bmclapi2.bangbang93.com/maven/net/neoforged/neoforge",
@@ -216,7 +216,9 @@ object GameService {
 
     private suspend fun downloadAssets(manifest: MojangVersionManifest, onProgress: (String) -> Unit) {
         val assetIndexMeta = manifest.assetIndex ?: let { onProgress("找不到资源"); return }
-        val index = serdesJson.decodeFromString<MojangAssetIndexFile>(this.jarResource("mcmeta/assets-index/${assetIndexMeta.id}.json").readAllString())
+        val metaJson = this.jarResource("mcmeta/assets-index/${assetIndexMeta.id}.json").readAllString()
+        val index = serdesJson.decodeFromString<MojangAssetIndexFile>(metaJson)
+        assetIndexesDir.resolve("${assetIndexMeta.id}.json").writeText(metaJson)
         val filteredEntries = index.objects.entries.filter { shouldDownloadAsset(it.key) }
         onProgress("准备下载资源 (${filteredEntries.size}/${index.objects.size}) ...")
         val errors = Collections.synchronizedList(mutableListOf<String>())
@@ -226,6 +228,7 @@ object GameService {
                 async(Dispatchers.IO) {
                     semaphore.withPermit {
                         runCatching {
+                            onProgress("开始下载资源 $path")
                             downloadAssetObject(path, obj, onProgress)
                         }.onFailure { throwable ->
                             val message = throwable.message ?: throwable::class.simpleName ?: "unknown"
@@ -408,7 +411,9 @@ object GameService {
     )
 
     private fun shouldDownloadAsset(path: String): Boolean {
-        if (path.startsWith("realms/")) return false
+        if (path.startsWith("realms/")){
+            return path == "realms/lang/en_us.json"
+        }
         if (path.startsWith("minecraft/lang/")) {
             return path.equals("minecraft/lang/zh_cn.json", ignoreCase = true)
         }
