@@ -1,16 +1,21 @@
 package calebxzhou.rdi.master.service
 
+import calebxzhou.mykotutils.log.Loggers
+import calebxzhou.mykotutils.std.deleteRecursivelyNoSymlink
+import calebxzhou.mykotutils.std.jarResource
+import calebxzhou.mykotutils.std.readAllString
+import calebxzhou.rdi.common.model.*
+import calebxzhou.rdi.common.serdesJson
+import calebxzhou.rdi.common.util.ioScope
+import calebxzhou.rdi.common.util.str
 import calebxzhou.rdi.master.DB
 import calebxzhou.rdi.master.HOSTS_DIR
 import calebxzhou.rdi.master.exception.ParamError
 import calebxzhou.rdi.master.exception.RequestError
-import calebxzhou.rdi.common.model.Host
-import calebxzhou.rdi.common.model.HostStatus
-import calebxzhou.rdi.common.model.Mod
-import calebxzhou.rdi.common.model.Modpack
+import calebxzhou.rdi.master.model.WsMessage
 import calebxzhou.rdi.master.net.*
 import calebxzhou.rdi.master.service.HostService.addMember
-import calebxzhou.rdi.master.service.HostService.changeModpack
+import calebxzhou.rdi.master.service.HostService.changeGameRules
 import calebxzhou.rdi.master.service.HostService.changeVersion
 import calebxzhou.rdi.master.service.HostService.createHost
 import calebxzhou.rdi.master.service.HostService.delMember
@@ -31,15 +36,7 @@ import calebxzhou.rdi.master.service.HostService.transferOwnership
 import calebxzhou.rdi.master.service.ModpackService.getVersion
 import calebxzhou.rdi.master.service.ModpackService.installToHost
 import calebxzhou.rdi.master.service.WorldService.createWorld
-import calebxzhou.mykotutils.log.Loggers
-import calebxzhou.mykotutils.std.deleteRecursivelyNoSymlink
-import calebxzhou.rdi.common.extension.owner
-import calebxzhou.rdi.common.serdesJson
-import calebxzhou.rdi.common.model.RAccount
-import calebxzhou.rdi.common.util.str
-import calebxzhou.rdi.common.util.ioScope
 import calebxzhou.rdi.model.Role
-import calebxzhou.rdi.master.model.WsMessage
 import com.github.dockerjava.api.model.Mount
 import com.github.dockerjava.api.model.MountType
 import com.github.dockerjava.api.model.TmpfsOptions
@@ -49,6 +46,7 @@ import com.mongodb.client.model.Updates
 import com.mongodb.client.model.Updates.combine
 import com.mongodb.client.model.Updates.set
 import io.ktor.server.application.*
+import io.ktor.server.request.receive
 import io.ktor.server.routing.*
 import io.ktor.server.sse.*
 import io.ktor.server.websocket.*
@@ -63,9 +61,9 @@ import org.bson.Document
 import org.bson.types.ObjectId
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
-import kotlin.collections.joinToString
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
+
 val Host.dir get() = HOSTS_DIR.resolve(_id.str)
 
 // ---------- Routing DSL (mirrors teamRoutes style) ----------
@@ -79,7 +77,8 @@ fun Route.hostRoutes() = route("/host") {
                 paramNull("useWorld")?.let { ObjectId(it) },
                 param("difficulty").toInt(),
                 param("gameMode").toInt(),
-                param("levelType")
+                param("levelType"),
+                param("gameRules").let { serdesJson.decodeFromString<MutableMap<String,String>>(it)}
             )
             ok()
         }
@@ -116,6 +115,10 @@ fun Route.hostRoutes() = route("/host") {
             call.hostContext().needAdmin.restart()
             ok()
         }
+        put("/gamerules") {
+            call.hostContext().needAdmin.changeGameRules(call.paramT("data"))
+            ok()
+        }
         post("/update") {
             call.hostContext().needAdmin.changeVersion(paramNull("verName"))
             ok()
@@ -133,10 +136,10 @@ fun Route.hostRoutes() = route("/host") {
                 response(data = it)
             } ?: err("无此主机")
         }
-        post("/modpack/{modpackId}/{verName}") {
+        /*post("/modpack/{modpackId}/{verName}") {
             call.hostContext().needAdmin.changeModpack(idParam("modpackId"), param("verName"))
             ok()
-        }
+        }*/
 
         route("/log") {
             sse("/stream") {
@@ -243,15 +246,19 @@ object HostService {
 
 
     private val Host.containerEnv
-        get() = { mods: List<Mod> ->
-            listOf(
+        get() = { mods: List<Mod>,gameRules: Map<String,String> ->
+            mutableListOf(
                 "HOST_ID=${_id.str}",
                 "GAME_PORT=${port}",
                 "DIFFICULTY=${difficulty}",
                 "GAME_MODE=${gameMode}",
                 "LEVEL_TYPE=${levelType}",
-                "MOD_LIST=${mods.joinToString("\n") { mod -> mod.fileName }}",
-            )
+                "MOD_LIST=${mods.joinToString("\n") { mod -> mod.fileName }}"
+            ).apply {
+                gameRules.forEach { id,value ->
+                    this += "GAME_RULE_${id}=${value}"
+                }
+            }
         }
 
 
@@ -494,6 +501,7 @@ object HostService {
         difficulty: Int,
         gameMode: Int,
         levelType: String,
+        gameRules: MutableMap<String,String>
     ) {
         val playerId = _id
         if (getByOwner(playerId).size > 3) {
@@ -528,20 +536,58 @@ object HostService {
             difficulty = difficulty,
             gameMode = gameMode,
             levelType = levelType,
-            members = listOf(Host.Member(id = playerId, role = Role.OWNER))
-
+            members = listOf(Host.Member(id = playerId, role = Role.OWNER)),
+            gameRules = gameRules
         )
         val mailId =
             MailService.sendSystemMail(playerId, "主机创建中", "你的主机《${host.name}》正在创建中，请稍等几分钟...")._id
+        dbcl.insertOne(host)
+        startCreateHost(host, modpack, version, mailId)
+
+
+    }
+
+    private fun startCreateHost(
+        host: Host,
+        modpack: Modpack,
+        version: Modpack.Version,
+        mailId: ObjectId
+    ) {
         ioScope.launch {
             runCatching {
+                if(host.dir.exists()){
+                    host.dir.deleteRecursivelyNoSymlink()
+                }
                 host.dir.mkdir()
-                modpack.installToHost(packVer,host){
+
+                host.makeContainer(host.worldId, modpack, version,host.gameRules)
+
+                "server.properties".run {
+                    this.jarResource(this).readAllString()
+                        .replace(
+                            "#{difficulty}", when (host.difficulty) {
+                                0 -> "peaceful"
+                                1 -> "easy"
+                                2 -> "normal"
+                                3 -> "hard"
+                                else -> "normal"
+                            }
+                        )
+                        .replace("#{level-type}", host.levelType)
+                        .replace(
+                            "#{gamemode}", when (host.gameMode) {
+                                0 -> "survival"
+                                1 -> "creative"
+                                2 -> "adventure"
+                                else -> "survival"
+                            }
+                        ).let {
+                            host.dir.resolve(this).writeText(it)
+                        }
+                }
+                modpack.installToHost(host.packVer, host) {
                     MailService.changeMail(mailId, "主机创建中", newContent = it)
                 }
-                host.makeContainer(world?._id, modpack, version)
-                dbcl.insertOne(host)
-
                 DockerService.start(host._id.str)
 
                 clearShutFlag(host._id)
@@ -553,11 +599,9 @@ object HostService {
                 MailService.changeMail(mailId, "主机创建成功", newContent = "可以玩了")
             }
         }
-
-
     }
 
-    suspend fun HostContext.changeModpack(modpackId: ObjectId, verName: String) {
+    /*suspend fun HostContext.changeModpack(modpackId: ObjectId, verName: String) {
         if (host.status != HostStatus.STOPPED)
             throw RequestError("请先停止主机")
         val modpack = ModpackService.getById(modpackId) ?: throw RequestError("无此整合包")
@@ -570,12 +614,13 @@ object HostService {
                 set(Host::packVer.name, verName),
             )
         )
-    }
+    }*/
 
     private fun Host.makeContainer(
         worldId: ObjectId?,
         modpack: Modpack,
-        version: Modpack.Version
+        version: Modpack.Version,
+        gameRules: Map<String, String>
     ) {
 
         val mounts = mutableListOf(
@@ -602,9 +647,10 @@ object HostService {
             this._id.str,
             mounts,
             "rdi:${modpack.mcVer}_${modpack.modloader}",
-            containerEnv(version.mods)
+            containerEnv(version.mods,gameRules)
         )
     }
+
     suspend fun HostContext.delete() {
         if (host.status == HostStatus.PLAYABLE) {
             graceStop()
@@ -617,6 +663,9 @@ object HostService {
     }
 
     suspend fun HostContext.changeVersion(packVer: String?) {
+        if (host.status != HostStatus.STOPPED) {
+            throw RequestError("请先停止主机")
+        }
         val modpack = ModpackService.getById(host.modpackId) ?: throw RequestError("无此整合包")
         val modpackVer = modpack.versions.find { it.name == packVer } ?: modpack.versions.lastOrNull()
         ?: throw RequestError("无可用版本")
@@ -627,18 +676,33 @@ object HostService {
             "主机版本切换中",
             "你的主机《${host.name}》正在切换到版本 $resolvedVer ，请稍等几分钟..."
         )._id
-        if (DockerService.isStarted(hostIdStr)) {
-            DockerService.stop(hostIdStr)
-        }
-        DockerService.start(hostIdStr)
-        clearShutFlag(host._id)
 
+        DockerService.deleteContainer(hostIdStr)
+        clearShutFlag(host._id)
         dbcl.updateOne(
             eq("_id", host._id), combine(
                 set(Host::packVer.name, resolvedVer),
             )
         )
-        MailService.changeMail(mailId, "主机版本切换完成", "好了")
+        host.packVer = resolvedVer
+        startCreateHost(host, modpack, modpackVer, mailId)
+        MailService.changeMail(mailId, "主机版本切换中", "好了")
+    }
+
+    suspend fun HostContext.changeGameRules(newRules: Map<String, String>) {
+        if (host.status != HostStatus.STOPPED) {
+            throw RequestError("请先停止主机")
+        }
+        val modpack = ModpackService.getById(host.modpackId) ?: throw RequestError("无此整合包")
+        val version = modpack.getVersion(host.packVer) ?: throw RequestError("无此版本")
+
+        // Recreate container with updated environment
+        DockerService.deleteContainer(host._id.str)
+        host.gameRules.clear()
+        host.gameRules.putAll(newRules)
+        dbcl.updateOne(eq("_id", host._id), set(Host::gameRules.name, newRules))
+        host.makeContainer(host.worldId, modpack, version, newRules)
+        clearShutFlag(host._id)
     }
 
     suspend fun HostContext.start() {
@@ -803,7 +867,7 @@ object HostService {
         val requesterId = _id
         val visibleHosts = hosts.filter { host ->
             //官服永远显示
-            if(PlayerService.getName(host.ownerId)=="davickk")
+            if (PlayerService.getName(host.ownerId) == "davickk")
                 return@filter true
             if (!myOnly) {
                 val status = host.status
@@ -869,7 +933,6 @@ object HostService {
 
 
     private fun Host.overlayRootDir(): File = HOSTS_DIR.resolve(_id.str)
-
 
 
     suspend fun HostContext.delMember() {
