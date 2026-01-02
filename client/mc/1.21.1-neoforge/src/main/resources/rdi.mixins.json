@@ -4,6 +4,7 @@
   "package": "calebxzhou.rdi.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
+    "ASkinManager",
     "mChat",
     "mGame",
     "mHttpTexture",
@@ -19,9 +20,6 @@
     "mAllowChineseName",
     "mProxyConnect",
     "mServerboundHelloPacket",
-    "mTextureUrlChecker",
-    "mYggHost",
-    "mYggHost2",
-    "mYggHost3"
+    "mSkinManager"
   ]
 }
