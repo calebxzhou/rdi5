@@ -17,16 +17,22 @@ import io.ktor.server.response.respondText
 import io.ktor.server.routing.*
 import java.util.*
 
-fun Route.yggdrasilRoutes() {
-    post("/minecraft/profile/lookup/bulk/byname"){
-        call.getProfiles(call.receive())
-    }
-    get("/session/minecraft/profile/{uuid}"){
-        call.getProfile(param("uuid"))
-    }
-    //todo key verify service
-    get("/publickeys"){
-        call.respondText("""
+object YggdrasilService {
+    fun Route.yggdrasilRoutes() {
+        post("/minecraft/profile/lookup/bulk/byname"){
+            call.getProfiles(call.receive())
+        }
+        get("/session/minecraft/profile/{uuid}"){
+            call.getProfile(param("uuid"))
+        }
+        //http://127.0.0.1:65231/mc-profile/380df991-f603-344c-a090-369bad2a924a/clothes
+        get("/mc-profile/{uuid}/clothes"){
+                call.getClothes(param("uuid"))
+
+        }
+        //todo key verify service
+        get("/publickeys"){
+            call.respondText("""
             {
               "profilePropertyKeys" : [ {
                 "publicKey" : "MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAylB4B6m5lz7jwrcFz6Fd/fnfUhcvlxsTSn5kIK/2aGG1C3kMy4VjhwlxF6BFUSnfxhNswPjh3ZitkBxEAFY25uzkJFRwHwVA9mdwjashXILtR6OqdLXXFVyUPIURLOSWqGNBtb08EN5fMnG8iFLgEJIBMxs9BvF3s3/FhuHyPKiVTZmXY0WY4ZyYqvoKR+XjaTRPPvBsDa4WI2u1zxXMeHlodT3lnCzVvyOYBLXL6CJgByuOxccJ8hnXfF9yY4F0aeL080Jz/3+EBNG8RO4ByhtBf4Ny8NQ6stWsjfeUIvH7bU/4zCYcYOq4WrInXHqS8qruDmIl7P5XXGcabuzQstPf/h2CRAUpP/PlHXcMlvewjmGU6MfDK+lifScNYwjPxRo4nKTGFZf/0aqHCh/EAsQyLKrOIYRE0lDG3bzBh8ogIMLAugsAfBb6M3mqCqKaTMAf/VAjh5FFJnjS+7bE+bZEV0qwax1CEoPPJL1fIQjOS8zj086gjpGRCtSy9+bTPTfTR/SJ+VUB5G2IeCItkNHpJX2ygojFZ9n5Fnj7R9ZnOM+L8nyIjPu3aePvtcrXlyLhH/hvOfIOjPxOlqW+O5QwSFP4OEcyLAUgDdUgyW36Z5mB285uKW/ighzZsOTevVUG2QwDItObIV6i8RCxFbN2oDHyPaO5j1tTaBNyVt8CAwEAAQ=="
@@ -45,9 +51,9 @@ fun Route.yggdrasilRoutes() {
               } ]
             }
         """.trimIndent())
+        }
     }
-}
-object YggdrasilService {
+
     val String.fromUndashedUuid: UUID
         get() = UUID.fromString(this.replaceFirst("(\\w{8})(\\w{4})(\\w{4})(\\w{4})(\\w{12})".toRegex(), "$1-$2-$3-$4-$5"))
     val UUID.undashedString: String
@@ -76,12 +82,20 @@ object YggdrasilService {
                 listOf(Property(name = "textures", value = texturesPayload.json.encodeBase64))
             )
         }
-    suspend fun ApplicationCall.getProfile(uuid: String){
+    private suspend fun ApplicationCall.getProfile(uuid: String){
         val uid = uuid.fromUndashedUuid
         val account = PlayerService.getById(uid.objectId)
         respond(account?.gameProfile?: GameProfile.getDefault(uuid))
     }
-    suspend fun ApplicationCall.getProfiles(names: List<String>){
+    private suspend fun ApplicationCall.getClothes(uuid: String){
+        val account = PlayerService.getById(UUID.fromString(uuid).objectId)?: RAccount.DEFAULT
+        val clothes = MinecraftProfileTextures(
+            MinecraftProfileTexture(account.cloth.skin, if (account.cloth.isSlim) mapOf("model" to "slim" ) else mapOf()),
+            account.cloth.cape?.let { MinecraftProfileTexture(it) }
+        )
+        respond(clothes)
+    }
+    private suspend fun ApplicationCall.getProfiles(names: List<String>){
         val profiles = names.map { name ->
              PlayerService.getByName(name) ?: RAccount(UNKNOWN_PLAYER_ID, name,"","")
         }.map { it.gameProfile }

@@ -3,10 +3,8 @@ package calebxzhou.rdi.master.ygg
 import calebxzhou.mykotutils.std.encodeBase64
 import calebxzhou.rdi.common.json
 import calebxzhou.rdi.common.model.RAccount
-import calebxzhou.rdi.common.serdesJson
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
-import java.util.*
 
 @Serializable
 data class GameProfile(
@@ -68,4 +66,20 @@ data class MinecraftProfileTexture(
         CAPE,
         ELYTRA
     }
+}
+@Serializable
+data class MinecraftProfileTextures(
+    val skin: MinecraftProfileTexture?,
+    val cape: MinecraftProfileTexture?,
+    val elytra: MinecraftProfileTexture?=null,
+    val signatureState: SignatureState = SignatureState.SIGNED
+) {
+    companion object {
+        val EMPTY: MinecraftProfileTextures = MinecraftProfileTextures(null, null, null, SignatureState.SIGNED)
+    }
+}
+enum class SignatureState {
+    UNSIGNED,
+    INVALID,
+    SIGNED,
 }
