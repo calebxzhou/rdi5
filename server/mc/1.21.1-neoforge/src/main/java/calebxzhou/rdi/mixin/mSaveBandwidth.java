@@ -24,9 +24,7 @@ public class mSaveBandwidth {
     @Redirect(method = "tick()V", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/level/ServerEntity;sendChanges()V"))
     private void thottle(ServerEntity instance) {
         if(((AServerEntity)instance).getEntity() instanceof ItemEntity){
-
             if (tickAmount >= sendTickAmount) {
-
                 instance.sendChanges();
                 tickAmount = 0;
             } else {

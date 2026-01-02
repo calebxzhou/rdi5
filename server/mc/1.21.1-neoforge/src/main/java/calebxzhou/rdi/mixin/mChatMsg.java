@@ -1,5 +1,6 @@
 package calebxzhou.rdi.mixin;
 
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.PlayerChatMessage;
 import net.minecraft.network.protocol.game.ServerboundChatPacket;
 import net.minecraft.server.level.ServerPlayer;
@@ -24,7 +25,7 @@ public abstract class mChatMsg {
 
     @Inject(method = "handleChat",at=@At("HEAD"), cancellable = true)
     private void RDI$chat(ServerboundChatPacket packet, CallbackInfo ci){
-        broadcastChatMessage(PlayerChatMessage.system(packet.message()));
+        player.server.getPlayerList().broadcastSystemMessage(Component.literal(player.getDisplayName().getString()+": "+packet.message()),false);
         ci.cancel();
     }
 }
