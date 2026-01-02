@@ -1,7 +1,6 @@
 *.log
 *.toml
 .vscode
-client-ui2
 .gradle
 **/.idea/
 **/build/
