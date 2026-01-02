@@ -89,6 +89,8 @@ tasks.withType<Test>().configureEach {
 }
 
 tasks.register("出core") {
+    // Uses Project APIs in the action; mark as not CC-compatible to avoid serialization errors.
+    notCompatibleWithConfigurationCache("uses project file operations at execution time")
     dependsOn(tasks.named("buildFatJar"))
 
     doLast {
