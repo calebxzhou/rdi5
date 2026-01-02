@@ -39,7 +39,7 @@ val String.mcComp: MutableComponent
     get() = Component.literal(this)
 val isMcStarted
     get() = isClassLoaded("net.minecraft.client.Minecraft") && Minecraft.getInstance() != null
-private val lgr by Loggers
+val lgr by Loggers
 val mc: Minecraft
     get() = Minecraft.getInstance() ?: run {
         throw IllegalStateException("Minecraft Not Start !")
