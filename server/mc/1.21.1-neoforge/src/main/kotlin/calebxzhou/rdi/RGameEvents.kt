@@ -1,32 +1,16 @@
 package calebxzhou.rdi
 
-import calebxzhou.rdi.RDI.Companion.envDifficulty
-import calebxzhou.rdi.RDI.Companion.envGameMode
 import calebxzhou.rdi.model.CommandResultPayload
 import calebxzhou.rdi.model.WsMessage
 import calebxzhou.rdi.service.client
 import calebxzhou.rdi.service.serdesJson
-import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
-import io.ktor.client.plugins.websocket.webSocket
-import io.ktor.websocket.Frame
-import io.ktor.websocket.readReason
-import io.ktor.websocket.readText
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.suspendCancellableCoroutine
+import io.ktor.client.plugins.websocket.*
+import io.ktor.websocket.*
+import kotlinx.coroutines.*
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.builtins.serializer
 import net.minecraft.server.dedicated.DedicatedServer
-import net.minecraft.world.Difficulty
 import net.minecraft.world.level.GameRules
-import net.minecraft.world.level.GameType
-import org.bson.types.ObjectId
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
-import kotlin.math.min
 import net.neoforged.bus.api.SubscribeEvent
 import net.neoforged.fml.common.EventBusSubscriber
 import net.neoforged.neoforge.event.server.ServerStartedEvent
@@ -34,6 +18,10 @@ import net.neoforged.neoforge.event.server.ServerStartingEvent
 import net.neoforged.neoforge.event.server.ServerStoppedEvent
 import net.neoforged.neoforge.event.server.ServerStoppingEvent
 import net.neoforged.neoforge.event.tick.ServerTickEvent
+import org.bson.types.ObjectId
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import kotlin.math.min
 
 @EventBusSubscriber(modid = "rdi")
 class RGameEvents {
@@ -65,11 +53,6 @@ class RGameEvents {
         @JvmStatic
         fun starting(e: ServerStartingEvent){
             val server = e.server as DedicatedServer
-            val difficulty = Difficulty.byId(envDifficulty)
-            lgr.info("设置难度为 $difficulty")
-            server.setDifficulty(difficulty,true)
-            server.defaultGameType= GameType.byId(envGameMode)
-            lgr.info("game type ${server.defaultGameType}")
             GameRules.visitGameRuleTypes(object : GameRules.GameRuleTypeVisitor{
                 override fun <T : GameRules.Value<T>> visit(key: GameRules.Key<T>, type: GameRules.Type<T>) {
                     val gameRuleEnv = RDI.envGameRule(key.id)
@@ -78,11 +61,11 @@ class RGameEvents {
                         val rule = server.gameRules.getRule(key)
                         if(rule is GameRules.BooleanValue){
                             rule.set(it.toBoolean(),server)
-                            lgr.info("$gameRuleEnv=$it  B")
+                            lgr.info("SET GAME RULE $key=$it  B")
                         }
                         if(rule is GameRules.IntegerValue){
                             rule.set(it.toInt(),server)
-                            lgr.info("$gameRuleEnv=$it  I")
+                            lgr.info("SET GAME RULE $key=$it  I")
                         }
                     }
                 }
@@ -94,7 +77,7 @@ class RGameEvents {
             lgr.info("RDI启动完成启动完成启动完成启动完成")
             val server = e.server as DedicatedServer
             playSocketJob?.cancel()
-            playSocketJob = ioTask{
+            playSocketJob = ioScope.launch{
                 var hostId = System.getenv("HOST_ID")
                 if(Const.DEBUG) hostId = Const.TEST_HOST_ID
                 if (hostId.isNullOrBlank()) {
@@ -103,7 +86,7 @@ class RGameEvents {
                         lgr.error("准备关服")
                         server.halt(false)
                     }
-                    return@ioTask
+                    return@launch
                 }
 
                 val path = "/host/play/$hostId"
