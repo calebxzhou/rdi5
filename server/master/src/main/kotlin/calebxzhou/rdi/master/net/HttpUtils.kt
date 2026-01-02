@@ -138,6 +138,8 @@ private fun ApplicationCall.isFormLikeContent(): Boolean {
  * Throws [ParamError] if absent.
  */
 suspend fun RoutingContext.param(name: String): String = call.param(name)
+
+suspend inline fun <reified T> ApplicationCall.paramT(name: String): T = serdesJson.decodeFromString(param(name))
 suspend fun RoutingContext.idParam(name: String): ObjectId = call.idParam(name)
 suspend fun RoutingContext.paramNull(name: String): String? = call.paramNull(name)
 suspend fun ApplicationCall.param(name: String): String =
