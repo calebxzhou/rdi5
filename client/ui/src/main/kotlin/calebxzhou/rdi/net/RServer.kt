@@ -188,7 +188,7 @@ class RServer(
         saveTo.downloadFileFrom(
             "${hqUrl}/${path}",
             mapOf(HttpHeaders.Authorization to "Bearer ${loggedAccount.jwt}"),
-            onProgress,
+            onProgress = onProgress,
         )
     }
 
