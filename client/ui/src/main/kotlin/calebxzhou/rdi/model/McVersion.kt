@@ -29,10 +29,11 @@ enum class McVersion(
     val metadata get() = this.jarResource("mcmeta/$mcVer.json").readAllString().let { serdesJson.decodeFromString<MojangVersionManifest>(it) }
     val baseDir get() = GameService.versionListDir.resolve(mcVer)
     val nativesDir get() = baseDir.resolve("natives")
-    val firstLoader get() = loaderVersions.values.first()
+    val firstLoader get() = loaderVersions.keys.first()
+    val firstLoaderVersion get() = loaderVersions.values.first()
     val firstLoaderDir get() = loaderVersions.values.first().let { GameService.versionListDir.resolve(it.id) }
     val manifest: MojangVersionManifest get() = metadata//GameService.versionListDir.resolve(mcVer).resolve("$mcVer.json").let { serdesJson.decodeFromString(it.readText()) }
-    val loaderManifest: MojangVersionManifest get() = GameService.versionListDir.resolve(firstLoader.id).resolve(firstLoader.id + ".json").let { serdesJson.decodeFromString(it.readText()) }
+    val loaderManifest: MojangVersionManifest get() = GameService.versionListDir.resolve(firstLoaderVersion.id).resolve(firstLoaderVersion.id + ".json").let { serdesJson.decodeFromString(it.readText()) }
 
     companion object{
         fun from(mcVer: String): McVersion? = entries.firstOrNull { it.mcVer == mcVer }

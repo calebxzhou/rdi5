@@ -124,7 +124,7 @@ object GameService {
         return lower.endsWith(".dll") || lower.endsWith(".so") || lower.endsWith(".dylib")
     }
 
-    private suspend fun downloadClient(manifest: MojangVersionManifest, onProgress: (String) -> Unit) {
+    suspend fun downloadClient(manifest: MojangVersionManifest, onProgress: (String) -> Unit) {
         val client = manifest.downloads?.client ?: return
         val versionDir = versionListDir.resolve(manifest.id).apply { mkdirs() }
         File(versionDir, "${manifest.id}.json").writeText(manifest.json)
@@ -141,7 +141,7 @@ object GameService {
            return httpRequest { url(version.metaUrl) }.body()
        }*/
 
-    private suspend fun downloadLibraries(manifest: MojangVersionManifest, onProgress: (String) -> Unit) {
+    suspend fun downloadLibraries(manifest: MojangVersionManifest, onProgress: (String) -> Unit) {
         downloadLibraries(manifest.libraries, onProgress)
     }
 
@@ -214,7 +214,7 @@ object GameService {
         }
     }
 
-    private suspend fun downloadAssets(manifest: MojangVersionManifest, onProgress: (String) -> Unit) {
+    suspend fun downloadAssets(manifest: MojangVersionManifest, onProgress: (String) -> Unit) {
         val assetIndexMeta = manifest.assetIndex ?: let { onProgress("找不到资源"); return }
         val metaJson = this.jarResource("mcmeta/assets-index/${assetIndexMeta.id}.json").readAllString()
         val index = serdesJson.decodeFromString<MojangAssetIndexFile>(metaJson)

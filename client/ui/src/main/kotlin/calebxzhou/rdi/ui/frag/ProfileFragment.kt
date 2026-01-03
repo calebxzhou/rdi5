@@ -20,14 +20,7 @@ class ProfileFragment : RFragment("我的信息") {
                     HostLobbyFragment().go()
                     return@with
                 }
-                alertErr("你还没有完整下载mc文件，必须下载才能游玩RDI，点击右侧按钮开始")
-            }
-            "完整下载MC文件" with {
-                TaskFragment("下载MC文件") {
-                    GameService.downloadVersion(McVersion.V211) { log(it) }
-                    GameService.downloadLoader(McVersion.V211, ModLoader.NEOFORGE)
-                    { log(it) }
-                }.go()
+                alertErr("你还没有完整下载mc文件，必须下载才能游玩RDI，可以去群文件下载“资源运行库包”，也可以点击上方“MC版本资源”按钮下载")
             }
             /*"🏠 团队" colored MaterialColor.LIGHT_GREEN_900 with {
                 server.request<String>("room/my", method = io.ktor.http.HttpMethod.Get, showLoading = false) {
@@ -55,6 +48,7 @@ class ProfileFragment : RFragment("我的信息") {
         }
         titleViewInit = {
             quickOptions {
+                "\uDB84\uDE5F MC版本资源" with { McVersionManageFragment().go() }
                 "\uEB1C 信箱" colored MaterialColor.BLUE_900 with { MailFragment().go() }
                 "\uDB83\uDFC5 登出" colored MaterialColor.RED_900 with { close() }
             }
