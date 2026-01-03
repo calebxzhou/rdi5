@@ -219,12 +219,29 @@ object GameService {
         val metaJson = this.jarResource("mcmeta/assets-index/${assetIndexMeta.id}.json").readAllString()
         val index = serdesJson.decodeFromString<MojangAssetIndexFile>(metaJson)
         assetIndexesDir.resolve("${assetIndexMeta.id}.json").writeText(metaJson)
-        val filteredEntries = index.objects.entries.filter { shouldDownloadAsset(it.key) }
-        onProgress("准备下载资源 (${filteredEntries.size}/${index.objects.size}) ...")
+
+        val toDownload = mutableListOf<Map.Entry<String, MojangAssetObject>>()
+        val toStub = mutableListOf<Map.Entry<String, MojangAssetObject>>()
+
+        index.objects.entries.forEach { entry ->
+            when {
+                shouldDownloadAsset(entry.key) -> toDownload += entry
+                shouldUseEmptySound(entry.key) -> toStub += entry
+                else -> Unit
+            }
+        }
+
+        onProgress("准备下载资源 (${toDownload.size}/${index.objects.size}) ... 空音频替换 ${toStub.size} 个")
+
+        // Write stub ogg files for skipped sounds
+        toStub.forEach { (_, obj) ->
+            writeEmptySoundStub(obj.hash)
+        }
+
         val errors = Collections.synchronizedList(mutableListOf<String>())
         supervisorScope {
             val semaphore = Semaphore(MAX_PARALLEL_ASSET_DOWNLOADS)
-            filteredEntries.map { (path, obj) ->
+            toDownload.map { (path, obj) ->
                 async(Dispatchers.IO) {
                     semaphore.withPermit {
                         runCatching {
@@ -411,19 +428,40 @@ object GameService {
     )
 
     private fun shouldDownloadAsset(path: String): Boolean {
-        if (path.startsWith("realms/")){
+        if (path == "minecraft/resourcepacks/programmer_art.zip") return false
+        if (path.startsWith("realms/")) {
             return path == "realms/lang/en_us.json"
         }
+        //只下载简中语言文件
         if (path.startsWith("minecraft/lang/")) {
             return path.equals("minecraft/lang/zh_cn.json", ignoreCase = true)
         }
         if (path.startsWith("minecraft/sounds/")) {
             val rest = path.removePrefix("minecraft/sounds/")
-            if (rest.startsWith("records/") || rest.startsWith("music/")) {
+            if (rest.startsWith("records/") || rest.startsWith("music/") || rest.startsWith("ambient/")) {
                 return false
             }
         }
         return true
+    }
+
+    private fun shouldUseEmptySound(path: String): Boolean {
+        if (!path.endsWith(".ogg", ignoreCase = true)) return false
+        if (!path.startsWith("minecraft/sounds/")) return false
+        val rest = path.removePrefix("minecraft/sounds/")
+        return rest.startsWith("records/") || rest.startsWith("music/") || rest.startsWith("ambient/")
+    }
+
+    private fun writeEmptySoundStub(hash: String) {
+        val targetDir = assetObjectsDir.resolve(hash.substring(0, 2))
+        val targetFile = targetDir.resolve(hash)
+        if (targetFile.exists()) return
+        targetDir.mkdirs()
+        jarResource("assets/empty.ogg").use { input ->
+            targetFile.outputStream().use { output ->
+                input.copyTo(output)
+            }
+        }
     }
 
     private fun buildAssetUrl(hash: String): String {

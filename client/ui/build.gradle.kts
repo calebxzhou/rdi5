@@ -8,7 +8,7 @@ import org.gradle.api.tasks.testing.Test
 import org.gradle.jvm.tasks.Jar
 
 val ktorVersion = "3.3.3"
-val version = "5.8.3"
+val version = "5.8.4"
 project.version = version
 plugins {
     kotlin("jvm") version "2.2.21"
