@@ -63,7 +63,7 @@ class MailFragment : RFragment("信箱") {
                                 textStyle = Typeface.ITALIC
                             }
                         }
-                        textView("\uF415${mail.senderName} \uE38A${mail.id.timestamp}"){
+                        textView("\uF415${mail.senderName} \uE38A${mail.id.timestamp.secondsToHumanDateTime}"){
                             gravity = Gravity.END or Gravity.CENTER_VERTICAL
                         }
                     }
