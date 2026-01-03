@@ -559,7 +559,6 @@ object ModpackService {
         }
         if (version.hostsUsing().isNotEmpty()) throw RequestError("有主机正在使用此版本，无法重构")
         version.setTotalSize(version.zip.length())
-        //todo 删除ftb backup
         try {
             val downloadedMods = CurseForgeApi.downloadMods(version.mods.filter { it.side != Mod.Side.CLIENT }
                 .map { CFDownloadMod(it.projectId.toInt(), it.fileId.toInt(),it.slug, it.targetPath) }) { cfmod, prog ->
