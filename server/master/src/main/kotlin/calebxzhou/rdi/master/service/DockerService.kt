@@ -75,7 +75,7 @@ object DockerService {
     ): String {
 
         val hostConfig = HostConfig.newHostConfig()
-            .withPortBindings(parse("$port:25565"))
+            .withPortBindings(parse("$port:$port"))
             .withCpuCount(4L)  // Limit to 2 CPUs
             .withMemory(4L * 1024 * 1024 * 1024)  // 2GB RAM limit
             .withMemorySwap(4L * 1024 * 1024 * 1024)  //4G swap

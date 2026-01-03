@@ -250,9 +250,6 @@ object HostService {
             mutableListOf(
                 "HOST_ID=${_id.str}",
                 "GAME_PORT=${port}",
-                "DIFFICULTY=${difficulty}",
-                "GAME_MODE=${gameMode}",
-                "LEVEL_TYPE=${levelType}",
                 "MOD_LIST=${mods.joinToString("\n") { mod -> mod.fileName }}"
             ).apply {
                 gameRules.forEach { id,value ->
@@ -564,6 +561,7 @@ object HostService {
 
                 "server.properties".run {
                     this.jarResource(this).readAllString()
+                        .replace("#{port}", host.port.toString())
                         .replace(
                             "#{difficulty}", when (host.difficulty) {
                                 0 -> "peaceful"
