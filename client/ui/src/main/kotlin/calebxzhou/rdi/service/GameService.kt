@@ -419,7 +419,7 @@ object GameService {
         }
         if (path.startsWith("minecraft/sounds/")) {
             val rest = path.removePrefix("minecraft/sounds/")
-            if (rest.startsWith("records/") || rest.startsWith("music/") || rest.startsWith("ambient/")) {
+            if (rest.startsWith("records/") || rest.startsWith("music/")) {
                 return false
             }
         }
