@@ -26,56 +26,99 @@ class DynamicProxyFrontendHandler(
     private var currentBackendHost: String = defaultBackendHost
     private var currentBackendPort: Int = defaultBackendPort
     private val pendingBuffer = mutableListOf<Any>()
-    private var portReceived = false
+    private var handshakeReceived = false
 
     override fun channelActive(ctx: ChannelHandlerContext) {
-        lgr.info { "Client connected, waiting for 2-byte port" }
+        lgr.info { "Client connected, waiting for Minecraft handshake" }
     }
 
     override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
-        // First message must be exactly 2 bytes containing the target port
-        if (!portReceived) {
+        if (!handshakeReceived) {
             val buffer = msg as ByteBuf
-            if (buffer.readableBytes() >= 2) {
-                val port = buffer.readUnsignedShort()
-                portReceived = true
-
-                if (port in 50000..59999 || port == 25565) {
-                    lgr.info { "Port received: $port, connecting to backend 127.0.0.1:$port" }
-                    currentBackendHost = "127.0.0.1"
-                    currentBackendPort = port
-
-                    // Now add Minecraft frame decoder AFTER port is extracted
-                    ctx.pipeline().addBefore(ctx.name(), "minecraftDecoder", MinecraftFrameDecoder())
-                    lgr.info { "Added Minecraft frame decoder to pipeline" }
-
-                    connectToBackend(ctx)
-
-                    // If there's remaining data in this packet, forward it
-                    if (buffer.readableBytes() > 0) {
-                        val remainingData = buffer.readRetainedSlice(buffer.readableBytes())
-                        // Re-fire the remaining data through the pipeline so it gets decoded
-                        ctx.fireChannelRead(remainingData)
-                        ReferenceCountUtil.release(msg)
-                        return
-                    }
-                } else {
-                    lgr.info { "Invalid port $port (must be 50000-59999), closing connection" }
-                    ctx.channel().close()
-                }
-
-                ReferenceCountUtil.release(msg)
-            } else {
-                lgr.info { "First packet too small (${buffer.readableBytes()} bytes), expected at least 2" }
-                ReferenceCountUtil.release(msg)
+            try {
+                handleHandshake(ctx, buffer)
+            } catch (e: Exception) {
+                lgr.error(e) { "Error parsing handshake" }
                 ctx.channel().close()
+            } finally {
+                ReferenceCountUtil.release(msg)
             }
             return
         }
 
-        // After port is received, forward all data normally
+        // After handshake, forward all data normally
         forwardToBackend(ctx, msg)
     }
+
+    private fun handleHandshake(ctx: ChannelHandlerContext, buffer: ByteBuf) {
+        // Buffer contains [Length + PacketID + Protocol + Host + Port + State]
+        // We need to parse this non-destructively to extract the port
+        val parser = buffer.slice()
+
+        // 1. Skip Packet Length (VarInt)
+        readVarInt(parser)
+
+        // 2. Read Packet ID (VarInt) - must be 0x00 for Handshake
+        val packetId = readVarInt(parser)
+
+        if (packetId == 0) {
+            // 3. Skip Protocol Version (VarInt)
+            readVarInt(parser)
+
+            // 4. Skip Hostname (String = VarInt Len + Bytes)
+            val hostLen = readVarInt(parser)
+            parser.skipBytes(hostLen)
+
+            // 5. Read Port (UShort)
+            val port = parser.readUnsignedShort()
+
+            handshakeReceived = true
+            lgr.info { "Handshake received: Port $port" }
+
+            // Determine backend based on port
+            if (port in 50000..59999 || port == 25565) {
+                lgr.info { "Connecting to backend 127.0.0.1:$port" }
+                currentBackendHost = "127.0.0.1"
+                currentBackendPort = port
+
+                connectToBackend(ctx)
+
+                // Forward the handshake packet
+                forwardToBackend(ctx, buffer.retain())
+
+                // Remove the frame decoder so subsequent encrypted/compressed packets flow raw
+                ctx.pipeline().remove(MinecraftFrameDecoder::class.java)
+                lgr.info { "Removed MinecraftFrameDecoder, switching to raw forwarding" }
+            } else {
+                lgr.info { "Invalid port $port (must be 50000-59999), closing connection" }
+                ctx.channel().close()
+            }
+        } else {
+            lgr.info { "Expected Handshake (0x00) but got $packetId, closing" }
+            ctx.channel().close()
+        }
+    }
+
+
+    private fun readVarInt(buffer: ByteBuf): Int {
+        var value = 0
+        var position = 0
+        var currentByte: Byte
+
+        while (true) {
+            currentByte = buffer.readByte()
+            value = value or ((currentByte.toInt() and 0x7F) shl position)
+
+            if ((currentByte.toInt() and 0x80) == 0) break
+
+            position += 7
+
+            if (position >= 32) throw RuntimeException("VarInt is too big")
+        }
+
+        return value
+    }
+
 
     private fun connectToBackend(ctx: ChannelHandlerContext) {
         val frontendChannel = ctx.channel()

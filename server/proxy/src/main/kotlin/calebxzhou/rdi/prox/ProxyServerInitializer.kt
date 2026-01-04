@@ -24,7 +24,9 @@ class ProxyServerInitializer(
             ch.pipeline().addLast(LoggingHandler(LogLevel.INFO))
         }
         ch.pipeline().addLast(
-            // Port extraction happens first, then Minecraft framing is added dynamically
+            // Use Minecraft framing to handle packet boundaries
+            MinecraftFrameDecoder(),
+            // Port extraction from Handshake packet
             DynamicProxyFrontendHandler(defaultBackendHost, defaultBackendPort, backendGroup)
         )
     }
