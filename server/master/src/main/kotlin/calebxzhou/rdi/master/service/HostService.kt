@@ -35,12 +35,14 @@ import calebxzhou.rdi.master.service.HostService.status
 import calebxzhou.rdi.master.service.HostService.transferOwnership
 import calebxzhou.rdi.master.service.ModpackService.getVersion
 import calebxzhou.rdi.master.service.ModpackService.installToHost
+import calebxzhou.rdi.master.service.PlayerService.setPlayHost
 import calebxzhou.rdi.master.service.WorldService.createWorld
 import calebxzhou.rdi.model.Role
 import com.github.dockerjava.api.model.Mount
 import com.github.dockerjava.api.model.MountType
 import com.github.dockerjava.api.model.TmpfsOptions
 import com.mongodb.client.model.Filters.*
+import com.mongodb.client.model.Indexes
 import com.mongodb.client.model.UpdateOptions
 import com.mongodb.client.model.Updates
 import com.mongodb.client.model.Updates.combine
@@ -81,6 +83,11 @@ fun Route.hostRoutes() = route("/host") {
                 param("gameRules").let { serdesJson.decodeFromString<MutableMap<String,String>>(it)}
             )
             ok()
+        }
+        get("/status"){
+            val port = param("port").toInt()
+            val host = HostService.getByPort(port) ?: throw RequestError("无此主机")
+            response(data = host.status)
         }
         get("/lobby/{page?}") {
             val hosts = call.player().listHostLobby(paramNull("page")?.toInt() ?: 0)
@@ -226,6 +233,11 @@ object HostService {
         System.getenv("DOCKER_DESKTOP_PATH_PREFIX")?.trimEnd('/') ?: "/run/desktop/mnt/host"
 
     val dbcl = DB.getCollection<Host>("host")
+    init {
+        runBlocking {
+            dbcl.createIndex(Indexes.ascending("port"))
+        }
+    }
 
     private const val PORT_START = 50000
     const val SERVER_RDI_CORE_FILENAME = "rdi-5-server.jar"
@@ -586,6 +598,7 @@ object HostService {
                 modpack.installToHost(host.packVer, host) {
                     MailService.changeMail(mailId, "主机创建中", newContent = it)
                 }
+                lgr.info { "installToHost returned. Proceeding to start Docker container for host ${host._id} (Logic Error Tracing)." }
                 DockerService.start(host._id.str)
 
                 clearShutFlag(host._id)
@@ -899,6 +912,8 @@ object HostService {
     suspend fun getByOwner(uid: ObjectId): List<Host> =
         dbcl.find(eq("ownerId", uid)).toList()
 
+
+    suspend fun getByPort(port: Int): Host? = dbcl.find(eq("port", port)).firstOrNull()
 
     suspend fun findByWorld(worldId: ObjectId): Host? =
         dbcl.find(eq("worldId", worldId)).firstOrNull()
