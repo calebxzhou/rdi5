@@ -1,5 +1,12 @@
 package calebxzhou.rdi.prox
 
+import calebxzhou.rdi.common.exception.RequestError
+import calebxzhou.rdi.common.model.HostStatus
+import calebxzhou.rdi.common.model.Response
+import com.sun.tools.javac.resources.ct
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.request.get
 import io.netty.bootstrap.Bootstrap
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
@@ -10,7 +17,10 @@ import io.netty.channel.ChannelInboundHandlerAdapter
 import io.netty.channel.ChannelOption
 import io.netty.channel.EventLoopGroup
 import io.netty.channel.socket.nio.NioSocketChannel
+import io.netty.util.AttributeKey
 import io.netty.util.ReferenceCountUtil
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Enhanced handler for frontend connections with simplified port-based routing
@@ -21,6 +31,10 @@ class DynamicProxyFrontendHandler(
     private val defaultBackendPort: Int,
     private val backendGroup: EventLoopGroup
 ) : ChannelInboundHandlerAdapter() {
+
+    companion object {
+        val ATTR_PROTOCOL_VER = AttributeKey.valueOf<Int>("protocolVer")
+    }
 
     private var backendChannel: Channel? = null
     private var currentBackendHost: String = defaultBackendHost
@@ -50,6 +64,17 @@ class DynamicProxyFrontendHandler(
         forwardToBackend(ctx, msg)
     }
 
+    private suspend fun getHostStatus(port: Int): Result<HostStatus> = runCatching {
+        withTimeoutOrNull(1000L) {
+            _root_ide_package_.calebxzhou.rdi.common.net.ktorClient.get("$MASTER_URL/host/status?port=$port").body<Response<HostStatus?>>().run {
+                data ?: run {
+                    lgr.info { "host $port status fail: ${msg}" }
+                    throw RequestError("无法获取主机状态：$msg")
+                }
+            }
+        } ?: throw RequestError("无法获取主机状态：请求超时")
+    }
+
     private fun handleHandshake(ctx: ChannelHandlerContext, buffer: ByteBuf) {
         // Buffer contains [Length + PacketID + Protocol + Host + Port + State]
         // We need to parse this non-destructively to extract the port
@@ -62,8 +87,8 @@ class DynamicProxyFrontendHandler(
         val packetId = readVarInt(parser)
 
         if (packetId == 0) {
-            // 3. Skip Protocol Version (VarInt)
-            readVarInt(parser)
+            // 3. Protocol Version (VarInt)
+            val protocolVersion = readVarInt(parser)
 
             // 4. Skip Hostname (String = VarInt Len + Bytes)
             val hostLen = readVarInt(parser)
@@ -73,14 +98,32 @@ class DynamicProxyFrontendHandler(
             val port = parser.readUnsignedShort()
 
             handshakeReceived = true
-            lgr.info { "Handshake received: Port $port" }
+            lgr.info { "Handshake received: Port $port Version $protocolVersion" }
 
             // Determine backend based on port
             if (port in 50000..59999 || port == 25565) {
-                lgr.info { "Connecting to backend 127.0.0.1:$port" }
+                val status = runBlocking {
+                    getHostStatus(port).getOrElse {
+                        disconnectPlayerWithReason(
+                            ctx.channel(),
+                            it.message ?: ""
+                        ); HostStatus.UNKNOWN
+                    }
+                }
+                if (status != HostStatus.PLAYABLE) {
+                    disconnectPlayerWithReason(
+                        ctx.channel(), when (status) {
+                            HostStatus.STOPPED -> "主机未启动，请先启动主机"
+                            HostStatus.STARTED -> "主机尚未准备好，请稍等一会"
+                            else -> "无法连接主机，请稍后再试"
+                        }
+                    )
+                    return
+                }
+                lgr.info { "Connecting to backend 127.0.0.1:$port " }
                 currentBackendHost = "127.0.0.1"
                 currentBackendPort = port
-
+                ctx.channel().attr(ATTR_PROTOCOL_VER).set(protocolVersion)
                 connectToBackend(ctx)
 
                 // Forward the handshake packet
@@ -90,8 +133,10 @@ class DynamicProxyFrontendHandler(
                 ctx.pipeline().remove(MinecraftFrameDecoder::class.java)
                 lgr.info { "Removed MinecraftFrameDecoder, switching to raw forwarding" }
             } else {
-                lgr.info { "Invalid port $port (must be 50000-59999), closing connection" }
-                ctx.channel().close()
+                val reason = "Invalid port $port (must be 50000-59999)"
+                lgr.info { reason + ", closing connection" }
+                ctx.channel().attr(ATTR_PROTOCOL_VER).set(protocolVersion)
+                disconnectPlayerWithReason(ctx.channel(), reason)
             }
         } else {
             lgr.info { "Expected Handshake (0x00) but got $packetId, closing" }
@@ -234,5 +279,41 @@ class DynamicProxyFrontendHandler(
             ch.writeAndFlush(Unpooled.EMPTY_BUFFER)
                 .addListener(ChannelFutureListener.CLOSE)
         }
+    }
+
+    private fun disconnectPlayerWithReason(ch: Channel, reason: String) {
+        val protocolVersion = ch.attr(ATTR_PROTOCOL_VER).get() ?: 0
+        val packetId = 0//if (protocolVersion > 385) 0x01 else 0x00
+        val reasonJson = "{\"text\":\"$reason\"}"
+
+        val buffer = ch.alloc().buffer()
+        val dataBuffer = ch.alloc().buffer()
+
+        try {
+            writeVarInt(packetId, dataBuffer)
+            writeString(reasonJson, dataBuffer)
+
+            writeVarInt(dataBuffer.readableBytes(), buffer)
+            buffer.writeBytes(dataBuffer)
+
+            ch.writeAndFlush(buffer).addListener(ChannelFutureListener.CLOSE)
+        } finally {
+            dataBuffer.release()
+        }
+    }
+
+    private fun writeVarInt(value: Int, buffer: ByteBuf) {
+        var v = value
+        while ((v and -128) != 0) {
+            buffer.writeByte(v and 127 or 128)
+            v = v ushr 7
+        }
+        buffer.writeByte(v)
+    }
+
+    private fun writeString(value: String, buffer: ByteBuf) {
+        val bytes = value.toByteArray(Charsets.UTF_8)
+        writeVarInt(bytes.size, buffer)
+        buffer.writeBytes(bytes)
     }
 }

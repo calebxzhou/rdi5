@@ -3,3 +3,5 @@ plugins {
 }
 
 rootProject.name = "s-proxy"
+include(":common")
+project(":common").projectDir = file("../../common")

@@ -1,10 +1,11 @@
 package calebxzhou.rdi.prox
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import io.netty.util.AttributeKey
 
 
+val MASTER_URL = System.getProperty("rdi.master")?:"http://127.0.0.1:65231"
 val lgr = KotlinLogging.logger {  }
-
 /**
  * calebxzhou @ 8/31/2025 5:20 PM
  */

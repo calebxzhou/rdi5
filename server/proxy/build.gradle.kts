@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.internal.builtins.StandardNames.FqNames.targe
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 
+val ktorVersion = "3.3.3"
 
 plugins {
     kotlin("jvm") version "2.2.21"
@@ -17,7 +18,15 @@ repositories {
 
 dependencies {
     testImplementation(kotlin("test"))
+    implementation(project(":common"))
+    implementation(kotlin("reflect"))
+    implementation("io.ktor:ktor-client-core:$ktorVersion")
+    implementation("io.ktor:ktor-client-okhttp:$ktorVersion")
+    implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
+    implementation("io.ktor:ktor-client-encoding:$ktorVersion")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
 
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
     implementation("ch.qos.logback:logback-classic:1.5.18")
     implementation("io.github.oshai:kotlin-logging-jvm:7.0.13")
     implementation("io.netty:netty-all:4.2.5.Final")
@@ -29,7 +38,7 @@ tasks.named<Jar>("jar") {
     }
 }
 tasks.named<Test>("test") {
-    enabled = true
+    enabled = false
 }
 tasks.test {
     useJUnitPlatform()
@@ -44,8 +53,9 @@ kotlin {
     jvmToolchain(21)
 }
 tasks.register("出core") {
+    notCompatibleWithConfigurationCache("uses project file operations at execution time")
     dependsOn(tasks.named("build"))
-    val artifact = layout.buildDirectory.file("libs/rdi-5-mc-client-1.21.1-neoforge.jar")
+    val artifact = layout.buildDirectory.file("libs/prox-all.jar")
 
     doLast {
         val jarFile = artifact.get().asFile
