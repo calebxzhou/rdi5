@@ -1,4 +1,7 @@
 import org.gradle.jvm.tasks.Jar
+import org.jetbrains.kotlin.gradle.internal.builtins.StandardNames.FqNames.target
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 
 
 plugins {
@@ -7,7 +10,6 @@ plugins {
 }
 
 group = "calebxzhou.rdi"
-version = "5"
 
 repositories {
     mavenCentral()
@@ -26,11 +28,37 @@ tasks.named<Jar>("jar") {
         attributes("Main-Class" to "calebxzhou.rdi.prox.MainKt")
     }
 }
-
+tasks.named<Test>("test") {
+    enabled = true
+}
 tasks.test {
     useJUnitPlatform()
 }
-
+base {
+    archivesName.set("prox")
+}
+tasks.named<Jar>("jar") {
+    archiveClassifier.set("plain")
+}
 kotlin {
     jvmToolchain(21)
+}
+tasks.register("出core") {
+    dependsOn(tasks.named("build"))
+    val artifact = layout.buildDirectory.file("libs/rdi-5-mc-client-1.21.1-neoforge.jar")
+
+    doLast {
+        val jarFile = artifact.get().asFile
+        if (!jarFile.exists()) {
+            throw GradleException("未找到构建产物: $jarFile")
+        }
+            val targetDir = layout.projectDirectory.dir("\\\\rdi5\\rdi55\\prox\\").asFile
+            val destFile = targetDir.resolve(jarFile.name)
+            Files.copy(
+                jarFile.toPath(),
+                destFile.toPath(),
+                StandardCopyOption.REPLACE_EXISTING
+            )
+
+    }
 }
