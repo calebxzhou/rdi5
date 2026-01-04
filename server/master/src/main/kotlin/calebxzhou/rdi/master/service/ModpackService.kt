@@ -448,6 +448,7 @@ object ModpackService {
                 onProgress("未知错误:${it.message}，安装终止")
 
             }
+            lgr.error { "Mod installation failed for host ${host.name} (${host._id}). Aborting installation but NOT throwing exception (Logic Error Tracing)." }
             return
         }
         onProgress("mod全部下载成功 安装到主机..")
