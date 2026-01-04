@@ -9,7 +9,7 @@
   },
   "mixins": [
     "AServerEntity",
-    "mAuth",
+    "mAllowChineseNameLogin",
     "mChatMsg",
     "mChinesePlayerName",
     "mSaveBandwidth",
