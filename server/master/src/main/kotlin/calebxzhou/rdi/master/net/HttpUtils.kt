@@ -1,8 +1,8 @@
 package calebxzhou.rdi.master.net
 
+import calebxzhou.rdi.common.model.Response
 import calebxzhou.rdi.master.exception.AuthError
 import calebxzhou.rdi.master.exception.ParamError
-import calebxzhou.rdi.master.model.Response
 import calebxzhou.rdi.common.serdesJson
 import io.ktor.client.*
 import io.ktor.client.plugins.*
@@ -63,7 +63,7 @@ suspend inline fun <reified T> ApplicationCall.response(ok:Boolean=true, msg: St
 }
 suspend inline fun <reified T> ApplicationCall.response(code: Int, msg: String="", data: T? = null,statusCode: HttpStatusCode = HttpStatusCode.OK) {
     respondText(
-        serdesJson.encodeToString(Response(code ,msg,data)),
+        serdesJson.encodeToString(Response(code, msg, data)),
         ContentType.Application.Json,
         statusCode
     )
