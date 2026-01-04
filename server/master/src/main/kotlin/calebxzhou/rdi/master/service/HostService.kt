@@ -35,7 +35,6 @@ import calebxzhou.rdi.master.service.HostService.status
 import calebxzhou.rdi.master.service.HostService.transferOwnership
 import calebxzhou.rdi.master.service.ModpackService.getVersion
 import calebxzhou.rdi.master.service.ModpackService.installToHost
-import calebxzhou.rdi.master.service.PlayerService.setPlayHost
 import calebxzhou.rdi.master.service.WorldService.createWorld
 import calebxzhou.rdi.model.Role
 import com.github.dockerjava.api.model.Mount
@@ -48,7 +47,6 @@ import com.mongodb.client.model.Updates
 import com.mongodb.client.model.Updates.combine
 import com.mongodb.client.model.Updates.set
 import io.ktor.server.application.*
-import io.ktor.server.request.receive
 import io.ktor.server.routing.*
 import io.ktor.server.sse.*
 import io.ktor.server.websocket.*
@@ -84,11 +82,7 @@ fun Route.hostRoutes() = route("/host") {
             )
             ok()
         }
-        get("/status"){
-            val port = param("port").toInt()
-            val host = HostService.getByPort(port) ?: throw RequestError("无此主机")
-            response(data = host.status)
-        }
+
         get("/lobby/{page?}") {
             val hosts = call.player().listHostLobby(paramNull("page")?.toInt() ?: 0)
             response(data = hosts)
@@ -188,6 +182,11 @@ fun Route.hostRoutes() = route("/host") {
 
 //单独拿出来是为了不走authentication
 fun Route.hostPlayRoutes() = route("/host") {
+    get("/status"){
+        val port = param("port").toInt()
+        val host = HostService.getByPort(port) ?: throw RequestError("无此主机")
+        response(data = host.status)
+    }
     webSocket("/play/{hostId}") {
         val rawHostId = call.param("hostId")
 
