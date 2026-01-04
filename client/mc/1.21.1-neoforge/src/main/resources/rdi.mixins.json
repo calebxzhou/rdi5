@@ -18,7 +18,7 @@
   "mixins": [
     "mAllowChineseArgument",
     "mAllowChineseName",
-    "mProxyConnect",
+    "mClientIntentionPacket",
     "mServerboundHelloPacket",
     "mSkinManager"
   ]
