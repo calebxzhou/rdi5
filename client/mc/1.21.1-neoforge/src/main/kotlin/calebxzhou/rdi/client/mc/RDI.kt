@@ -92,7 +92,7 @@ class RDI {
             runCatching {
                 connectCore()
             }.onFailure { error ->
-                lgr.error(error) { "${"WebSocket connection failed"}" }
+                lgr.error(error) { "WebSocket connection failed" }
             }
         }
     }
