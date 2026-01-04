@@ -26,6 +26,7 @@ import calebxzhou.rdi.ui.component.confirm
 import calebxzhou.rdi.ui.frag.TaskFragment
 import calebxzhou.rdi.ui.go
 import calebxzhou.rdi.ui.pointerBuffer
+import calebxzhou.rdi.ui.toast
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.bson.types.ObjectId
@@ -111,18 +112,18 @@ object ModpackService {
         onProgress("建立mods软链接...")
         val modsDir = versionDir.resolve("mods").apply { mkdirs() }
 
-        fun linkOrCopy(src: java.nio.file.Path, dst: java.nio.file.Path) {
+        fun linkOrFail(src: java.nio.file.Path, dst: java.nio.file.Path) {
             runCatching {
+                Files.deleteIfExists(dst)
                 Files.createSymbolicLink(dst, src)
             }.onFailure {
-                runCatching {
-                    Files.copy(src, dst, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-                }
+                onProgress("创建符号链接失败，请以管理员权限重新运行：${dst.toFile().absolutePath}")
+                throw IllegalStateException("符号链接创建失败，需要管理员权限")
             }
         }
 
         downloadedMods.forEach { dlmod ->
-            linkOrCopy(dlmod.path, modsDir.resolve(dlmod.path.fileName.name).toPath())
+            linkOrFail(dlmod.path, modsDir.resolve(dlmod.path.fileName.name).toPath())
         }
         val mcSlug = "${mcVersion.mcVer}-${modLoader.name.lowercase()}"
         val mcCoreTarget = DL_MOD_DIR.resolve("rdi-5-mc-client-$mcSlug.jar").toPath()
@@ -130,7 +131,7 @@ object ModpackService {
         if (mcCoreTarget.toFile().exists()) {
             withContext(Dispatchers.IO) {
                 Files.deleteIfExists(mcCoreLink)
-                linkOrCopy(mcCoreTarget, mcCoreLink)
+                linkOrFail(mcCoreTarget, mcCoreLink)
             }
         } else {
             onProgress("缺少核心文件: ${mcCoreTarget.toFile().absolutePath}")
@@ -220,12 +221,12 @@ object ModpackService {
         if (status != HostStatus.PLAYABLE) {
             when (status) {
                 HostStatus.STARTED -> {
-                    alertOk("主机正在载入中\n请稍等1~2分钟")
+                    toast("主机正在载入中 请稍等1~2分钟")
                 }
 
                 HostStatus.STOPPED -> {
                     server.requestU("host/${_id}/start") {
-                        alertOk("主机已经启动\n请稍等1~2分钟\n可以在“后台”查看启动状态")
+                        toast("主机已经启动 请稍等1~2分钟 可以在“后台”查看启动状态")
                     }
                 }
 
