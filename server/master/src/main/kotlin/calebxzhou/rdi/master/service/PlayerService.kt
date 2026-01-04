@@ -57,15 +57,28 @@ fun Route.playerRoutes() {
             response(data = infos)
         }
         post("/register") {
-            PlayerService.register(param("name"), param("pwd"), param("qq"))
+            PlayerService.register(
+                param("name"),
+                param("pwd"),
+                param("qq")
+            )
             ok()
         }
         post("/jwt") {
-            PlayerService.validate(param("usr"), param("pwd"))?.let { JwtService.generateToken(it._id) }
-                ?.let { response(data = it) } ?: err("账密×")
+            PlayerService.validate(
+                param("usr"),
+                param("pwd")
+            )?.let { JwtService.generateToken(it._id) }
+                ?.let { response(data = it) }
+                ?: err("账密×")
         }
         post("/login") {
-            val result = PlayerService.login(param("usr"), param("pwd"), paramNull("spec"), call.clientIp)
+            val result = PlayerService.login(
+                param("usr"),
+                param("pwd"),
+                paramNull("spec"),
+                call.clientIp
+            )
             call.response.header("jwt", JwtService.generateToken(result._id))
             response(data = result)
         }
@@ -79,20 +92,23 @@ fun Route.playerRoutes() {
         authenticate("auth-jwt", optional = true) {
             route("/skin") {
                 post {
-                    call.player().changeCloth(
-                        paramNull("isSlim")?.toBoolean() ?: false,
-                        param("skin"),
-                        paramNull("cape")
-                    )
+                    call.player()
+                        .changeCloth(
+                            paramNull("isSlim")?.toBoolean() ?: false,
+                            param("skin"),
+                            paramNull("cape")
+                        )
                     ok()
                 }
                 delete {
-                    call.player().clearCloth()
+                    call.player()
+                        .clearCloth()
                     ok()
                 }
             }
             put("/profile") {
-                call.player().changeProfile(paramNull("name"), paramNull("qq"), paramNull("pwd"))
+                call.player()
+                    .changeProfile(paramNull("name"), paramNull("qq"), paramNull("pwd"))
                 ok()
             }
         }
@@ -104,8 +120,8 @@ suspend fun ApplicationCall.player(): RAccount = PlayerService.getById(uid) ?: t
 object PlayerService {
     val accountCol = DB.getCollection<RAccount>("account")
     val authLogCol = DB.getCollection<AuthLog>("auth_log")
-    val inGamePlayers = hashMapOf<Byte, RAccount>()
     private val lgr by Loggers
+
     data class LoginResult(val account: RAccount, val token: String)
 
     suspend fun getByQQ(qq: String): RAccount? = accountCol.find(eq("qq", qq)).firstOrNull()
@@ -115,7 +131,8 @@ object PlayerService {
         if (ObjectId.isValid(usr)) {
             return getById(ObjectId(usr))
         }
-        return getByQQ(usr) ?: getByName(usr)
+        return getByQQ(usr)
+            ?: getByName(usr)
     }
 
     val RAccount.uidFilter
