@@ -2,6 +2,7 @@ package calebxzhou.rdi
 
 import calebxzhou.rdi.mc.startLocalServer
 import calebxzhou.rdi.ui.RodernUI
+import calebxzhou.rdi.ui.component.alertErrOs
 import calebxzhou.rdi.ui.component.alertWarn
 import calebxzhou.rdi.ui.frag.RFragment
 import calebxzhou.rdi.ui.frag.TitleFragment
@@ -12,6 +13,7 @@ import org.slf4j.MarkerFactory
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
+import kotlin.concurrent.thread
 
 val CONF = AppConfig.load()
 val lgr = KotlinLogging.logger {  }
@@ -42,11 +44,13 @@ class RDI {
             theme.applyStyle(R.style.ThemeOverlay_Material3_Dark_Rust, true)
         }
         if (!canCreateSymlink()) {
-            alertWarn(
-                """无法为mod文件创建软连接，可能会导致rdi核心无法正常更新，整合包无法安装mod
+            thread {
+                alertErrOs(
+                    """无法为mod文件创建软连接，可能会导致rdi核心无法正常更新，整合包无法安装mod
 解决方法：1.以管理员身份运行rdi
  或者 2.Win+R secpol.msc 本地策略/用户权限/创建符号链接，添加当前用户，确定后重启电脑"""
-            )
+                )
+            }
         }
         mui.run(fragment)
         AudioManager.getInstance().close()
