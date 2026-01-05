@@ -42,7 +42,11 @@ class RDI {
             theme.applyStyle(R.style.ThemeOverlay_Material3_Dark_Rust, true)
         }
         if (!canCreateSymlink()) {
-            alertWarn("无法为mod文件创建软连接，可能会导致rdi核心无法正常更新，整合包无法安装mod\n解决方法：1.以管理员身份运行rdi\n 或者 2.Win+R secpol.msc 本地策略/用户权限/创建符号链接，添加当前用户，确定后重启电脑")
+            alertWarn(
+                """无法为mod文件创建软连接，可能会导致rdi核心无法正常更新，整合包无法安装mod
+解决方法：1.以管理员身份运行rdi
+ 或者 2.Win+R secpol.msc 本地策略/用户权限/创建符号链接，添加当前用户，确定后重启电脑"""
+            )
         }
         mui.run(fragment)
         AudioManager.getInstance().close()
