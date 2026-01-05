@@ -10,25 +10,18 @@ import calebxzhou.mykotutils.std.toFixed
 import calebxzhou.rdi.RDI
 import calebxzhou.rdi.auth.LocalCredentials
 import calebxzhou.rdi.common.DL_MOD_DIR
-import calebxzhou.rdi.common.model.Host
-import calebxzhou.rdi.common.model.HostStatus
-import calebxzhou.rdi.common.model.Mod
-import calebxzhou.rdi.common.model.ModLoader
-import calebxzhou.rdi.common.model.Modpack
-import calebxzhou.rdi.common.model.ModpackDetailedVo
+import calebxzhou.rdi.common.model.*
 import calebxzhou.rdi.common.util.ioTask
 import calebxzhou.rdi.common.util.str
 import calebxzhou.rdi.model.McVersion
 import calebxzhou.rdi.net.server
 import calebxzhou.rdi.ui.component.alertErr
-import calebxzhou.rdi.ui.component.alertOk
 import calebxzhou.rdi.ui.component.confirm
 import calebxzhou.rdi.ui.frag.TaskFragment
 import calebxzhou.rdi.ui.go
 import calebxzhou.rdi.ui.pointerBuffer
 import calebxzhou.rdi.ui.toast
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 import org.bson.types.ObjectId
 import org.lwjgl.util.tinyfd.TinyFileDialogs
 import java.io.File
@@ -45,6 +38,7 @@ val selectModpackFile
     )
 
 object ModpackService {
+    val DL_PACKS_DIR = RDI.DIR.resolve("dl-packs").also { it.mkdirs() }
     fun getVersionDir(modpackId: ObjectId, verName: String): File {
         return GameService.versionListDir.resolve("${modpackId}_${verName}")
     }
@@ -147,9 +141,10 @@ object ModpackService {
     }
 
     suspend fun downloadVersionClientPack(modpackId: ObjectId, verName: String, onProgress: (String) -> Unit): File? {
-        val file = RDI.DIR.resolve("${modpackId}_$verName.zip")
+        val file = DL_PACKS_DIR.resolve("${modpackId}_$verName.zip")
         val hash = server.makeRequest<String>("modpack/$modpackId/version/$verName/client/hash").data
         if (file.exists() && file.sha1 == hash) {
+            onProgress("客户端整合包已存在，跳过下载")
             return file
         }
         onProgress("下载客户端整合包...")
@@ -255,5 +250,31 @@ object ModpackService {
         } else{
             alertErr("mc已在运行中，如需切换主机，请先关闭mc")
         }
+    }
+
+    data class LocalDir(
+        val dir: File,
+        val modpackId: ObjectId,
+        val modpackName: String,
+        val verName: String
+    )
+    suspend fun getLocalPackDirs(): List<LocalDir> = coroutineScope {
+        val pattern = Regex("^([0-9a-fA-F]{24})_(.+)$")
+        val dirs = GameService.versionListDir.listFiles()?.asSequence()
+            ?.filter { it.isDirectory }
+            ?.toList()
+            ?: return@coroutineScope emptyList()
+
+        val deferred = dirs.mapNotNull { dir ->
+            val match = pattern.matchEntire(dir.name) ?: return@mapNotNull null
+            val (idStr, verName) = match.destructured
+            val packId = runCatching { ObjectId(idStr) }.getOrNull() ?: return@mapNotNull null
+            async {
+                val packName = server.makeRequest<String>("modpack/${idStr}/name").data ?: "未知整合包"
+                LocalDir(dir, packId, packName, verName)
+            }
+        }
+
+        deferred.awaitAll()
     }
 }

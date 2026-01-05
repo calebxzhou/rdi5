@@ -22,6 +22,7 @@ class ModpackListFragment() : RFragment("浏览整合包") {
                 "\uDB81\uDC8B 我的包" make checkbox with {
                     load { it.authorId == loggedAccount._id }
                 }
+                "本地整合包管理" with { ModpackVersionManageFragment().go() }
                 "\uDB80\uDFD5 上传整合包" colored MaterialColor.BLUE_900 with { ModpackUploadFragment().go() }
                 "\uDB86\uDDD8 做新包" colored MaterialColor.AMBER_900 with { alertErr("没写完") }
 
