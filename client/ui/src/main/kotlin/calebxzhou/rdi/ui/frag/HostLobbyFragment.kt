@@ -36,7 +36,7 @@ class HostLobbyFragment : RFragment("大厅") {
                     WorldListFragment().go()
                 }
                 "\uEF09 节点" with { CarrierFragment().go() }
-                "\uDB81\uDC90 自建服" colored MaterialColor.GREEN_900 with {
+                "\uDB81\uDC90 选包开服" colored MaterialColor.GREEN_900 with {
                     ModpackListFragment().go()
                 }
             }
