@@ -36,6 +36,7 @@ import com.mongodb.client.model.Updates
 import com.mongodb.kotlin.client.coroutine.MongoCollection
 import io.ktor.http.content.*
 import io.ktor.server.application.*
+import io.ktor.server.application.call
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -77,10 +78,15 @@ val Modpack.Version.zip
     get() = dir.parentFile.resolve("${name}.zip")
 val Modpack.Version.clientZip
     get() = dir.parentFile.resolve("${name}-client.zip")
+
 fun Route.modpackRoutes() {
     route("/modpack") {
         get {
             response(data = ModpackService.listAll())
+        }
+        post("/infos-batch") {
+            response(data = ModpackService.toModpackVos(ModpackService.listByIds(call.receive<List<ObjectId>>())))
+
         }
         post {
             response(data = ModpackService.create(call.uid, param("name")))
@@ -94,7 +100,9 @@ fun Route.modpackRoutes() {
             get {
                 response(data = call.modpackGuardContext().modpack.toDetailVo())
             }
-
+            get("/name") {
+                response(data = call.modpackGuardContext().modpack.name)
+            }
             delete {
                 call.modpackGuardContext().requireAuthor().deleteModpack()
                 ok()
@@ -247,6 +255,14 @@ object ModpackService {
 
     suspend fun listAll(): List<ModpackVo> {
         val modpacks = dbcl.find().toList()
+        return toModpackVos(modpacks)
+    }
+
+    suspend fun listByIds(ids: List<ObjectId>): List<Modpack> {
+        return dbcl.find(`in`("_id", ids)).toList()
+    }
+
+    suspend fun toModpackVos(modpacks: List<Modpack>): List<ModpackVo> {
         if (modpacks.isEmpty()) return emptyList()
 
         val authorNames = modpacks.map { it.authorId }.getPlayerNames()
@@ -301,7 +317,7 @@ object ModpackService {
         return modPack
     }
 
-    suspend fun ModpackContext.rebuildVersion() {
+    fun ModpackContext.rebuildVersion() {
         ioScope.launch {
             runCatching {
                 version.setStatus(Modpack.Status.BUILDING)
@@ -372,7 +388,7 @@ object ModpackService {
             .toList()
     }
 
-    suspend fun ModpackContext.createVersion(verName: String, zipBytes: ByteArray, mods: MutableList<Mod>) {
+    fun ModpackContext.createVersion(verName: String, zipBytes: ByteArray, mods: MutableList<Mod>) {
         if (verName.isBlank()) throw RequestError("版本名不能为空")
         if (modpack.versions.any { it.name == verName }) {
             throw RequestError("版本已存在")
@@ -432,7 +448,7 @@ object ModpackService {
         onProgress("解压成功 开始下载mod")
         val hostModsDir = hostDir.resolve("mods").apply { mkdirs() }
         val mods = version.mods.filter { it.side != Mod.Side.CLIENT }
-            .map { CFDownloadMod(it.projectId.toInt(), it.fileId.toInt(), it.slug,it.targetPath) }
+            .map { CFDownloadMod(it.projectId.toInt(), it.fileId.toInt(), it.slug, it.targetPath) }
         val downloadedMods = CurseForgeApi.downloadMods(
             mods,
         ) { cfm, prog ->
@@ -453,12 +469,12 @@ object ModpackService {
         }
         onProgress("mod全部下载成功 安装到主机..")
         downloadedMods.forEach { mod ->
-                Files.createDirectories(mod.path.parent)
-                Files.copy(
-                    mod.path,
-                    hostModsDir.resolve(mod.path.fileName.name).toPath(),
-                    StandardCopyOption.REPLACE_EXISTING
-                )
+            Files.createDirectories(mod.path.parent)
+            Files.copy(
+                mod.path,
+                hostModsDir.resolve(mod.path.fileName.name).toPath(),
+                StandardCopyOption.REPLACE_EXISTING
+            )
 
         }
 
@@ -541,12 +557,12 @@ object ModpackService {
         mods.removeIf { it.slug.contains("tbs-main-menu-override") }
         mods.removeIf { it.slug.contains("welcome-screen") }
         //移除powerful-dummy 不兼容
-        mods.removeIf { it.slug=="powerful-dummy" }
+        mods.removeIf { it.slug == "powerful-dummy" }
         //重度机械症c6c compatibility
         //不给这个mod服务端装上去会class not found
-        mods.find { it.slug=="loot-beams-refork" }?.side = Mod.Side.BOTH
+        mods.find { it.slug == "loot-beams-refork" }?.side = Mod.Side.BOTH
         //没有的话整理背包会卡服
-        mods.find { it.slug=="inventory-profiles-next" }?.side = Mod.Side.BOTH
+        mods.find { it.slug == "inventory-profiles-next" }?.side = Mod.Side.BOTH
 
 
     }
@@ -562,7 +578,14 @@ object ModpackService {
         version.setTotalSize(version.zip.length())
         try {
             val downloadedMods = CurseForgeApi.downloadMods(version.mods.filter { it.side != Mod.Side.CLIENT }
-                .map { CFDownloadMod(it.projectId.toInt(), it.fileId.toInt(),it.slug, it.targetPath) }) { cfmod, prog ->
+                .map {
+                    CFDownloadMod(
+                        it.projectId.toInt(),
+                        it.fileId.toInt(),
+                        it.slug,
+                        it.targetPath
+                    )
+                }) { cfmod, prog ->
                 onProgress("mod下载中：${cfmod.slug} ${prog.percent.toFixed(2)}")
             }.getOrThrow()
             onProgress("所有mod下载完成 开始安装。。${downloadedMods.size}个mod")
