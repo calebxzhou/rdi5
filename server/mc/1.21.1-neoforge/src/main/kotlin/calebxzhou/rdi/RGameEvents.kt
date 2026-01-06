@@ -78,7 +78,7 @@ class RGameEvents {
             val server = e.server as DedicatedServer
             playSocketJob?.cancel()
             playSocketJob = ioScope.launch{
-                var hostId = System.getenv("HOST_ID")
+                var hostId = System.getenv("HOST_ID")?: System.getProperty("rdi.host.id")
                 if(Const.DEBUG) hostId = Const.TEST_HOST_ID
                 if (hostId.isNullOrBlank()) {
                     lgr.error("未找到 HOST_ID 环境变量，无法建立玩法通道")
