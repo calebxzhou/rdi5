@@ -1,6 +1,6 @@
 package calebxzhou.rdi.mixin;
 
-import calebxzhou.rdi.client.mc.RDI;
+import calebxzhou.rdi.mc.common.RDI;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.protocol.handshake.ClientIntent;
 import net.minecraft.network.protocol.handshake.ClientIntentionPacket;
