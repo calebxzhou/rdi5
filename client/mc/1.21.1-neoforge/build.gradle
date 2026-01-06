@@ -1,0 +1,135 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+    id 'idea'
+    id 'net.neoforged.moddev' version '2.0.124'
+}
+
+wrapper {
+    distributionType = Wrapper.DistributionType.BIN
+}
+group = mod_group_id
+version = mod_version
+
+repositories {
+    mavenLocal()
+}
+
+base {
+    archivesName = mod_id
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+neoForge {
+    version = neo_version
+
+    parchment {
+        mappingsVersion = parchment_mappings_version
+        minecraftVersion = parchment_minecraft_version
+    }
+
+    validateAccessTransformers = true
+
+    runs {
+        client {
+            client()
+            programArgument '--width'
+            programArgument '2560'
+            programArgument '--height'
+            programArgument '1440'
+            systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
+            systemProperty 'mixin.hotSwap', 'true'
+            systemProperty 'rdi.ihq.url', '127.0.0.1:65231'
+            systemProperty 'rdi.game.ip', '127.0.0.1:65230'
+            systemProperty 'rdi.host.name', '测试测试12123主机'
+            systemProperty 'rdi.host.port', '25565'
+        }
+
+        configureEach {
+            systemProperty 'forge.logging.markers', 'REGISTRIES'
+            logLevel = org.slf4j.event.Level.DEBUG
+        }
+    }
+
+    mods {
+        register(mod_id) {
+            def sourceSets = project.extensions.getByType(SourceSetContainer)
+            sourceSet sourceSets.named('main').get()
+        }
+    }
+}
+
+def localRuntimeConfiguration = configurations.maybeCreate('localRuntime')
+def librariesConfiguration = configurations.maybeCreate('libraries')
+
+configurations.named('runtimeClasspath') {
+    extendsFrom localRuntimeConfiguration
+}
+configurations.named('implementation') {
+    extendsFrom librariesConfiguration
+}
+
+
+def metadataOutput = layout.buildDirectory.dir('generated/sources/modMetadata')
+
+tasks.register('generateModMetadata', ProcessResources) {
+    def replaceProperties = [
+        minecraft_version       : minecraft_version,
+        minecraft_version_range : minecraft_version_range,
+        neo_version             : neo_version,
+        neo_version_range       : neo_version_range,
+        loader_version_range    : loader_version_range,
+        mod_id                  : mod_id,
+        mod_name                : mod_name,
+        mod_license             : mod_license,
+        mod_version             : mod_version,
+        mod_authors             : mod_authors,
+        mod_description         : mod_description
+    ]
+    inputs.properties(replaceProperties)
+    expand(replaceProperties)
+    from 'src/main/templates'
+    into metadataOutput
+}
+
+sourceSets.named('main') {
+    resources.srcDir 'src/generated/resources'
+    resources.srcDir metadataOutput
+}
+
+neoForge.ideSyncTask(tasks.named('generateModMetadata'))
+
+dependencies {
+    implementation project(':c-mc-common')
+    additionalRuntimeClasspath project(':c-mc-common')
+}
+
+publishing {
+    publications {
+        create('mavenJava', MavenPublication) {
+            from components.java
+        }
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+}
+
+idea {
+    module {
+        downloadSources = true
+        downloadJavadoc = true
+    }
+}
+evaluationDependsOn(':c-mc-common')
+project(':c-mc-common').ext.registerClientCopyTask(project)
