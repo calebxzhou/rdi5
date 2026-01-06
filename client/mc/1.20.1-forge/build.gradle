@@ -3,6 +3,9 @@ plugins {
     id "org.jetbrains.kotlin.jvm" version "2.2.21"
 }
 
+// Ensure the common project is configured before we read its outputs
+evaluationDependsOn(":c-mc-common")
+
 base {
     archivesName = "rdi"
 }
@@ -70,7 +73,7 @@ dependencies {
     annotationProcessor "org.spongepowered:mixin:0.8.5:processor"
     // https://mvnrepository.com/artifact/org.jetbrains.kotlin/kotlin-stdlib
     additionalRuntimeClasspath("org.jetbrains.kotlin:kotlin-stdlib:2.2.21")
-    jarJar(implementation(project(":c-mc-common")))
+    implementation(project(":c-mc-common"))
     additionalRuntimeClasspath(project(":c-mc-common"))
     //jarjar(project(":c-mc-common"))
 }
@@ -105,6 +108,10 @@ java {
 }
 
 jar {
+    // Bundle compiled outputs from :c-mc-common into this jar
+    dependsOn project(":c-mc-common").tasks.named("classes")
+    from(project(":c-mc-common").sourceSets.main.output)
+
     manifest {
         attributes([
                 "Specification-Title"     : mod_id,
@@ -133,3 +140,5 @@ tasks.withType(ScalaCompile) {
 tasks.withType(Javadoc) {
     options.encoding = 'UTF-8'
 }
+
+project(':c-mc-common').ext.registerClientCopyTask(project)
