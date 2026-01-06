@@ -3,6 +3,7 @@ package calebxzhou.rdi.prox
 import calebxzhou.rdi.common.exception.RequestError
 import calebxzhou.rdi.common.model.HostStatus
 import calebxzhou.rdi.common.model.Response
+import calebxzhou.rdi.common.net.ktorClient
 import com.sun.tools.javac.resources.ct
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -65,8 +66,12 @@ class DynamicProxyFrontendHandler(
     }
 
     private suspend fun getHostStatus(port: Int): Result<HostStatus> = runCatching {
+        //test
+        if(port==25565){
+            return@runCatching HostStatus.PLAYABLE
+        }
         withTimeoutOrNull(1000L) {
-            _root_ide_package_.calebxzhou.rdi.common.net.ktorClient.get("$MASTER_URL/host/status?port=$port").body<Response<HostStatus?>>().run {
+            ktorClient.get("$MASTER_URL/host/status?port=$port").body<Response<HostStatus?>>().run {
                 data ?: run {
                     lgr.info { "host $port status fail: ${msg}" }
                     throw RequestError("无法获取主机状态：$msg")
