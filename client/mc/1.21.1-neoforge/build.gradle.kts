@@ -145,7 +145,6 @@ allprojects {
 val mcLibs = listOf(
     "io.ktor:ktor-client-okhttp:$ktorVersion",
     "io.ktor:ktor-client-core:$ktorVersion",
-    "io.ktor:ktor-client-websockets:$ktorVersion",
     "io.ktor:ktor-client-encoding:$ktorVersion",
     "org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0",
     "io.ktor:ktor-serialization-kotlinx-json:$ktorVersion",

@@ -1,32 +1,22 @@
 package calebxzhou.rdi.client.mc
 
 import calebxzhou.mykotutils.log.Loggers
-import calebxzhou.rdi.client.mc.connect.WsClient.connectCore
 import calebxzhou.rdi.mixin.ASkinManager
-import calebxzhou.rdi.mixin.mSkinManager
-import com.google.common.cache.CacheBuilder
 import com.google.common.cache.CacheLoader
-import com.google.common.cache.LoadingCache
 import com.google.gson.Gson
-import com.mojang.authlib.SignatureState
 import com.mojang.authlib.minecraft.MinecraftProfileTextures
-import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.request.get
-import io.ktor.client.statement.bodyAsText
+import io.ktor.client.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import net.minecraft.Util
 import net.minecraft.client.resources.PlayerSkin
 import net.minecraft.client.resources.SkinManager
 import net.neoforged.fml.common.Mod
-import java.time.Duration
 import java.util.concurrent.CompletableFuture
-import java.util.function.Function
-import java.util.function.Supplier
 
 val scope = CoroutineScope(Dispatchers.IO)
 val serdesJson = Json {
@@ -88,12 +78,5 @@ class RDI {
 
     init {
         lgr.info { "RDI启动中" }
-        scope.launch {
-            runCatching {
-                connectCore()
-            }.onFailure { error ->
-                lgr.error(error) { "WebSocket connection failed" }
-            }
-        }
     }
 }
