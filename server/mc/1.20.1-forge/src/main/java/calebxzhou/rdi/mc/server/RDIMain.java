@@ -1,5 +1,6 @@
 package calebxzhou.rdi.mc.server;
 
+import calebxzhou.rdi.mc.common.WebSocketClient;
 import net.minecraft.server.dedicated.DedicatedServer;
 import net.minecraft.world.level.GameRules;
 import net.minecraftforge.event.server.ServerStartedEvent;
