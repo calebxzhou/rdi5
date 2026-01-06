@@ -1,4 +1,4 @@
-package calebxzhou.rdi.mixin;
+package calebxzhou.rdi.mc.client.mixin;
 
 import com.google.common.net.HostAndPort;
 import net.minecraft.client.gui.GuiGraphics;

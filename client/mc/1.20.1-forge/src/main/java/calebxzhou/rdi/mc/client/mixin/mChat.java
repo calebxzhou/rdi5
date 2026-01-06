@@ -1,4 +1,4 @@
-package calebxzhou.rdi.mixin;
+package calebxzhou.rdi.mc.client.mixin;
 
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import org.spongepowered.asm.mixin.Mixin;
