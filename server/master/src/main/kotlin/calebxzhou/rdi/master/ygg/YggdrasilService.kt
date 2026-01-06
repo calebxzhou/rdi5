@@ -7,9 +7,8 @@ import calebxzhou.rdi.common.model.RAccount
 import calebxzhou.rdi.common.util.objectId
 import calebxzhou.rdi.common.util.toUUID
 import calebxzhou.rdi.master.net.param
+import calebxzhou.rdi.master.net.paramNull
 import calebxzhou.rdi.master.service.PlayerService
-import calebxzhou.rdi.master.ygg.YggdrasilService.getProfile
-import calebxzhou.rdi.master.ygg.YggdrasilService.getProfiles
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
@@ -27,7 +26,7 @@ object YggdrasilService {
         }
         //http://127.0.0.1:65231/mc-profile/380df991-f603-344c-a090-369bad2a924a/clothes
         get("/mc-profile/{uuid}/clothes"){
-                call.getClothes(param("uuid"))
+                call.getClothes(param("uuid"),paramNull("authlibVer"))
 
         }
         //todo key verify service
@@ -87,13 +86,32 @@ object YggdrasilService {
         val account = PlayerService.getById(uid.objectId)
         respond(account?.gameProfile?: GameProfile.getDefault(uuid))
     }
-    private suspend fun ApplicationCall.getClothes(uuid: String){
+    private suspend fun ApplicationCall.getClothes(uuid: String, authlibVer: String?){
         val account = PlayerService.getById(UUID.fromString(uuid).objectId)?: RAccount.DEFAULT
-        val clothes = MinecraftProfileTextures(
-            MinecraftProfileTexture(account.cloth.skin, if (account.cloth.isSlim) mapOf("model" to "slim" ) else mapOf()),
-            account.cloth.cape?.let { MinecraftProfileTexture(it) }
-        )
-        respond(clothes)
+        when(authlibVer){
+            //authlib 4 for 1.20
+            "4" -> {
+                val clothMap: Map<MinecraftProfileTexture.Type, MinecraftProfileTexture> = mutableMapOf(
+                    MinecraftProfileTexture.Type.SKIN to MinecraftProfileTexture(
+                        account.cloth.skin,
+                        metadata = if (account.cloth.isSlim) mapOf("model" to "slim" ) else mapOf()
+                    )
+                ).apply {
+                    account.cloth.cape?.let {
+                        this += MinecraftProfileTexture.Type.CAPE to MinecraftProfileTexture(it)
+                    }
+                }
+                respond(clothMap)
+            }
+            //默认最新版 authlib 6 for 1.21+
+            else -> {
+                val clothes = MinecraftProfileTextures(
+                    MinecraftProfileTexture(account.cloth.skin, if (account.cloth.isSlim) mapOf("model" to "slim" ) else mapOf()),
+                    account.cloth.cape?.let { MinecraftProfileTexture(it) }
+                )
+                respond(clothes)
+            }
+        }
     }
     private suspend fun ApplicationCall.getProfiles(names: List<String>){
         val profiles = names.map { name ->
