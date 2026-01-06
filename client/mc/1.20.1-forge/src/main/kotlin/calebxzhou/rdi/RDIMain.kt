@@ -9,19 +9,5 @@ import java.util.concurrent.CompletableFuture
 
 
 @Mod("rdi")
-class RDIMain(ctx: FMLJavaModLoadingContext) {
-
-    init {
-
-
-    }
-
-
-    companion object {
-
-
-
-    }
-
-}
+class RDIMain(ctx: FMLJavaModLoadingContext)
 

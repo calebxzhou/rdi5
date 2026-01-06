@@ -12,6 +12,7 @@
     "mServerboundHelloPacket"
   ],
   "client": [
+    "AMinecraft",
     "mChat",
     "mHttpTexture",
     "mPlayerTabOverlay",

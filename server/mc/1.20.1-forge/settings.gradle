@@ -12,6 +12,4 @@ pluginManagement {
 plugins {
     id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
 }
-rootProject.name = "c-mc201f"
-include(":c-mc-common")
-project(":c-mc-common").projectDir = file("../common")
+rootProject.name="s-mc201f"
