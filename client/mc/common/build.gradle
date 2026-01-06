@@ -1,3 +1,6 @@
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+
 plugins {
     id('java')
 }
@@ -11,4 +14,36 @@ repositories {
 }
 dependencies {
 
+}
+
+static void registerClientCopyTask(String taskName, Project project, List<String> extraDestinations = []) {
+    project.tasks.register(taskName) {
+        dependsOn project.tasks.named('build')
+        def artifact = project.layout.buildDirectory.file("libs/rdi-${project.version}.jar")
+        def baseDestinations = [
+                project.layout.projectDirectory.dir('..\\..\\..\\server\\master\\run\\client-libs')
+        ]
+        def destinationDirs = baseDestinations + extraDestinations.collect { project.layout.projectDirectory.dir(it) }
+
+        doLast {
+            def jarFile = artifact.get().asFile
+            if (!jarFile.exists()) {
+                throw new GradleException("未找到构建产物: ${jarFile}")
+            }
+            destinationDirs.forEach { target ->
+                def targetDir = target.asFile
+                targetDir.mkdirs()
+                def destFile = new File(targetDir, jarFile.name)
+                Files.copy(
+                        jarFile.toPath(),
+                        destFile.toPath(),
+                        StandardCopyOption.REPLACE_EXISTING
+                )
+            }
+        }
+    }
+}
+ext.registerClientCopyTask = { Project targetProject ->
+    registerClientCopyTask("出core-local", targetProject,[])
+    registerClientCopyTask("出core-release", targetProject,["\\\\rdi5\\rdi55\\ihq\\client-libs\\"])
 }

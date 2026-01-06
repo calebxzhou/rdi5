@@ -1,5 +1,7 @@
 package calebxzhou.rdi.mc.common;
 
+import java.util.UUID;
+
 /**
  * calebxzhou @ 2026-01-06 19:34
  */
@@ -38,5 +40,8 @@ public class RDI {
             // Matches Kotlin's String.toInt() behavior – throws if not a valid integer
             throw new NumberFormatException("Invalid port value: " + hostPortStr);
         }
+    }
+    public static String getTextureQueryUrl(UUID profileId,String authlibVer){
+        return "http://"+IHQ_URL+"/mc-profile/"+profileId+"/clothes?authlibVer="+authlibVer;
     }
 }
