@@ -1,4 +1,4 @@
-package calebxzhou.rdi.mc.server;
+package calebxzhou.rdi.mc.common;
 
 
 import org.slf4j.Logger;
@@ -14,8 +14,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import static calebxzhou.rdi.mc.server.RDI.HOST_ID;
-import static calebxzhou.rdi.mc.server.RDI.IHQ_URL;
+import static calebxzhou.rdi.mc.common.RDI.HOST_ID;
+import static calebxzhou.rdi.mc.common.RDI.IHQ_URL;
 
 
 /**
