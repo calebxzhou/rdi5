@@ -1,0 +1,53 @@
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+
+plugins {
+    id('java')
+}
+
+group = "calebxzhou.rdi.mc.common"
+version = "0.1"
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+dependencies {
+// https://mvnrepository.com/artifact/org.slf4j/slf4j-api
+    implementation 'org.slf4j:slf4j-api:2.0.0'
+}
+java {
+    sourceCompatibility = targetCompatibility = JavaVersion.VERSION_17
+}
+static void registerClientCopyTask(String taskName, Project project, List<String> extraDestinations = []) {
+    project.tasks.register(taskName) {
+        dependsOn project.tasks.named('build')
+        def mcVersionSlug = project.version.toString().replaceAll("5-mc-server-","")
+        def artifact = project.layout.buildDirectory.file("libs/rdi-${project.version}.jar")
+        def baseDestinations = [
+                project.layout.projectDirectory.dir("..\\..\\master\\run\\game-libs\\\\${mcVersionSlug}\\mods")
+        ]
+        def destinationDirs = baseDestinations + extraDestinations.collect { project.layout.projectDirectory.dir(it) }
+
+        doLast {
+            def jarFile = artifact.get().asFile
+            if (!jarFile.exists()) {
+                throw new GradleException("未找到构建产物: ${jarFile}")
+            }
+            destinationDirs.forEach { target ->
+                def targetDir = target.asFile
+                targetDir.mkdirs()
+                def destFile = new File(targetDir, jarFile.name)
+                Files.copy(
+                        jarFile.toPath(),
+                        destFile.toPath(),
+                        StandardCopyOption.REPLACE_EXISTING
+                )
+            }
+        }
+    }
+}
+ext.registerClientCopyTask = { Project targetProject ->
+    registerClientCopyTask("出core-local", targetProject,[])
+    registerClientCopyTask("出core-release", targetProject,["\\\\rdi5\\rdi55\\ihq\\client-libs\\"])
+}

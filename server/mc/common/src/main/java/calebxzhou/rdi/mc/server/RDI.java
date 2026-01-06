@@ -1,0 +1,31 @@
+package calebxzhou.rdi.mc.server;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * calebxzhou @ 2026-01-06 23:56
+ */
+public class RDI {
+    private static final Logger lgr = LoggerFactory.getLogger("rdi");
+    public static final String IHQ_URL;
+    public static final String HOST_ID;
+    static {
+        String ihqUrl = System.getProperty("rdi.ihq.url");
+        if (ihqUrl == null) {
+            ihqUrl = "host.docker.internal:65231";
+        }
+        IHQ_URL = ihqUrl;
+
+        String hostId = System.getenv("HOST_ID");
+        if (hostId == null) {
+            hostId = System.getProperty("rdi.host.id");
+        }
+        if (hostId == null || hostId.isBlank()) {
+            throw new IllegalArgumentException("No HOST_ID provided – stopping");
+        }
+        HOST_ID = hostId;
+
+    }
+
+}

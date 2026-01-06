@@ -61,8 +61,8 @@ legacyForge {
 
 dependencies {
     annotationProcessor "org.spongepowered:mixin:0.8.5:processor"
-    // https://mvnrepository.com/artifact/org.jetbrains.kotlin/kotlin-stdlib
-    //jarjar(project(":c-mc-common"))
+    implementation project(':s-mc-common')
+    additionalRuntimeClasspath project(':s-mc-common')
 }
 
 processResources {
@@ -123,3 +123,5 @@ tasks.withType(ScalaCompile) {
 tasks.withType(Javadoc) {
     options.encoding = 'UTF-8'
 }
+evaluationDependsOn(':s-mc-common')
+project(':s-mc-common').ext.registerClientCopyTask(project)
