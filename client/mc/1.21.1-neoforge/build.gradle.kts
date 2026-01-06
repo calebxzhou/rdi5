@@ -43,38 +43,6 @@ group = modGroupId
 
 repositories {
     mavenLocal()
-    maven {
-        name = "Kotlin for Forge"
-        url = uri("https://thedarkcolour.github.io/KotlinForForge/")
-        content {
-            includeGroup("thedarkcolour")
-        }
-    }
-    maven {
-        name = "Jared's maven"
-        url = uri("https://maven.blamejared.com/")
-    }
-    exclusiveContent {
-        forRepository {
-            maven {
-                name = "Modrinth"
-                url = uri("https://api.modrinth.com/maven")
-            }
-        }
-        filter {
-            includeGroup("maven.modrinth")
-        }
-    }
-    exclusiveContent {
-        forRepository {
-            maven {
-                url = uri("https://cursemaven.com")
-            }
-        }
-        filter {
-            includeGroup("curse.maven")
-        }
-    }
 }
 
 base {
@@ -142,41 +110,6 @@ allprojects {
     }
 }
 
-val mcLibs = listOf(
-    "io.ktor:ktor-client-okhttp:$ktorVersion",
-    "io.ktor:ktor-client-core:$ktorVersion",
-    "io.ktor:ktor-client-encoding:$ktorVersion",
-    "org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0",
-    "io.ktor:ktor-serialization-kotlinx-json:$ktorVersion",
-    "calebxzhou.mykotutils:log:0.1"
-)
-
-val modrinthMods = listOf(
-    "justenoughcharacters:4.5.15",
-    "notenoughcrashes:4.4.8+1.21.1-neoforge",
-    "imblocker-original:5.0.2",
-    "sodium:mc1.21.1-0.6.13-neoforge"
-)
-
-val curseMods = emptyList<String>()
-
-val autoEmbedJarJarExcludeCoords = setOf(
-    "org.jetbrains.kotlin:kotlin-stdlib",
-    "org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm",
-    "org.jetbrains.kotlinx:kotlinx-serialization-core-jvm",
-    "org.jetbrains.kotlinx:kotlinx-serialization-json-jvm",
-    "org.slf4j:slf4j-api",
-    "com.google.errorprone:error_prone_annotations",
-    "org.ow2.asm:asm",
-    "org.ow2.asm:asm-commons",
-    "org.ow2.asm:asm-tree",
-    "org.ow2.asm:asm-analysis",
-    "org.ow2.asm:asm-util"
-)
-
-val autoEmbedJarJarTransitivesExtension = extensions.getByType<AutoEmbedJarJarTransitivesExtension>()
-autoEmbedJarJarTransitivesExtension.jarJarExcludeCoords.addAll(autoEmbedJarJarExcludeCoords)
-
 val metadataOutput = layout.buildDirectory.dir("generated/sources/modMetadata")
 
 val generateModMetadata = tasks.register<ProcessResources>("generateModMetadata") {
@@ -207,23 +140,6 @@ sourceSets.named("main") {
 neoForge.ideSyncTask(generateModMetadata)
 
 dependencies {
-    testImplementation(kotlin("test"))
-    implementation("org.hotswapagent:hotswap-agent-core:2.0.1")
-    testImplementation("ch.qos.logback:logback-classic:1.5.21")
-    implementation("io.github.oshai:kotlin-logging-jvm:7.0.6")
-    mcLibs.forEach { lib ->
-        add("libraries", lib)
-        autoEmbedJarJarTransitivesExtension.include(lib)
-        add("additionalRuntimeClasspath", lib)
-    }
-
-    modrinthMods.forEach { dep ->
-        implementation("maven.modrinth:$dep")
-    }
-
-    curseMods.forEach { dep ->
-        implementation("curse.maven:$dep-deobf")
-    }
 }
 
 publishing {
