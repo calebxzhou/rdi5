@@ -257,11 +257,16 @@ object HostService {
 
 
     private val Host.containerEnv
-        get() = { mods: List<Mod>,gameRules: Map<String,String> ->
+        get() = { mcVer: McVersion,mods: List<Mod>,gameRules: Map<String,String> ->
             mutableListOf(
                 "HOST_ID=${_id.str}",
                 "GAME_PORT=${port}",
-                "MOD_LIST=${mods.joinToString("\n") { mod -> mod.fileName }}"
+                "MOD_LIST=${mods.joinToString("\n") { mod -> mod.fileName }}",
+                "START_PARAMS=-Xmx8G ${when(mcVer){
+                    //以后会支持其他mod loader 暂时只支持forge/neoforge
+                    McVersion.V211 -> "@libraries/net/neoforged/neoforge/21.1.217/unix_args.txt"
+                    McVersion.V201 -> "@libraries/net/minecraftforge/forge/1.20.1-47.4.13/unix_args.txt"
+                }} --universe /data --nogui"
             ).apply {
                 gameRules.forEach { id,value ->
                     this += "GAME_RULE_${id}=${value}"
@@ -657,7 +662,7 @@ object HostService {
             this._id.str,
             mounts,
             "rdi:${modpack.mcVer}_${modpack.modloader}",
-            containerEnv(version.mods,gameRules)
+            containerEnv(McVersion.from(modpack.mcVer)!!,version.mods,gameRules)
         )
     }
 
