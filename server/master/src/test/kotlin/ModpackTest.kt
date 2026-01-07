@@ -2,20 +2,17 @@
 
 import calebxzhou.mykotutils.std.deleteRecursivelyNoSymlink
 import calebxzhou.mykotutils.std.jarResource
-import calebxzhou.rdi.common.model.Mail
+import calebxzhou.rdi.common.model.McVersion
 import calebxzhou.rdi.common.model.Mod
 import calebxzhou.rdi.common.model.Modpack
-import calebxzhou.rdi.master.MODPACK_DATA_DIR
-import calebxzhou.rdi.master.model.McVersion
 import calebxzhou.rdi.common.model.RAccount
 import calebxzhou.rdi.common.serdesJson
 import calebxzhou.rdi.common.service.CurseForgeService
 import calebxzhou.rdi.common.util.ioTask
+import calebxzhou.rdi.master.MODPACK_DATA_DIR
 import calebxzhou.rdi.master.service.*
 import calebxzhou.rdi.master.service.ModpackService.createVersion
 import calebxzhou.rdi.master.service.ModpackService.deleteModpack
-import calebxzhou.rdi.master.service.ModpackService.deleteVersion
-import calebxzhou.rdi.master.service.ModpackService.rebuildVersion
 import com.mongodb.client.model.InsertOneOptions
 import com.mongodb.client.model.UpdateOptions
 import com.mongodb.client.result.DeleteResult
@@ -24,7 +21,6 @@ import com.mongodb.client.result.UpdateResult
 import com.mongodb.kotlin.client.coroutine.MongoCollection
 import io.mockk.*
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.bson.conversions.Bson
@@ -40,9 +36,6 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
 import java.util.zip.ZipOutputStream
 import javax.imageio.ImageIO
-import kotlin.collections.take
-import kotlin.collections.toMutableList
-import kotlin.jvm.java
 import kotlin.test.*
 
 class ModpackTest {
@@ -304,7 +297,7 @@ class ModpackTest {
         _id = ObjectId(),
         name = "Pack-${playerId.toHexString()}",
         authorId = playerId,
-        mcVer = McVersion.V211.verStr,
+        mcVer = McVersion.V211.mcVer,
         versions = emptyList()
     )
 
