@@ -266,8 +266,10 @@ object CurseForgeService {
                 throw ModpackException("manifest.json 解析失败: ${it.message}")
             }
 
-            if (manifest.minecraft.version != "1.21.1") {
-                throw ModpackException("不支持的 MC 版本: ${manifest.minecraft.version}，当前只支持 1.21.1")
+            val supportedVersion = McVersion.from(manifest.minecraft.version)
+            if (supportedVersion == null) {
+                val supportedList = McVersion.entries.joinToString(", ") { it.mcVer }
+                throw ModpackException("不支持的 MC 版本: ${manifest.minecraft.version}，当前只支持: $supportedList")
             }
 
             val loaderId = manifest.minecraft.modLoaders.firstOrNull { it.primary }?.id
