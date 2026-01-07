@@ -39,8 +39,7 @@ class ModpackUploadFragment : RFragment("上传整合包") {
 
     init {
         contentViewInit = {
-            textView("上传现成的整合包 大家一起玩 ")
-            textView("目前仅支持1.21.1 NeoForge的包 下个版本支持1.20.1")
+            textView("上传现成的整合包 大家一起玩！")
             button("选择文件") { selectModpackFile() }
             progressEditText = textView("")
         }
