@@ -12,3 +12,5 @@ plugins {
 
 rootProject.name = "s-mc211n"
 
+include(":s-mc-common")
+project(":s-mc-common").projectDir = file("../common")

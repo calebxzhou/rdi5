@@ -1,6 +1,5 @@
-package calebxzhou.rdi.mixin;
+package calebxzhou.rdi.mc.server.mixin;
 
-import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
 import net.minecraft.server.level.ChunkMap;
 import net.minecraft.server.level.ServerEntity;
 import net.minecraft.world.entity.item.ItemEntity;

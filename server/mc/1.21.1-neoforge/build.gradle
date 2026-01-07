@@ -1,0 +1,158 @@
+
+
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+    id 'idea'
+    id 'net.neoforged.moddev' version '2.0.124'
+}
+
+tasks.named('wrapper', Wrapper) {
+    distributionType = Wrapper.DistributionType.BIN
+}
+
+version = mod_version
+group = mod_group_id
+
+repositories {
+    mavenLocal()
+}
+
+base {
+    archivesName = mod_id
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+neoForge {
+    version = neo_version
+
+    parchment {
+        mappingsVersion = parchment_mappings_version
+        minecraftVersion = parchment_minecraft_version
+    }
+
+    validateAccessTransformers = true
+
+    runs {
+        register('server') {
+            server()
+            systemProperty("rdi.ihq.url", "127.0.0.1:65231")
+            systemProperty("rdi.host.id", "6953e0bccb51b879288e19a3")
+            jvmArgument '-Xmx4G'
+            programArgument '--nogui'
+            systemProperty 'rdi.debug', 'true'
+            systemProperty 'neoforge.enabledGameTestNamespaces', 'rdi'
+        }
+
+        configureEach {
+            systemProperty 'forge.logging.markers', 'REGISTRIES'
+            logLevel = org.slf4j.event.Level.DEBUG
+        }
+    }
+
+    mods {
+        register(mod_id) {
+            def sourceSets = project.extensions.getByType(SourceSetContainer)
+            sourceSet sourceSets.named('main').get()
+        }
+    }
+}
+
+sourceSets.named('main') {
+    resources.srcDir 'src/generated/resources'
+}
+
+def localRuntimeConfiguration = configurations.maybeCreate('localRuntime')
+def librariesConfiguration = configurations.maybeCreate('libraries')
+configurations.named('runtimeClasspath') {
+    extendsFrom localRuntimeConfiguration
+}
+configurations.named('implementation') {
+    extendsFrom librariesConfiguration
+}
+
+dependencies {
+    implementation project(':s-mc-common')
+    additionalRuntimeClasspath project(':s-mc-common')
+}
+
+def metadataOutput = layout.buildDirectory.dir('generated/sources/modMetadata')
+
+tasks.register('generateModMetadata', ProcessResources) {
+    def replaceProperties = [
+        minecraft_version       : minecraft_version,
+        minecraft_version_range : minecraft_version_range,
+        neo_version             : neo_version,
+        neo_version_range       : neo_version_range,
+        loader_version_range    : loader_version_range,
+        mod_id                  : mod_id,
+        mod_name                : mod_name,
+        mod_license             : mod_license,
+        mod_version             : mod_version,
+        mod_authors             : mod_authors,
+        mod_description         : mod_description
+    ]
+    inputs.properties(replaceProperties)
+    expand(replaceProperties)
+    from 'src/main/templates'
+    into metadataOutput
+}
+
+sourceSets.named('main') {
+    resources.srcDir metadataOutput
+}
+
+neoForge.ideSyncTask(tasks.named('generateModMetadata'))
+
+def localRepoDir = project.layout.projectDirectory.dir('repo')
+
+publishing {
+    publications {
+        create('mavenJava', MavenPublication) {
+            from components.java
+        }
+    }
+    repositories {
+        maven {
+            url = localRepoDir.asFile.toURI()
+        }
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+}
+
+idea {
+    module {
+        downloadSources = true
+        downloadJavadoc = true
+    }
+}
+evaluationDependsOn(':s-mc-common')
+jar {
+    // Bundle compiled outputs from :c-mc-common into this jar
+    dependsOn project(":s-mc-common").tasks.named("classes")
+    from(project(":s-mc-common").sourceSets.main.output)
+    manifest {
+        attributes([
+                "Specification-Title"     : mod_id,
+                "Specification-Vendor"    : mod_authors,
+                "Specification-Version"   : "1",
+                "Implementation-Title"    : project.name,
+                "Implementation-Version"  : version,
+                "Implementation-Vendor"   : mod_authors,
+                "Implementation-Timestamp": new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
+        ])
+    }
+}
+project(':s-mc-common').ext.registerServerCopyTask(project)

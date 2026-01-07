@@ -1,4 +1,4 @@
-package calebxzhou.rdi.mixin;
+package calebxzhou.rdi.mc.server.mixin;
 
 import net.minecraft.server.level.ServerEntity;
 import net.minecraft.world.entity.Entity;

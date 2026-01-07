@@ -1,4 +1,4 @@
-package calebxzhou.rdi.mixin;
+package calebxzhou.rdi.mc.server.mixin;
 
 import com.mojang.authlib.GameProfile;
 import net.minecraft.network.protocol.login.ServerboundHelloPacket;

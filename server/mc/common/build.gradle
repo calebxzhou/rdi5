@@ -19,7 +19,7 @@ dependencies {
 java {
     sourceCompatibility = targetCompatibility = JavaVersion.VERSION_17
 }
-static void registerClientCopyTask(String taskName, Project project, List<String> extraDestinations = []) {
+static void registerServerCopyTask(String taskName, Project project, List<String> extraDestinations = []) {
     project.tasks.register(taskName) {
         dependsOn project.tasks.named('build')
         def mcVersionSlug = project.version.toString().replaceAll("5-mc-server-","")
@@ -47,7 +47,7 @@ static void registerClientCopyTask(String taskName, Project project, List<String
         }
     }
 }
-ext.registerClientCopyTask = { Project targetProject ->
-    registerClientCopyTask("出core-local", targetProject,[])
-    registerClientCopyTask("出core-release", targetProject,["\\\\rdi5\\rdi55\\ihq\\client-libs\\"])
+ext.registerServerCopyTask = { Project targetProject ->
+    registerServerCopyTask("出core-local", targetProject,[])
+    registerServerCopyTask("出core-release", targetProject,["\\\\rdi5\\rdi55\\ihq\\client-libs\\"])
 }

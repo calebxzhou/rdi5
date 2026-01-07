@@ -1,4 +1,4 @@
-package calebxzhou.rdi.mixin;
+package calebxzhou.rdi.mc.server.mixin;
 
 import net.minecraft.util.StringUtil;
 import org.spongepowered.asm.mixin.Mixin;
