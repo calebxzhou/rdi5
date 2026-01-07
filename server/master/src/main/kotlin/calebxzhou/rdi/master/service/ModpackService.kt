@@ -16,7 +16,6 @@ import calebxzhou.rdi.master.GAME_LIBS_DIR
 import calebxzhou.rdi.master.MODPACK_DATA_DIR
 import calebxzhou.rdi.master.exception.ParamError
 import calebxzhou.rdi.master.exception.RequestError
-import calebxzhou.rdi.master.model.McVersion
 import calebxzhou.rdi.master.net.*
 import calebxzhou.rdi.master.service.HostService.status
 import calebxzhou.rdi.master.service.ModpackService.createVersion
@@ -228,7 +227,7 @@ object ModpackService {
     }
 
     fun Modpack.isMcVer(ver: McVersion): Boolean {
-        return mcVer == ver.verStr
+        return mcVer == ver.mcVer
     }
 
     suspend fun ApplicationCall.modpackGuardContext(): ModpackContext {
@@ -321,6 +320,20 @@ object ModpackService {
         ioScope.launch {
             runCatching {
                 version.setStatus(Modpack.Status.BUILDING)
+                //重新处理mods 适配新的规则
+                version.processMods(modpack)
+                dbcl.updateOne(
+                    eq(Modpack::_id.name, modpack._id),
+                    Updates.set(
+                        "${Modpack::versions.name}.$[elem].${Modpack.Version::mods.name}",
+                        version.mods
+                    ),
+                    UpdateOptions().arrayFilters(
+                        listOf(
+                            Document("elem.name", version.name)
+                        )
+                    )
+                )
                 val mailId = MailService.sendSystemMail(
                     player._id,
                     "重构整合包：${modpack.name} V${version.name}",
@@ -561,10 +574,17 @@ object ModpackService {
         //重度机械症c6c compatibility
         //不给这个mod服务端装上去会class not found
         mods.find { it.slug == "loot-beams-refork" }?.side = Mod.Side.BOTH
+        //仅客户端
+        mods.find { it.slug == "status-effect-bars-reforged" }?.side = Mod.Side.CLIENT
+        //这个粒子mod要求服务端装 不然找不到粒子
+        mods.find { it.slug == "particular-reforged" }?.side = Mod.Side.BOTH
         //没有的话整理背包会卡服
         mods.find { it.slug == "inventory-profiles-next" }?.side = Mod.Side.BOTH
-
-
+        //服务端不需要这个汉化 下载太慢
+        mods.find { it.slug == "i18nupdatemod" }?.side = Mod.Side.CLIENT
+        //会自动还原服务端配置
+        //todo 如果这个mod存在，并且包里有default-server.properties，覆盖对应选项到server.properties模板（5.10以后）
+        mods.removeIf { it.slug == "default-server-properties" }
     }
 
     suspend fun Modpack.buildVersion(version: Modpack.Version, onProgress: (String) -> Unit) {
