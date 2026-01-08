@@ -58,6 +58,7 @@ val DOWNLOAD_MODS_DIR = File("download-mods")
 val MODPACK_DATA_DIR = File("modpack")
 val HOSTS_DIR = File("hosts")
 val GAME_LIBS_DIR = File("game-libs")
+val WORLDS_DIR = File("worlds")
 class RDI {}
 fun main(): Unit =runBlocking {
     CRASH_REPORT_DIR.mkdir()
@@ -65,6 +66,7 @@ fun main(): Unit =runBlocking {
     MODPACK_DATA_DIR.mkdir()
     HOSTS_DIR.mkdir()
     GAME_LIBS_DIR.mkdir()
+    WORLDS_DIR.mkdir()
         lgr.info { "init db" }
 
         accountCol.createIndex(Indexes.ascending("qq"), IndexOptions().unique(true))

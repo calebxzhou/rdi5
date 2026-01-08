@@ -644,19 +644,22 @@ object HostService {
                 .withSource(dir.absolutePath)
                 .withTarget("/opt/server"),
         ).apply {
+
             if (worldId != null) {
+                //使用存档
                 this += Mount()
-                    .withType(MountType.VOLUME)
-                    .withSource(worldId.str)
+                    .withType(MountType.BIND)
+                    .withSource(WorldService.getDataDir(worldId).absolutePath)
                     .withTarget("/data")
             } else {
+                //不存档
                 this += Mount()
                     .withType(MountType.TMPFS)
                     .withTarget("/data")
                     .withTmpfsOptions(TmpfsOptions().withSizeBytes(512 * 1024 * 1024))
             }
         }
-        val image = when(modpack.mcVersion){
+        val image = when(modpack.mcVer){
             McVersion.V211, McVersion.V201 -> "rdi:j21"
             // V165 V122 V071 -> "rdi:j8"
             else -> throw RequestError("不支持的MC版本")
@@ -666,7 +669,7 @@ object HostService {
             this._id.str,
             mounts,
             image,
-            containerEnv(McVersion.from(modpack.mcVer)!!,version.mods,gameRules)
+            containerEnv(modpack.mcVer,version.mods,gameRules)
         )
     }
 
@@ -728,6 +731,10 @@ object HostService {
         val current = getById(host._id) ?: throw RequestError("无此主机")
         if (DockerService.isStarted(current._id.str)) {
             throw RequestError("已经启动过了")
+        }
+        if (DockerService.findContainer(current._id.str)==null) {
+            throw RequestError("主机版本过旧 请点击主机界面的“更新”按钮")
+            return
         }
         DockerService.start(current._id.str)
         clearShutFlag(current._id)
