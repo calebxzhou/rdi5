@@ -656,12 +656,16 @@ object HostService {
                     .withTmpfsOptions(TmpfsOptions().withSizeBytes(512 * 1024 * 1024))
             }
         }
-
+        val image = when(modpack.mcVersion){
+            McVersion.V211, McVersion.V201 -> "rdi:j21"
+            // V165 V122 V071 -> "rdi:j8"
+            else -> throw RequestError("不支持的MC版本")
+        }
         DockerService.createContainer(
             port,
             this._id.str,
             mounts,
-            "rdi:${modpack.mcVer}_${modpack.modloader}",
+            image,
             containerEnv(McVersion.from(modpack.mcVer)!!,version.mods,gameRules)
         )
     }
