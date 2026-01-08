@@ -21,7 +21,7 @@ public class RDI {
         if (hostId == null) {
             hostId = System.getProperty("rdi.host.id");
         }
-        if (hostId == null || hostId.isBlank()) {
+        if (hostId == null) {
             throw new IllegalArgumentException("No HOST_ID provided – stopping");
         }
         HOST_ID = hostId;

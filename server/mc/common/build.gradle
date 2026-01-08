@@ -15,9 +15,10 @@ repositories {
 dependencies {
 // https://mvnrepository.com/artifact/org.slf4j/slf4j-api
     implementation 'org.slf4j:slf4j-api:2.0.0'
+    implementation 'com.neovisionaries:nv-websocket-client:2.14'
 }
 java {
-    sourceCompatibility = targetCompatibility = JavaVersion.VERSION_17
+    sourceCompatibility = targetCompatibility = JavaVersion.VERSION_1_8
 }
 static void registerServerCopyTask(String taskName, Project project, List<String> extraDestinations = []) {
     project.tasks.register(taskName) {

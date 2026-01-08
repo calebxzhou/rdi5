@@ -16,6 +16,7 @@ group = mod_group_id
 
 repositories {
     mavenLocal()
+    mavenCentral()
 }
 
 base {
@@ -69,6 +70,7 @@ sourceSets.named('main') {
 
 def localRuntimeConfiguration = configurations.maybeCreate('localRuntime')
 def librariesConfiguration = configurations.maybeCreate('libraries')
+def shadedConfiguration = configurations.maybeCreate('shaded')
 configurations.named('runtimeClasspath') {
     extendsFrom localRuntimeConfiguration
 }
@@ -79,6 +81,7 @@ configurations.named('implementation') {
 dependencies {
     implementation project(':s-mc-common')
     additionalRuntimeClasspath project(':s-mc-common')
+    shaded 'com.neovisionaries:nv-websocket-client:2.14'
 }
 
 def metadataOutput = layout.buildDirectory.dir('generated/sources/modMetadata')
@@ -143,6 +146,11 @@ jar {
     // Bundle compiled outputs from :c-mc-common into this jar
     dependsOn project(":s-mc-common").tasks.named("classes")
     from(project(":s-mc-common").sourceSets.main.output)
+    from({
+        shadedConfiguration.collect { it.isDirectory() ? it : zipTree(it) }
+    }) {
+        exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA'
+    }
     manifest {
         attributes([
                 "Specification-Title"     : mod_id,

@@ -59,10 +59,12 @@ legacyForge {
     }
 }
 
+def shadedConfiguration = configurations.maybeCreate('shaded')
 dependencies {
     annotationProcessor "org.spongepowered:mixin:0.8.5:processor"
     implementation project(':s-mc-common')
     additionalRuntimeClasspath project(':s-mc-common')
+    shaded 'com.neovisionaries:nv-websocket-client:2.14'
 }
 
 // Ensure the common project is evaluated before we look up its tasks/outputs
@@ -101,6 +103,11 @@ jar {
     // Bundle compiled outputs from :c-mc-common into this jar
     dependsOn project(":s-mc-common").tasks.named("classes")
     from(project(":s-mc-common").sourceSets.main.output)
+    from({
+        shadedConfiguration.collect { it.isDirectory() ? it : zipTree(it) }
+    }) {
+        exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA'
+    }
     manifest {
         attributes([
                 "Specification-Title"     : mod_id,
