@@ -70,7 +70,7 @@ val Modpack.dir
     get() = MODPACK_DATA_DIR.resolve(_id.str)
 val Modpack.libsDir
     get() = GAME_LIBS_DIR
-        .resolve("${mcVer}-${modloader}")
+        .resolve("${mcVer.mcVer}-${modloader}")
 val Modpack.Version.dir
     get() = MODPACK_DATA_DIR.resolve(modpackId.str).resolve(name)
 val Modpack.Version.zip
@@ -88,7 +88,7 @@ fun Route.modpackRoutes() {
 
         }
         post {
-            response(data = ModpackService.create(call.uid, param("name")))
+            response(data = ModpackService.create(call.uid, param("name"), McVersion.valueOf(param("mcVer")), ModLoader.valueOf(param("modloader"))))
         }
         get("/my") {
             val mods = ModpackService.listByAuthor(call.uid)
@@ -227,7 +227,7 @@ object ModpackService {
     }
 
     fun Modpack.isMcVer(ver: McVersion): Boolean {
-        return mcVer == ver.mcVer
+        return mcVer == ver
     }
 
     suspend fun ApplicationCall.modpackGuardContext(): ModpackContext {
@@ -297,7 +297,7 @@ object ModpackService {
         )
     }
 
-    suspend fun create(uid: ObjectId, name: String): Modpack {
+    suspend fun create(uid: ObjectId, name: String,ver: McVersion,modLoader: ModLoader): Modpack {
         val modpackCount = dbcl.countDocuments(eq("authorId", uid)).toInt()
         if (modpackCount >= MAX_MODPACK_PER_USER) {
             throw RequestError("一个人最多传5个包")
@@ -308,6 +308,8 @@ object ModpackService {
         val modPack = Modpack(
             name = name,
             authorId = uid,
+            mcVer = ver,
+            modloader = modLoader
         )
         dbcl.insertOne(modPack)
         if (!modPack.dir.exists()) {
@@ -571,6 +573,8 @@ object ModpackService {
         mods.removeIf { it.slug.contains("welcome-screen") }
         //移除powerful-dummy 不兼容
         mods.removeIf { it.slug == "powerful-dummy" }
+        //国内用不了
+        mods.removeIf { it.slug == "essential-mod" }
         //重度机械症c6c compatibility
         //不给这个mod服务端装上去会class not found
         mods.find { it.slug == "loot-beams-refork" }?.side = Mod.Side.BOTH
@@ -582,6 +586,8 @@ object ModpackService {
         mods.find { it.slug == "inventory-profiles-next" }?.side = Mod.Side.BOTH
         //服务端不需要这个汉化 下载太慢
         mods.find { it.slug == "i18nupdatemod" }?.side = Mod.Side.CLIENT
+        //gto/gtl
+        mods.find { it.slug == "just-enough-resources-jer" }?.side = Mod.Side.BOTH
         //会自动还原服务端配置
         //todo 如果这个mod存在，并且包里有default-server.properties，覆盖对应选项到server.properties模板（5.10以后）
         mods.removeIf { it.slug == "default-server-properties" }
