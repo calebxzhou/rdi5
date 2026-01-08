@@ -21,7 +21,8 @@ static void registerClientCopyTask(String taskName, Project project, List<String
         dependsOn project.tasks.named('build')
         def artifact = project.layout.buildDirectory.file("libs/rdi-${project.version}.jar")
         def baseDestinations = [
-                project.layout.projectDirectory.dir('..\\..\\..\\server\\master\\run\\client-libs')
+                project.layout.projectDirectory.dir('..\\..\\..\\server\\master\\run\\client-libs'),
+                project.layout.projectDirectory.dir('..\\..\\ui\\run\\download-mods')
         ]
         def destinationDirs = baseDestinations + extraDestinations.collect { project.layout.projectDirectory.dir(it) }
 
