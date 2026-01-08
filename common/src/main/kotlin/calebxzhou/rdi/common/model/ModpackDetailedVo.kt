@@ -13,8 +13,8 @@ data class ModpackDetailedVo(
     val modCount: Int,
     val icon: ByteArray?=null,
     val info: String="暂无简介",
-    val modloader: String = "neoforge",
-    val mcVer: String = "1.21.1",
+    val modloader: ModLoader,
+    val mcVer: McVersion,
     val versions: List<Modpack.Version> = arrayListOf()
 ) {
 }

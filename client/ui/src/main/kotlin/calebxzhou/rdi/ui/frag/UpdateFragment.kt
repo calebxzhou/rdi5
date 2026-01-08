@@ -5,9 +5,9 @@ import calebxzhou.mykotutils.std.humanFileSize
 import calebxzhou.mykotutils.std.sha1
 import calebxzhou.rdi.common.DL_MOD_DIR
 import calebxzhou.rdi.common.exception.RequestError
+import calebxzhou.rdi.common.model.McVersion
 import calebxzhou.rdi.common.util.ioTask
 import calebxzhou.rdi.lgr
-import calebxzhou.rdi.model.McVersion
 import calebxzhou.rdi.net.server
 import calebxzhou.rdi.ui.*
 import calebxzhou.rdi.ui.component.RButton

@@ -3,8 +3,11 @@ package calebxzhou.rdi.ui.frag
 import calebxzhou.mykotutils.std.humanFileSize
 import calebxzhou.mykotutils.std.humanSpeed
 import calebxzhou.mykotutils.std.urlEncoded
+import calebxzhou.rdi.common.exception.RequestError
 import calebxzhou.rdi.common.model.CurseForgeModpackData
+import calebxzhou.rdi.common.model.McVersion
 import calebxzhou.rdi.common.model.Mod
+import calebxzhou.rdi.common.model.ModLoader
 import calebxzhou.rdi.common.model.Modpack
 import calebxzhou.rdi.common.serdesJson
 import calebxzhou.rdi.common.service.CurseForgeService
@@ -285,10 +288,21 @@ class ModpackUploadFragment : RFragment("上传整合包") {
             }
 
             progressText = "创建整合包 ${name}..."
+            val mcVersion = McVersion.from(data.manifest.minecraft.version)?:let {
+                progressText = "不支持的MC版本: ${data.manifest.minecraft.version}"
+                return null
+            }
+            val modloader = ModLoader.from(data.manifest.minecraft.modLoaders.firstOrNull()?.id ?: "")?:let {
+                progressText = "不支持的Mod加载器: ${data.manifest.minecraft.modLoaders.firstOrNull()?.id ?: ""}"
+                return null
+            }
             val createResp = server.makeRequest<Modpack>(
                 path = "modpack",
                 method = HttpMethod.Post,
-                params = mapOf("name" to name)
+                params = mapOf(
+                    "name" to name,
+                    "mcVer" to mcVersion,
+                    "modloader" to modloader)
             )
             if (!createResp.ok || createResp.data == null) {
                 close()

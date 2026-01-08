@@ -2,13 +2,11 @@ import calebxzhou.mykotutils.curseforge.CurseForgeApi
 import calebxzhou.mykotutils.std.jarResource
 import calebxzhou.rdi.common.json
 import calebxzhou.rdi.common.model.Mod
-import calebxzhou.rdi.common.model.ModLoader
 import calebxzhou.rdi.common.model.Modpack
 import calebxzhou.rdi.common.model.RAccount
 import calebxzhou.rdi.common.serdesJson
 import calebxzhou.rdi.common.service.CurseForgeService
 import calebxzhou.rdi.common.service.CurseForgeService.mapMods
-import calebxzhou.rdi.model.McVersion
 import calebxzhou.rdi.net.loggedAccount
 import calebxzhou.rdi.net.server
 import calebxzhou.rdi.service.ModpackService

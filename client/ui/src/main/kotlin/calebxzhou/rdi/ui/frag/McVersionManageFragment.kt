@@ -1,6 +1,8 @@
 package calebxzhou.rdi.ui.frag
 
-import calebxzhou.rdi.model.McVersion
+import calebxzhou.rdi.common.model.McVersion
+import calebxzhou.rdi.model.firstLoader
+import calebxzhou.rdi.model.metadata
 import calebxzhou.rdi.service.GameService
 import calebxzhou.rdi.ui.FragmentSize
 import calebxzhou.rdi.ui.button

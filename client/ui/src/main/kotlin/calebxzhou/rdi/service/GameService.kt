@@ -13,6 +13,7 @@ import calebxzhou.rdi.Const
 import calebxzhou.rdi.RDI
 import calebxzhou.rdi.common.json
 import calebxzhou.rdi.common.model.LibraryOsArch.Companion.detectHostOs
+import calebxzhou.rdi.common.model.McVersion
 import calebxzhou.rdi.common.model.ModLoader
 import calebxzhou.rdi.common.net.httpRequest
 import calebxzhou.rdi.common.serdesJson

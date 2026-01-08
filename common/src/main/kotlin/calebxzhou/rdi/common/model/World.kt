@@ -14,8 +14,6 @@ data class World(
     //如果mount不同的modpack  警告用户可能坏档
     @Contextual
     val modpackId: ObjectId,
-
-    var size : Long = 0,
 ){
 
 }

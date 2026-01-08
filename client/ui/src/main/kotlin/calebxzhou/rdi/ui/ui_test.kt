@@ -6,6 +6,7 @@ import calebxzhou.rdi.common.model.RAccount
 import calebxzhou.rdi.net.loggedAccount
 import calebxzhou.rdi.service.PlayerService
 import calebxzhou.rdi.ui.frag.ProfileFragment
+import calebxzhou.rdi.ui.frag.TitleFragment
 import org.bson.types.ObjectId
 
 /**

@@ -246,6 +246,12 @@ object CurseForgeService {
             val entries = zip.entries().asSequence().toList()
             entries.find { it.name == ".minecraft" }
                 ?.let { throw ModpackException("你应该选整合包 而不是客户端\n你可以用PCL的导出功能 将客户端转换为整合包") }
+            //玩不了gto
+            val hasGtoCore = entries.any { it.name.startsWith("overrides/mods/gtocore") }
+            val hasGtoNativeLib = entries.any { it.name.startsWith("overrides/mods/gtonativelib") }
+            if (hasGtoCore && hasGtoNativeLib) {
+                throw ModpackException("rdi核心被这个包强制禁用了 玩不了 请换个包")
+            }
             val manifestEntry = entries.firstOrNull {
                 !it.isDirectory && it.name.substringAfterLast('/') == "manifest.json"
             } ?: throw ModpackException("整合包缺少文件：manifest.json")
@@ -274,8 +280,10 @@ object CurseForgeService {
 
             val loaderId = manifest.minecraft.modLoaders.firstOrNull { it.primary }?.id
                 ?: manifest.minecraft.modLoaders.firstOrNull()?.id
-            if (loaderId == null || !loaderId.startsWith("neoforge", ignoreCase = true)) {
-                throw ModpackException("不支持的 Mod 加载器: ${loaderId ?: "未知"}，当前只支持 NeoForge")
+            val loaderSupported = loaderId?.startsWith("neoforge", ignoreCase = true) == true ||
+                loaderId?.startsWith("forge", ignoreCase = true) == true
+            if (!loaderSupported) {
+                throw ModpackException("不支持的 Mod 加载器: ${loaderId ?: "未知"}，当前只支持 Forge/NeoForge")
             }
 
             val modpackName = manifest.name.trim()

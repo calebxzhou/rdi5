@@ -1,9 +1,8 @@
 package calebxzhou.rdi.ui.frag
 
-import calebxzhou.rdi.common.model.ModLoader
-import calebxzhou.rdi.model.McVersion
+import calebxzhou.rdi.common.model.McVersion
+import calebxzhou.rdi.model.firstLoaderDir
 import calebxzhou.rdi.net.loggedAccount
-import calebxzhou.rdi.service.GameService
 import calebxzhou.rdi.ui.*
 import calebxzhou.rdi.ui.component.HwSpecView
 import calebxzhou.rdi.ui.component.alertErr

@@ -13,7 +13,6 @@ import calebxzhou.rdi.common.DL_MOD_DIR
 import calebxzhou.rdi.common.model.*
 import calebxzhou.rdi.common.util.ioTask
 import calebxzhou.rdi.common.util.str
-import calebxzhou.rdi.model.McVersion
 import calebxzhou.rdi.net.server
 import calebxzhou.rdi.ui.component.alertErr
 import calebxzhou.rdi.ui.component.confirm
@@ -163,14 +162,7 @@ object ModpackService {
         return file
     }
 
-    fun Modpack.Version.startInstall(mcVer: String, modLoaderStr: String, modpackName: String? = null) {
-        val mcVersion = McVersion.from(mcVer)
-        val modLoader = runCatching { ModLoader.valueOf(modLoaderStr.uppercase()) }.getOrNull()
-        if (mcVersion == null || modLoader == null) {
-            alertErr("不支持的版本或加载器: $mcVer $modLoaderStr")
-            return
-        }
-
+    fun Modpack.Version.startInstall(mcVersion: McVersion, modLoader: ModLoader, modpackName: String? = null) {
         TaskFragment("完整下载整合包 ${modpackName ?: ""} ${totalSize?.humanFileSize} ") {
             ModpackService.installVersion(mcVersion, modLoader, modpackId, this@startInstall.name, mods) { progress ->
                 this.log(progress)
@@ -234,10 +226,9 @@ object ModpackService {
         }
         if (!GameService.started) {
             val bgp = LocalCredentials.read().carrier != 0
-            McVersion.from(modpack.mcVer)?.let { mcVersion ->
                 TaskFragment("启动mc中") {
                     GameService.start(
-                        mcVersion, "${modpackId.str}_${version.name}",
+                        modpack.mcVer, "${modpackId.str}_${version.name}",
                         "-Drdi.ihq.url=${server.hqUrl}",
                         "-Drdi.game.ip=${if (bgp) server.bgpIp else server.ip}:${server.gamePort}",
                         "-Drdi.host.name=${this@startPlay.name}",
@@ -246,7 +237,6 @@ object ModpackService {
                         this.log(it)
                     }
                 }.go()
-            } ?: alertErr("不支持的MC版本:${modpack.mcVer}  无法游玩")
         } else{
             alertErr("mc已在运行中，如需切换主机，请先关闭mc")
         }

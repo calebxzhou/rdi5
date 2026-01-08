@@ -8,7 +8,7 @@ import org.gradle.api.tasks.testing.Test
 import org.gradle.jvm.tasks.Jar
 
 val ktorVersion = "3.3.3"
-val version = "5.8.5"
+val version = "5.9"
 project.version = version
 plugins {
     kotlin("jvm") version "2.2.21"
@@ -90,7 +90,7 @@ dependencies {
         implementation("org.lwjgl:lwjgl${suffix}:$lwjglVersion:natives-windows")
     }
 
-    implementation("org.hotswapagent:hotswap-agent-core:2.0.1")
+    runtimeOnly("org.hotswapagent:hotswap-agent-core:2.0.1")
     implementation("icyllis.modernui:ModernUI-Core:3.12.0")
     testImplementation("icyllis.modernui:ModernUI-Core:3.12.0")
     implementation("icyllis.modernui:ModernUI-Markflow:3.12.0")
@@ -184,7 +184,7 @@ tasks.register<Exec>("makeShipPack") {
     dependsOn(tasks.named("出core-local"))
 
     val shipDir = layout.projectDirectory.dir("${System.getProperty("user.home")}\\Documents\\rdi5ship")
-    val filesNeed = listOf("rdi-5-ui.jar", "双击启动.cmd", "fonts", "jre")
+    val filesNeed = listOf("rdi-5-ui.jar", "双击启动.cmd", "fonts", "jre","jre8")
     val zipFile = shipDir.file("rdi5ship.zip")
 
     workingDir = shipDir.asFile
