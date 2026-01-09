@@ -46,7 +46,7 @@ class RDI {
         if (!canCreateSymlink()) {
             thread {
                 alertErrOs(
-                    """无法为mod文件创建软连接，可能会导致rdi核心无法正常更新，整合包无法安装mod
+                    """rdi无权为mod文件创建软连接，会导致整合包玩不了，不能安装mod！
 解决方法：1.以管理员身份运行rdi
  或者 2.Win+R secpol.msc 本地策略/用户权限/创建符号链接，添加当前用户，确定后重启电脑"""
                 )
