@@ -28,18 +28,6 @@ import java.net.ServerSocket
 /**
  * calebxzhou @ 2025-05-26 12:25
  */
-val httpClient
-    get() = HttpClient {
-        install(ContentNegotiation) {
-            json(serdesJson)
-        }
-
-        install(DefaultRequest) {
-            // Set Accept-Charset to prefer UTF-8 but also accept GBK
-            header("Accept-Charset", "utf-8")
-        }
-    }
-
 
 suspend fun ApplicationCall.err(msg: String? = null) {
     msg?.run {
