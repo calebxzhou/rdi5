@@ -4,6 +4,7 @@ import calebxzhou.mykotutils.std.deleteRecursivelyNoSymlink
 import calebxzhou.mykotutils.std.jarResource
 import calebxzhou.rdi.common.model.McVersion
 import calebxzhou.rdi.common.model.Mod
+import calebxzhou.rdi.common.model.ModLoader
 import calebxzhou.rdi.common.model.Modpack
 import calebxzhou.rdi.common.model.RAccount
 import calebxzhou.rdi.common.serdesJson
@@ -298,6 +299,7 @@ class ModpackTest {
         name = "Pack-${playerId.toHexString()}",
         authorId = playerId,
         mcVer = McVersion.V211,
+        modloader = ModLoader.neoforge,
         versions = emptyList()
     )
 
