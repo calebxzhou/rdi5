@@ -21,7 +21,7 @@ class HostLobbyFragment : RFragment("大厅") {
         titleViewInit = {
             textView("选择你要游玩的服务器。你可以选择官服，也可以选择其他玩家的自建服")
             quickOptions {
-                "\uDB81\uDC8B 我受邀的" make checkbox checked true with {
+                "\uDB81\uDC8B 我受邀的" make checkbox  with {
                     loadHosts(it)
 
                 }
