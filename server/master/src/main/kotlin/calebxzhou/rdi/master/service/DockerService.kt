@@ -77,8 +77,8 @@ object DockerService {
         val hostConfig = HostConfig.newHostConfig()
             .withPortBindings(parse("$port:$port"))
             .withCpuCount(4L)  // Limit to 2 CPUs
-            .withMemory(4L * 1024 * 1024 * 1024)  // 8GB RAM limit
-            .withMemorySwap(8L * 1024 * 1024 * 1024)  //4G swap
+            .withMemory(6L * 1024 * 1024 * 1024)  // 8GB RAM limit
+            .withMemorySwap(10L * 1024 * 1024 * 1024)  //4G swap
             .withPidsLimit(512L)
             .withExtraHosts("host.docker.internal:host-gateway")
             .withMounts(mounts)
