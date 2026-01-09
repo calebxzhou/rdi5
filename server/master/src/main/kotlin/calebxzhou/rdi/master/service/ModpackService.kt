@@ -460,6 +460,11 @@ object ModpackService {
         }
         onProgress("开始安装整合包..")
         unzipOverrides(version.zip, hostDir)
+        //删掉i18n
+        val i18nUpdateMod = hostDir.resolve("mods").resolve("I18nUpdateMod.jar")
+        if (i18nUpdateMod.exists()) {
+            i18nUpdateMod.delete()
+        }
         onProgress("解压成功 开始下载mod")
         val hostModsDir = hostDir.resolve("mods").apply { mkdirs() }
         val mods = version.mods.filter { it.side != Mod.Side.CLIENT }
@@ -600,7 +605,7 @@ object ModpackService {
         if (version.status == Modpack.Status.BUILDING) {
             throw RequestError("版本正在构建中 请勿重复操作")
         }
-        if (version.hostsUsing().isNotEmpty()) throw RequestError("有主机正在使用此版本，无法重构")
+       // if (version.hostsUsing().isNotEmpty()) throw RequestError("有主机正在使用此版本，无法重构")
         version.setTotalSize(version.zip.length())
         try {
             val downloadedMods = CurseForgeApi.downloadMods(version.mods.filter { it.side != Mod.Side.CLIENT }
