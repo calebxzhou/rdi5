@@ -13,6 +13,7 @@ import calebxzhou.rdi.common.DL_MOD_DIR
 import calebxzhou.rdi.common.model.*
 import calebxzhou.rdi.common.util.ioTask
 import calebxzhou.rdi.common.util.str
+import calebxzhou.rdi.model.firstLoaderDir
 import calebxzhou.rdi.net.server
 import calebxzhou.rdi.ui.component.alertErr
 import calebxzhou.rdi.ui.component.confirm
@@ -196,6 +197,10 @@ object ModpackService {
                 alertErr("获取整合包版本信息失败，无法游玩: ${this.msg}")
                 return@ioTask
             }
+        }
+        if(!(modpack.mcVer.firstLoaderDir.exists())){
+            alertErr("未安装MC版本资源：${modpack.mcVer.mcVer}，请前往MC版本资源界面 或者群文件下载")
+            return@ioTask
         }
         if (!isVersionInstalled(modpackId, packVer)) {
             confirm("未下载此主机的整合包，无法游玩。要现在开始下载吗？") {
