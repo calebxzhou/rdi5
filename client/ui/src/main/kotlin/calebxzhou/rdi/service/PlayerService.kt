@@ -11,6 +11,8 @@ import calebxzhou.rdi.lgr
 import calebxzhou.rdi.net.loggedAccount
 import calebxzhou.rdi.net.server
 import calebxzhou.rdi.service.PlayerService.getPlayerInfo
+import calebxzhou.rdi.ui.component.alertErr
+import calebxzhou.rdi.ui.component.alertOk
 import calebxzhou.rdi.ui.frag.ProfileFragment
 import calebxzhou.rdi.ui.go
 import com.github.benmanes.caffeine.cache.AsyncLoadingCache
@@ -77,6 +79,24 @@ object PlayerService {
             RAccount.DEFAULT.dto
         }
     }
+    fun setCloth(cloth: RAccount.Cloth) {
+        val params = mutableMapOf<String, Any>()
+        params["isSlim"] = cloth.isSlim.toString()
+        params["skin"] = cloth.skin
+        cloth.cape?.let {
+            params["cape"] = it
+        }
 
+        server.requestU("player/skin", params = params) { response ->
+            if (response.ok) {
+                //account.updateCloth(cloth)
+                    alertOk("皮肤设置成功")
+
+            } else {
+                    alertErr("皮肤设置失败,${response.msg} ")
+
+            }
+        }
+    }
 
 }

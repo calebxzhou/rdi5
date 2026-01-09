@@ -6,6 +6,7 @@ import calebxzhou.rdi.common.serdesJson
 import calebxzhou.rdi.common.util.ioScope
 import calebxzhou.rdi.net.RServer
 import calebxzhou.rdi.net.loggedAccount
+import calebxzhou.rdi.service.PlayerService.setCloth
 import calebxzhou.rdi.ui.*
 import calebxzhou.rdi.ui.component.SkinItemView
 import calebxzhou.rdi.ui.component.alertErr
@@ -312,28 +313,6 @@ class WardrobeFragment : RFragment("衣柜") {
         }
     }
 
-    private fun setCloth(cloth: RAccount.Cloth) {
-        val params = mutableMapOf<String, Any>()
-        params["isSlim"] = cloth.isSlim.toString()
-        params["skin"] = cloth.skin
-        cloth.cape?.let {
-            params["cape"] = it
-        }
-
-        server.requestU("skin", params = params) { response ->
-            if (response.ok) {
-                //account.updateCloth(cloth)
-                uiThread {
-                    goto(ProfileFragment())
-                    alertOk("皮肤设置成功 （半小时或重启后可见）")
-                }
-            } else {
-                uiThread {
-                    alertErr("皮肤设置失败,${response.msg} ")
-                }
-            }
-        }
-    }
 
     private fun showMojangSkinDialog() {
         goto(MojangSkinFragment())
