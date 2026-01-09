@@ -158,7 +158,7 @@ object PlayerService {
 
     suspend fun RAccount.changeCloth(isSlim: Boolean, skin: String, cape: String?) {
         if (!skin.isValidHttpUrl()) throw ParamError("皮肤链接格式错误")
-        if (!cape.isValidHttpUrl()) throw ParamError("披风链接格式错误")
+        if (cape!=null&&!cape.isValidHttpUrl()) throw ParamError("披风链接格式错误")
         accountCol.updateOne(uidFilter, Updates.set("cloth", RAccount.Cloth(isSlim, skin, cape)))
     }
 
