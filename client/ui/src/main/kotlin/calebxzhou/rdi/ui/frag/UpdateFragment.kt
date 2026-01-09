@@ -15,13 +15,13 @@ import icyllis.modernui.widget.TextView
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.net.URLEncoder
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import kotlin.system.exitProcess
 
 class UpdateFragment() : RFragment("正在检查更新") {
 
-    private val uiJarFile: File = System.getProperty("rdi.jar.ui")?.let { File(it) }?:File("rdi-5-ui.jar").normalize().absoluteFile
     private var retryButtonAdded = false
     override var fragSize= FragmentSize.SMALL
     override var closable = false
@@ -67,26 +67,17 @@ class UpdateFragment() : RFragment("正在检查更新") {
                         showRetryOption()
                         return@ioTask
                     }
-                    toast("${mcFile.name} 更新完成")
+                    logInfo("${mcFile.name} 更新完成")
                 }
             }
 
-            val uiHash = server.makeRequest<String>("update/ui/hash").data?:throw RequestError("获取ui核心版本信息失败")
-            val uiNeedsUpdate = !uiJarFile.exists() || uiJarFile.sha1 != uiHash
-
-            if (uiNeedsUpdate) {
-                logInfo("准备下载 ${uiJarFile.name}...")
-                val uiUpdated = downloadAndReplaceCore(
-                    targetFile = uiJarFile,
-                    downloadUrl = "${server.hqUrl}/update/ui",
-                    expectedSha = uiHash,
-                    label = uiJarFile.name
-                )
-                if (uiUpdated) {
-                    startRestartCountdown()
-                } else {
-                    showRetryOption()
-                }
+            val uiSync = syncUiLibs()
+            if (!uiSync.success) {
+                showRetryOption()
+                return@ioTask
+            }
+            if (uiSync.updated) {
+                startRestartCountdown()
                 return@ioTask
             }
 
@@ -110,14 +101,6 @@ class UpdateFragment() : RFragment("正在检查更新") {
         if (!parentDir.exists()) parentDir.mkdirs()
         val tempFile = File(parentDir, "${targetFile.name}.downloading.${System.currentTimeMillis()}")
 
-        var progressView: TextView? = null
-        uiThread {
-            progressView = contentView.textView("正在下载 $label ...") {
-                layoutParams = linearLayoutParam(PARENT, SELF).apply {
-                    setMargins(0, 0, 0, dp(8f))
-                }
-            }
-        }
 
         tempFile.toPath().downloadFileFrom(downloadUrl) { dl ->
             val totalBytes = dl.totalBytes
@@ -136,7 +119,7 @@ class UpdateFragment() : RFragment("正在检查更新") {
                 ?.let { "${it / 1000}KB/s" } ?: "--"
 
             uiThread {
-                progressView?.text = "下载中：$percentText $downloadedText/$totalText $speedText"
+                logInfo("下载中：$percentText $downloadedText/$totalText $speedText")
             }
         }.getOrElse {
             tempFile.delete()
@@ -239,6 +222,49 @@ class UpdateFragment() : RFragment("正在检查更新") {
         return replaced
     }
 
+    private data class UiLibSyncResult(
+        val success: Boolean,
+        val updated: Boolean
+    )
+
+    private suspend fun syncUiLibs(): UiLibSyncResult {
+        val libDir = File("lib").absoluteFile
+        if (!libDir.exists()) libDir.mkdirs()
+
+        val serverEntries = server.makeRequest<Map<String, String>>("update/ui/libs").data
+            ?: throw RequestError("获取UI库信息失败")
+        var updated = false
+
+        serverEntries.forEach { (name, sha) ->
+            val localFile = File(libDir, name)
+            val needsUpdate = !localFile.exists() || localFile.sha1 != sha
+            if (needsUpdate) {
+                logInfo("准备下载 $name...")
+                val encodedName = URLEncoder.encode(name, "UTF-8").replace("+", "%20")
+                val ok = downloadAndReplaceCore(
+                    targetFile = localFile,
+                    downloadUrl = "${server.hqUrl}/update/ui/lib/$encodedName",
+                    expectedSha = sha,
+                    label = name
+                )
+                if (!ok) return UiLibSyncResult(false, updated)
+                updated = true
+                logInfo("$name 更新完成")
+            }
+        }
+
+        val serverNames = serverEntries.keys
+        libDir.listFiles()
+            ?.filter { it.isFile && it.name !in serverNames }
+            ?.forEach { extra ->
+                if (!extra.delete()) {
+                    extra.deleteOnExit()
+                }
+            }
+
+        return UiLibSyncResult(true, updated)
+    }
+
     private fun showRetryOption(): Unit = uiThread {
         if (retryButtonAdded) return@uiThread
         retryButtonAdded = true
@@ -256,9 +282,9 @@ class UpdateFragment() : RFragment("正在检查更新") {
     }
 
     private fun startRestartCountdown() {
-        exitProcess(0)
-        /*uiThread {
-            val countdownView = contentView.textView("更新完成，客户端将在 5 秒后重启...") {
+
+        uiThread {
+            val countdownView = contentView.textView("更新完成，客户端将在 5 秒关闭...") {
                 layoutParams = linearLayoutParam(PARENT, SELF).apply {
                     setMargins(0, dp(16f), 0, 0)
                 }
@@ -267,16 +293,12 @@ class UpdateFragment() : RFragment("正在检查更新") {
 
             ioTask {
                 for (i in 5 downTo 1) {
-                    uiThread { countdownView.text = "更新完成，客户端将在 $i 秒后重启..." }
+                    uiThread { countdownView.text = "更新完成，客户端将在 $i 秒关闭..." }
                     Thread.sleep(1000)
                 }
-                uiThread {
-                    countdownView.text = "正在重启客户端..."
-                    countdownView.setTextColor(MaterialColor.BLUE_500.colorValue)
-                }
-
+                exitProcess(0)
             }
-        }*/
+        }
     }
 
 
