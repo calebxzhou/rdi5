@@ -14,36 +14,7 @@ class ProfileFragment : RFragment("我的信息") {
     init {
         bottomOptionsConfig = {
             //"\uEB29 整合包" colored MaterialColor.ORANGE_800 with { ModpackMarketFragment().go() }
-            "▶ 大厅" colored MaterialColor.GREEN_900 with {
-                if (McVersion.V211.firstLoaderDir.exists()) {
-                    HostLobbyFragment().go()
-                    return@with
-                }
-                alertErr("你还没有完整下载mc文件，必须下载才能游玩RDI，可以去群文件下载“资源运行库包”，也可以点击上方“MC版本资源”按钮下载")
-            }
-            /*"🏠 团队" colored MaterialColor.LIGHT_GREEN_900 with {
-                server.request<String>("room/my", method = io.ktor.http.HttpMethod.Get, showLoading = false) {
-                    val body = it.data
-                    if (body == "0") {
-                        confirm(
-                            "你还没有加入主机，你可以：",
-                            yesText = "创建自己的主机",
-                            noText = "等朋友邀请我加入他的",
-                        ) {
-                            server.requestU("room/create") { resp ->
-                                Room.now= serdesJson.decodeFromString<Room>(resp.data!!)
-                                goto(RoomFragment( ))
-                            }
-                        }
-                        return@request
-                    } else {
-                        Room.now=serdesJson.decodeFromString<Room>(body!!)
-                        goto(RoomFragment( ))
-                    }
-                }
-            }*/
-
-
+            "▶ 大厅" colored MaterialColor.GREEN_900 with { HostLobbyFragment().go()  }
         }
         titleViewInit = {
             quickOptions {
