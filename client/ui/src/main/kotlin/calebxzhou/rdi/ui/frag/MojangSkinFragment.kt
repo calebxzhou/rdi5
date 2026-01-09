@@ -1,8 +1,15 @@
 package calebxzhou.rdi.ui.frag
 
+import calebxzhou.mykotutils.mojang.MojangApi
+import calebxzhou.mykotutils.mojang.MojangApi.textures
+import calebxzhou.rdi.common.exception.RequestError
+import calebxzhou.rdi.common.model.RAccount
 import calebxzhou.rdi.common.util.ioTask
+import calebxzhou.rdi.service.PlayerService
 import calebxzhou.rdi.ui.*
 import calebxzhou.rdi.ui.component.alertErr
+import calebxzhou.rdi.ui.component.closeLoading
+import calebxzhou.rdi.ui.component.showLoading
 import icyllis.modernui.widget.CheckBox
 import icyllis.modernui.widget.EditText
 
@@ -17,7 +24,7 @@ class MojangSkinFragment : RFragment("导入正版皮肤") {
 
     init {
         contentViewInit = {
-            paddingDp(0,16,0,0)
+            paddingDp(0, 16, 0, 0)
             layoutParams = linearLayoutParam(dp(200f), SELF)
             vertical()
             nameInput = editText("正版玩家的昵称")
@@ -56,50 +63,31 @@ class MojangSkinFragment : RFragment("导入正版皮肤") {
             toast("请选择皮肤或披风")
             return
         }
-
+        showLoading()
         ioTask {
-            try {
-                /*
-                //todo 日后重写
-                val uuid = MojangApi.getUuidFromName(name)
-                if (uuid == null) {
-                    alertErr("玩家${name}不存在")
-                    return@ioTask
+            runCatching {
+                val uuid = MojangApi.getUuidFromName(name).getOrThrow() ?: let {
+                    throw RequestError("玩家${name}不存在")
                 }
-                val cloth = MojangApi.getCloth(uuid)
-                if (cloth == null) {
-                    alertErr("没有读取到${name}的皮肤")
-                    return@ioTask
+                val txts = MojangApi.getProfile(uuid).getOrThrow().textures
+                val skin = txts["SKIN"] ?: let {
+                    throw RequestError("玩家${name}没有设置过皮肤")
                 }
-                val newCloth = account.cloth.copy()
-                if (importSkin) {
-                    newCloth.skin = cloth.skin
-                    newCloth.isSlim = cloth.isSlim
-                }
-                if (importCape) {
-                    newCloth.cape = cloth.cape
-                }
-                val params = mutableMapOf<String, Any>()
-                params["isSlim"] = newCloth.isSlim.toString()
-                params["skin"] = newCloth.skin
-                newCloth.cape?.let {
-                    params["cape"] = it
-                }
+                val cape = txts["CAPE"]
 
-                server.requestU("skin", params = params) {
-
-                    account.updateCloth(newCloth)
-                    alertOk("正版皮肤导入成功")
-
-                }*/
-
-
-            } catch (e: Exception) {
-                e.printStackTrace()
-                uiThread {
-                    alertErr("导入失败: ${e.message}")
-                }
+                val cloth = RAccount.Cloth(
+                    isSlim = skin.metadata?.model.equals("slim", ignoreCase = true),
+                    skin = skin.url,
+                )
+                if (importCape)
+                    cape?.let { cloth.cape = it.url }
+                PlayerService.setCloth(cloth)
+            }.getOrElse {
+                if(it !is RequestError)
+                    it.printStackTrace()
+                alertErr("导入失败: ${it.message}")
             }
+            closeLoading()
         }
     }
 }
