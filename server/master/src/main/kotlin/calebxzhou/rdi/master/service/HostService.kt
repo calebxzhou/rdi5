@@ -60,6 +60,7 @@ import kotlinx.coroutines.flow.toList
 import org.bson.Document
 import org.bson.types.ObjectId
 import java.io.File
+import java.util.Properties
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -575,6 +576,9 @@ object HostService {
 
                 host.makeContainer(host.worldId, modpack, version,host.gameRules)
 
+                modpack.installToHost(host.packVer, host) {
+                    MailService.changeMail(mailId, "主机创建中", newContent = it)
+                }
                 "server.properties".run {
                     this.jarResource(this).readAllString()
                         .replace("#{port}", host.port.toString())
@@ -599,8 +603,22 @@ object HostService {
                             host.dir.resolve(this).writeText(it)
                         }
                 }
-                modpack.installToHost(host.packVer, host) {
-                    MailService.changeMail(mailId, "主机创建中", newContent = it)
+                val defaultPropsFile = host.dir.resolve("default-server.properties")
+                val serverPropsFile = host.dir.resolve("server.properties")
+                if (defaultPropsFile.exists() && serverPropsFile.exists()) {
+                    val serverProps = Properties().apply {
+                        serverPropsFile.inputStream().use { load(it) }
+                    }
+                    val defaultProps = Properties().apply {
+                        defaultPropsFile.inputStream().use { load(it) }
+                    }
+                    defaultProps.forEach { key, value ->
+                        if (key.toString() != "server-port") {
+                            lgr.info { "apply prop $key = $value" }
+                            serverProps.setProperty(key.toString(), value.toString())
+                        }
+                    }
+                    serverPropsFile.outputStream().use { serverProps.store(it, null) }
                 }
                 lgr.info { "installToHost returned. Proceeding to start Docker container for host ${host._id} (Logic Error Tracing)." }
                 DockerService.start(host._id.str)
@@ -685,9 +703,9 @@ object HostService {
     }
 
     suspend fun HostContext.changeVersion(packVer: String?) {
-        if (host.status != HostStatus.STOPPED) {
+        /*if (host.status != HostStatus.STOPPED) {
             throw RequestError("请先停止主机")
-        }
+        }*/
         val modpack = ModpackService.getById(host.modpackId) ?: throw RequestError("无此整合包")
         val modpackVer = modpack.versions.find { it.name == packVer } ?: modpack.versions.lastOrNull()
         ?: throw RequestError("无可用版本")
@@ -712,9 +730,9 @@ object HostService {
     }
 
     suspend fun HostContext.changeGameRules(newRules: Map<String, String>) {
-        if (host.status != HostStatus.STOPPED) {
+        /*if (host.status != HostStatus.STOPPED) {
             throw RequestError("请先停止主机")
-        }
+        }*/
         val modpack = ModpackService.getById(host.modpackId) ?: throw RequestError("无此整合包")
         val version = modpack.getVersion(host.packVer) ?: throw RequestError("无此版本")
 
