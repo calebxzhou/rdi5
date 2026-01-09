@@ -1,19 +1,14 @@
-import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
-import java.io.File
+import org.gradle.jvm.tasks.Jar
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
-import org.gradle.api.GradleException
-import org.gradle.api.tasks.Exec
-import org.gradle.api.tasks.testing.Test
-import org.gradle.jvm.tasks.Jar
 
 val ktorVersion = "3.3.3"
-val version = "5.9"
+val version = "5.9.1"
 project.version = version
 plugins {
     kotlin("jvm") version "2.2.21"
     kotlin("plugin.serialization") version "2.2.21"
-    id("com.gradleup.shadow") version "9.3.0+"
+  //  id("com.gradleup.shadow") version "9.3.0+"
     `java-library`
     idea
     application
@@ -43,11 +38,6 @@ base {
 }
 
 tasks.named<Jar>("jar") {
-    archiveClassifier.set("plain")
-}
-
-tasks.named<ShadowJar>("shadowJar") {
-    archiveClassifier.set("")
     archiveFileName.set("rdi-5-ui.jar")
     manifest {
         attributes(
@@ -61,11 +51,29 @@ tasks.named<ShadowJar>("shadowJar") {
             )
         )
     }
+//archiveClassifier.set("plain")
 }
 
-tasks.named("build") {
+/*tasks.named<ShadowJar>("shadowJar") {
+    archiveClassifier.set("")
+    archiveFileName.set("rdi-5-ui.jar")
+    manifest {
+        attributes(
+            mapOf(
+                "Implementation-Title" to project.name,
+                "Implementation-Version" to project.version,
+                "Built-By" to System.getProperty("user.name"),*//*
+                "Build-Timestamp" to SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
+                    .format(java.util.Date()),*//*
+                "Created-By" to "Gradle ${gradle.gradleVersion}"
+            )
+        )
+    }
+}*/
+
+/*tasks.named("build") {
     dependsOn(tasks.named("shadowJar"))
-}
+}*/
 
 java.toolchain.languageVersion.set(JavaLanguageVersion.of(21))
 
@@ -151,41 +159,40 @@ idea {
         isDownloadJavadoc = true
     }
 }
-
 fun registerCopyTask(name: String, extraDestinations: List<String> = emptyList()) {
     tasks.register(name) {
-        dependsOn(tasks.named("build"))
-        val artifact = layout.buildDirectory.file("libs/rdi-5-ui.jar")
+        notCompatibleWithConfigurationCache("uses project file operations at execution time")
+        dependsOn(tasks.named("installDist"))
         val baseDestinations = listOf(
-            layout.projectDirectory.dir("..\\..\\server\\master\\run\\client-libs"),
-            layout.projectDirectory.dir("${System.getProperty("user.home")}\\Documents\\rdi5ship")
+            layout.projectDirectory.dir("..\\..\\server\\master\\run\\client-libs\\lib"),
+            layout.projectDirectory.dir("${System.getProperty("user.home")}\\Documents\\rdi5ship\\lib")
         )
         val destinationDirs = baseDestinations + extraDestinations.map { layout.projectDirectory.dir(it) }
 
         doLast {
-            val jarFile = artifact.get().asFile
-            if (!jarFile.exists()) {
-                throw GradleException("未找到构建产物: $jarFile")
+            val srcDir = layout.buildDirectory.dir("install/ui/lib").get().asFile
+            if (!srcDir.exists()) {
+                throw GradleException("未找到目录: $srcDir")
             }
             destinationDirs.forEach { target ->
                 val targetDir = target.asFile
                 targetDir.mkdirs()
-                val destFile = targetDir.resolve(jarFile.name)
-                Files.copy(
-                    jarFile.toPath(),
-                    destFile.toPath(),
-                    StandardCopyOption.REPLACE_EXISTING
-                )
+                copy {
+                    from(srcDir)
+                    into(targetDir)
+                }
             }
         }
     }
 }
+registerCopyTask("出core2-local")
+registerCopyTask("出core2-release", listOf("\\\\rdi5\\rdi55\\ihq\\client-libs\\lib"))
 tasks.register<Exec>("makeShipPack") {
-    dependsOn(tasks.named("出core-local"))
+    dependsOn(tasks.named("出core2-local"))
 
     val shipDir = layout.projectDirectory.dir("${System.getProperty("user.home")}\\Documents\\rdi5ship")
-    val filesNeed = listOf("rdi-5-ui.jar", "双击启动.cmd", "fonts", "jre","jre8")
-    val zipFile = shipDir.file("rdi5ship.zip")
+    val filesNeed = listOf("lib", "双击启动.cmd", "fonts", "jre","jre8")
+    val zipFile = shipDir.file("rdi5ship-${version}.zip")
 
     workingDir = shipDir.asFile
 
@@ -216,8 +223,7 @@ tasks.register<Exec>("makeShipPack") {
         )
     }
 }
-registerCopyTask("出core-local")
-registerCopyTask("出core-release", listOf("\\\\rdi5\\rdi55\\ihq\\client-libs"))
+
 
 application {
     mainClass.set("calebxzhou.rdi.RDIKt")
