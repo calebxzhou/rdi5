@@ -3,6 +3,7 @@ package calebxzhou.rdi.service
 import calebxzhou.mykotutils.ktor.downloadFileFrom
 import calebxzhou.mykotutils.log.Loggers
 import calebxzhou.mykotutils.std.exportFromJarResource
+import calebxzhou.mykotutils.std.humanFileSize
 import calebxzhou.mykotutils.std.jarResource
 import calebxzhou.mykotutils.std.javaExePath
 import calebxzhou.mykotutils.std.readAllString
@@ -32,6 +33,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import java.lang.management.ManagementFactory
 import java.io.File
 import java.nio.charset.StandardCharsets
 import java.util.*
@@ -475,7 +477,7 @@ object GameService {
         val loaderMeta = version.loaderVersions[loader]
             ?: error("未配置 $loader 安装器下载链接")
         "launcher_profiles.json".let { File(DIR, it).apply { this.exportFromJarResource(it) } }
-        val installBooter = "forge-install-bootstrapper.jar".let { File(it).apply { this.exportFromJarResource(it) } }
+        val installBooter = "forge-install-bootstrapper.jar".let { File(DIR,it).apply { this.exportFromJarResource(it) } }
         val installer = DIR.resolve("${version.mcVer}-$loader-installer.jar")
         installer.parentFile?.mkdirs()
         onProgress("下载 $version $loader 安装器...")
@@ -533,7 +535,16 @@ object GameService {
                 this += versionListDir.resolve(versionId).resolve("$versionId.jar").absolutePath
             }
             .joinToString(File.pathSeparator)
-
+        val useMemStr = runCatching {
+            val osBean = ManagementFactory.getOperatingSystemMXBean()
+            val freeBytes = (osBean as? com.sun.management.OperatingSystemMXBean)
+                ?.freeMemorySize
+                ?: return@runCatching "-Xmx8G"
+            val freeMb = freeBytes / (1024L * 1024)
+            lgr.info { "剩余内存${freeBytes.humanFileSize}" }
+            val memGb = if (freeMb > 8192) freeMb else 8192
+            "-Xmx${memGb}M"
+        }.getOrDefault("-Xmx8G")
         val processedJvmArgs = resolvedJvmArgs.map { arg ->
             arg.replace($$"${natives_directory}", nativesDir.absolutePath)
                 .replace($$"${library_directory}", libsDir.absolutePath)
@@ -542,7 +553,7 @@ object GameService {
                 .replace($$"${classpath}", classpath)
                 .replace($$"${classpath_separator}", File.pathSeparator)
         }.toMutableList().apply {
-            this += "-Xmx8G"
+            this += useMemStr
             this += jvmArgs
         }
 
