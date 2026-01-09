@@ -6,6 +6,7 @@ import calebxzhou.rdi.client.common.protocol.WsRequest
 import calebxzhou.rdi.client.common.protocol.WsResponse
 import calebxzhou.rdi.common.util.ioTask
 import calebxzhou.rdi.lgr
+import calebxzhou.rdi.ui.component.alertErrOs
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
@@ -18,8 +19,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
+import java.net.BindException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.system.exitProcess
 
 /**
  * calebxzhou @ 2025-12-15 23:38
@@ -34,36 +37,49 @@ val pending = ConcurrentHashMap<Int, CompletableDeferred<WsResponse<*>>>()
 var mcSession: DefaultWebSocketServerSession? = null
 private val sendMutex = Mutex()
 fun startLocalServer(wait: Boolean = false) {
-    embeddedServer(Netty, host = "127.0.0.1", port = 65240) {
-        install(WebSockets)
-        routing {
-            webSocket("/") {
-                mcSession = this
-                val receiverJob = launch {
-                    for (frame in incoming) {
-                        when (frame) {
-                            is Frame.Text -> handleClientFrame(frame.readText())
-                            is Frame.Close -> {
-                                val reason = frame.readReason()?.message ?: "no reason"
-                                lgr.info { "mc client disconnect $reason" }
-                                mcSession = null
-                                return@launch
-                            }
+    try {
+        embeddedServer(Netty, host = "127.0.0.1", port = 65240) {
+            install(WebSockets)
+            routing {
+                webSocket("/") {
+                    mcSession = this
+                    val receiverJob = launch {
+                        for (frame in incoming) {
+                            when (frame) {
+                                is Frame.Text -> handleClientFrame(frame.readText())
+                                is Frame.Close -> {
+                                    val reason = frame.readReason()?.message ?: "no reason"
+                                    lgr.info { "mc client disconnect $reason" }
+                                    mcSession = null
+                                    return@launch
+                                }
 
-                            else -> lgr.warn { "Unsupported WebSocket frame: ${frame.frameType}" }
+                                else -> lgr.warn { "Unsupported WebSocket frame: ${frame.frameType}" }
+                            }
                         }
                     }
-                }
-                val protocolJob = launch { runProtocol() }
-                try {
-                    receiverJob.join()
-                } finally {
-                    protocolJob.cancelAndJoin()
-                    receiverJob.cancelAndJoin()
+                    val protocolJob = launch { runProtocol() }
+                    try {
+                        receiverJob.join()
+                    } finally {
+                        protocolJob.cancelAndJoin()
+                        receiverJob.cancelAndJoin()
+                    }
                 }
             }
+        }.start(wait = wait)
+    } catch (error: Exception) {
+        val bindError = error is BindException
+            || error.cause is BindException
+            || error.message?.contains("bind", ignoreCase = true) == true
+            || error.message?.contains("Address already in use", ignoreCase = true) == true
+        if (bindError) {
+            alertErrOs("只允许同时运行一个RDI实例")
+            exitProcess(0)
+        } else {
+            lgr.error(error) { "Failed to start local server" }
         }
-    }.start(wait = wait)
+    }
 }
 
 private suspend fun DefaultWebSocketServerSession.runProtocol() {
