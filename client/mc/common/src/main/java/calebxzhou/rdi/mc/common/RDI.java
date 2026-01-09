@@ -42,6 +42,6 @@ public class RDI {
         }
     }
     public static String getTextureQueryUrl(UUID profileId,String authlibVer){
-        return "http://"+IHQ_URL+"/mc-profile/"+profileId+"/clothes?authlibVer="+authlibVer;
+        return IHQ_URL+"/mc-profile/"+profileId+"/clothes?authlibVer="+authlibVer;
     }
 }
