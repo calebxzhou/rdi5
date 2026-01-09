@@ -2,23 +2,16 @@ package calebxzhou.rdi.ui.frag
 
 import calebxzhou.mykotutils.std.deleteRecursivelyNoSymlink
 import calebxzhou.rdi.common.model.Modpack
-import calebxzhou.rdi.common.util.ioScope
 import calebxzhou.rdi.common.util.ioTask
 import calebxzhou.rdi.net.server
 import calebxzhou.rdi.service.ModpackService
 import calebxzhou.rdi.service.ModpackService.startInstall
-import calebxzhou.rdi.ui.FragmentSize
-import calebxzhou.rdi.ui.MaterialColor
+import calebxzhou.rdi.ui.*
 import calebxzhou.rdi.ui.component.alertErr
 import calebxzhou.rdi.ui.component.closeLoading
 import calebxzhou.rdi.ui.component.confirm
 import calebxzhou.rdi.ui.component.showLoading
-import calebxzhou.rdi.ui.horizontal
-import calebxzhou.rdi.ui.linearLayout
-import calebxzhou.rdi.ui.textView
-import calebxzhou.rdi.ui.toast
-import calebxzhou.rdi.ui.uiThread
-import kotlinx.coroutines.runBlocking
+import java.awt.Desktop
 
 class ModpackVersionManageFragment : RFragment("本地整合包版本管理") {
     override var fragSize = FragmentSize.MEDIUM
@@ -53,6 +46,22 @@ class ModpackVersionManageFragment : RFragment("本地整合包版本管理") {
                                                 ?.startInstall(modpack.mcVer, modpack.modloader, modpack.name)
                                                 ?: alertErr("未找到对应版本信息，可能该版本已被删除，无法重新下载")
                                         } ?: alertErr("未找到对应整合包信息，可能该整合包已被删除，无法重新下载")
+                                    }
+                                }
+                                "打开文件夹" with {
+                                    val dir = packdir.dir
+                                    if (!dir.exists()) {
+                                        alertErr("目录不存在: ${dir.absolutePath}")
+                                        return@with
+                                    }
+                                    runCatching {
+                                        if (Desktop.isDesktopSupported()) {
+                                            Desktop.getDesktop().open(dir)
+                                        } else {
+                                            ProcessBuilder("explorer", dir.absolutePath).start()
+                                        }
+                                    }.onFailure {
+                                        alertErr("无法打开目录: ${it.message}")
                                     }
                                 }
                             }
