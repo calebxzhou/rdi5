@@ -20,15 +20,18 @@ dependencies {
 java {
     sourceCompatibility = targetCompatibility = JavaVersion.VERSION_1_8
 }
-static void registerServerCopyTask(String taskName, Project project, List<String> extraDestinations = []) {
+static void registerServerCopyTask(String taskName, Project project, Boolean release) {
     project.tasks.register(taskName) {
         dependsOn project.tasks.named('build')
         def mcVersionSlug = project.version.toString().replaceAll("5-mc-server-","")
         def artifact = project.layout.buildDirectory.file("libs/rdi-${project.version}.jar")
         def baseDestinations = [
-                project.layout.projectDirectory.dir("..\\..\\master\\run\\game-libs\\\\${mcVersionSlug}\\mods")
+                project.layout.projectDirectory.dir("..\\..\\master\\run\\game-libs\\${mcVersionSlug}\\mods")
         ]
-        def destinationDirs = baseDestinations + extraDestinations.collect { project.layout.projectDirectory.dir(it) }
+        if (release) {
+            baseDestinations += project.layout.projectDirectory.dir("\\\\rdi5\\rdi55\\ihq\\game-libs\\${mcVersionSlug}\\mods")
+        }
+        def destinationDirs = baseDestinations
 
         doLast {
             def jarFile = artifact.get().asFile
@@ -49,6 +52,6 @@ static void registerServerCopyTask(String taskName, Project project, List<String
     }
 }
 ext.registerServerCopyTask = { Project targetProject ->
-    registerServerCopyTask("出core-local", targetProject,[])
-    registerServerCopyTask("出core-release", targetProject,["\\\\rdi5\\rdi55\\ihq\\client-libs\\"])
+    registerServerCopyTask("出core-local", targetProject,false)
+    registerServerCopyTask("出core-release", targetProject,true)
 }
