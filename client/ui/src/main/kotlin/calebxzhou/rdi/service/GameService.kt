@@ -16,14 +16,10 @@ import calebxzhou.rdi.common.json
 import calebxzhou.rdi.common.model.LibraryOsArch.Companion.detectHostOs
 import calebxzhou.rdi.common.model.McVersion
 import calebxzhou.rdi.common.model.ModLoader
-import calebxzhou.rdi.common.net.httpRequest
 import calebxzhou.rdi.common.serdesJson
 import calebxzhou.rdi.common.util.toUUID
 import calebxzhou.rdi.model.*
 import calebxzhou.rdi.net.loggedAccount
-import io.ktor.client.call.*
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
@@ -128,11 +124,20 @@ object GameService {
     }
 
     suspend fun downloadClient(manifest: MojangVersionManifest, onProgress: (String) -> Unit) {
-        val client = manifest.downloads?.client ?: return
+        manifest.id
+        var clientArtf = manifest.downloads?.client ?: return
+        if (CONF.useMirror) {
+            clientArtf = MojangDownloadArtifact(
+                url = "https://bmclapi2.bangbang93.com/version/${manifest.id}/client",
+                sha1 = clientArtf.sha1,
+                size = clientArtf.size,
+                path = clientArtf.path
+            )
+        }
         val versionDir = versionListDir.resolve(manifest.id).apply { mkdirs() }
         File(versionDir, "${manifest.id}.json").writeText(manifest.json)
         val target = File(versionDir, "${manifest.id}.jar")
-        downloadArtifact("客户端核心 ${manifest.id}", client, target, onProgress)
+        downloadArtifact("客户端核心 ${manifest.id}", clientArtf, target, onProgress)
     }
 
     /*   private suspend fun loadBaseManifest(version: McVersion): MojangVersionManifest {
@@ -477,7 +482,8 @@ object GameService {
         val loaderMeta = version.loaderVersions[loader]
             ?: error("未配置 $loader 安装器下载链接")
         "launcher_profiles.json".let { File(DIR, it).apply { this.exportFromJarResource(it) } }
-        val installBooter = "forge-install-bootstrapper.jar".let { File(DIR,it).apply { this.exportFromJarResource(it) } }
+        val installBooter =
+            "forge-install-bootstrapper.jar".let { File(DIR, it).apply { this.exportFromJarResource(it) } }
         val installer = DIR.resolve("${version.mcVer}-$loader-installer.jar")
         installer.parentFile?.mkdirs()
         onProgress("下载 $version $loader 安装器...")
