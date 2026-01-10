@@ -19,7 +19,7 @@
     "mAllowChineseArgument",
     "mAllowChineseName",
     "mClientIntentionPacket",
-    "mServerboundHelloPacket",
-    "mSkinManager"
+    "mPlayerInfoUpdatePacket",
+    "mServerboundHelloPacket"
   ]
 }
