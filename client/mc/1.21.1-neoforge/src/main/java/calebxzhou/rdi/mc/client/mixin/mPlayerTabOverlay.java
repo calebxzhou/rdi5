@@ -1,4 +1,4 @@
-package calebxzhou.rdi.mixin;
+package calebxzhou.rdi.mc.client.mixin;
 
 import net.minecraft.client.gui.components.PlayerTabOverlay;
 import net.minecraft.network.Connection;

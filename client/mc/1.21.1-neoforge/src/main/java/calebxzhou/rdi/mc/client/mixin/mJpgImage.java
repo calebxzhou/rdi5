@@ -1,4 +1,4 @@
-package calebxzhou.rdi.mixin;
+package calebxzhou.rdi.mc.client.mixin;
 
 import calebxzhou.rdi.mc.common.JpegUtils;
 import com.mojang.blaze3d.platform.NativeImage;

@@ -1,4 +1,4 @@
-package calebxzhou.rdi.mixin;
+package calebxzhou.rdi.mc.client.mixin;
 
 import com.mojang.authlib.minecraft.MinecraftProfileTextures;
 import net.minecraft.client.resources.PlayerSkin;
