@@ -64,7 +64,7 @@ neoForge {
             programArgument '1440'
             systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
             systemProperty 'mixin.hotSwap', 'true'
-            systemProperty 'rdi.ihq.url', '127.0.0.1:65231'
+            systemProperty 'rdi.ihq.url', 'http://127.0.0.1:65231'
             systemProperty 'rdi.game.ip', '127.0.0.1:65230'
             systemProperty 'rdi.host.name', '测试测试12123主机'
             systemProperty 'rdi.host.port', '25565'
