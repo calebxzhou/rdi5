@@ -72,11 +72,13 @@ class UpdateFragment() : RFragment("正在检查更新") {
             }
 
             val uiSync = syncUiLibs()
-            if (!uiSync.success) {
+            //是否成功
+            if (!uiSync.first) {
                 showRetryOption()
                 return@ioTask
             }
-            if (uiSync.updated) {
+            //是否已更新ui核心，需要重启
+            if (uiSync.second) {
                 startRestartCountdown()
                 return@ioTask
             }
@@ -86,7 +88,7 @@ class UpdateFragment() : RFragment("正在检查更新") {
             continueToLogin()
         }.onFailure {
             lgr.error(it) { "核心更新流程失败" }
-            logInfo("更新流程遇到错误：${it.message ?: it::class.simpleName}")
+            logInfo("更新流程遇到错误：${it}")
             showRetryOption()
         }
     }
@@ -221,13 +223,7 @@ class UpdateFragment() : RFragment("正在检查更新") {
 
         return replaced
     }
-
-    private data class UiLibSyncResult(
-        val success: Boolean,
-        val updated: Boolean
-    )
-
-    private suspend fun syncUiLibs(): UiLibSyncResult {
+    private suspend fun syncUiLibs(): Pair<Boolean, Boolean> {
         val libDir = File("lib").absoluteFile
         if (!libDir.exists()) libDir.mkdirs()
 
@@ -247,7 +243,7 @@ class UpdateFragment() : RFragment("正在检查更新") {
                     expectedSha = sha,
                     label = name
                 )
-                if (!ok) return UiLibSyncResult(false, updated)
+                if (!ok) return false to updated
                 updated = true
                 logInfo("$name 更新完成")
             }
@@ -262,7 +258,7 @@ class UpdateFragment() : RFragment("正在检查更新") {
                 }
             }
 
-        return UiLibSyncResult(true, updated)
+        return true to updated
     }
 
     private fun showRetryOption(): Unit = uiThread {
