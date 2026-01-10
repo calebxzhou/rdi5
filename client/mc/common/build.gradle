@@ -15,7 +15,16 @@ repositories {
 dependencies {
 
 }
+java {
+    sourceCompatibility = targetCompatibility = JavaVersion.VERSION_1_8
+}
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = "UTF-8"
+    options.release.set(8)
 
+    options.compilerArgs << "-Xlint:-deprecation"
+    options.compilerArgs << "-Xlint:-removal"
+}
 static void registerClientCopyTask(String taskName, Project project, List<String> extraDestinations = []) {
     project.tasks.register(taskName) {
         dependsOn project.tasks.named('build')
