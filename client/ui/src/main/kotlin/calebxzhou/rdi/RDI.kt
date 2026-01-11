@@ -1,7 +1,6 @@
 package calebxzhou.rdi
 
 import calebxzhou.rdi.client.AppConfig
-import calebxzhou.rdi.client.mc.startLocalServer
 import icyllis.modernui.R
 import icyllis.modernui.audio.AudioManager
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -33,7 +32,6 @@ class RDI {
 
     }
     fun start(fragment: calebxzhou.rdi.client.ui.frag.RFragment){
-        startLocalServer()
         System.setProperty("java.awt.headless", "true")
         val mui = _root_ide_package_.calebxzhou.rdi.client.ui.RodernUI().apply {
             setTheme(R.style.Theme_Material3_Dark)
