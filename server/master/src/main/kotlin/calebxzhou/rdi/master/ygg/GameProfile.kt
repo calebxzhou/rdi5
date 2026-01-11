@@ -17,7 +17,7 @@ data class GameProfile(
             val default = RAccount.DEFAULT
             return GameProfile(
                 id = id,
-                name = "Player${id.take(5)}",
+                name = "RDI${id.take(5)}",
                 properties = listOf(
                     Property(
                         name = "textures",
@@ -25,7 +25,7 @@ data class GameProfile(
                                 MinecraftTexturesPayload(
                                     timestamp = System.currentTimeMillis(),
                                     profileId = id,
-                                    profileName = "Player${id.take(5)}",
+                                    profileName = "RDI${id.take(5)}",
                                     isPublic = true,
                                     textures = mapOf(
                                         MinecraftProfileTexture.Type.SKIN to MinecraftProfileTexture(
