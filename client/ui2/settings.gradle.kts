@@ -4,7 +4,6 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
-
-include(":common",":client-common")
+rootProject.name = "ui2"
+include(":common")
 project(":common").projectDir = file("../../common")
-project(":client-common").projectDir = file("../common")
