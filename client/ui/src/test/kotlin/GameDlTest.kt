@@ -1,7 +1,7 @@
 import calebxzhou.rdi.common.model.McVersion
 import calebxzhou.rdi.common.model.ModLoader
-import calebxzhou.rdi.service.GameService
-import calebxzhou.rdi.service.GameService.rewriteMirrorUrl
+import calebxzhou.rdi.client.service.GameService
+import calebxzhou.rdi.client.service.GameService.rewriteMirrorUrl
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals

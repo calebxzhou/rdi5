@@ -7,10 +7,10 @@ import calebxzhou.rdi.common.model.RAccount
 import calebxzhou.rdi.common.serdesJson
 import calebxzhou.rdi.common.service.CurseForgeService
 import calebxzhou.rdi.common.service.CurseForgeService.mapMods
-import calebxzhou.rdi.net.loggedAccount
-import calebxzhou.rdi.net.server
-import calebxzhou.rdi.service.ModpackService
-import calebxzhou.rdi.service.PlayerService
+import calebxzhou.rdi.client.net.loggedAccount
+import calebxzhou.rdi.client.net.server
+import calebxzhou.rdi.client.service.ModpackService
+import calebxzhou.rdi.client.service.PlayerService
 import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
 import org.bson.types.ObjectId

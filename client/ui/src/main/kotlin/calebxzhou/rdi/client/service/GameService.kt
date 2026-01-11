@@ -1,0 +1,675 @@
+package calebxzhou.rdi.client.service
+
+import calebxzhou.mykotutils.ktor.downloadFileFrom
+import calebxzhou.mykotutils.log.Loggers
+import calebxzhou.mykotutils.std.exportFromJarResource
+import calebxzhou.mykotutils.std.humanFileSize
+import calebxzhou.mykotutils.std.jarResource
+import calebxzhou.mykotutils.std.javaExePath
+import calebxzhou.mykotutils.std.readAllString
+import calebxzhou.mykotutils.std.sha1
+import calebxzhou.mykotutils.std.toFixed
+import calebxzhou.rdi.CONF
+import calebxzhou.rdi.client.Const
+import calebxzhou.rdi.RDI
+import calebxzhou.rdi.client.model.MojangAssetIndexFile
+import calebxzhou.rdi.client.model.MojangAssetObject
+import calebxzhou.rdi.client.model.MojangDownloadArtifact
+import calebxzhou.rdi.client.model.MojangLibrary
+import calebxzhou.rdi.client.model.MojangRule
+import calebxzhou.rdi.client.model.MojangRuleAction
+import calebxzhou.rdi.client.model.MojangVersionManifest
+import calebxzhou.rdi.client.model.loaderManifest
+import calebxzhou.rdi.client.model.manifest
+import calebxzhou.rdi.client.model.metadata
+import calebxzhou.rdi.client.model.nativesDir
+import calebxzhou.rdi.common.json
+import calebxzhou.rdi.common.model.LibraryOsArch.Companion.detectHostOs
+import calebxzhou.rdi.common.model.McVersion
+import calebxzhou.rdi.common.model.ModLoader
+import calebxzhou.rdi.common.serdesJson
+import calebxzhou.rdi.common.util.toUUID
+import calebxzhou.rdi.client.net.loggedAccount
+import com.sun.management.OperatingSystemMXBean
+import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import java.lang.management.ManagementFactory
+import java.io.File
+import java.nio.charset.StandardCharsets
+import java.util.*
+import java.util.zip.ZipFile
+
+object GameService {
+    private val lgr by Loggers
+    var started = false
+        private set
+    val DIR = File(RDI.DIR, "mc").apply { mkdirs() }
+    private val libsDir = DIR.resolve("libraries").apply { mkdirs() }
+    private val assetsDir = DIR.resolve("assets").apply { mkdirs() }
+    private val assetIndexesDir = assetsDir.resolve("indexes").apply { mkdirs() }
+    private val assetObjectsDir = assetsDir.resolve("objects").apply { mkdirs() }
+    val versionListDir = DIR.resolve("versions").apply { mkdirs() }
+    private val hostOs = detectHostOs()
+    private val hostOsArchRaw = System.getProperty("os.arch")?.lowercase(Locale.ROOT) ?: ""
+    private val hostOsVersionRaw = System.getProperty("os.version") ?: ""
+    private val launcherFeatures: Map<String, Boolean> = emptyMap()
+    private val locale = Locale.SIMPLIFIED_CHINESE
+    private const val MAX_PARALLEL_LIBRARY_DOWNLOADS = 32
+    private const val MAX_PARALLEL_ASSET_DOWNLOADS = 32
+    private val mirrors = mapOf(
+        "https://maven.neoforged.net/releases/net/neoforged/forge" to "https://bmclapi2.bangbang93.com/maven/net/neoforged/forge",
+        "https://maven.neoforged.net/releases/net/neoforged/neoforge" to " https://bmclapi2.bangbang93.com/maven/net/neoforged/neoforge",
+        "https://files.minecraftforge.net/maven" to "https://bmclapi2.bangbang93.com/maven",
+        "http://launchermeta.mojang.com/mc/game/version_manifest.json" to "https://bmclapi2.bangbang93.com/mc/game/version_manifest.json",
+        "http://launchermeta.mojang.com/mc/game/version_manifest_v2.json" to "https://bmclapi2.bangbang93.com/mc/game/version_manifest_v2.json",
+        "https://launchermeta.mojang.com" to "https://bmclapi2.bangbang93.com",
+        "https://launcher.mojang.com" to "https://bmclapi2.bangbang93.com",
+        "http://resources.download.minecraft.net" to "https://bmclapi2.bangbang93.com/assets",
+        "https://libraries.minecraft.net" to "https://bmclapi2.bangbang93.com/maven",
+    )
+    private val bracketedLibraryRegex = Regex("^\\[(.+)]$")
+    internal val String.rewriteMirrorUrl: String
+        get() {
+            if (!CONF.useMirror) return this
+            val original = this
+            mirrors.forEach { (originRaw, mirrorRaw) ->
+                val origin = originRaw.trim()
+                if (origin.isEmpty()) return@forEach
+                if (original.startsWith(origin)) {
+                    val suffix = original.removePrefix(origin)
+                    val mirror = mirrorRaw.trim()
+                    if (suffix.isEmpty()) return mirror
+                    val normalizedSuffix = suffix.trimStart('/')
+                    val normalizedMirror = mirror.trimEnd('/')
+                    return "$normalizedMirror/$normalizedSuffix"
+                }
+            }
+            return original
+        }
+
+    suspend fun downloadVersion(version: McVersion, onProgress: (String) -> Unit) {
+        onProgress("正在获取 ${version.mcVer} 的版本信息...")
+        val manifest = version.metadata
+        downloadClient(manifest, onProgress)
+        downloadLibraries(manifest, onProgress)
+        extractNatives(manifest, onProgress)
+        downloadAssets(manifest, onProgress)
+        onProgress("$version 所需文件下载完成")
+    }
+
+    private fun extractNatives(manifest: MojangVersionManifest, onProgress: (String) -> Unit) {
+        val nativesDir = versionListDir.resolve(manifest.id).resolve("natives").apply { mkdirs() }
+        manifest.libraries.filterNativeOnly.forEach { library ->
+            val jarFile = library.file
+            if (!jarFile.exists()) {
+                onProgress("运行库${library.name}下载失败，无法提取")
+                return@forEach
+            }
+            onProgress("提取 ${library.name} 的原生库")
+            ZipFile(jarFile).use { zip ->
+                zip.entries().asSequence()
+                    .filter { !it.isDirectory && it.name.isNativeLibraryName() }
+                    .forEach { entry ->
+                        val target = nativesDir.resolve(entry.name.substringAfterLast('/'))
+                        target.parentFile?.mkdirs()
+                        zip.getInputStream(entry).use { input ->
+                            target.outputStream().use { output ->
+                                input.copyTo(output)
+                            }
+                        }
+                    }
+            }
+        }
+    }
+
+    private fun String.isNativeLibraryName(): Boolean {
+        val lower = lowercase(Locale.ROOT)
+        return lower.endsWith(".dll") || lower.endsWith(".so") || lower.endsWith(".dylib")
+    }
+
+    suspend fun downloadClient(manifest: MojangVersionManifest, onProgress: (String) -> Unit) {
+        manifest.id
+        var clientArtf = manifest.downloads?.client ?: return
+        if (CONF.useMirror) {
+            clientArtf = MojangDownloadArtifact(
+                url = "https://bmclapi2.bangbang93.com/version/${manifest.id}/client",
+                sha1 = clientArtf.sha1,
+                size = clientArtf.size,
+                path = clientArtf.path
+            )
+        }
+        val versionDir = versionListDir.resolve(manifest.id).apply { mkdirs() }
+        File(versionDir, "${manifest.id}.json").writeText(manifest.json)
+        val target = File(versionDir, "${manifest.id}.jar")
+        downloadArtifact("客户端核心 ${manifest.id}", clientArtf, target, onProgress)
+    }
+
+    /*   private suspend fun loadBaseManifest(version: McVersion): MojangVersionManifest {
+           val manifestFile = versionListDir.resolve(version.mcVer).resolve("${version.mcVer}.json")
+           val localJson = runCatching { manifestFile.takeIf { it.exists() }?.readText() }.getOrNull()
+           if (!localJson.isNullOrBlank()) {
+               return serdesJson.decodeFromString(localJson)
+           }
+           return httpRequest { url(version.metaUrl) }.body()
+       }*/
+
+    suspend fun downloadLibraries(manifest: MojangVersionManifest, onProgress: (String) -> Unit) {
+        downloadLibraries(manifest.libraries, onProgress)
+    }
+
+    private suspend fun downloadLibraries(libraries: List<MojangLibrary>, onProgress: (String) -> Unit) =
+        coroutineScope {
+            val semaphore = Semaphore(MAX_PARALLEL_LIBRARY_DOWNLOADS)
+            libraries
+                .filter { it.shouldDownloadByArch() }
+                .apply { onProgress("需要下载的库文件: ${this.size}个： ${this.joinToString("\n") { it.name }}") }
+                .map { library ->
+                    async(Dispatchers.IO) {
+                        semaphore.withPermit {
+                            downloadLibraryArtifacts(library, onProgress)
+                        }
+                    }
+                }.awaitAll()
+        }
+
+    private fun MojangLibrary.shouldDownloadByArch(): Boolean {
+        //没有系统要求的直接下载
+        if (rules == null) return true
+        val allowOs = rules.filter { it.action == MojangRuleAction.allow }.mapNotNull { it.os?.name }
+        return hostOs.ruleOsName in allowOs && this.name.endsWith(hostOs.archSuffix)
+    }
+
+    //只有native的lib
+    private val List<MojangLibrary>.filterNativeOnly
+        get() = this.filter { it.rules != null }
+            .filter { it.shouldDownloadByArch() }
+    val MojangLibrary.file get() = File(libsDir, this.downloads.artifact.path!!)
+    private suspend fun downloadLibraryArtifacts(library: MojangLibrary, onProgress: (String) -> Unit): File {
+        library.downloads.artifact
+            .let { artifact ->
+                val relativePath = artifact.path!!
+                val target = File(libsDir, relativePath)
+                downloadArtifact(library.name, artifact, target, onProgress)
+                return target
+            }
+    }
+
+    private suspend fun downloadArtifact(
+        label: String,
+        artifact: MojangDownloadArtifact,
+        target: File,
+        onProgress: (String) -> Unit
+    ) {
+        if (target.exists()) {
+            val existingSha = runCatching { target.sha1 }.getOrNull()
+            if (existingSha != null && existingSha.equals(artifact.sha1, true)) {
+                onProgress("跳过 $label (已存在)")
+                return
+            }
+        }
+
+        target.parentFile?.mkdirs()
+        onProgress("下载 $label...")
+        val success = target.toPath().downloadFileFrom(artifact.url.rewriteMirrorUrl) { progress ->
+            val percent = progress.percent.takeIf { it >= 0 }
+                ?.let { String.format(locale, "%.1f%%", it) }
+                ?: "--"
+            onProgress("$label 下载中 $percent")
+        }.getOrElse {
+            target.delete()
+            throw it
+        }
+        val downloadedSha = target.sha1
+        if (!downloadedSha.equals(artifact.sha1, true)) {
+            target.delete()
+            throw IllegalStateException("$label 校验失败")
+        }
+    }
+
+    suspend fun downloadAssets(manifest: MojangVersionManifest, onProgress: (String) -> Unit) {
+        val assetIndexMeta = manifest.assetIndex ?: let { onProgress("找不到资源"); return }
+        val metaJson = this.jarResource("mcmeta/assets-index/${assetIndexMeta.id}.json").readAllString()
+        val index = serdesJson.decodeFromString<MojangAssetIndexFile>(metaJson)
+        assetIndexesDir.resolve("${assetIndexMeta.id}.json").writeText(metaJson)
+
+        val toDownload = mutableListOf<Map.Entry<String, MojangAssetObject>>()
+        val toStub = mutableListOf<Map.Entry<String, MojangAssetObject>>()
+
+        index.objects.entries.forEach { entry ->
+            when {
+                shouldDownloadAsset(entry.key) -> toDownload += entry
+                shouldUseEmptySound(entry.key) -> toStub += entry
+                else -> Unit
+            }
+        }
+
+        onProgress("准备下载资源 (${toDownload.size}/${index.objects.size}) ... 空音频替换 ${toStub.size} 个")
+
+        // Write stub ogg files for skipped sounds
+        toStub.forEach { (_, obj) ->
+            writeEmptySoundStub(obj.hash)
+        }
+
+        val errors = Collections.synchronizedList(mutableListOf<String>())
+        supervisorScope {
+            val semaphore = Semaphore(MAX_PARALLEL_ASSET_DOWNLOADS)
+            toDownload.map { (path, obj) ->
+                async(Dispatchers.IO) {
+                    semaphore.withPermit {
+                        runCatching {
+                            onProgress("开始下载资源 $path")
+                            downloadAssetObject(path, obj, onProgress)
+                        }.onFailure { throwable ->
+                            val message = throwable.message ?: throwable::class.simpleName ?: "unknown"
+                            errors += "$path: $message"
+                            onProgress("资源 $path 下载失败: $message")
+                        }
+                    }
+                }
+            }.awaitAll()
+        }
+        if (errors.isNotEmpty()) {
+            val preview = errors.take(3).joinToString()
+            throw IllegalStateException("共有 ${errors.size} 个资源下载失败，例如: $preview")
+        }
+    }
+
+    private suspend fun downloadAssetObject(
+        path: String,
+        asset: MojangAssetObject,
+        onProgress: (String) -> Unit
+    ): Result<File> {
+        val hash = asset.hash.lowercase(Locale.ROOT)
+        val targetDir = assetObjectsDir.resolve(hash.substring(0, 2))
+        val targetFile = targetDir.resolve(hash)
+
+        // Check existing file
+        if (targetFile.exists()) {
+            // Optimization: If file size matches, check SHA1.
+            // Often checking size first is enough to skip broken downloads quickly without full hash calc
+            if (targetFile.length() == asset.size) {
+                // Optional: You can do full SHA1 check here if you want strict integrity
+                // For speed, many launchers trust size matches during startup checks
+                val existingSha = runCatching { targetFile.sha1 }.getOrNull()
+                if (existingSha != null && existingSha.equals(hash, true)) {
+                    // onProgress("跳过资源 $path (已存在)") // Reduce spam
+                    return Result.success(targetFile)
+                }
+            }
+        }
+
+        targetDir.mkdirs()
+        var lastError: String? = null
+        val downloadUrl = buildAssetUrl(hash)
+
+        targetFile.toPath().downloadFileFrom(
+            url = downloadUrl,
+            knownSize = asset.size // <--- PASS THE SIZE HERE
+        ) { progress ->
+            // Optimization: Don't format strings/update UI for every packet of a 2KB file.
+            // Only update on completion or if file is large.
+            if (asset.size > 1024 * 1024) {
+                // Only show progress for files > 1MB
+                val percent = progress.percent.takeIf { it >= 0 }
+                    ?.let { String.format(locale, "%.1f%%", it) } ?: "--"
+                onProgress("资源 $path 下载中 $percent")
+            }
+        }.getOrElse {
+            targetFile.delete()
+            throw it
+        }
+
+        if (targetFile.length() != asset.size) {
+            targetFile.delete()
+            throw IllegalStateException("Size mismatch for $path")
+        }
+        return Result.success(targetFile)
+
+        // Optional: strict hash check after download (costly for CPU)
+        // If speed is paramount, trust TCP/TLS checksums + file size for assets
+        // val downloadedSha = targetFile.sha1 ...
+    }
+
+    private fun readInstallerEntry(installer: File, entryName: String): String {
+        ZipFile(installer).use { zip ->
+            val entry = zip.getEntry(entryName)
+                ?: throw IllegalStateException("安装器中缺少 $entryName")
+            zip.getInputStream(entry).bufferedReader(StandardCharsets.UTF_8).use { reader ->
+                return reader.readText()
+            }
+        }
+    }
+
+    private suspend fun downloadMojmapIfNeeded(
+        installProfile: LoaderInstallProfile,
+        vanillaManifest: MojangVersionManifest,
+        onProgress: (String) -> Unit
+    ) {
+        val mojmaps = installProfile.data["MOJMAPS"] ?: return
+        val downloads = vanillaManifest.downloads ?: return
+        val tasks = mutableListOf<Triple<String, MojangDownloadArtifact, String>>()
+        extractLibraryDescriptor(mojmaps.client)?.let { descriptor ->
+            downloads.clientMappings?.let { artifact ->
+                tasks += Triple("客户端", artifact, descriptor)
+            }
+        }
+        extractLibraryDescriptor(mojmaps.server)?.let { descriptor ->
+            downloads.serverMappings?.let { artifact ->
+                tasks += Triple("服务端", artifact, descriptor)
+            }
+        }
+        tasks.forEach { (label, artifact, descriptor) ->
+            val relativePath = descriptorToLibraryPath(descriptor)
+            val target = File(libsDir, relativePath)
+            downloadArtifact("$label Mojmap", artifact, target, onProgress)
+        }
+    }
+
+    private fun extractLibraryDescriptor(raw: String?): String? {
+        raw ?: return null
+        val trimmed = raw.trim()
+        val match = bracketedLibraryRegex.find(trimmed)
+        return match?.groupValues?.getOrNull(1)?.trim()?.takeIf { it.isNotEmpty() }
+    }
+
+    private fun descriptorToLibraryPath(descriptor: String): String {
+        val parts = descriptor.split("@", limit = 2)
+        val coords = parts[0].split(":")
+        require(coords.size >= 3) { "非法的库坐标: $descriptor" }
+        val group = coords[0].replace('.', '/')
+        val artifact = coords[1]
+        val version = coords[2]
+        val classifier = coords.getOrNull(3)?.takeIf { it.isNotBlank() }
+        val extension = parts.getOrNull(1)?.ifBlank { null } ?: "jar"
+        val fileName = buildString {
+            append(artifact).append('-').append(version)
+            if (classifier != null) append('-').append(classifier)
+            append('.').append(extension)
+        }
+        return "$group/$artifact/$version/$fileName"
+    }
+
+    private fun runInstallerBootstrapper(
+        installBooter: File,
+        installer: File,
+        onProgress: (String) -> Unit
+    ) {
+        val classpathSeparator = if (hostOs.isWindows) ";" else ":"
+        val classpath = listOf(installBooter.absolutePath, installer.absolutePath).joinToString(classpathSeparator)
+        val command = listOf(
+            javaExePath,
+            "-cp",
+            classpath,
+            "com.bangbang93.ForgeInstaller",
+            DIR.absolutePath,
+        )
+        val process = ProcessBuilder(command)
+            .directory(DIR)
+            .redirectErrorStream(true)
+            .start()
+        process.inputStream.bufferedReader(StandardCharsets.UTF_8).useLines { lines ->
+            lines.forEach { line ->
+                if (line.isNotBlank()) {
+                    onProgress(line)
+                }
+            }
+        }
+        val exitCode = process.waitFor()
+        if (exitCode != 0) {
+            throw IllegalStateException("Loader installation failed with code: $exitCode")
+        } else
+            onProgress("Loader installed successfully!")
+    }
+
+    private fun libraryKey(library: MojangLibrary): String {
+        val artifactPath = library.downloads.artifact.path.orEmpty()
+        val classifierKey = library.downloads.classifiers?.keys?.sorted()?.joinToString(";").orEmpty()
+        return "${library.name}|$artifactPath|$classifierKey"
+    }
+
+    @Serializable
+    private data class LoaderInstallProfile(
+        val libraries: List<MojangLibrary> = emptyList(),
+        val data: Map<String, LoaderInstallData> = emptyMap(),
+    )
+
+    @Serializable
+    private data class LoaderInstallData(
+        val client: String? = null,
+        val server: String? = null,
+    )
+
+    private fun shouldDownloadAsset(path: String): Boolean {
+        if (path == "minecraft/resourcepacks/programmer_art.zip") return false
+        if (path.startsWith("realms/")) {
+            return path == "realms/lang/en_us.json"
+        }
+        //只下载简中语言文件
+        if (path.startsWith("minecraft/lang/")) {
+            return path.equals("minecraft/lang/zh_cn.json", ignoreCase = true)
+        }
+        if (path.startsWith("minecraft/sounds/")) {
+            val rest = path.removePrefix("minecraft/sounds/")
+            if (rest.startsWith("records/") || rest.startsWith("music/") || rest.startsWith("ambient/")) {
+                return false
+            }
+        }
+        return true
+    }
+
+    private fun shouldUseEmptySound(path: String): Boolean {
+        if (!path.endsWith(".ogg", ignoreCase = true)) return false
+        if (!path.startsWith("minecraft/sounds/")) return false
+        val rest = path.removePrefix("minecraft/sounds/")
+        return rest.startsWith("records/") || rest.startsWith("music/") || rest.startsWith("ambient/")
+    }
+
+    private fun writeEmptySoundStub(hash: String) {
+        val targetDir = assetObjectsDir.resolve(hash.substring(0, 2))
+        val targetFile = targetDir.resolve(hash)
+        if (targetFile.exists()) return
+        targetDir.mkdirs()
+        jarResource("assets/empty.ogg").use { input ->
+            targetFile.outputStream().use { output ->
+                input.copyTo(output)
+            }
+        }
+    }
+
+    private fun buildAssetUrl(hash: String): String {
+        val base = "http://resources.download.minecraft.net".rewriteMirrorUrl
+        val sub = hash.take(2)
+        return "$base/$sub/$hash"
+    }
+
+    suspend fun downloadLoader(version: McVersion, loader: ModLoader, onProgress: (String) -> Unit) {
+        val loaderMeta = version.loaderVersions[loader]
+            ?: error("未配置 $loader 安装器下载链接")
+        "launcher_profiles.json".let { File(DIR, it).apply { this.exportFromJarResource(it) } }
+        val installBooter =
+            "forge-install-bootstrapper.jar".let { File(DIR, it).apply { this.exportFromJarResource(it) } }
+        val installer = DIR.resolve("${version.mcVer}-$loader-installer.jar")
+        installer.parentFile?.mkdirs()
+        onProgress("下载 $version $loader 安装器...")
+        if (!installer.exists() || installer.sha1 != loaderMeta.installerSha1) {
+            installer.toPath().downloadFileFrom(loaderMeta.installerUrl.rewriteMirrorUrl) { progress ->
+                onProgress("$loader 安装器 ${progress.percent.toFixed(2)}%")
+            }
+        }
+
+        val vanillaManifest = version.metadata
+
+        val versionJsonText = readInstallerEntry(installer, "version.json")
+        val loaderVersionManifest = serdesJson.decodeFromString<MojangVersionManifest>(versionJsonText)
+        val loaderVersionDir = versionListDir.resolve(loaderVersionManifest.id).apply { mkdirs() }
+        File(loaderVersionDir, "${loaderVersionManifest.id}.json").writeText(loaderVersionManifest.json)
+
+        val installProfileText = readInstallerEntry(installer, "install_profile.json")
+        val installProfile = serdesJson.decodeFromString<LoaderInstallProfile>(installProfileText)
+        val loaderLibraries = (installProfile.libraries + loaderVersionManifest.libraries)
+            .distinctBy { libraryKey(it) }
+        if (loaderLibraries.isNotEmpty()) {
+            onProgress("下载 $loader 依赖 (${loaderLibraries.size}) ...")
+            downloadLibraries(loaderLibraries, onProgress)
+        }
+
+        downloadMojmapIfNeeded(installProfile, vanillaManifest, onProgress)
+
+        runInstallerBootstrapper(installBooter, installer, onProgress)
+    }
+
+    fun start(mcVer: McVersion, versionId: String, vararg jvmArgs: String, onProgress: (String) -> Unit) {
+        val loaderManifest = mcVer.loaderManifest
+        val manifest = mcVer.manifest
+        val nativesDir = mcVer.nativesDir
+        val versionDir = versionListDir.resolve(versionId)
+        val gameArgs = resolveArgumentList(manifest.arguments.game + loaderManifest.arguments.game).map {
+            it.replace($$"${auth_player_name}", loggedAccount.name)
+                .replace($$"${version_name}", versionId)
+                .replace($$"${game_directory}", versionDir.absolutePath)
+                .replace($$"${assets_root}", assetsDir.absolutePath)
+                .replace($$"${assets_index_name}", manifest.assets!!)
+                .replace($$"${auth_uuid}", loggedAccount._id.toUUID().toString().replace("-", ""))
+                .replace($$"${auth_access_token}", loggedAccount.jwt ?: "")
+                .replace($$"${user_type}", "msa")
+                .replace($$"${version_type}", "RDI")
+                .replace($$"${resolution_width}", "1280")
+                .replace($$"${resolution_height}", "720")
+
+        }
+        val resolvedJvmArgs = resolveArgumentList(manifest.arguments.jvm + loaderManifest.arguments.jvm)
+        val classpath = (manifest.buildClasspath() + loaderManifest.buildClasspath())
+            .distinct()
+            .toMutableList()
+            .apply {
+                this += versionListDir.resolve(versionId).resolve("$versionId.jar").absolutePath
+            }
+            .joinToString(File.pathSeparator)
+        val useMemStr = runCatching {
+            val osBean = ManagementFactory.getOperatingSystemMXBean()
+            val freeBytes = (osBean as? OperatingSystemMXBean)
+                ?.freeMemorySize
+                ?: return@runCatching "-Xmx8G"
+            val freeMb = freeBytes / (1024L * 1024)
+            lgr.info { "剩余内存${freeBytes.humanFileSize}" }
+            val memGb = if (freeMb > 8192) freeMb else 8192
+            "-Xmx${memGb}M"
+        }.getOrDefault("-Xmx8G")
+        val processedJvmArgs = resolvedJvmArgs.map { arg ->
+            arg.replace($$"${natives_directory}", nativesDir.absolutePath)
+                .replace($$"${library_directory}", libsDir.absolutePath)
+                .replace($$"${launcher_name}", "rdi")
+                .replace($$"${launcher_version}", Const.VERSION_NUMBER)
+                .replace($$"${classpath}", classpath)
+                .replace($$"${classpath_separator}", File.pathSeparator)
+        }.toMutableList().apply {
+            this += useMemStr
+            this += jvmArgs
+        }
+
+        lgr.info { "JVM Args: ${processedJvmArgs.joinToString(" ")}" }
+        lgr.info { "Game Args: ${gameArgs.joinToString(" ")}" }
+        val command = listOf(
+            javaExePath,
+            *processedJvmArgs.toTypedArray(),
+            loaderManifest.mainClass,
+            *gameArgs.toTypedArray(),
+        )
+        val process = ProcessBuilder(command)
+            .directory(versionDir)
+            .redirectErrorStream(true)
+            .start()
+        started = true
+        try {
+            process.inputStream.bufferedReader(StandardCharsets.UTF_8).useLines { lines ->
+                lines.forEach { line ->
+                    if (line.isNotBlank()) {
+                        onProgress(line)
+                    }
+                }
+            }
+            val exitCode = process.waitFor()
+            if (exitCode != 0) {
+                onProgress("启动失败，退出代码: $exitCode")
+            } else
+                onProgress("已退出")
+        } finally {
+            started = false
+        }
+        // Actual process launch (auth, tokens, etc.) will be wired separately.
+    }
+
+    private fun resolveArgumentList(source: List<JsonElement>): List<String> {
+        val args = mutableListOf<String>()
+        val ruleListSerializer = ListSerializer(MojangRule.serializer())
+        source.forEach { element ->
+            when (element) {
+                is JsonPrimitive -> if (element.isString) args += element.content
+                is JsonObject -> {
+                    val rules = element["rules"]?.let { serdesJson.decodeFromJsonElement(ruleListSerializer, it) }
+                    if (!rulesAllow(rules)) return@forEach
+                    val valueElement = element["value"] ?: return@forEach
+                    when (valueElement) {
+                        is JsonPrimitive -> if (valueElement.isString) args += valueElement.content
+                        is JsonArray -> valueElement.forEach { item ->
+                            if (item is JsonPrimitive && item.isString) args += item.content
+                        }
+
+                        else -> {}
+                    }
+                }
+
+                else -> {}
+            }
+        }
+        return args
+    }
+
+    private fun rulesAllow(rules: List<MojangRule>?): Boolean {
+        if (rules.isNullOrEmpty()) return true
+        var allowed = false
+        rules.forEach { rule ->
+            if (rule.matchesHost()) {
+                allowed = rule.action == MojangRuleAction.allow
+            }
+        }
+        return allowed
+    }
+
+    private fun MojangRule.matchesHost(): Boolean {
+        os?.let { spec ->
+            val osName = spec.name
+            if (osName != null && !hostOs.ruleOsName.equals(osName, true)) return false
+            val archSpec = spec.arch?.lowercase(Locale.ROOT)
+            if (archSpec != null && !hostOsArchRaw.contains(archSpec)) return false
+            val versionSpec = spec.version
+            if (versionSpec != null) {
+                val regex = runCatching { Regex(versionSpec) }.getOrNull()
+                val matches = regex?.containsMatchIn(hostOsVersionRaw) ?: hostOsVersionRaw.contains(versionSpec, true)
+                if (!matches) return false
+            }
+        }
+        val requiredFeatures = features ?: return true
+        if (requiredFeatures.isEmpty()) return true
+        return requiredFeatures.all { (feature, expected) ->
+            launcherFeatures[feature] == expected
+        }
+    }
+
+    private fun MojangVersionManifest.buildClasspath(): List<String> {
+        val entries = this.libraries
+            .mapNotNull { lib -> lib.downloads.artifact.path }
+            .map { File(libsDir, it).absolutePath }
+            .toMutableList()
+
+            .distinct()
+        return entries
+    }
+}
