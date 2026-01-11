@@ -70,6 +70,7 @@ allprojects {
 
 dependencies {
     testImplementation(kotlin("test"))
+    implementation(compose.desktop.currentOs)
     implementation("io.netty:netty-all:4.2.7.Final")
     implementation(project(":common"))
     val lwjglVersion = "3.3.3"
