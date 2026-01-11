@@ -1,6 +1,8 @@
 import org.gradle.jvm.tasks.Jar
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
+import java.text.SimpleDateFormat
+import java.util.Date
 
 val ktorVersion = "3.3.3"
 val version = "5.9.2"
@@ -8,7 +10,8 @@ project.version = version
 plugins {
     kotlin("jvm") version "2.2.21"
     kotlin("plugin.serialization") version "2.2.21"
-  //  id("com.gradleup.shadow") version "9.3.0+"
+    id("org.jetbrains.kotlin.plugin.compose") version "2.2.21"
+    id("org.jetbrains.compose") version "1.10.0-rc02"
     `java-library`
     idea
     application
@@ -20,6 +23,8 @@ tasks.named<Wrapper>("wrapper") {
 
 repositories {
     mavenLocal()
+    mavenCentral()
+    google()
     exclusiveContent {
         forRepository {
             maven {
@@ -44,37 +49,15 @@ tasks.named<Jar>("jar") {
             mapOf(
                 "Implementation-Title" to project.name,
                 "Implementation-Version" to project.version,
-                "Built-By" to System.getProperty("user.name"),/*
+                "Built-By" to System.getProperty("user.name"),
                 "Build-Timestamp" to SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
-                    .format(java.util.Date()),*/
+                    .format(Date()),
                 "Created-By" to "Gradle ${gradle.gradleVersion}"
             )
         )
     }
 //archiveClassifier.set("plain")
 }
-
-/*tasks.named<ShadowJar>("shadowJar") {
-    archiveClassifier.set("")
-    archiveFileName.set("rdi-5-ui.jar")
-    manifest {
-        attributes(
-            mapOf(
-                "Implementation-Title" to project.name,
-                "Implementation-Version" to project.version,
-                "Built-By" to System.getProperty("user.name"),*//*
-                "Build-Timestamp" to SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
-                    .format(java.util.Date()),*//*
-                "Created-By" to "Gradle ${gradle.gradleVersion}"
-            )
-        )
-    }
-}*/
-
-/*tasks.named("build") {
-    dependsOn(tasks.named("shadowJar"))
-}*/
-
 java.toolchain.languageVersion.set(JavaLanguageVersion.of(21))
 
 allprojects {
@@ -89,7 +72,6 @@ dependencies {
     testImplementation(kotlin("test"))
     implementation("io.netty:netty-all:4.2.7.Final")
     implementation(project(":common"))
-    implementation(project(":client-common"))
     val lwjglVersion = "3.3.3"
     val components = listOf("", "glfw", "opengl", "openal", "stb", "tinyfd", "jemalloc")
     components.forEach { component ->

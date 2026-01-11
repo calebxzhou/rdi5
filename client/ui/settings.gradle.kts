@@ -8,6 +8,5 @@ pluginManagement {
 /*plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }*/
-include(":common",":client-common")
+include(":common")
 project(":common").projectDir = file("../../common")
-project(":client-common").projectDir = file("../common")
