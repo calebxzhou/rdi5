@@ -11,7 +11,7 @@ import calebxzhou.rdi.ui.go
 import calebxzhou.rdi.ui.toast
 import io.ktor.http.HttpMethod
 
-class HostOptionsFragment(val host: Host): RFragment("主机设置") {
+class HostOptionsFragment(val host: Host): RFragment("地图设置") {
     override var fragSize: FragmentSize
         get() = FragmentSize.SMALL
         set(value) {}

@@ -19,24 +19,24 @@ class HostLobbyFragment : RFragment("大厅") {
             loadHosts(true)
         }
         titleViewInit = {
-            textView("选择你要游玩的服务器。你可以选择官服，也可以选择其他玩家的自建服")
+            textView("选择你想玩的地图")
             quickOptions {
                 "\uDB81\uDC8B 我受邀的" make checkbox  with {
                     loadHosts(it)
 
                 }
-                "MC状态" colored MaterialColor.TEAL_900 with{
+                /*"MC状态" colored MaterialColor.TEAL_900 with{
                     if(!GameService.started){
                         alertErr("请选择服务器，点击开始键启动MC后再查看状态")
                         return@with
                     }
 
-                }
-                "\uEB4B 存档" colored MaterialColor.BLUE_900 with {
+                }*/
+                "\uEB4B 存档数据" colored MaterialColor.BLUE_900 with {
                     WorldListFragment().go()
                 }
                 "\uEF09 节点" with { CarrierFragment().go() }
-                "\uDB81\uDC90 选包开服" colored MaterialColor.GREEN_900 with {
+                "\uDB81\uDC90 整合包列表·创建新地图" colored MaterialColor.GREEN_900 with {
                     ModpackListFragment().go()
                 }
             }
@@ -57,7 +57,7 @@ class HostLobbyFragment : RFragment("大厅") {
     private fun showHosts(hosts: List<Host.Vo>) = uiThread {
         contentView.removeAllViews()
         if (hosts.isEmpty()) {
-            contentView.textView("暂无可展示的主机") {
+            contentView.textView("暂无可展示的") {
                 gravity = Gravity.CENTER
                 setTextColor(MaterialColor.GRAY_400.colorValue)
                 textSize = 16f

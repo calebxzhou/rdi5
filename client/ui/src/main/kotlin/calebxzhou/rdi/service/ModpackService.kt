@@ -182,13 +182,13 @@ object ModpackService {
     fun Host.startPlay() = ioTask {
         val status = server.makeRequest<HostStatus>("host/${_id}/status").run {
             data ?: run {
-                alertErr("获取主机状态失败，无法游玩: ${this.msg}")
+                alertErr("获取地图状态失败，无法游玩: ${this.msg}")
                 return@ioTask
             }
         }
         val modpack = server.makeRequest<ModpackDetailedVo>("modpack/${modpackId}").run {
             data ?: run {
-                alertErr("获取主机整合包信息失败，无法游玩: ${this.msg}")
+                alertErr("获取地图整合包信息失败，无法游玩: ${this.msg}")
                 return@ioTask
             }
         }
@@ -203,7 +203,7 @@ object ModpackService {
             return@ioTask
         }
         if (!isVersionInstalled(modpackId, packVer)) {
-            confirm("未下载此主机的整合包，无法游玩。要现在开始下载吗？") {
+            confirm("未下载此地图的整合包，无法游玩。要现在开始下载吗？") {
                 ioTask {
                     version.startInstall(modpack.mcVer, modpack.modloader)
                 }
@@ -213,17 +213,17 @@ object ModpackService {
         if (status != HostStatus.PLAYABLE) {
             when (status) {
                 HostStatus.STARTED -> {
-                    toast("主机正在载入中 请稍等1~2分钟")
+                    toast("正在打开地图 请稍等1~2分钟")
                 }
 
                 HostStatus.STOPPED -> {
                     server.requestU("host/${_id}/start") {
-                        toast("主机已经启动 请稍等1~2分钟 可以在“后台”查看启动状态")
+                        toast("正在打开地图 请稍等1~2分钟 可以在“后台”查看启动状态")
                     }
                 }
 
                 else -> {
-                    alertErr("主机状态未知，无法游玩")
+                    alertErr("地图状态未知，无法游玩")
                     return@ioTask
                 }
             }
@@ -243,7 +243,7 @@ object ModpackService {
                     }
                 }.go()
         } else{
-            alertErr("mc已在运行中，如需切换主机，请先关闭mc")
+            alertErr("mc运行中，如需切换要玩的地图，请先关闭mc")
         }
     }
 

@@ -20,7 +20,7 @@ import io.ktor.http.*
 import org.bson.types.ObjectId
 import kotlin.collections.map
 
-class HostModFragment(val hostId: ObjectId) : RFragment("主机的所有Mod") {
+class HostModFragment(val hostId: ObjectId) : RFragment("地图的所有Mod") {
     override var fragSize = FragmentSize.FULL
     private lateinit var extraModGrid: ModGrid
     private lateinit var packModGrid: ModGrid
@@ -40,7 +40,7 @@ class HostModFragment(val hostId: ObjectId) : RFragment("主机的所有Mod") {
 
                     loadPackMods(it)
                     loadExtraMods(it)
-                }?: alertErr("无法加载主机信息")
+                }?: alertErr("无法加载地图信息")
             }
         }
         titleViewInit = {
@@ -59,7 +59,7 @@ class HostModFragment(val hostId: ObjectId) : RFragment("主机的所有Mod") {
                     ).go()
                 }
                 "重新下载" colored MaterialColor.BLUE_900 with {
-                    confirm("将重新下载这些Mod，并添加到主机。确定吗？"){
+                    confirm("将重新下载这些Mod，并添加到地图。确定吗？"){
                         server.requestU("host/${hostId}/extra_mod",  method = HttpMethod.Put){
                             alertOk("已提交重新下载请求，完成后会发送结果到信箱")
                         }
@@ -108,7 +108,7 @@ class HostModFragment(val hostId: ObjectId) : RFragment("主机的所有Mod") {
         iconUrls = emptyList()
     )
 
-    class Add(val hostId: ObjectId) : RFragment("向主机添加Mod 请选择") {
+    class Add(val hostId: ObjectId) : RFragment("向地图添加Mod 请选择") {
         companion object {
 
         }

@@ -45,7 +45,7 @@ class HostInfoFragment(val hostId: ObjectId) : RFragment("详细信息") {
         titleView.apply {
             quickOptions {
                 if (modpack == null) {
-                    textView("这个主机所使用的整合包被删除了，必须更换整合包才能继续游玩此主机。")
+                    textView("这个地图所使用的整合包被删除了，必须更换整合包才能继续游玩此地图。")
                 } else {
                     "▶ 开始游玩" colored MaterialColor.GREEN_900 with {
                         this@load.startPlay()
@@ -59,11 +59,11 @@ class HostInfoFragment(val hostId: ObjectId) : RFragment("详细信息") {
 
                 }
                 if(meOwner){
-                    "\uEA81 删除主机" colored MaterialColor.RED_900 with {
-                        confirm("确认删除主机吗？\n（不删存档，其余数据清空）") {
+                    "\uEA81 删除地图" colored MaterialColor.RED_900 with {
+                        confirm("确认删除地图吗？\n（仅删除成员列表。\n存档数据不会被删除，可导出或重复利用）") {
                             server.requestU("host/$hostId", Delete) { resp ->
                                 close()
-                                toast("成功删除主机")
+                                toast("成功删除地图")
                             }
                         }
                     }
@@ -148,13 +148,13 @@ class HostInfoFragment(val hostId: ObjectId) : RFragment("详细信息") {
                     textView("整合包：${modpack.name} V${packVer}")
                     if(meAdmin){
                         button("\uDB80\uDFD6 更新") {
-                            confirm("将更新主机当前的整合包《${modpack.name}》 到最新版本。") {
+                            confirm("将更新地图当前的整合包《${modpack.name}》 到最新版本。") {
                                 server.requestU(
                                     "host/${_id}/update",
                                     HttpMethod.Post,
                                     showLoading = true
                                 ) {
-                                    toast("已更新到最新版 主机重启中")
+                                    toast("已更新到最新版 地图重启中")
                                 }
                             }
                         }

@@ -12,7 +12,7 @@ import kotlinx.coroutines.launch
 import org.bson.types.ObjectId
 import calebxzhou.rdi.ui.component.Console
 
-class HostConsoleFragment(val hostId: ObjectId) : RFragment("主机后台") {
+class HostConsoleFragment(val hostId: ObjectId) : RFragment("后台") {
 
     private lateinit var console: Console
     private var logStreamJob: Job? = null
@@ -22,7 +22,7 @@ class HostConsoleFragment(val hostId: ObjectId) : RFragment("主机后台") {
     init {
         titleViewInit = {
             quickOptions {
-                "▶ 启动" colored MaterialColor.GREEN_900 with {
+                "▶ 打开" colored MaterialColor.GREEN_900 with {
                     confirm("确定要启动吗？"){
                         server.requestU("host/${hostId}/start"){
                             toast("启动指令已发送")
@@ -37,7 +37,7 @@ class HostConsoleFragment(val hostId: ObjectId) : RFragment("主机后台") {
                         }
                     }
                 }
-                "⏹ 停止" colored MaterialColor.RED_900 with {
+                "⏹ 关闭" colored MaterialColor.RED_900 with {
                     confirm("确定停止吗？") {
 
                         server.requestU("host/${hostId}/stop"){

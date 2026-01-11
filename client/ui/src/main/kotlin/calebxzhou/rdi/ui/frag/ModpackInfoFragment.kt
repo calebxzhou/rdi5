@@ -75,7 +75,7 @@ class ModpackInfoFragment(val modpackId: ObjectId,val changeHostId: ObjectId? = 
                     )
                     quickOptions {
                         if (v.status == Modpack.Status.OK) {
-                                "▶ 创建主机" colored MaterialColor.GREEN_900 with {
+                                "▶ 创建地图" colored MaterialColor.GREEN_900 with {
                                     HostCreateFragment(
                                         modpackId,
                                         name,

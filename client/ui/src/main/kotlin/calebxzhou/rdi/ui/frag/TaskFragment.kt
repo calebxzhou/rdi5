@@ -39,7 +39,7 @@ class TaskFragment(
 				}
 				.onFailure { error ->
 					lgr.error(error) { "Task $name failed" }
-					log("任务失败: ${error.message ?: error::class.simpleName}")
+					log("任务失败: ${error::class.qualifiedName + error.message }")
 					uiThread { closeSafely() }
 				}
 		}

@@ -93,7 +93,7 @@ object WorldService {
     suspend fun delete(uid: ObjectId, worldId: ObjectId) {
         val world = getById(worldId) ?: throw RequestError("存档不存在")
         if(world.ownerId != uid) throw RequestError("无权限")
-        HostService.findByWorld(worldId)?.let { throw RequestError("存档已被放入主机“${it.name}”中使用，要删除存档，先关闭主机并拔出存档") }
+        HostService.findByWorld(worldId)?.let { throw RequestError("地图“${it.name}”正在使用此存档数据。要删除数据，须先关闭此地图。") }
         dbcl.deleteOne(eq("_id", worldId))
         val dir = world.dir
         if (dir.exists()) {

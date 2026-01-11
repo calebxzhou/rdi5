@@ -136,7 +136,7 @@ fun Route.hostRoutes() = route("/host") {
         get {
             HostService.getById(idParam("hostId"))?.let {
                 response(data = it)
-            } ?: err("无此主机")
+            } ?: err("无此地图")
         }
         /*post("/modpack/{modpackId}/{verName}") {
             call.hostContext().needAdmin.changeModpack(idParam("modpackId"), param("verName"))
@@ -185,7 +185,7 @@ fun Route.hostRoutes() = route("/host") {
 fun Route.hostPlayRoutes() = route("/host") {
     get("/status"){
         val port = param("port").toInt()
-        val host = HostService.getByPort(port) ?: throw RequestError("无此主机")
+        val host = HostService.getByPort(port) ?: throw RequestError("无此地图")
         response(data = host.status)
     }
     webSocket("/play/{hostId}") {
@@ -198,7 +198,7 @@ fun Route.hostPlayRoutes() = route("/host") {
 
         val host = HostService.getById(hostId)
         if (host == null) {
-            close(CloseReason(CloseReason.Codes.CANNOT_ACCEPT, "未知主机"))
+            close(CloseReason(CloseReason.Codes.CANNOT_ACCEPT, "未知地图"))
             return@webSocket
         }
 
@@ -223,7 +223,7 @@ data class HostContext(
     val member: Host.Member,
     val targetMemberNull: Host.Member?
 ) {
-    val targetMember get() = targetMemberNull ?: throw ParamError("主机无此玩家")
+    val targetMember get() = targetMemberNull ?: throw ParamError("玩家${player.name}不是此地图的受邀成员")
 }
 
 object HostService {
@@ -312,12 +312,12 @@ object HostService {
 
     suspend fun ApplicationCall.hostContext(): HostContext {
         val requesterId = uid
-        val host = HostService.getById(idParam("hostId")) ?: throw RequestError("无此主机")
+        val host = HostService.getById(idParam("hostId")) ?: throw RequestError("无此地图")
         val reqMem = host.members.firstOrNull { it.id == requesterId } ?: run {
             if (PlayerService.getName(host.ownerId) == "davickk") {
                 Host.Member(id = requesterId, role = Role.MEMBER)
             } else {
-                throw RequestError("不是主机成员")
+                throw RequestError("不是地图受邀成员")
             }
         }
         val tarMem = idParamNull("uid2")?.let { uid2 -> host.members.find { it.id == uid2 } }
@@ -519,12 +519,12 @@ object HostService {
     ) {
         val playerId = _id
         if (getByOwner(playerId).size > 3) {
-            throw RequestError("最多3主机")
+            throw RequestError("每玩家最多只可创建3张地图")
         }
         val world = worldId?.let {
             val occupyHost = findByWorld(it)
             if (occupyHost != null)
-                throw RequestError("此存档已被主机《${occupyHost.name}》占用")
+                throw RequestError("此存档数据已被地图“${occupyHost.name}”占用")
             WorldService.getById(it)?.also { world ->
                 if (world.ownerId != playerId) throw RequestError("不是你的存档")
             } ?: throw RequestError("无此存档")
@@ -541,7 +541,7 @@ object HostService {
         val version = modpack.getVersion(packVer) ?: throw RequestError("无此版本")
         val port = allocateRoomPort()
         val host = Host(
-            name = "${name}的主机" + (ownHosts().size + 1),
+            name = "${name}的世界-" + (ownHosts().size + 1),
             ownerId = playerId,
             modpackId = modpackId,
             packVer = packVer,
@@ -554,7 +554,7 @@ object HostService {
             gameRules = gameRules
         )
         val mailId =
-            MailService.sendSystemMail(playerId, "主机创建中", "你的主机《${host.name}》正在创建中，请稍等几分钟...")._id
+            MailService.sendSystemMail(playerId, "地图创建中", "${host.name}正在创建中，请稍等几分钟...")._id
         dbcl.insertOne(host)
         startCreateHost(host, modpack, version, mailId)
 
@@ -577,7 +577,7 @@ object HostService {
                 host.makeContainer(host.worldId, modpack, version,host.gameRules)
 
                 modpack.installToHost(host.packVer, host) {
-                    MailService.changeMail(mailId, "主机创建中", newContent = it)
+                    MailService.changeMail(mailId, "地图创建中", newContent = it)
                 }
                 "server.properties".run {
                     this.jarResource(this).readAllString()
@@ -627,9 +627,9 @@ object HostService {
             }.onFailure {
                 lgr.error { it }
                 it.printStackTrace()
-                MailService.changeMail(mailId, "主机创建失败", newContent = "无法创建主机，错误：${it}")
+                MailService.changeMail(mailId, "地图创建失败", newContent = "无法创建地图，错误：${it}")
             }.onSuccess {
-                MailService.changeMail(mailId, "主机创建成功", newContent = "可以玩了")
+                MailService.changeMail(mailId, "地图创建成功", newContent = "可以玩了")
             }
         }
     }
@@ -713,8 +713,8 @@ object HostService {
         val hostIdStr = host._id.str
         val mailId = MailService.sendSystemMail(
             player._id,
-            "主机版本切换中",
-            "你的主机《${host.name}》正在切换到版本 $resolvedVer ，请稍等几分钟..."
+            "地图整合包切换中",
+            "你的地图《${host.name}》正在切换到整合包版本 $resolvedVer ，请稍等几分钟..."
         )._id
 
         DockerService.deleteContainer(hostIdStr)
@@ -726,7 +726,7 @@ object HostService {
         )
         host.packVer = resolvedVer
         startCreateHost(host, modpack, modpackVer, mailId)
-        MailService.changeMail(mailId, "主机版本切换中", "好了")
+        MailService.changeMail(mailId, "地图整合包版本切换完成", "好了")
     }
 
     suspend fun HostContext.changeGameRules(newRules: Map<String, String>) {
@@ -746,12 +746,12 @@ object HostService {
     }
 
     suspend fun HostContext.start() {
-        val current = getById(host._id) ?: throw RequestError("无此主机")
+        val current = getById(host._id) ?: throw RequestError("无此地图")
         if (DockerService.isStarted(current._id.str)) {
             throw RequestError("已经启动过了")
         }
         if (DockerService.findContainer(current._id.str)==null) {
-            throw RequestError("主机版本过旧 请点击主机界面的“更新”按钮")
+            throw RequestError("地图版本过旧 请点击地图详细信息界面的“更新”按钮")
             return
         }
         DockerService.start(current._id.str)
@@ -769,7 +769,7 @@ object HostService {
     }
 
     suspend fun HostContext.restart() {
-        val current = getById(host._id) ?: throw RequestError("无此主机")
+        val current = getById(host._id) ?: throw RequestError("无此地图")
         sendCommand("stop")
         clearShutFlag(current._id)
         DockerService.restart(host._id.str)
@@ -780,7 +780,7 @@ object HostService {
         val normalized = command.trimEnd()
         if (normalized.isBlank()) throw RequestError("命令不能为空")
 
-        val session = hostStates[hostId]?.session ?: throw RequestError("主机未处于游玩状态")
+        val session = hostStates[hostId]?.session ?: throw RequestError("地图未处于游玩状态")
 
         val message = WsMessage(
             channel = WsMessage.Channel.command,
@@ -992,7 +992,7 @@ object HostService {
     }
 
     suspend fun HostContext.transferOwnership() {
-        val current = getById(host._id) ?: throw RequestError("无此主机")
+        val current = getById(host._id) ?: throw RequestError("无此地图")
         val recipient = targetMember
         if (current.ownerId == recipient.id) throw RequestError("不能转给自己")
 
