@@ -11,7 +11,7 @@ import calebxzhou.rdi.ui.component.alertWarn
 import org.bson.types.ObjectId
 
 class HostCreateFragment(val modpackId: ObjectId, val modpackName: String, val packVer: String, val skyblock: Boolean) :
-    RFragment("创建服务器") {
+    RFragment("创建新地图") {
     override var fragSize = FragmentSize.MEDIUM
     private var selectedWorldIndex: Int = 0
     private var difficulty: Int = 2
@@ -37,7 +37,7 @@ class HostCreateFragment(val modpackId: ObjectId, val modpackName: String, val p
             center()
             textView("整合包：$modpackName V$packVer")
             linearLayout {
-                textView("选择存档")
+                textView("选择存档数据")
                 // replace spinner with radio buttons
                 radioGroup {
                     worlds.map { "${it.name} (${(it._id.timestamp * 1000L).millisToHumanDateTime})" }

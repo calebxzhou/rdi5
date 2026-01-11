@@ -3,7 +3,7 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 
 val ktorVersion = "3.3.3"
-val version = "5.9.1"
+val version = "5.9.2"
 project.version = version
 plugins {
     kotlin("jvm") version "2.2.21"
