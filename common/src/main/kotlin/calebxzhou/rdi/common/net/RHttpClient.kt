@@ -5,6 +5,8 @@ import calebxzhou.rdi.common.serdesJson
 import io.ktor.client.*
 import io.ktor.client.engine.okhttp.*
 import io.ktor.client.plugins.*
+import io.ktor.client.plugins.cache.*
+import io.ktor.client.plugins.cache.storage.*
 import io.ktor.client.plugins.compression.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.plugins.sse.*
@@ -20,7 +22,7 @@ import kotlin.time.Duration.Companion.seconds
 suspend inline fun httpRequest(crossinline builder: HttpRequestBuilder.() -> Unit): HttpResponse = ktorClient.request(builder)
 fun HttpRequestBuilder.json() = contentType(ContentType.Application.Json)
 private val CACHE_DIR = DIR.resolve("cache").resolve("http").apply { mkdirs() }
-private const val HTTP_CACHE_SIZE_BYTES = 1024L * 1024 * 1024 // 1GB
+private const val HTTP_CACHE_SIZE_BYTES = 4*1024L * 1024 * 1024 // 1GB
 
 val ktorClient
     get() =
@@ -39,6 +41,9 @@ val ktorClient
             install(ContentNegotiation) {
                 json(serdesJson)
 
+            }
+            install(HttpCache) {
+                publicStorage(FileStorage(CACHE_DIR))
             }
             install(SSE) {
                 maxReconnectionAttempts = 4
