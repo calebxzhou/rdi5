@@ -1,6 +1,6 @@
 
 FROM alpine/java:21-jdk
-RUN apk add --no-cache tzdata bash su-exec
+RUN apk add --no-cache tzdata bash su-exec iptables
 ENV TZ=Asia/Shanghai
 RUN echo "LC_ALL=en_US.UTF-8" >> /etc/environment
 RUN echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
