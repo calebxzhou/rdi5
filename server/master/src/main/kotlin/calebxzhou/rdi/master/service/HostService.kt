@@ -110,6 +110,10 @@ fun Route.hostRoutes() = route("/host") {
             call.hostContext().needAdmin.graceStop()
             ok()
         }
+        post("/force-stop") {
+            call.hostContext().needAdmin.forceStop()
+            ok()
+        }
         post("/command") {
             val ctx = call.hostContext().needAdmin
             ctx.sendCommand(param("command"))
