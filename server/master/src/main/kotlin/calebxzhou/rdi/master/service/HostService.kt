@@ -4,6 +4,7 @@ import calebxzhou.mykotutils.log.Loggers
 import calebxzhou.mykotutils.std.deleteRecursivelyNoSymlink
 import calebxzhou.mykotutils.std.jarResource
 import calebxzhou.mykotutils.std.readAllString
+import calebxzhou.rdi.common.json
 import calebxzhou.rdi.common.model.*
 import calebxzhou.rdi.common.serdesJson
 import calebxzhou.rdi.common.util.ioScope
@@ -20,6 +21,7 @@ import calebxzhou.rdi.master.service.HostService.changeVersion
 import calebxzhou.rdi.master.service.HostService.createHost
 import calebxzhou.rdi.master.service.HostService.delMember
 import calebxzhou.rdi.master.service.HostService.delete
+import calebxzhou.rdi.master.service.HostService.forceStop
 import calebxzhou.rdi.master.service.HostService.getLog
 import calebxzhou.rdi.master.service.HostService.graceStop
 import calebxzhou.rdi.master.service.HostService.hostContext
@@ -223,6 +225,7 @@ data class HostContext(
     val member: Host.Member,
     val targetMemberNull: Host.Member?
 ) {
+    var reqId = 0
     val targetMember get() = targetMemberNull ?: throw ParamError("玩家${player.name}不是此地图的受邀成员")
 }
 
@@ -515,6 +518,7 @@ object HostService {
         difficulty: Int,
         gameMode: Int,
         levelType: String,
+        allOp: Boolean,
         gameRules: MutableMap<String,String>
     ) {
         val playerId = _id
@@ -783,14 +787,14 @@ object HostService {
         val session = hostStates[hostId]?.session ?: throw RequestError("地图未处于游玩状态")
 
         val message = WsMessage(
-            channel = WsMessage.Channel.command,
+            reqId,
+            channel = WsMessage.Channel.Command,
             data = normalized
         )
 
-        val payload = serdesJson.encodeToString(message)
-
         try {
-            session.send(Frame.Text(payload))
+            session.send(Frame.Text(message.json))
+            reqId++
         } catch (cancel: CancellationException) {
             hostStates[hostId]?.let { state ->
                 if (state.session === session) {

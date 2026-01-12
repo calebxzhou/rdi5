@@ -1,5 +1,7 @@
 package calebxzhou.rdi.mc.common;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.neovisionaries.ws.client.WebSocket;
 import com.neovisionaries.ws.client.WebSocketAdapter;
 import com.neovisionaries.ws.client.WebSocketException;
@@ -22,7 +24,9 @@ import static calebxzhou.rdi.mc.common.RDI.IHQ_URL;
  * calebxzhou @ 2026-01-06 23:36
  */
 public class WebSocketClient {
+    private static int reqId = 0;
     private static final Logger lgr = LoggerFactory.getLogger("rdi-ws-client");
+    private static final Gson gson = new GsonBuilder().create();
     private static final int CONNECT_TIMEOUT_MS = 10_000;
     private static final ScheduledExecutorService reconnectExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread t = new Thread(r, "rdi-ws-reconnect");
@@ -33,14 +37,40 @@ public class WebSocketClient {
     private static volatile WebSocket currentWebSocket;
     private static volatile boolean shuttingDown = false;
     private static volatile String wsUrl;
+    private static volatile WsMessageHandler handler;
 
-    public static void start() {
+    public static void start(WsMessageHandler handler) {
         // Convert http/https to ws/wss and append the path
         wsUrl = "ws://" + IHQ_URL + "/host/play/" + HOST_ID;
         shuttingDown = false;
+        WebSocketClient.handler = handler;
         attemptConnect();
     }
+    public static void stop() {
+        shuttingDown = true;
 
+        WebSocket ws = currentWebSocket;
+        if (ws != null) {
+            try {
+                ws.disconnect(1000, "server stopping");
+            } catch (Exception ex) {
+                lgr.warn("Failed to send WebSocket close frame", ex);
+            }
+        }
+
+        reconnectExecutor.shutdownNow();
+    }
+    public static void sendMessage(WsMessage.Channel channel,String data) {
+        WebSocket ws = currentWebSocket;
+        if (ws != null && ws.isOpen()) {
+            String json = gson.toJson(new WsMessage(reqId,channel,data));
+            lgr.info("Sending message: {}", json);
+            ws.sendText(json);
+            reqId++;
+        } else {
+            lgr.warn("Cannot send message, WebSocket is not connected");
+        }
+    }
     private WebSocketClient() {
 
     }
@@ -76,11 +106,14 @@ public class WebSocketClient {
         @Override
         public void onConnected(WebSocket webSocket, Map<String, List<String>> headers) {
             lgr.info("WebSocket connection opened: {}", wsUrl);
+
         }
 
         @Override
         public void onTextMessage(WebSocket webSocket, String text) {
             lgr.info("Received text message: {}", text);
+            WsMessage msg = gson.fromJson(text, WsMessage.class);
+            handler.onMessage(msg);
         }
 
         @Override
@@ -122,18 +155,5 @@ public class WebSocketClient {
         }
     }
 
-    public static void stop() {
-        shuttingDown = true;
 
-        WebSocket ws = currentWebSocket;
-        if (ws != null) {
-            try {
-                ws.disconnect(1000, "server stopping");
-            } catch (Exception ex) {
-                lgr.warn("Failed to send WebSocket close frame", ex);
-            }
-        }
-
-        reconnectExecutor.shutdownNow();
-    }
 }

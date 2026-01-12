@@ -36,7 +36,7 @@ legacyForge {
         server {
             server()
             systemProperty("rdi.ihq.url", "127.0.0.1:65231")
-            systemProperty("rdi.host.id", "6953e0bccb51b879288e19a3")
+            systemProperty("rdi.host.id", "696312b0e61232912c744968")
             systemProperty("mixin.hotSwap", "true")
             programArguments = [
                 "--nogui",

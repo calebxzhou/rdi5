@@ -10,6 +10,7 @@ public class RDI {
     private static final Logger lgr = LoggerFactory.getLogger("rdi");
     public static final String IHQ_URL;
     public static final String HOST_ID;
+    public static final Boolean ALL_OP;
     static {
         String ihqUrl = System.getProperty("rdi.ihq.url");
         if (ihqUrl == null) {
@@ -26,6 +27,12 @@ public class RDI {
         }
         HOST_ID = hostId;
 
+        String allOpEnv = System.getenv("ALL_OP");
+        if (allOpEnv == null) {
+            ALL_OP = false;
+        } else {
+            ALL_OP = Boolean.parseBoolean(allOpEnv);
+        }
     }
 
 }
