@@ -24,8 +24,7 @@ fun HttpRequestBuilder.json() = contentType(ContentType.Application.Json)
 private val CACHE_DIR = DIR.resolve("cache").resolve("http").apply { mkdirs() }
 private const val HTTP_CACHE_SIZE_BYTES = 4*1024L * 1024 * 1024 // 1GB
 
-val ktorClient
-    get() =
+val ktorClient =
         HttpClient(OkHttp) {
             expectSuccess = false
             engine {
