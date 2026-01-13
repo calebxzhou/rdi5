@@ -19,6 +19,7 @@ import calebxzhou.rdi.master.service.HostService.addMember
 import calebxzhou.rdi.master.service.HostService.changeGameRules
 import calebxzhou.rdi.master.service.HostService.changeVersion
 import calebxzhou.rdi.master.service.HostService.createHost
+import calebxzhou.rdi.master.service.HostService.createHostLegacy
 import calebxzhou.rdi.master.service.HostService.delMember
 import calebxzhou.rdi.master.service.HostService.delete
 import calebxzhou.rdi.master.service.HostService.forceStop
@@ -49,6 +50,7 @@ import com.mongodb.client.model.Updates
 import com.mongodb.client.model.Updates.combine
 import com.mongodb.client.model.Updates.set
 import io.ktor.server.application.*
+import io.ktor.server.request.receive
 import io.ktor.server.routing.*
 import io.ktor.server.sse.*
 import io.ktor.server.websocket.*
@@ -73,7 +75,7 @@ val Host.dir get() = HOSTS_DIR.resolve(_id.str)
 fun Route.hostRoutes() = route("/host") {
     route("") {
         post {
-            call.player().createHost(
+            call.player().createHostLegacy(
                 idParam("modpackId"),
                 param("packVer"),
                 param("worldOpr"),
@@ -81,8 +83,13 @@ fun Route.hostRoutes() = route("/host") {
                 param("difficulty").toInt(),
                 param("gameMode").toInt(),
                 param("levelType"),
+                false,
                 param("gameRules").let { serdesJson.decodeFromString<MutableMap<String,String>>(it)}
             )
+            ok()
+        }
+        post("/v2") {
+            call.player().createHost(call.receive())
             ok()
         }
 
@@ -514,7 +521,7 @@ object HostService {
         0
     }
 
-    suspend fun RAccount.createHost(
+    suspend fun RAccount.createHostLegacy(
         modpackId: ObjectId,
         packVer: String,
         worldOpr: String,
@@ -522,7 +529,7 @@ object HostService {
         difficulty: Int,
         gameMode: Int,
         levelType: String,
-        allOp: Boolean,
+        allowCheats: Boolean,
         gameRules: MutableMap<String,String>
     ) {
         val playerId = _id
@@ -560,6 +567,50 @@ object HostService {
             levelType = levelType,
             members = listOf(Host.Member(id = playerId, role = Role.OWNER)),
             gameRules = gameRules
+        )
+        val mailId =
+            MailService.sendSystemMail(playerId, "地图创建中", "${host.name}正在创建中，请稍等几分钟...")._id
+        dbcl.insertOne(host)
+        startCreateHost(host, modpack, version, mailId)
+
+
+    }
+
+    suspend fun RAccount.createHost(host: Host.CreateDto) {
+        val playerId = _id
+        if (getByOwner(playerId).size > 3) {
+            throw RequestError("最多只可创建3张地图")
+        }
+        val world = host.worldId?.let {
+            val occupyHost = findByWorld(it)
+            if (occupyHost != null)
+                throw RequestError("此存档数据已被地图“${occupyHost.name}”占用")
+            WorldService.getById(it)?.also { world ->
+                if (world.ownerId != playerId) throw RequestError("不是你的存档")
+            } ?: throw RequestError("无此存档")
+        } ?: let {
+            if(host.saveWorld){
+                createWorld(playerId, null, host.modpackId)
+            }else{
+                null
+            }
+        }
+        val modpack = ModpackService.getById(host.modpackId) ?: throw RequestError("无此包")
+        val version = modpack.getVersion(host.packVer) ?: throw RequestError("无此版本")
+        val port = allocateRoomPort()
+        val host = Host(
+            name = "${name}的世界-" + (ownHosts().size + 1),
+            ownerId = playerId,
+            modpackId = host.modpackId,
+            packVer = host.packVer,
+            worldId = world?._id,
+            port = port,
+            difficulty =host. difficulty,
+            allowCheats = host.allowCheats,
+            gameMode = host.gameMode,
+            levelType = host.levelType,
+            members = listOf(Host.Member(id = playerId, role = Role.OWNER)),
+            gameRules = host.gameRules
         )
         val mailId =
             MailService.sendSystemMail(playerId, "地图创建中", "${host.name}正在创建中，请稍等几分钟...")._id
