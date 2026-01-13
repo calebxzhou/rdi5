@@ -1,17 +1,13 @@
 package calebxzhou.rdi.client.ui.frag
 
-import calebxzhou.rdi.client.auth.localCreds
-import calebxzhou.rdi.common.util.ioScope
-import calebxzhou.rdi.client.service.playerLogin
-import calebxzhou.rdi.client.ui.*
-import calebxzhou.rdi.client.ui.component.RTextField
-import calebxzhou.rdi.client.ui.component.alertErr
-import calebxzhou.rdi.client.ui.component.closeLoading
-import calebxzhou.rdi.client.ui.component.showLoading
 import calebxzhou.mykotutils.std.jarResource
 import calebxzhou.mykotutils.std.javaExePath
 import calebxzhou.mykotutils.std.readAllString
-import calebxzhou.rdi.client.ui.component.alertOk
+import calebxzhou.rdi.client.auth.localCreds
+import calebxzhou.rdi.client.service.playerLogin
+import calebxzhou.rdi.client.ui.*
+import calebxzhou.rdi.client.ui.component.*
+import calebxzhou.rdi.common.util.ioScope
 import icyllis.modernui.view.Gravity
 import kotlinx.coroutines.launch
 import java.io.File
