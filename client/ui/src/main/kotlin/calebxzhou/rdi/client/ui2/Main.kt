@@ -28,6 +28,9 @@ import calebxzhou.rdi.RDI
 import calebxzhou.rdi.client.net.loggedAccount
 import calebxzhou.rdi.client.service.PlayerService
 import calebxzhou.rdi.client.ui.component.alertOk
+import calebxzhou.rdi.client.ui2.screen.HostCreateScreen
+import calebxzhou.rdi.client.ui2.screen.ModpackListScreen
+import calebxzhou.rdi.client.ui2.screen.ModpackManageScreen
 import calebxzhou.rdi.client.ui2.screen.Ui2Screen
 import calebxzhou.rdi.client.ui2.screen.WardrobeScreen
 import calebxzhou.rdi.common.json
@@ -111,6 +114,9 @@ fun main() = application {
         MaterialTheme(typography = Typography(defaultFontFamily = UIFontFamily)) {
             when(initScreen){
                 Ui2Screen.Wardrobe -> WardrobeScreen()
+                Ui2Screen.ModpackList -> ModpackListScreen()
+                Ui2Screen.ModpackManage -> ModpackManageScreen()
+                //Ui2Screen.HostCreate -> HostCreateScreen(),
                 else -> App()
             }
             //WardrobeScreen()
