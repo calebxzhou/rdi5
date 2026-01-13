@@ -1,8 +1,6 @@
 import org.gradle.jvm.tasks.Jar
-import java.nio.file.Files
-import java.nio.file.StandardCopyOption
 import java.text.SimpleDateFormat
-import java.util.Date
+import java.util.*
 
 val ktorVersion = "3.3.3"
 val version = "5.9.2"
@@ -41,7 +39,41 @@ repositories {
 base {
     archivesName.set("rdi-5-ui")
 }
+val hotDevClassName = providers.gradleProperty("className")
+    .orElse("calebxzhou.rdi.client.ui2.MainKt")
 
+tasks.matching { it.name == "hotRun" }.configureEach {
+    val runDir = layout.projectDirectory.dir("run").asFile
+    doFirst {
+        runDir.mkdirs()
+    }
+    if (this is JavaExec) {
+        workingDir = runDir
+        jvmArgs(
+            "-Drdi.debug=true",
+            "-Drdi.init.screen=Wardrobe",
+            "-Drdi.account=eyJfaWQiOiI2OGIzMTRiYmFkYWY1MmRkYWI5NmI1ZWQiLCJuYW1lIjoiMTIzMTIzIiwicHdkIjoiMTIzQEBAIiwicXEiOiIxMjMxMjMifQ=="
+        )
+    } else {
+        val setter = javaClass.methods.firstOrNull {
+            it.name == "setWorkingDir" && it.parameterCount == 1
+        }
+        setter?.invoke(this, runDir)
+        val jvmArgsMethod = javaClass.methods.firstOrNull {
+            it.name == "jvmArgs" && it.parameterCount == 1
+        }
+        if (jvmArgsMethod != null) {
+            jvmArgsMethod.invoke(
+                this,
+                listOf(
+                    "-Drdi.debug=true",
+                    "-Drdi.init.screen=Wardrobe",
+                    "-Drdi.account=eyJfaWQiOiI2OGIzMTRiYmFkYWY1MmRkYWI5NmI1ZWQiLCJuYW1lIjoiMTIzMTIzIiwicHdkIjoiMTIzQEBAIiwicXEiOiIxMjMxMjMifQ=="
+                )
+            )
+        }
+    }
+}
 tasks.named<Jar>("jar") {
     archiveFileName.set("rdi-5-ui.jar")
     manifest {
@@ -69,8 +101,8 @@ allprojects {
 }
 
 dependencies {
-    testImplementation(kotlin("test"))
     implementation(compose.desktop.currentOs)
+    testImplementation(kotlin("test"))
     implementation("io.netty:netty-all:4.2.7.Final")
     implementation(project(":common"))
     val lwjglVersion = "3.3.3"
@@ -133,7 +165,7 @@ tasks.withType<Test>().configureEach {
 }
 
 tasks.named<Test>("test") {
-    enabled = false
+    enabled = true
 }
 
 idea {
