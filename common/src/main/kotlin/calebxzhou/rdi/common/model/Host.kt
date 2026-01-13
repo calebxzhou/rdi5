@@ -28,6 +28,8 @@ data class Host(
     val gameRules: MutableMap<String,String> = mutableMapOf(),
     //白名单 只有成员才能进
     val whitelist: Boolean=false,
+    //允许作弊（全op）
+    val allowCheats: Boolean=false,
     val members: List<Member> = arrayListOf(),
     val banlist: List<@Contextual ObjectId> = arrayListOf(),
     //整合包外的附加mod
