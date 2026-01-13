@@ -589,6 +589,7 @@ object ModpackService {
         mods.find { it.slug == "particular-reforged" }?.side = Mod.Side.BOTH
         //没有的话整理背包会卡服
         mods.find { it.slug == "inventory-profiles-next" }?.side = Mod.Side.BOTH
+        mods.find { it.slug == "inventory-tweaks-refoxed" }?.side = Mod.Side.BOTH
         //服务端不需要这个汉化 下载太慢
         mods.find { it.slug == "i18nupdatemod" }?.side = Mod.Side.CLIENT
         //gto/gtl
