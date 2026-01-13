@@ -22,9 +22,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import javax.swing.JOptionPane
 
 /**
  * calebxzhou @ 2026-01-12 21:11
@@ -109,3 +113,29 @@ private fun createAlertDialog(
         shape = RoundedCornerShape(28.dp)
     )
 }
+//pua codepoint识别并应用图标字体
+val String.asIconText
+    get() = buildAnnotatedString {
+        val str = this@asIconText
+        var i = 0
+        while (i < str.length) {
+            val codePoint = str.codePointAt(i)
+            // BMP PUA: E000-F8FF
+            // Plane 15 PUA: F0000-FFFFD
+            // Plane 16 PUA: 100000-10FFFD
+            // Nerd Font icons often in E000-F8FF (BMP PUA) and F0000-FFFFD (Supplementary PUA A)
+            val isPua = (codePoint in 0xE000..0xF8FF) ||
+                    (codePoint in 0xF0000..0xFFFFD) ||
+                    (codePoint in 0x100000..0x10FFFD)
+
+            val charCount = Character.charCount(codePoint)
+            if (isPua) {
+                withStyle(style = SpanStyle(fontFamily = IconFontFamily)) {
+                    append(str.substring(i, i + charCount))
+                }
+            } else {
+                append(str.substring(i, i + charCount))
+            }
+            i += charCount
+        }
+    }
