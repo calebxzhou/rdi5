@@ -60,5 +60,22 @@ data class Host(
             val TEST = Vo(name="啊实打实大苏打实打实的", intro = "都是大大实打实大苏打实打实的得分风格风格风格非官方", ownerName = "点点滴滴都是", modpackName = "测试测试测试测试测试", packVer = "1.0.0", port = 55555)
         }
     }
+    @Serializable
+    data class CreateDto(
+        val name: String,
+        @Contextual
+        val modpackId: ObjectId,
+        val packVer: String,
+        //是否存档 false不保存任何数据
+        val saveWorld: Boolean,
+        //已有存档id 新建存档=null
+        @Contextual
+        val worldId: ObjectId?,
+        val difficulty: Int,
+        val gameMode: Int,
+        val levelType: String,
+        val allowCheats: Boolean,
+        val gameRules: MutableMap<String,String>
+    )
 
 }
