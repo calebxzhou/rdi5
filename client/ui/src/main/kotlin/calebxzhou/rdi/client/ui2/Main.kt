@@ -52,12 +52,6 @@ lateinit var ArtFontFamily: FontFamily
 lateinit var CodeFontFamily: FontFamily
 lateinit var IconFontFamily: FontFamily
 
-private fun buildFontFamily(fonts: List<File>, fallback: FontFamily): FontFamily {
-    val loaded = fonts.mapNotNull { file ->
-        if (file.exists()) Font(file) else null
-    }
-    return if (loaded.isNotEmpty()) FontFamily(loaded) else fallback
-}
 fun main() = application {
     val windowIcon = remember {
         jarResource("icon.png").use { stream ->
@@ -70,17 +64,18 @@ fun main() = application {
     val artFont = fontDir.resolve("smiley-sans.otf")
     val codeFont = fontDir.resolve("jetbrainsmono.ttf")
     val iconFont = fontDir.resolve("symbolsnerdfont.ttf")
-    UIFontFamily = remember(fontDir) {
-        buildFontFamily(listOf(uiFont, iconFont), fallback = FontFamily.Default)
+
+    UIFontFamily = remember {
+        FontFamily(listOf(uiFont, iconFont).map { Font(it) })
     }
-    CodeFontFamily = remember(fontDir) {
-        buildFontFamily(listOf(codeFont, uiFont, iconFont), fallback = FontFamily.Monospace)
+    CodeFontFamily = remember {
+        FontFamily(listOf(codeFont, uiFont, iconFont).map { Font(it) })
     }
-    ArtFontFamily = remember(fontDir) {
-        buildFontFamily(listOf(artFont, iconFont), fallback = FontFamily.Default)
+    ArtFontFamily = remember {
+        FontFamily(listOf(artFont, iconFont).map { Font(it) })
     }
-    IconFontFamily = remember(fontDir) {
-        buildFontFamily(listOf(iconFont), fallback = UIFontFamily)
+    IconFontFamily = remember {
+        FontFamily(listOf(iconFont).map { Font(it) })
     }
     //账号信息
     System.getProperty("rdi.account")?.let {
