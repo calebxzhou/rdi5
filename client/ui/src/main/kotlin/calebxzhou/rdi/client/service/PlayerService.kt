@@ -1,6 +1,7 @@
 package calebxzhou.rdi.client.service
 
 import calebxzhou.mykotutils.hwspec.HwSpec
+import calebxzhou.mykotutils.std.Ok
 import calebxzhou.rdi.client.auth.LocalCredentials
 import calebxzhou.rdi.client.auth.LoginInfo
 import calebxzhou.rdi.common.exception.RequestError
@@ -79,7 +80,7 @@ object PlayerService {
             RAccount.DEFAULT.dto
         }
     }
-    fun setCloth(cloth: RAccount.Cloth) {
+    suspend fun setCloth(cloth: RAccount.Cloth) : Result<Unit> = runCatching {
         val params = mutableMapOf<String, Any>()
         params["isSlim"] = cloth.isSlim.toString()
         params["skin"] = cloth.skin
@@ -87,16 +88,9 @@ object PlayerService {
             params["cape"] = it
         }
 
-        server.requestU("player/skin", params = params) { response ->
-            if (response.ok) {
-                //account.updateCloth(cloth)
-                    alertOk("皮肤设置成功")
-
-            } else {
-                    alertErr("皮肤设置失败,${response.msg} ")
-
-            }
-        }
+        val resp = server.makeRequest<Unit>("player/skin", HttpMethod.Post,params = params)
+        if(resp.ok) Ok()
+        else throw RequestError(resp.msg)
     }
 
 }
