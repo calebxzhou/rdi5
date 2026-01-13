@@ -20,7 +20,7 @@ import icyllis.modernui.view.Gravity
 import io.ktor.http.*
 import org.bson.types.ObjectId
 
-class ModpackInfoFragment(val modpackId: ObjectId,val changeHostId: ObjectId? = null) : RFragment("整合包信息") {
+class ModpackInfoFragment(val modpackId: ObjectId) : RFragment("整合包信息") {
     override var fragSize = FragmentSize.FULL
     override var preserveViewStateOnDetach  = true
 
