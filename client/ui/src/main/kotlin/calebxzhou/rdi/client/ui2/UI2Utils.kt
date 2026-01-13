@@ -47,6 +47,14 @@ fun alertErr(msg: String){
     val icon = "\uEA87"
     createAlertDialog(title = title, icon = icon, msg = msg, accentColor = Color(0xFFD64545))
 }
+fun alertErrOs(msg: String) {
+    JOptionPane.showMessageDialog(
+        null,
+        msg,
+        "错误",
+        JOptionPane.ERROR_MESSAGE
+    )
+}
 @Composable
 private fun createAlertDialog(
     title: String,
