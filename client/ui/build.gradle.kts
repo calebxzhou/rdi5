@@ -54,24 +54,6 @@ tasks.matching { it.name == "hotRun" }.configureEach {
             "-Drdi.init.screen=Wardrobe",
             "-Drdi.account=eyJfaWQiOiI2OGIzMTRiYmFkYWY1MmRkYWI5NmI1ZWQiLCJuYW1lIjoiMTIzMTIzIiwicHdkIjoiMTIzQEBAIiwicXEiOiIxMjMxMjMifQ=="
         )
-    } else {
-        val setter = javaClass.methods.firstOrNull {
-            it.name == "setWorkingDir" && it.parameterCount == 1
-        }
-        setter?.invoke(this, runDir)
-        val jvmArgsMethod = javaClass.methods.firstOrNull {
-            it.name == "jvmArgs" && it.parameterCount == 1
-        }
-        if (jvmArgsMethod != null) {
-            jvmArgsMethod.invoke(
-                this,
-                listOf(
-                    "-Drdi.debug=true",
-                    "-Drdi.init.screen=Wardrobe",
-                    "-Drdi.account=eyJfaWQiOiI2OGIzMTRiYmFkYWY1MmRkYWI5NmI1ZWQiLCJuYW1lIjoiMTIzMTIzIiwicHdkIjoiMTIzQEBAIiwicXEiOiIxMjMxMjMifQ=="
-                )
-            )
-        }
     }
 }
 tasks.named<Jar>("jar") {
