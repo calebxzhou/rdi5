@@ -12,7 +12,6 @@ data class Host(
     val _id: ObjectId = ObjectId(),
     val name: String,
     val intro:String="暂无简介",
-    val icon: ByteArray? = null,
     @Contextual
     val ownerId: ObjectId,
     @Contextual
@@ -50,7 +49,7 @@ data class Host(
         val _id: ObjectId = ObjectId(),
         val name: String,
         val intro: String = "暂无简介",
-        val icon: ByteArray? = null,
+        val iconUrl: String? = null,
         val ownerName: String,
         val modpackName: String,
         val packVer: String,
