@@ -33,17 +33,20 @@ import calebxzhou.rdi.client.net.loggedAccount
 import calebxzhou.rdi.client.net.server
 import calebxzhou.rdi.client.ui2.asIconText
 import calebxzhou.rdi.client.ui2.comp.ModpackCard
-import calebxzhou.rdi.common.model.ModpackVo
+import calebxzhou.rdi.common.model.Modpack
+import calebxzhou.rdi.common.model.Modpack.BriefVo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlin.collections.filter
 
 /**
  * calebxzhou @ 2026-01-13 18:27
  */
 @Composable
 fun ModpackListScreen(
+    onOpenManage: (() -> Unit)? = null
 ) {
-    var modpacks by remember { mutableStateOf<List<ModpackVo>>(emptyList()) }
+    var modpacks by remember { mutableStateOf<List<Modpack.BriefVo>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var onlyMine by remember { mutableStateOf(false) }
@@ -52,7 +55,7 @@ fun ModpackListScreen(
         loading = true
         errorMessage = null
         val response = withContext(Dispatchers.IO) {
-            runCatching { server.makeRequest<List<ModpackVo>>("modpack") }.getOrNull()
+            runCatching { server.makeRequest<List<Modpack.BriefVo>>("modpack") }.getOrNull()
         }
         if (response == null) {
             errorMessage = "加载整合包失败"
@@ -92,7 +95,7 @@ fun ModpackListScreen(
                     )
                     Text("只看我的包")
                 }
-                Button(onClick = { TODO() }) {
+                Button(onClick = { onOpenManage?.invoke() }) {
                     Text("\uF0C7 已安装的包".asIconText)
                 }
                 Button(

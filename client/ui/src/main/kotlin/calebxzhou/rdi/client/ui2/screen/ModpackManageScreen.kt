@@ -1,39 +1,23 @@
 package calebxzhou.rdi.client.ui2.screen
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.AlertDialog
-import androidx.compose.material.Button
-import androidx.compose.material.ButtonDefaults
-import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.OutlinedButton
-import androidx.compose.material.Text
-import androidx.compose.material.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import calebxzhou.mykotutils.std.deleteRecursivelyNoSymlink
 import calebxzhou.rdi.client.net.server
 import calebxzhou.rdi.client.service.ModpackService
 import calebxzhou.rdi.client.service.ModpackService.startInstall
+import calebxzhou.rdi.client.ui2.DEFAULT_MODPACK_ICON
 import calebxzhou.rdi.client.ui2.MaterialColor
-import calebxzhou.rdi.client.ui2.alertErr
 import calebxzhou.rdi.client.ui2.asIconText
 import calebxzhou.rdi.common.model.Modpack
 import kotlinx.coroutines.Dispatchers
@@ -98,72 +82,37 @@ fun ModpackManageScreen() {
         }
 
         LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            items(localDirs, key = { "${it.modpackId}_${it.verName}" }) { packdir ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "${packdir.modpackName} ${packdir.verName}",
-                        color = Color.Black,
-                        style = MaterialTheme.typography.body1
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(
-                            onClick = { confirmDelete = packdir },
-                            colors = ButtonDefaults.buttonColors(
-                                backgroundColor = MaterialColor.RED_900.color,
-                                contentColor = Color.White
-                            )
-                        ) {
-                            Text("\uEA81 删除".asIconText)
-                        }
-                        Button(
-                            onClick = {
-                                scope.launch {
-                                    val response = withContext(Dispatchers.IO) {
-                                        runCatching { server.makeRequest<Modpack>("modpack/${packdir.modpackId}") }
-                                            .getOrNull()
-                                    }
-                                    val modpack = response?.data
-                                    val version = modpack?.versions?.find { it.name == packdir.verName }
-                                    if (modpack == null || version == null) {
-                                        errorMessage=("未找到对应版本信息，可能已被删除")
-                                        return@launch
-                                    }
-                                    version.startInstall(modpack.mcVer, modpack.modloader, modpack.name)
-                                }
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                backgroundColor = MaterialColor.PINK_900.color,
-                                contentColor = Color.White
-                            )
-                        ) {
-                            Text("\uDB81\uDC53 重装".asIconText)
-                        }
-                        Button(
-                            onClick = {
-                                val dir = packdir.dir
-                                if (!dir.exists()) {
-                                    errorMessage=("目录不存在: ${dir.absolutePath}")
-                                    return@Button
-                                }
-                                runCatching {
-                                    if (Desktop.isDesktopSupported()) {
-                                        Desktop.getDesktop().open(dir)
-                                    } else {
-                                        ProcessBuilder("explorer", dir.absolutePath).start()
-                                    }
-                                }.onFailure {
-                                    errorMessage=("无法打开目录: ${it.message}")
-                                }
+            items(localDirs, key = { "${it.vo.id}_${it.verName}" }) { packdir ->
+                ModpackManageCard(
+                    packdir = packdir,
+                    onDelete = { confirmDelete = packdir },
+                    onReinstall = {
+                        scope.launch {
+                            val version = server.makeRequest<Modpack.Version>("modpack/${packdir.vo.id}/version/${packdir.verName}").data
+                            if (version == null) {
+                                errorMessage = "未找到对应版本信息，可能已被删除"
+                                return@launch
                             }
-                        ) {
-                            Text("\uEAED 打开文件夹".asIconText)
+                            version.startInstall(packdir.vo.mcVer,packdir.vo.modloader, packdir.vo.name)
+                        }
+                    },
+                    onOpenFolder = {
+                        val dir = packdir.dir
+                        if (!dir.exists()) {
+                            errorMessage = "目录不存在: ${dir.absolutePath}"
+                        } else {
+                            runCatching {
+                                if (Desktop.isDesktopSupported()) {
+                                    Desktop.getDesktop().open(dir)
+                                } else {
+                                    ProcessBuilder("explorer", dir.absolutePath).start()
+                                }
+                            }.onFailure {
+                                errorMessage = "无法打开目录: ${it.message}"
+                            }
                         }
                     }
-                }
+                )
             }
         }
     }
@@ -172,7 +121,7 @@ fun ModpackManageScreen() {
         AlertDialog(
             onDismissRequest = { confirmDelete = null },
             title = { Text("确认删除") },
-            text = { Text("确定要删除本地整合包版本 ${packdir.modpackName} ${packdir.verName} 吗？") },
+            text = { Text("要删除整合包 ${packdir.vo.name} ${packdir.verName} 吗？") },
             confirmButton = {
                 TextButton(onClick = {
                     confirmDelete = null
@@ -192,5 +141,79 @@ fun ModpackManageScreen() {
                 }
             }
         )
+    }
+}
+
+@Composable
+fun ModpackManageCard(
+    packdir: ModpackService.LocalDir,
+    onDelete: () -> Unit,
+    onReinstall: () -> Unit,
+    onOpenFolder: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = Color(0xFFF9F9FB),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+        elevation = 1.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Image(
+                    bitmap = DEFAULT_MODPACK_ICON,
+                    contentDescription = "Modpack Icon",
+                    modifier = Modifier
+                        .size(64.dp)
+                        .background(MaterialColor.GRAY_200.color, androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+                        .padding(8.dp)
+                )
+                Spacer(modifier = Modifier.size(12.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = packdir.vo.name,
+                        style = MaterialTheme.typography.subtitle1,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.Black
+                    )
+                    Text(
+                        text = "版本${packdir.verName}",
+                        style = MaterialTheme.typography.body2,
+                        color = MaterialColor.GRAY_700.color
+                    )
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Spacer(modifier = Modifier.weight(1f))
+                Button(
+                    onClick = onDelete,
+                    colors = ButtonDefaults.buttonColors(
+                        backgroundColor = MaterialColor.RED_900.color,
+                        contentColor = Color.White
+                    )
+                ) {
+                    Text("\uEA81 删除".asIconText)
+                }
+                Button(
+                    onClick = onReinstall,
+                    colors = ButtonDefaults.buttonColors(
+                        backgroundColor = MaterialColor.PINK_900.color,
+                        contentColor = Color.White
+                    )
+                ) {
+                    Text("\uDB81\uDC53 重装".asIconText)
+                }
+                Button(onClick = onOpenFolder) {
+                    Text("\uEAED 打开文件夹".asIconText)
+                }
+            }
+        }
     }
 }

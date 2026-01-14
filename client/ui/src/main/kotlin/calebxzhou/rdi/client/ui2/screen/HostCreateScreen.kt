@@ -60,10 +60,7 @@ private data class WorldOption(
 
 @Composable
 fun HostCreateScreen(
-    modpackId: ObjectId,
-    modpackName: String,
-    packVer: String,
-    skyblock: Boolean
+    arg: HostCreate
 ) {
     val scope = rememberCoroutineScope()
     val overrideRules = remember { mutableStateMapOf<String, String>() }
@@ -80,10 +77,10 @@ fun HostCreateScreen(
     var selectedWorldId by remember { mutableStateOf(0) }
     var difficulty by remember { mutableStateOf(2) }
     var gameMode by remember { mutableStateOf(0) }
-    var levelType by remember { mutableStateOf(if (skyblock) "skyblockbuilder:skyblock" else "minecraft:normal") }
-    var levelChoice by remember { mutableStateOf(if (skyblock) 2 else 0) }
+    var levelType by remember { mutableStateOf(if (arg.skyblock) "skyblockbuilder:skyblock" else "minecraft:normal") }
+    var levelChoice by remember { mutableStateOf(if (arg.skyblock) 2 else 0) }
 
-    LaunchedEffect(modpackId, packVer) {
+    LaunchedEffect(arg.modpackId, arg.packVer) {
         loading = true
         errorMessage = null
         val response = withContext(Dispatchers.IO) {
@@ -123,7 +120,7 @@ fun HostCreateScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Text("创建新地图", style = MaterialTheme.typography.h5)
-        Text("整合包：$modpackName V$packVer", style = MaterialTheme.typography.body1)
+        Text("整合包：${arg.modpackName} V${arg.packVer}", style = MaterialTheme.typography.body1)
 
         if (loading) {
             Row(
@@ -181,7 +178,7 @@ fun HostCreateScreen(
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("地形")
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (skyblock) {
+                if (arg.skyblock) {
                     DifficultyOption("空岛", 2, levelChoice) {
                         levelChoice = it
                         levelType = "skyblockbuilder:skyblock"
@@ -227,8 +224,8 @@ fun HostCreateScreen(
                     scope.launch {
                         val selectedWorld = worldOptions.firstOrNull { it.id == selectedWorldId }?.world
                         val params = mutableMapOf<String, Any>(
-                            "modpackId" to modpackId,
-                            "packVer" to packVer,
+                            "modpackId" to arg.modpackId,
+                            "packVer" to arg.packVer,
                             "difficulty" to difficulty,
                             "gameMode" to gameMode,
                             "levelType" to levelType,
