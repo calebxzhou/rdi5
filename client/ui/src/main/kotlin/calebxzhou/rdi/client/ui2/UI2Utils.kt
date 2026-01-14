@@ -22,17 +22,23 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import calebxzhou.mykotutils.std.jarResource
+import calebxzhou.rdi.RDI
+import org.jetbrains.skia.Image
 import javax.swing.JOptionPane
 
 /**
  * calebxzhou @ 2026-01-12 21:11
  */
+val DEFAULT_MODPACK_ICON =Image.makeFromEncoded(RDI.jarResource("assets/icons/modpack.png").use { it.readBytes() }).toComposeImageBitmap()
+val DEFAULT_HOST_ICON =Image.makeFromEncoded(RDI.jarResource("assets/icons/host.png").use { it.readBytes() }).toComposeImageBitmap()
 @Composable
 fun alertOk(msg: String){
     val title = "成功"
