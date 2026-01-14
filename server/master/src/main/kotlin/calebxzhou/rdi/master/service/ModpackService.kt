@@ -26,6 +26,7 @@ import calebxzhou.rdi.master.service.ModpackService.getVersionFileList
 import calebxzhou.rdi.master.service.ModpackService.modpackGuardContext
 import calebxzhou.rdi.master.service.ModpackService.rebuildVersion
 import calebxzhou.rdi.master.service.ModpackService.requireAuthor
+import calebxzhou.rdi.master.service.ModpackService.toBriefVo
 import calebxzhou.rdi.master.service.ModpackService.toDetailVo
 import calebxzhou.rdi.master.service.PlayerService.getPlayerNames
 import com.mongodb.client.model.Filters.*
@@ -35,11 +36,11 @@ import com.mongodb.client.model.Updates
 import com.mongodb.kotlin.client.coroutine.MongoCollection
 import io.ktor.http.content.*
 import io.ktor.server.application.*
-import io.ktor.server.application.call
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.utils.io.*
+import jogamp.opengl.util.pngj.ImageLineHelper.pack
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.toList
@@ -84,19 +85,32 @@ fun Route.modpackRoutes() {
             response(data = ModpackService.listAll())
         }
         post("/infos-batch") {
-            response(data = ModpackService.toModpackVos(ModpackService.listByIds(call.receive<List<ObjectId>>())))
+            response(data = ModpackService.toModpackVoList(ModpackService.listByIds(call.receive<List<ObjectId>>())))
 
         }
         post {
-            response(data = ModpackService.create(call.uid, param("name"), McVersion.valueOf(param("mcVer")), ModLoader.valueOf(param("modloader"))))
+            response(
+                data = ModpackService.create(
+                    call.uid,
+                    param("name"),
+                    McVersion.valueOf(param("mcVer")),
+                    ModLoader.valueOf(param("modloader"))
+                )
+            )
         }
         get("/my") {
             val mods = ModpackService.listByAuthor(call.uid)
             response(data = mods)
         }
         route("/{modpackId}") {
-
+            //旧版接口 保持兼容
             get {
+                response(data = call.modpackGuardContext().modpack.toDetailVo())
+            }
+            get("/brief") {
+                response(data = call.modpackGuardContext().modpack.toBriefVo())
+            }
+            get("/detail") {
                 response(data = call.modpackGuardContext().modpack.toDetailVo())
             }
             get("/name") {
@@ -252,44 +266,62 @@ object ModpackService {
         return dbcl.find(regex(Modpack::name.name, name, "i")).toList()
     }
 
-    suspend fun listAll(): List<ModpackVo> {
+    suspend fun listAll(): List<Modpack.BriefVo> {
         val modpacks = dbcl.find().toList()
-        return toModpackVos(modpacks)
+        return toModpackVoList(modpacks)
     }
 
     suspend fun listByIds(ids: List<ObjectId>): List<Modpack> {
         return dbcl.find(`in`("_id", ids)).toList()
     }
 
-    suspend fun toModpackVos(modpacks: List<Modpack>): List<ModpackVo> {
+    suspend fun toModpackVoList(modpacks: List<Modpack>): List<Modpack.BriefVo> {
         if (modpacks.isEmpty()) return emptyList()
 
         val authorNames = modpacks.map { it.authorId }.getPlayerNames()
 
         return modpacks.map { pack ->
-            ModpackVo(
+            Modpack.BriefVo(
                 pack._id,
                 name = pack.name,
                 authorId = pack.authorId,
                 authorName = authorNames[pack.authorId] ?: "未知作者",
                 modCount = pack.versions.maxOfOrNull { it.mods.size } ?: 0,
                 fileSize = pack.versions.lastOrNull()?.totalSize ?: 0L,
-                icon = pack.icon,
+                icon = pack.iconUrl,
+                mcVer = pack.mcVer,
+                modloader = pack.modloader,
                 info = pack.info
             )
         }
     }
 
-    //单个整合包的详细信息
-    suspend fun Modpack.toDetailVo(): ModpackDetailedVo {
+    suspend fun Modpack.toBriefVo(): Modpack.BriefVo {
         val authorName = PlayerService.getName(authorId) ?: "未知作者"
-        return ModpackDetailedVo(
-            id = _id,
+        return Modpack.BriefVo(
+            _id,
+            name = name,
+            authorId = authorId,
+            authorName = authorName,
+            mcVer = mcVer,
+            modCount = versions.maxOfOrNull { it.mods.size } ?: 0,
+            fileSize = versions.lastOrNull()?.totalSize ?: 0L,
+            icon = iconUrl,
+            modloader = modloader,
+            info = info
+        )
+    }
+
+    //单个整合包的详细信息
+    suspend fun Modpack.toDetailVo(): Modpack.DetailVo {
+        val authorName = PlayerService.getName(authorId) ?: "未知作者"
+        return Modpack.DetailVo(
+            _id = _id,
             name = name,
             authorId = authorId,
             authorName = authorName,
             modCount = versions.maxOfOrNull { it.mods.size } ?: 0,
-            icon = icon,
+            icon = iconUrl,
             info = info,
             modloader = modloader,
             mcVer = mcVer,
@@ -297,7 +329,7 @@ object ModpackService {
         )
     }
 
-    suspend fun create(uid: ObjectId, name: String,ver: McVersion,modLoader: ModLoader): Modpack {
+    suspend fun create(uid: ObjectId, name: String, ver: McVersion, modLoader: ModLoader): Modpack {
         val modpackCount = dbcl.countDocuments(eq("authorId", uid)).toInt()
         if (modpackCount >= MAX_MODPACK_PER_USER) {
             throw RequestError("一个人最多传5个包")
@@ -606,7 +638,7 @@ object ModpackService {
         if (version.status == Modpack.Status.BUILDING) {
             throw RequestError("版本正在构建中 请勿重复操作")
         }
-       // if (version.hostsUsing().isNotEmpty()) throw RequestError("有主机正在使用此版本，无法重构")
+        // if (version.hostsUsing().isNotEmpty()) throw RequestError("有主机正在使用此版本，无法重构")
         version.setTotalSize(version.zip.length())
         try {
             val downloadedMods = CurseForgeApi.downloadMods(version.mods.filter { it.side != Mod.Side.CLIENT }
@@ -908,3 +940,4 @@ object ModpackService {
         )
     }
 }
+
