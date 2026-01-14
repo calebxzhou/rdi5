@@ -32,6 +32,7 @@ import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import java.nio.file.Path
+import java.net.ConnectException
 
 val server
     get() = RServer.now
@@ -81,26 +82,31 @@ class RServer(
         params: Map<String, Any> = mapOf(),
         crossinline builder: HttpRequestBuilder.() -> Unit = {}
     ): HttpResponse {
-        return httpRequest {
-            url("$hqUrl/${path}")
-            this.method = method
-            if (method != HttpMethod.Get && params.isNotEmpty()) {
-                json()
-                setBody(
-                    serdesJson.encodeToString(
-                        MapSerializer(String.serializer(), JsonElement.serializer()),
-                        params.mapValues {
-                            JsonPrimitive(it.value.toString())
-                        }
-                    ))
-                compress("deflate")
-            } else if (method == HttpMethod.Get && params.isNotEmpty()) {
-                params.forEach {
-                    parameter(it.key, it.value)
+        return try {
+            httpRequest {
+                url("$hqUrl/${path}")
+                this.method = method
+                if (method != HttpMethod.Get && params.isNotEmpty()) {
+                    json()
+                    setBody(
+                        serdesJson.encodeToString(
+                            MapSerializer(String.serializer(), JsonElement.serializer()),
+                            params.mapValues {
+                                JsonPrimitive(it.value.toString())
+                            }
+                        ))
+                    compress("deflate")
+                } else if (method == HttpMethod.Get && params.isNotEmpty()) {
+                    params.forEach {
+                        parameter(it.key, it.value)
+                    }
                 }
+                accountAuthHeader()
+                builder()
             }
-            accountAuthHeader()
-            builder()
+        } catch (e: ConnectException) {
+            e.printStackTrace()
+            throw RequestError("无法连接服务器 请检查网络连接")
         }
     }
 
