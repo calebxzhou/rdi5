@@ -19,36 +19,20 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import calebxzhou.mykotutils.std.decodeBase64
-import calebxzhou.mykotutils.std.encodeBase64
 import calebxzhou.mykotutils.std.ioScope
 import calebxzhou.mykotutils.std.jarResource
-import calebxzhou.mykotutils.std.javaExePath
 import calebxzhou.rdi.RDI
 import calebxzhou.rdi.client.net.loggedAccount
 import calebxzhou.rdi.client.service.PlayerService
-import calebxzhou.rdi.client.ui.component.alertOk
-import calebxzhou.rdi.client.ui2.screen.HostCreateScreen
-import calebxzhou.rdi.client.ui2.screen.ModpackListScreen
-import calebxzhou.rdi.client.ui2.screen.ModpackManageScreen
-import calebxzhou.rdi.client.ui2.screen.Ui2Screen
-import calebxzhou.rdi.client.ui2.screen.WardrobeScreen
-import calebxzhou.rdi.common.json
+import calebxzhou.rdi.client.ui2.screen.*
 import calebxzhou.rdi.common.serdesJson
-import calebxzhou.rdi.common.util.ioTask
-import calebxzhou.rdi.lgr
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withContext
 import java.awt.Toolkit
-import java.io.File
-import java.net.URLClassLoader
-import java.nio.charset.StandardCharsets
-import kotlin.concurrent.thread
-import kotlin.sequences.forEach
 
 lateinit var UIFontFamily: FontFamily
 lateinit var ArtFontFamily: FontFamily
@@ -101,10 +85,6 @@ fun main() = application {
         height = (screen.height * 2 / 3).dp,
         position = WindowPosition(Alignment.Center)
     )
-    //初始画面
-    val initScreen = System.getProperty("rdi.init.screen")?.let {
-        Ui2Screen.valueOf(it)
-    }
     Window(
         onCloseRequest = ::exitApplication,
         title = System.getProperty("rdi.window.title") ?: "RDI UI2",
@@ -112,19 +92,40 @@ fun main() = application {
         state = windowState
     ) {
         MaterialTheme(typography = Typography(defaultFontFamily = UIFontFamily)) {
-            when(initScreen){
-                Ui2Screen.Wardrobe -> WardrobeScreen()
-                Ui2Screen.ModpackList -> ModpackListScreen()
-                Ui2Screen.ModpackManage -> ModpackManageScreen()
-                //Ui2Screen.HostCreate -> HostCreateScreen(),
-                else -> App()
+            val navController = rememberNavController()
+            NavHost(navController = navController, startDestination = Login) {
+                composable<Login> {
+                    LoginScreen(
+                        onLoginSuccess = {
+                            navController.navigate(Profile) {
+                                popUpTo(Login) { inclusive = true }
+                            }
+                        }
+                    )
+                }
+                composable<Wardrobe> { WardrobeScreen() }
+                composable<HostCreate> {
+                    HostCreateScreen(it.toRoute())
+                }
+                composable<Profile> {
+                    ProfileScreen(
+                        onLogout = {
+                            navController.navigate(Login) {
+                                popUpTo(Profile) { inclusive = true }
+                            }
+                        }
+                    )
+                }
+                composable<ModpackList> {
+                    ModpackListScreen(onOpenManage = { navController.navigate(ModpackManage) })
+                }
+                composable<ModpackManage> { ModpackManageScreen() }
             }
-            //WardrobeScreen()
         }
     }
 }
-fun startUi2(initScreen: Ui2Screen){
-    alertOk("请稍等几秒，在新窗口中完成操作")
+fun startUi2(initScreen: Any){
+    /*alertOk("请稍等几秒，在新窗口中完成操作")
     val classpathEntries = LinkedHashSet<String>()
     val classpathProp = System.getProperty("java.class.path").orEmpty()
     if (classpathProp.isNotBlank()) {
@@ -168,7 +169,7 @@ fun startUi2(initScreen: Ui2Screen){
         process.waitFor()
         runCatching { process.inputStream.close() }
         runCatching { logThread.join(1000) }
-    }
+    }*/
 
 }
 @Composable
