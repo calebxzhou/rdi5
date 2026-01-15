@@ -85,6 +85,11 @@ allprojects {
 
 dependencies {
     implementation(compose.desktop.currentOs)
+    implementation("org.jetbrains.androidx.navigation:navigation-compose:2.9.1")
+    // Source: https://mvnrepository.com/artifact/org.jetbrains.compose.material3/material3-desktop
+    implementation("org.jetbrains.compose.material3:material3-desktop:1.10.0-alpha05")
+
+
     testImplementation(kotlin("test"))
     implementation("io.netty:netty-all:4.2.7.Final")
     implementation(project(":common"))
