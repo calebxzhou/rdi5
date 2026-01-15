@@ -1,50 +1,37 @@
 package calebxzhou.rdi.client.ui2.screen
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.material.Button
-import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Checkbox
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.MaterialTheme
-import androidx.compose.material.OutlinedButton
 import androidx.compose.material.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import calebxzhou.rdi.client.net.loggedAccount
-import calebxzhou.rdi.client.net.server
-import calebxzhou.rdi.client.ui2.asIconText
+import calebxzhou.rdi.client.net.rdiRequest
+import calebxzhou.rdi.client.ui2.CircleIconButton
+import calebxzhou.rdi.client.ui2.MainColumn
+import calebxzhou.rdi.client.ui2.TitleRow
 import calebxzhou.rdi.client.ui2.comp.ModpackCard
 import calebxzhou.rdi.common.model.Modpack
-import calebxzhou.rdi.common.model.Modpack.BriefVo
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import kotlin.collections.filter
 
 /**
  * calebxzhou @ 2026-01-13 18:27
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ModpackListScreen(
-    onOpenManage: (() -> Unit)? = null
+    onBack: (() -> Unit) = {},
+    onOpenManage: (() -> Unit)={}
 ) {
     var modpacks by remember { mutableStateOf<List<Modpack.BriefVo>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
@@ -54,17 +41,12 @@ fun ModpackListScreen(
     LaunchedEffect(Unit) {
         loading = true
         errorMessage = null
-        val response = withContext(Dispatchers.IO) {
-            runCatching { server.makeRequest<List<Modpack.BriefVo>>("modpack") }.getOrNull()
-        }
-        if (response == null) {
-            errorMessage = "加载整合包失败"
-        } else if (!response.ok) {
-            errorMessage = response.msg
-        } else {
-            modpacks = response.data ?: emptyList()
-        }
-        loading = false
+        rdiRequest<List<Modpack.BriefVo>>(
+            path = "modpack",
+            onOk = { response -> modpacks = response.data ?: emptyList() },
+            onErr = { errorMessage = "加载整合包失败: ${it.message}" },
+            onDone = { loading = false }
+        )
     }
 
     val visibleModpacks = if (onlyMine) {
@@ -73,66 +55,51 @@ fun ModpackListScreen(
         modpacks
     }
 
-    Column(
-        modifier = Modifier.fillMaxSize().background(Color.White).padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
+    MainColumn {
+        TitleRow("整合包列表", onBack) {
+            Checkbox(
+                checked = onlyMine,
+                onCheckedChange = { onlyMine = it }
+            )
+            Text("只看我的包")
+        }
+        CircleIconButton("\uF0C7","已安装的包") {
+            onOpenManage.invoke()
+
+        }
+        CircleIconButton("\uDB80\uDFD5","上传新包") {
+            //onOpenManage.invoke()
+        }
+
+    }
+
+    Text(
+        text = "选择想玩的整合包及版本创建地图。如果没有想玩的，可以上传自己的整合包。",
+        color = Color.Black
+    )
+
+    if (loading) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.Center
         ) {
-            Text(
-                text = "整合包列表",
-                style = MaterialTheme.typography.h6,
-                color = Color.Black
-            )
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(
-                        checked = onlyMine,
-                        onCheckedChange = { onlyMine = it }
-                    )
-                    Text("只看我的包")
-                }
-                Button(onClick = { onOpenManage?.invoke() }) {
-                    Text("\uF0C7 已安装的包".asIconText)
-                }
-                Button(
-                    onClick = { TODO() }
-                ) {
-                    Text("\uDB80\uDFD5 上传新包".asIconText)
-                }
-            }
+            CircularProgressIndicator()
         }
+    }
 
-        Text(
-            text = "选择想玩的整合包及版本创建地图。如果没有想玩的，可以上传自己的整合包。",
-            color = Color.Black
-        )
+    errorMessage?.let {
+        Text(it, color = MaterialTheme.colors.error)
+    }
 
-        if (loading) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        }
-
-        errorMessage?.let {
-            Text(it, color = MaterialTheme.colors.error)
-        }
-
-        LazyVerticalGrid(
-            columns = GridCells.Adaptive(280.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxSize()
-        ) {
-            items(visibleModpacks, key = { it.id.toHexString() }) { modpack ->
-                modpack.ModpackCard(onClick = { TODO() })
-            }
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(280.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.fillMaxSize()
+    ) {
+        items(visibleModpacks, key = { it.id.toHexString() }) { modpack ->
+            modpack.ModpackCard(onClick = { TODO() })
         }
     }
 }
+
