@@ -8,26 +8,22 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import calebxzhou.mykotutils.hwspec.HwSpec
-import calebxzhou.mykotutils.std.*
+import calebxzhou.mykotutils.std.jarResource
+import calebxzhou.mykotutils.std.javaExePath
+import calebxzhou.mykotutils.std.readAllString
 import calebxzhou.rdi.RDI
 import calebxzhou.rdi.client.auth.LocalCredentials
-import calebxzhou.rdi.client.auth.LoginInfo
-import calebxzhou.rdi.client.net.loggedAccount
 import calebxzhou.rdi.client.net.server
 import calebxzhou.rdi.client.service.PlayerService
 import calebxzhou.rdi.client.service.UpdateService
 import calebxzhou.rdi.client.ui2.CodeFontFamily
 import calebxzhou.rdi.client.ui2.asIconText
 import calebxzhou.rdi.common.exception.RequestError
-import calebxzhou.rdi.common.model.RAccount
-import calebxzhou.rdi.common.model.Response
-import calebxzhou.rdi.common.serdesJson
-import io.ktor.client.call.*
 import io.ktor.http.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -57,6 +53,27 @@ fun LoginScreen(
     var loginError by remember { mutableStateOf<String?>(null) }
     var updateStatus by remember { mutableStateOf("正在检查更新...") }
     var updateDetail by remember { mutableStateOf("") }
+
+    fun attemptLogin() {
+        if (qq.isBlank() || pwd.isBlank()) {
+            loginError = "未填写完整"
+            return
+        }
+        if (submitting) return
+        submitting = true
+        loginError = null
+        scope.launch {
+            val result = withContext(Dispatchers.IO) {
+                PlayerService.login(qq, pwd)
+            }
+            submitting = false
+            result.onFailure {
+                loginError = it.message ?: "登录失败"
+            }.onSuccess {
+                onLoginSuccess?.invoke()
+            }
+        }
+    }
 
     LaunchedEffect(storedAccounts) {
         if (qq.isBlank() && pwd.isBlank()) {
@@ -103,12 +120,19 @@ fun LoginScreen(
                     onValueChange = { qq = it },
                     label = { Text("RDID/QQ号") },
                     singleLine = true,
+                    modifier = Modifier.fillMaxWidth().onKeyEvent { event ->
+                        if (event.type == KeyEventType.KeyUp && event.key == Key.Enter) {
+                            attemptLogin()
+                            true
+                        } else {
+                            false
+                        }
+                    },
                     trailingIcon = {
                         TextButton(onClick = { showAccounts = true }) {
                             Text("▼")
                         }
                     },
-                    modifier = Modifier.fillMaxWidth()
                 )
                 DropdownMenu(
                     expanded = showAccounts,
@@ -136,7 +160,14 @@ fun LoginScreen(
                 onValueChange = { pwd = it },
                 label = { Text("密码") },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().onKeyEvent { event ->
+                    if (event.type == KeyEventType.KeyUp && event.key == Key.Enter) {
+                        attemptLogin()
+                        true
+                    } else {
+                        false
+                    }
+                },
                 visualTransformation = if (showPassword) {
                     VisualTransformation.None
                 } else {
@@ -193,24 +224,7 @@ fun LoginScreen(
                 }
                 Button(
                     onClick = {
-                        if (qq.isBlank() || pwd.isBlank()) {
-                            loginError = "未填写完整"
-                            return@Button
-                        }
-                        if (submitting) return@Button
-                        submitting = true
-                        loginError = null
-                        scope.launch {
-                            val result = withContext(Dispatchers.IO) {
-                                PlayerService.login(qq, pwd)
-                            }
-                            submitting = false
-                            result.onFailure {
-                                loginError = it.message ?: "登录失败"
-                            }.onSuccess {
-                                onLoginSuccess?.invoke()
-                            }
-                        }
+                        attemptLogin()
                     },
                     enabled = !submitting
                 ) {
@@ -346,25 +360,6 @@ private fun RegisterDialog(
             }
         }
     )
-}
-
-private suspend fun loginNow(usr: String, pwd: String): RAccount {
-    val creds = LocalCredentials.read()
-    val spec = serdesJson.encodeToString(HwSpec.get())
-    val resp = server.createRequest(
-        path = "player/login",
-        method = HttpMethod.Post,
-        params = mapOf("usr" to usr, "pwd" to pwd, "spec" to spec)
-    )
-    val body = resp.body<Response<RAccount>>()
-    if (!body.ok) throw RequestError(body.msg)
-    val account = body.data ?: throw RequestError("登录失败")
-    account.jwt = resp.headers["jwt"]
-    val info = LoginInfo(account.qq, account.name,account.pwd)
-    creds.loginInfos += account._id to info
-    creds.save()
-    loggedAccount = account
-    return account
 }
 
 private fun createShortcut(): Result<Unit> {
