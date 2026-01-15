@@ -52,9 +52,17 @@ fun Route.playerRoutes() {
             }
         }
         get("/infos") {
-            val names = param("names").split("\n")
-            val infos = PlayerService.getInfoByNames(names)
-            response(data = infos)
+            paramNull("ids")?.split("\n")?.map { ObjectId(it) }?.let { ids ->
+                val infos = PlayerService.getInfoByIds(ids)
+                response(data = infos)
+                return@get
+            }
+            paramNull("names")?.split("\n")?.let { names ->
+                val infos = PlayerService.getInfoByNames(names)
+                response(data = infos)
+                return@get
+            }
+            response(data = emptyList<RAccount.Dto>())
         }
         post("/register") {
             PlayerService.register(
@@ -246,6 +254,8 @@ object PlayerService {
 
     suspend fun getInfoByNames(names: List<String>): List<RAccount.Dto> =
         names.map { getByName(it)?.dto ?: RAccount.DEFAULT.dto }
+    suspend fun getInfoByIds(uids: List<ObjectId>): List<RAccount.Dto> =
+        uids.map { getById(it)?.dto ?: RAccount.DEFAULT.dto }
 
     suspend fun saveCrashReport(uid: ObjectId, report: String) {
         val account = getById(uid)
