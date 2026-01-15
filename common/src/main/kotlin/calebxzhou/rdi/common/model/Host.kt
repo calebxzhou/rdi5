@@ -64,6 +64,30 @@ data class Host(
         }
     }
     @Serializable
+    data class DetailVo(
+        @Contextual
+        val _id: ObjectId = ObjectId(),
+        val name: String,
+        val intro: String = "暂无简介",
+        val iconUrl: String? = null,
+        @Contextual
+        val ownerId: ObjectId = ObjectId(),
+        val modpack: Modpack.BriefVo,
+        val packVer: String,
+        @Contextual
+        val worldId: ObjectId?=null,
+        var port: Int,
+        val difficulty: Int,
+        val gameMode: Int,
+        val levelType: String,
+        val gameRules: MutableMap<String,String> = mutableMapOf(),
+        val whitelist: Boolean=false,
+        val allowCheats: Boolean=false,
+        val members: List<Member> = arrayListOf(),
+        val extraMods: List<Mod> = arrayListOf(),
+        val onlinePlayerIds: List<@Contextual ObjectId> = arrayListOf(),
+    )
+    @Serializable
     data class CreateDto(
         val name: String,
         @Contextual
