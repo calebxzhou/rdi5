@@ -584,6 +584,9 @@ object HostService {
     }
 
     suspend fun RAccount.createHost(host: Host.CreateDto) {
+        if (host.name.displayLength !in 3..24) {
+            throw RequestError("名称长度应在3~24，当前为${host.name.displayLength}（一个汉字算两个长度）")
+        }
         val playerId = _id
         if (getByOwner(playerId).size > 3) {
             throw RequestError("最多只可创建3张地图")
