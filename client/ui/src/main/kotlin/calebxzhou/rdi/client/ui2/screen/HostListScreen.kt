@@ -1,14 +1,17 @@
 package calebxzhou.rdi.client.ui2.screen
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Checkbox
 import androidx.compose.material.MaterialTheme
+import androidx.compose.material.RadioButton
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -19,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import calebxzhou.rdi.client.Const
+import calebxzhou.rdi.client.auth.LocalCredentials
 import calebxzhou.rdi.client.net.server
 import calebxzhou.rdi.client.ui2.BackButton
 import calebxzhou.rdi.client.ui2.CircleIconButton
@@ -36,10 +40,14 @@ import org.bson.types.ObjectId
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HostListScreen(
-    onBack: (() -> Unit)
+    onBack: (() -> Unit),
+    onOpenWorldList: (() -> Unit)? = null
 ) {
     var hosts by remember { mutableStateOf<List<Host.BriefVo>>(emptyList()) }
     var showMy by remember { mutableStateOf(true) }
+    var showCarrierDialog by remember { mutableStateOf(false) }
+    val creds = remember { LocalCredentials.read() }
+    var selectedCarrier by remember { mutableStateOf(creds.carrier) }
 
     LaunchedEffect(showMy) {
         if (Const.USE_MOCK_DATA) {
@@ -61,12 +69,10 @@ fun HostListScreen(
 
             Spacer(modifier = Modifier.width(16.dp))
             CircleIconButton("\uDB85\uDC5C","存档数据管理"){
-
+                onOpenWorldList?.invoke()
             }
             Spacer(modifier = Modifier.width(8.dp))
-            CircleIconButton("\uEF09","节点"){
-
-            }
+            CircleIconButton("\uEF09","节点"){ showCarrierDialog = true }
             Spacer(modifier = Modifier.width(8.dp))
 
             CircleIconButton("\uF067","创建新地图"){
@@ -111,6 +117,17 @@ fun HostListScreen(
             }
         }
     }
+    if (showCarrierDialog) {
+        CarrierDialog(
+            selected = selectedCarrier,
+            onSelect = { carrier ->
+                selectedCarrier = carrier
+                creds.carrier = carrier
+                creds.save()
+            },
+            onDismiss = { showCarrierDialog = false }
+        )
+    }
 }
 
 private fun generateMockHosts(): List<Host.BriefVo> = List(50) { index ->
@@ -119,5 +136,41 @@ private fun generateMockHosts(): List<Host.BriefVo> = List(50) { index ->
         _id = ObjectId(),
         name = "${base.name} #${index + 1}",
         port = base.port + index
+    )
+}
+@Composable
+fun CarrierDialog(
+    selected: Int,
+    onSelect: (Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val carriers = listOf("电信", "移动", "联通", "教育网", "广电")
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("选择运营商节点") },
+        text = {
+            Column {
+                carriers.forEachIndexed { index, name ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onSelect(index) }
+                            .padding(vertical = 4.dp)
+                    ) {
+                        RadioButton(
+                            selected = selected == index,
+                            onClick = { onSelect(index) }
+                        )
+                        Text(name)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("关闭")
+            }
+        }
     )
 }
