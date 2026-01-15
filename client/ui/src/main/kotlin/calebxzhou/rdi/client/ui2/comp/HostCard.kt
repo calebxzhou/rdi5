@@ -7,26 +7,32 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
-import androidx.compose.runtime.Composable
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerMoveFilter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import calebxzhou.rdi.client.ui2.DEFAULT_HOST_ICON
 import calebxzhou.rdi.client.ui2.MaterialColor
+import calebxzhou.rdi.client.ui2.SimpleTooltip
 import calebxzhou.rdi.client.ui2.asIconText
 import calebxzhou.rdi.common.model.Host
 
 /**
  * calebxzhou @ 2026-01-14 21:48
  */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
-fun Host.Vo.HostCard(
+fun Host.BriefVo.HostCard(
     modifier: Modifier = Modifier,
-    onClickPlay: ((Host.Vo) -> Unit)? = null,
-    onClick: ((Host.Vo) -> Unit)? = null
+    onClickPlay: ((Host.BriefVo) -> Unit)? = null,
+    onClick: ((Host.BriefVo) -> Unit)? = null
 ) {
     val cardModifier = if (onClick != null) {
         modifier.clickable { onClick(this) }
@@ -40,72 +46,103 @@ fun Host.Vo.HostCard(
         shape = RoundedCornerShape(16.dp),
         elevation = 1.dp
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().background(Color.Transparent).padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+        var isHovered by remember { mutableStateOf(false) }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .pointerMoveFilter(
+                    onEnter = {
+                        isHovered = true
+                        false
+                    },
+                    onExit = {
+                        isHovered = false
+                        false
+                    }
+                )
+                .background(Color.Transparent)
+                .padding(12.dp)
         ) {
-            val iconBg = MaterialColor.GRAY_200.color
-            Box(
-                modifier = Modifier
-                    .size(50.dp)
-                    .background(iconBg, RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.Center
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                val iconUrl = iconUrl?.takeIf { it.isNotBlank() }
-                if (iconUrl != null) {
-                    HttpImage(
-                        imgUrl = iconUrl,
-                        modifier = Modifier.size(44.dp)
-                    )
-                } else {
-                    Image(
-                        bitmap = DEFAULT_HOST_ICON,
-                        contentDescription = "Host Icon",
-                        modifier = Modifier.size(36.dp)
-                    )
+                val iconBg = MaterialColor.GRAY_200.color
+                Box(
+                    modifier = Modifier
+                        .size(64.dp)
+                        .background(iconBg, RoundedCornerShape(12.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    val iconUrl = iconUrl?.takeIf { it.isNotBlank() }
+                    if (iconUrl != null) {
+                        HttpImage(
+                            imgUrl = iconUrl,
+                            modifier = Modifier.size(64.dp)
+                        )
+                    } else {
+                        Image(
+                            bitmap = DEFAULT_HOST_ICON,
+                            contentDescription = "Host Icon",
+                            modifier = Modifier.size(64.dp)
+                        )
+                    }
                 }
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = name,
-                    style = MaterialTheme.typography.subtitle1,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = "$modpackName $packVer",
-                    style = MaterialTheme.typography.body2,
-                    color = MaterialColor.GRAY_500.color,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        text = intro,
-                        style = MaterialTheme.typography.caption,
-                        color = MaterialColor.GRAY_500.color,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
+                        text = name,
+                        style = MaterialTheme.typography.subtitle1,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
-                    TextButton(
-                        onClick = { onClickPlay?.invoke(this@HostCard) },
-                        enabled = onClickPlay != null,
-                        colors = ButtonDefaults.textButtonColors(
-                            backgroundColor = MaterialColor.GREEN_900.color,
-                            contentColor = Color.White
-                        ),
-                        shape = CircleShape,
-                        modifier = Modifier.size(28.dp)
+                    Text(
+                        text = "$modpackName $packVer",
+                        style = MaterialTheme.typography.body2,
+                        color = MaterialColor.GRAY_500.color,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("▶".asIconText)
+                        HeadButton(
+                            ownerId,
+                            avatarSize = 18.dp,
+                            nameFontSize = 14.sp,
+                            showName = true
+                        )
+                        Text(" · ")
+                        onlinePlayerIds.forEach {
+                            HeadButton(
+                                it,
+                                avatarSize = 18.dp,
+                                showName = false
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (isHovered && onClickPlay != null) {
+                Box(modifier = Modifier.align(Alignment.TopEnd)) {
+                    SimpleTooltip("启动MC 玩这个地图") {
+                        TextButton(
+                            onClick = { onClickPlay.invoke(this@HostCard) },
+                            shape = CircleShape,
+                            modifier = Modifier.size(26.dp),
+                            contentPadding = PaddingValues(2.dp, 0.dp, 0.dp, 0.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                backgroundColor = MaterialColor.GREEN_900.color,
+                                contentColor = MaterialColor.WHITE.color
+                            )
+                        ) {
+                            Text("\uF04B".asIconText)
+                        }
                     }
                 }
             }
