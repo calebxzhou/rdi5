@@ -93,7 +93,17 @@ fun main() = application {
     ) {
         MaterialTheme(typography = Typography(defaultFontFamily = UIFontFamily)) {
             val navController = rememberNavController()
-            NavHost(navController = navController, startDestination = Login) {
+            val initScreenName = System.getProperty("rdi.init.screen")?.trim()
+            val startDestination = when (initScreenName) {
+                "pf" -> Profile
+                "wd" -> Wardrobe
+                "mail" -> Mail
+                "hl" -> HostList
+                "ml" -> ModpackList
+                "mm" -> ModpackManage
+                else -> Login
+            }
+            NavHost(navController = navController, startDestination = startDestination) {
                 composable<Login> {
                     LoginScreen(
                         onLoginSuccess = {
@@ -103,7 +113,9 @@ fun main() = application {
                         }
                     )
                 }
-                composable<Wardrobe> { WardrobeScreen() }
+                composable<Wardrobe> { WardrobeScreen(onBack = { navController.navigate(Profile) }) }
+                composable<Mail> { MailScreen(onBack = { navController.navigate(Profile) }) }
+                composable<HostList> { HostListScreen(onBack = { navController.navigate(Profile) }) }
                 composable<HostCreate> {
                     HostCreateScreen(it.toRoute())
                 }
@@ -113,7 +125,10 @@ fun main() = application {
                             navController.navigate(Login) {
                                 popUpTo(Profile) { inclusive = true }
                             }
-                        }
+                        },
+                        onOpenWardrobe = { navController.navigate(Wardrobe) },
+                        onOpenHostList = { navController.navigate(HostList) },
+                        onOpenMail = {navController.navigate(Mail)}
                     )
                 }
                 composable<ModpackList> {
