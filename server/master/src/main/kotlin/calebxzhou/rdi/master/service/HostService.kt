@@ -65,6 +65,7 @@ import org.bson.Document
 import org.bson.types.ObjectId
 import java.io.File
 import java.util.Properties
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -418,7 +419,7 @@ object HostService {
     suspend fun getIdles(): List<Host> {
         val result = mutableListOf<Host>()
         for (host in getPlayables()) {
-            if (host.getOnlinePlayers() == 0) {
+            if (host.getOnlinePlayers().size == 0) {
                 result += host
             }
         }
@@ -465,7 +466,7 @@ object HostService {
                 throw cancel
             }
 
-            if (onlinePlayers <= 0) {
+            if (onlinePlayers.isEmpty()) {
                 if (forceStop) {
                     clearShutFlag(host._id)
                     stopHost(host, "forced idle shutdown")
@@ -516,13 +517,15 @@ object HostService {
     }
 
     // ---------- Core Logic (no ApplicationCall side-effects) ----------
-    suspend fun Host.getOnlinePlayers(): Int = try {
-        McServerPinger.ping(this.port).players?.online ?: 0
+    suspend fun Host.getOnlinePlayers(): List<ObjectId> = try {
+        McServerPinger.ping(this.port).players?.let { players ->
+            players.sample.map { UUID.fromString(it.id).objectId }
+        } ?: emptyList()
     } catch (cancel: CancellationException) {
         throw cancel
     } catch (t: Throwable) {
         lgr.warn(t) { "Failed to ping host ${this._id}: ${t.message}" }
-        0
+        emptyList()
     }
 
     suspend fun RAccount.createHostLegacy(
@@ -960,7 +963,7 @@ object HostService {
         page: Int,
         pageSize: Int = HOSTS_PER_PAGE,
         myOnly: Boolean = false
-    ): List<Host.Vo> {
+    ): List<Host.BriefVo> {
         val safePage = page.coerceAtLeast(0)
         val safeSize = pageSize.coerceIn(1, 100)
         val hosts = dbcl.find()
@@ -976,6 +979,7 @@ object HostService {
             //官服永远显示
             if (PlayerService.getName(host.ownerId) == "davickk")
                 return@filter true
+            //不是受邀成员 只显示能玩的
             if (!myOnly) {
                 val status = host.status
                 if (status != HostStatus.PLAYABLE && status != HostStatus.STARTED && status != HostStatus.PAUSED) {
@@ -991,16 +995,24 @@ object HostService {
         if (visibleHosts.isEmpty()) return emptyList()
 
 
-        return visibleHosts.map { host ->
-            Host.Vo(
-                _id = host._id,
-                intro = host.intro,
-                name = host.name,
-                ownerName = PlayerService.getName(host.ownerId) ?: "未知玩家",
-                modpackName = ModpackService.getById(host.modpackId)?.name ?: "未知整合包",
-                packVer = host.packVer,
-                port = host.port
-            )
+        return coroutineScope {
+            visibleHosts.map { host ->
+                async {
+                    val modpack = ModpackService.getById(host.modpackId)
+                    val onlinePlayers = host.getOnlinePlayers()
+                    Host.BriefVo(
+                        _id = host._id,
+                        intro = host.intro,
+                        name = host.name,
+                        ownerId = host.ownerId,
+                        modpackName = modpack?.name ?: "未知整合包",
+                        iconUrl = modpack?.iconUrl,
+                        packVer = host.packVer,
+                        port = host.port,
+                        onlinePlayerIds = onlinePlayers
+                    )
+                }
+            }.awaitAll()
         }
     }
 
