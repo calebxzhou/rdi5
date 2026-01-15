@@ -1,6 +1,6 @@
 package calebxzhou.rdi.client.auth
 
-import calebxzhou.rdi.RDI
+import calebxzhou.rdi.RDIClient
 import calebxzhou.rdi.common.serdesJson
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
@@ -24,7 +24,7 @@ data class LocalCredentials(
 ) {
 
     companion object {
-        val file = File(RDI.DIR, "local_credentials.json")
+        val file = File(RDIClient.DIR, "local_credentials.json")
 
         fun read() = try {
             if (!file.exists()){

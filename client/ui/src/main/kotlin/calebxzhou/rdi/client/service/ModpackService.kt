@@ -7,7 +7,7 @@ import calebxzhou.mykotutils.std.humanFileSize
 import calebxzhou.mykotutils.std.openChineseZip
 import calebxzhou.mykotutils.std.sha1
 import calebxzhou.mykotutils.std.toFixed
-import calebxzhou.rdi.RDI
+import calebxzhou.rdi.RDIClient
 import calebxzhou.rdi.client.auth.LocalCredentials
 import calebxzhou.rdi.common.DL_MOD_DIR
 import calebxzhou.rdi.common.model.*
@@ -39,7 +39,7 @@ val selectModpackFile
     )
 
 object ModpackService {
-    val DL_PACKS_DIR = RDI.DIR.resolve("dl-packs").also { it.mkdirs() }
+    val DL_PACKS_DIR = RDIClient.DIR.resolve("dl-packs").also { it.mkdirs() }
     fun getVersionDir(modpackId: ObjectId, verName: String): File {
         return GameService.versionListDir.resolve("${modpackId}_${verName}")
     }
@@ -218,7 +218,7 @@ object ModpackService {
                 }
 
                 HostStatus.STOPPED -> {
-                    server.requestU("host/${_id}/start") {
+                    server._requestU("host/${_id}/start") {
                         toast("正在打开地图 请稍等1~2分钟 可以在“后台”查看启动状态")
                     }
                 }

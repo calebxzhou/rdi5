@@ -17,14 +17,13 @@ val lgr = KotlinLogging.logger {  }
 val logMarker
     get() = {marker: String ->  MarkerFactory.getMarker(marker)}
 fun main(){
-    RDI().start(_root_ide_package_.calebxzhou.rdi.client.ui.frag.TitleFragment())
+    RDIClient.start(_root_ide_package_.calebxzhou.rdi.client.ui.frag.TitleFragment())
 }
-class RDI {
+object RDIClient {
 
-    companion object {
 
         val DIR: File = File(System.getProperty("user.dir")).absoluteFile
-    }
+
 
 
     init {

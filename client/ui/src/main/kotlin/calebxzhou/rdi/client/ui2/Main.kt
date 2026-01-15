@@ -26,7 +26,7 @@ import androidx.navigation.toRoute
 import calebxzhou.mykotutils.std.decodeBase64
 import calebxzhou.mykotutils.std.ioScope
 import calebxzhou.mykotutils.std.jarResource
-import calebxzhou.rdi.RDI
+import calebxzhou.rdi.RDIClient
 import calebxzhou.rdi.client.net.loggedAccount
 import calebxzhou.rdi.client.service.PlayerService
 import calebxzhou.rdi.client.ui2.screen.*
@@ -45,8 +45,8 @@ fun main() = application {
             BitmapPainter(stream.readAllBytes().decodeToImageBitmap())
         }
     }
-    val fontDir = RDI.DIR.resolve("run").resolve("fonts").takeIf { it.exists() }
-        ?: RDI.DIR.resolve("fonts")
+    val fontDir = RDIClient.DIR.resolve("run").resolve("fonts").takeIf { it.exists() }
+        ?: RDIClient.DIR.resolve("fonts")
     val uiFont = fontDir.resolve("1oppo.ttf")
     val artFont = fontDir.resolve("smiley-sans.otf")
     val codeFont = fontDir.resolve("jetbrainsmono.ttf")

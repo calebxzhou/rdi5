@@ -16,7 +16,7 @@ import androidx.compose.ui.unit.sp
 import calebxzhou.mykotutils.std.jarResource
 import calebxzhou.mykotutils.std.javaExePath
 import calebxzhou.mykotutils.std.readAllString
-import calebxzhou.rdi.RDI
+import calebxzhou.rdi.RDIClient
 import calebxzhou.rdi.client.auth.LocalCredentials
 import calebxzhou.rdi.client.net.server
 import calebxzhou.rdi.client.service.PlayerService
@@ -382,13 +382,13 @@ private fun createShortcut(): Result<Unit> {
         val resourcesDir = File(baseDir, "resources").apply { mkdirs() }
         val iconFile = File(resourcesDir, "icon.ico")
         if (!iconFile.exists()) {
-            RDI.jarResource("icon.ico").use { input ->
+            RDIClient.jarResource("icon.ico").use { input ->
                 iconFile.outputStream().use { output -> input.copyTo(output) }
             }
         }
         val args = "-cp \"lib/*;rdi-5-ui.jar\" calebxzhou.rdi.RDIKt"
         fun esc(path: String) = path.replace("'", "''")
-        val template = RDI.jarResource("shortcut_maker.ps1").readAllString()
+        val template = RDIClient.jarResource("shortcut_maker.ps1").readAllString()
         val script = template
             .replace("__JAVAW__", esc(javawPath.absolutePath))
             .replace("__ARGS__", esc(args))

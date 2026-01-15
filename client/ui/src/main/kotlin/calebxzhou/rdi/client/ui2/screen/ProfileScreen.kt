@@ -41,7 +41,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import calebxzhou.mykotutils.std.jarResource
-import calebxzhou.rdi.RDI
+import calebxzhou.rdi.RDIClient
 import calebxzhou.rdi.client.net.loggedAccount
 import calebxzhou.rdi.client.net.server
 import calebxzhou.rdi.client.service.PlayerInfoCache
@@ -73,7 +73,7 @@ fun ProfileScreen(
     val scope = rememberCoroutineScope()
     var showChangeDialog by remember { mutableStateOf(false) }
     val grassIcon = remember {
-        RDI.jarResource("assets/icons/grass_block.png").use { it.readBytes().decodeToImageBitmap() }
+        RDIClient.jarResource("assets/icons/grass_block.png").use { it.readBytes().decodeToImageBitmap() }
     }
     val tooltipState = rememberTooltipState()
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

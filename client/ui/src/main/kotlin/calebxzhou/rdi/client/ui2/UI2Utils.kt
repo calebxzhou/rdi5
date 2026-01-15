@@ -47,15 +47,15 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.TextUnitType
 import androidx.compose.ui.unit.dp
 import calebxzhou.mykotutils.std.jarResource
-import calebxzhou.rdi.RDI
+import calebxzhou.rdi.RDIClient
 import org.jetbrains.skia.Image
 import javax.swing.JOptionPane
 
 /**
  * calebxzhou @ 2026-01-12 21:11
  */
-val DEFAULT_MODPACK_ICON =Image.makeFromEncoded(RDI.jarResource("assets/icons/modpack.png").use { it.readBytes() }).toComposeImageBitmap()
-val DEFAULT_HOST_ICON =Image.makeFromEncoded(RDI.jarResource("assets/icons/host.png").use { it.readBytes() }).toComposeImageBitmap()
+val DEFAULT_MODPACK_ICON =Image.makeFromEncoded(RDIClient.jarResource("assets/icons/modpack.png").use { it.readBytes() }).toComposeImageBitmap()
+val DEFAULT_HOST_ICON =Image.makeFromEncoded(RDIClient.jarResource("assets/icons/host.png").use { it.readBytes() }).toComposeImageBitmap()
 @Composable
 fun alertOk(msg: String){
     val title = "成功"

@@ -11,7 +11,7 @@ import calebxzhou.mykotutils.std.sha1
 import calebxzhou.mykotutils.std.toFixed
 import calebxzhou.rdi.CONF
 import calebxzhou.rdi.client.Const
-import calebxzhou.rdi.RDI
+import calebxzhou.rdi.RDIClient
 import calebxzhou.rdi.client.model.MojangAssetIndexFile
 import calebxzhou.rdi.client.model.MojangAssetObject
 import calebxzhou.rdi.client.model.MojangDownloadArtifact
@@ -50,7 +50,7 @@ object GameService {
     private val lgr by Loggers
     var started = false
         private set
-    val DIR = File(RDI.DIR, "mc").apply { mkdirs() }
+    val DIR = File(RDIClient.DIR, "mc").apply { mkdirs() }
     private val libsDir = DIR.resolve("libraries").apply { mkdirs() }
     private val assetsDir = DIR.resolve("assets").apply { mkdirs() }
     private val assetIndexesDir = assetsDir.resolve("indexes").apply { mkdirs() }
