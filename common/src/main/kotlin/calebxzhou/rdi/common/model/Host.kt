@@ -44,19 +44,23 @@ data class Host(
         val role: Role
     )
     @Serializable
-    data class Vo(
+    data class BriefVo(
         @Contextual
         val _id: ObjectId = ObjectId(),
         val name: String,
         val intro: String = "暂无简介",
         val iconUrl: String? = null,
-        val ownerName: String,
+        @Contextual
+        val ownerId: ObjectId = ObjectId(),
         val modpackName: String,
         val packVer: String,
         var port: Int,
+        val onlinePlayerIds: List<@Contextual ObjectId> = arrayListOf(),
     ){
         companion object{
-            val TEST = Vo(name="啊实打实大苏打实打实的", intro = "都是大大实打实大苏打实打实的得分风格风格风格非官方", ownerName = "点点滴滴都是", modpackName = "测试测试测试测试测试", packVer = "1.0.0", port = 55555)
+            val TEST = BriefVo(name="啊实打实大苏打实打实的", intro = "都是大大实打实大苏打实打实的得分风格风格风格非官方",  modpackName = "测试测试测试测试测试", packVer = "1.0.0", port = 55555, onlinePlayerIds = arrayListOf(
+                ObjectId(),ObjectId(),ObjectId(),ObjectId(),ObjectId(),ObjectId(),ObjectId(),ObjectId(),
+            ))
         }
     }
     @Serializable
