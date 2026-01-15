@@ -2,12 +2,14 @@ package calebxzhou.rdi.master.service
 
 import calebxzhou.mykotutils.log.Loggers
 import calebxzhou.mykotutils.std.deleteRecursivelyNoSymlink
+import calebxzhou.mykotutils.std.displayLength
 import calebxzhou.mykotutils.std.jarResource
 import calebxzhou.mykotutils.std.readAllString
 import calebxzhou.rdi.common.json
 import calebxzhou.rdi.common.model.*
 import calebxzhou.rdi.common.serdesJson
 import calebxzhou.rdi.common.util.ioScope
+import calebxzhou.rdi.common.util.objectId
 import calebxzhou.rdi.common.util.str
 import calebxzhou.rdi.master.DB
 import calebxzhou.rdi.master.HOSTS_DIR
@@ -198,7 +200,7 @@ fun Route.hostRoutes() = route("/host") {
 
 //单独拿出来是为了不走authentication
 fun Route.hostPlayRoutes() = route("/host") {
-    get("/status"){
+    get("/status") {
         val port = param("port").toInt()
         val host = HostService.getByPort(port) ?: throw RequestError("无此地图")
         response(data = host.status)
@@ -249,6 +251,7 @@ object HostService {
         System.getenv("DOCKER_DESKTOP_PATH_PREFIX")?.trimEnd('/') ?: "/run/desktop/mnt/host"
 
     val dbcl = DB.getCollection<Host>("host")
+
     init {
         runBlocking {
             dbcl.createIndex(Indexes.ascending("port"))
@@ -492,7 +495,7 @@ object HostService {
         } else {
             val state = hostStates.computeIfAbsent(hostId) { HostState() }
             state.shutFlag = value
-            lgr.info { "upd shut flag ${hostId} ${value}" }
+            lgr.info { "upd shut flag $hostId $value" }
         }
     }
 
@@ -599,9 +602,9 @@ object HostService {
                 if (world.ownerId != playerId) throw RequestError("不是你的存档")
             } ?: throw RequestError("无此存档")
         } ?: let {
-            if(host.saveWorld){
+            if (host.saveWorld) {
                 createWorld(playerId, null, host.modpackId)
-            }else{
+            } else {
                 null
             }
         }
@@ -615,7 +618,7 @@ object HostService {
             packVer = host.packVer,
             worldId = world?._id,
             port = port,
-            difficulty =host. difficulty,
+            difficulty = host.difficulty,
             allowCheats = host.allowCheats,
             gameMode = host.gameMode,
             levelType = host.levelType,
@@ -638,12 +641,12 @@ object HostService {
     ) {
         ioScope.launch {
             runCatching {
-                if(host.dir.exists()){
+                if (host.dir.exists()) {
                     host.dir.deleteRecursivelyNoSymlink()
                 }
                 host.dir.mkdir()
 
-                host.makeContainer(host.worldId, modpack, version,host.gameRules)
+                host.makeContainer(host.worldId, modpack, version, host.gameRules)
 
                 modpack.installToHost(host.packVer, host) {
                     MailService.changeMail(mailId, "地图创建中", newContent = it)
@@ -746,7 +749,7 @@ object HostService {
                     .withTmpfsOptions(TmpfsOptions().withSizeBytes(512 * 1024 * 1024))
             }
         }
-        val image = when(modpack.mcVer){
+        val image = when (modpack.mcVer) {
             McVersion.V211, McVersion.V201 -> "rdi:j21"
             // V165 V122 V071 -> "rdi:j8"
             else -> throw RequestError("不支持的MC版本")
@@ -756,7 +759,7 @@ object HostService {
             this._id.str,
             mounts,
             image,
-            containerEnv(modpack.mcVer,version.mods,gameRules)
+            containerEnv(modpack.mcVer, version.mods, gameRules)
         )
     }
 
@@ -819,7 +822,7 @@ object HostService {
         if (DockerService.isStarted(current._id.str)) {
             throw RequestError("已经启动过了")
         }
-        if (DockerService.findContainer(current._id.str)==null) {
+        if (DockerService.findContainer(current._id.str) == null) {
             throw RequestError("地图版本过旧 请点击地图详细信息界面的“更新”按钮")
             return
         }
