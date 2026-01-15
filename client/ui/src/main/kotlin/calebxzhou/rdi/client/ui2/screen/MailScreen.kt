@@ -1,48 +1,28 @@
 package calebxzhou.rdi.client.ui2.screen
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.AlertDialog
-import androidx.compose.material.Button
-import androidx.compose.material.Checkbox
-import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
-import androidx.compose.material.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material.*
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import calebxzhou.mykotutils.std.secondsToHumanDateTime
 import calebxzhou.rdi.client.net.server
-import calebxzhou.rdi.client.ui2.MaterialColor
+import calebxzhou.rdi.client.ui2.*
 import calebxzhou.rdi.common.json
 import calebxzhou.rdi.common.model.Mail
 import calebxzhou.rdi.common.model.Response
 import calebxzhou.rdi.common.net.json
-import io.ktor.client.call.body
-import io.ktor.client.request.setBody
-import io.ktor.http.HttpMethod
+import io.ktor.client.call.*
+import io.ktor.client.request.*
+import io.ktor.http.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -51,8 +31,11 @@ import org.bson.types.ObjectId
 /**
  * calebxzhou @ 2026-01-13 23:19
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MailScreen() {
+fun MailScreen(
+    onBack: () -> Unit = {}
+) {
     val scope = rememberCoroutineScope()
     var mails by remember { mutableStateOf<List<Mail.Vo>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
@@ -93,44 +76,32 @@ fun MailScreen() {
 
     val allSelected = mails.isNotEmpty() && selectedIds.size == mails.size
 
-    Column(
-        modifier = Modifier.fillMaxSize().background(Color.White).padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text("信箱", style = MaterialTheme.typography.h6, color = Color.Black)
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(
-                        checked = allSelected,
-                        onCheckedChange = { checked ->
-                            selectedIds = if (checked) {
-                                mails.map { it.id }.toSet()
-                            } else {
-                                emptySet()
-                            }
-                        }
-                    )
-                    Text("全选")
+    MainColumn {
+        TitleRow("信箱", onBack = onBack) {
+            errorMessage?.let { Text(it, color = MaterialTheme.colors.error) }
+            Checkbox(
+                checked = allSelected,
+                onCheckedChange = { checked ->
+                    selectedIds = if (checked) {
+                        mails.map { it.id }.toSet()
+                    } else {
+                        emptySet()
+                    }
                 }
-                Button(
-                    onClick = {
-                        if (selectedIds.isEmpty()) {
-                            errorMessage = "请选择至少一封邮件"
-                        } else {
-                            confirmDelete = true
-                        }
-                    },
-                    colors = androidx.compose.material.ButtonDefaults.buttonColors(
-                        backgroundColor = MaterialColor.RED_900.color,
-                        contentColor = Color.White
-                    )
-                ) {
-                    Text("删除所选")
+            )
+            Text("全选")
+            Spacer(12.wM)
+            CircleIconButton(
+                "\uEA81",
+                "删除所选邮件",
+                enabled = selectedIds.isNotEmpty(),
+                contentPadding = PaddingValues(start = 1.dp, top = 0.dp, end = 0.dp, bottom = 1.dp),
+                bgColor = MaterialColor.RED_900.color
+            ) {
+                if (selectedIds.isEmpty()) {
+                    errorMessage = "请选择至少一封邮件"
+                } else {
+                    confirmDelete = true
                 }
             }
         }
@@ -144,7 +115,7 @@ fun MailScreen() {
             }
         }
 
-        errorMessage?.let { Text(it, color = MaterialTheme.colors.error) }
+
 
         if (!loading && mails.isEmpty()) {
             Text("什么都没有~", color = Color.Black)
@@ -185,7 +156,6 @@ fun MailScreen() {
                             Text(
                                 text = "${mail.intro}...",
                                 style = MaterialTheme.typography.body2,
-                                fontStyle = FontStyle.Italic,
                                 color = MaterialColor.GRAY_500.color,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -194,7 +164,7 @@ fun MailScreen() {
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Column(horizontalAlignment = Alignment.End) {
-                        Text("来自 ${mail.senderName}", style = MaterialTheme.typography.caption)
+                        Text(mail.senderName, style = MaterialTheme.typography.caption)
                         Text(
                             text = mail.id.timestamp.secondsToHumanDateTime,
                             style = MaterialTheme.typography.caption
