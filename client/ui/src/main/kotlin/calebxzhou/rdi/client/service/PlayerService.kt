@@ -4,23 +4,22 @@ import calebxzhou.mykotutils.hwspec.HwSpec
 import calebxzhou.mykotutils.std.Ok
 import calebxzhou.rdi.client.auth.LocalCredentials
 import calebxzhou.rdi.client.auth.LoginInfo
+import calebxzhou.rdi.client.net.loggedAccount
+import calebxzhou.rdi.client.net.server
+import calebxzhou.rdi.client.service.PlayerService.getPlayerInfos
+import calebxzhou.rdi.client.ui.frag.ProfileFragment
+import calebxzhou.rdi.client.ui.go
 import calebxzhou.rdi.common.exception.RequestError
 import calebxzhou.rdi.common.model.RAccount
 import calebxzhou.rdi.common.model.Response
 import calebxzhou.rdi.common.serdesJson
 import calebxzhou.rdi.lgr
-import calebxzhou.rdi.client.net.loggedAccount
-import calebxzhou.rdi.client.net.server
-import calebxzhou.rdi.client.service.PlayerService.getPlayerInfo
-import calebxzhou.rdi.client.ui.frag.ProfileFragment
-import calebxzhou.rdi.client.ui.component.alertErr
-import calebxzhou.rdi.client.ui.component.alertOk
-import calebxzhou.rdi.client.ui.go
-import com.github.benmanes.caffeine.cache.AsyncLoadingCache
 import com.github.benmanes.caffeine.cache.Caffeine
 import io.ktor.client.call.*
 import io.ktor.http.*
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.bson.types.ObjectId
 import java.util.concurrent.TimeUnit
 
@@ -89,7 +88,7 @@ suspend fun playerLogin(usr: String, pwd: String): Result<RAccount> = runCatchin
         }
     }
     account.jwt = resp.headers["jwt"]
-    val loginInfo = LoginInfo(account.qq, account.pwd)
+    val loginInfo = LoginInfo(account.qq, account.name,account.pwd)
     creds.loginInfos += account._id to loginInfo
     creds.save()
     loggedAccount = account
@@ -99,7 +98,27 @@ suspend fun playerLogin(usr: String, pwd: String): Result<RAccount> = runCatchin
 
 object PlayerService {
 
+    suspend fun login(usr: String, pwd: String): Result<RAccount> = runCatching {
+        val creds = LocalCredentials.read()
+        val spec = serdesJson.encodeToString<HwSpec>(HwSpec.get())
 
+        val resp = server.createRequest(
+            path = "player/login",
+            method = HttpMethod.Post,
+            params = mutableMapOf("usr" to usr, "pwd" to pwd, "spec" to spec)
+        )
+        val account = resp.body<Response<RAccount>>().run {
+            data ?: run {
+                throw RequestError(msg)
+            }
+        }
+        account.jwt = resp.headers["jwt"]
+        val loginInfo = LoginInfo(account.qq, account.name,account.pwd)
+        creds.loginInfos += account._id to loginInfo
+        creds.save()
+        loggedAccount = account
+        account
+    }
     suspend fun getJwt(usr: String, pwd: String): String {
         return server.makeRequest<String>(
             "player/jwt",
