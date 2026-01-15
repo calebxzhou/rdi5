@@ -74,6 +74,7 @@ val Host.dir get() = HOSTS_DIR.resolve(_id.str)
 // ---------- Routing DSL (mirrors teamRoutes style) ----------
 fun Route.hostRoutes() = route("/host") {
     route("") {
+        //旧版接口 保持兼容
         post {
             call.player().createHostLegacy(
                 idParam("modpackId"),
@@ -84,7 +85,7 @@ fun Route.hostRoutes() = route("/host") {
                 param("gameMode").toInt(),
                 param("levelType"),
                 false,
-                param("gameRules").let { serdesJson.decodeFromString<MutableMap<String,String>>(it)}
+                param("gameRules").let { serdesJson.decodeFromString<MutableMap<String, String>>(it) }
             )
             ok()
         }
@@ -530,7 +531,7 @@ object HostService {
         gameMode: Int,
         levelType: String,
         allowCheats: Boolean,
-        gameRules: MutableMap<String,String>
+        gameRules: MutableMap<String, String>
     ) {
         val playerId = _id
         if (getByOwner(playerId).size > 3) {
