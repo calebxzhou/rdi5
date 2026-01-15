@@ -54,9 +54,7 @@ import calebxzhou.rdi.client.ui2.asIconText
 import calebxzhou.rdi.client.ui2.comp.HeadButton
 import calebxzhou.rdi.common.model.RAccount
 import io.ktor.http.HttpMethod
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /**
  * calebxzhou @ 2026-01-14 19:49
@@ -68,6 +66,7 @@ fun ProfileScreen(
     onOpenWardrobe: (() -> Unit)? = null,
     onOpenHostList: (() -> Unit)? = null,
     onOpenMail: (() -> Unit)? = null,
+    onOpenModpackManage: (() -> Unit)? = null,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -82,7 +81,7 @@ fun ProfileScreen(
                 HeadButton(loggedAccount._id)
                 SimpleTooltip("MC资源及整合包管理") {
                     TextButton(
-                        onClick = {},
+                        onClick = { onOpenModpackManage?.invoke() },
                         shape = CircleShape,
                         modifier = Modifier.size(36.dp),
                         contentPadding = PaddingValues(0.dp),
