@@ -3,6 +3,7 @@ package calebxzhou.rdi.client.ui2.comp
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -11,9 +12,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.*
 import calebxzhou.rdi.client.service.PlayerInfoCache
 import calebxzhou.rdi.common.net.httpRequest
 import io.ktor.client.request.*
@@ -30,8 +29,19 @@ import org.jetbrains.skia.Image
 @Composable
 fun HeadButton(
     uid: ObjectId,
+    avatarSize: Dp = 24.dp,
+    nameFontSize: TextUnit = TextUnit.Unspecified,
+    showName: Boolean = true,
     onClick: () -> Unit = {}
 ) {
+    val paddingSize = 2.dp
+    val spacerSize = 6.dp
+    val baseTextStyle = MaterialTheme.typography.body2
+    val textStyle = if (nameFontSize == TextUnit.Unspecified) {
+        baseTextStyle
+    } else {
+        baseTextStyle.copy(fontSize = nameFontSize)
+    }
     var name by remember { mutableStateOf("载入中...") }
     var skinImage by remember { mutableStateOf<ImageBitmap?>(null) }
 
@@ -55,15 +65,19 @@ fun HeadButton(
         }
     }
 
+    val rowModifier = if (showName) {
+        Modifier
+    } else {
+        Modifier
+    }
     Row(
-        modifier = Modifier
-            .defaultMinSize(minWidth = 120.dp)
+        modifier = rowModifier
             .clickable(onClick = onClick)
-            .padding(horizontal = 8.dp, vertical = 8.dp),
+            .padding(horizontal = paddingSize, vertical = paddingSize),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Avatar
-        Box(modifier = Modifier.size(24.dp)) {
+        Box(modifier = Modifier.size(avatarSize)) {
             val img = skinImage
             if (img != null) {
                 Canvas(modifier = Modifier.fillMaxSize()) {
@@ -93,8 +107,9 @@ fun HeadButton(
             }
         }
 
-        Spacer(modifier = Modifier.width(6.dp))
-
-        Text(text = name)
+        if (showName) {
+            Spacer(modifier = Modifier.width(spacerSize))
+            Text(text = name, style = textStyle)
+        }
     }
 }
