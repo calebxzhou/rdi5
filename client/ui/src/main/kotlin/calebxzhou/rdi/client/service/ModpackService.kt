@@ -187,7 +187,7 @@ object ModpackService {
                 return@ioTask
             }
         }
-        val modpack = server.makeRequest<ModpackDetailedVo>("modpack/${modpackId}").run {
+        val modpack = server.makeRequest<Modpack.DetailVo>("modpack/${modpackId}").run {
             data ?: run {
                 alertErr("获取地图整合包信息失败，无法游玩: ${this.msg}")
                 return@ioTask
@@ -250,9 +250,8 @@ object ModpackService {
 
     data class LocalDir(
         val dir: File,
-        val modpackId: ObjectId,
-        val modpackName: String,
-        val verName: String
+        val verName: String,
+        val vo: Modpack.BriefVo
     )
     suspend fun getLocalPackDirs(): List<LocalDir> = coroutineScope {
         val pattern = Regex("^([0-9a-fA-F]{24})_(.+)$")
@@ -264,13 +263,13 @@ object ModpackService {
         val deferred = dirs.mapNotNull { dir ->
             val match = pattern.matchEntire(dir.name) ?: return@mapNotNull null
             val (idStr, verName) = match.destructured
-            val packId = runCatching { ObjectId(idStr) }.getOrNull() ?: return@mapNotNull null
             async {
-                val packName = server.makeRequest<String>("modpack/${idStr}/name").data ?: "未知整合包"
-                LocalDir(dir, packId, packName, verName)
+                val vo = server.makeRequest<Modpack.BriefVo>("modpack/${idStr}/brief").data ?: Modpack.BriefVo()
+                LocalDir(dir,verName, vo)
             }
         }
 
         deferred.awaitAll()
     }
 }
+
