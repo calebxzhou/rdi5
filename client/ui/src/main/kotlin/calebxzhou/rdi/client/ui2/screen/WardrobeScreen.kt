@@ -1,6 +1,5 @@
 package calebxzhou.rdi.client.ui2.screen
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -8,20 +7,18 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.*
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import calebxzhou.rdi.client.model.BSSkinData
 import calebxzhou.rdi.client.service.SkinService
-import calebxzhou.rdi.client.ui2.alertErr
-import calebxzhou.rdi.client.ui2.alertOk
-import calebxzhou.rdi.client.ui2.alertWarn
+import calebxzhou.rdi.client.ui2.*
 import calebxzhou.rdi.client.ui2.comp.HttpImage
 import calebxzhou.rdi.common.net.httpRequest
 import calebxzhou.rdi.common.serdesJson
@@ -33,8 +30,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
-import org.jetbrains.skia.Image
-import java.net.URL
 
 private enum class AlertKind { OK, WARN, ERR }
 
@@ -44,8 +39,11 @@ private data class AlertPayload(
     val key: Int
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WardrobeScreen() {
+fun WardrobeScreen(
+    onBack: (() -> Unit)={}
+) {
     val urlPrefix = "https://littleskin.cn"
     val scope = rememberCoroutineScope()
     val gridState = rememberLazyGridState()
@@ -124,16 +122,9 @@ fun WardrobeScreen() {
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)
-            ) {
+    MainBox {
+        MainColumn{
+            TitleRow("衣柜", onBack = onBack){
                 val interactionSource = remember { MutableInteractionSource() }
                 BasicTextField(
                     value = keyword,
@@ -141,7 +132,7 @@ fun WardrobeScreen() {
                     singleLine = true,
                     textStyle = MaterialTheme.typography.body1,
                     modifier = Modifier
-                        .weight(1f)
+                        .width(200.dp)
                         .height(36.dp)
                         .onPreviewKeyEvent { event ->
                             if (event.type == KeyEventType.KeyUp && event.key == Key.Enter) {
@@ -163,26 +154,25 @@ fun WardrobeScreen() {
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                     )
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(
-                        checked = capeMode,
-                        onCheckedChange = {
-                            capeMode = it
-                            refreshSkins()
-                        }
-                    )
-                    Text("披风")
-                }
-                Button(onClick = { showMojangDialog = true }) {
-                    Text("导入正版")
+                Checkbox(
+                    checked = capeMode,
+                    onCheckedChange = {
+                        capeMode = it
+                        refreshSkins()
+                    }
+                )
+                Text("披风")
+                Spacer(8.wM)
+                CircleIconButton("\uDB81\uDDB3","导入正版皮肤/披风") {
+                    showMojangDialog = true
                 }
             }
 
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(150.dp),
                 state = gridState,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
                 modifier = Modifier.fillMaxSize()
             ) {
                 itemsIndexed(
