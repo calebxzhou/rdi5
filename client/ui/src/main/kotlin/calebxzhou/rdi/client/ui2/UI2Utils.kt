@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -165,6 +166,9 @@ val String.asIconText
     }
 val Int.wM: Modifier
     get() = Modifier.width(this.dp)
+
+val Int.hM: Modifier
+    get() = Modifier.height(this.dp)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SimpleTooltip(text: String, position: TooltipAnchorPosition = TooltipAnchorPosition.Above, content: @Composable (() -> Unit)){
