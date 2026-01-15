@@ -156,8 +156,10 @@ fun ProfileScreen(
 
 @Composable
 private fun ChangeProfileDialog(
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onSuccess: () -> Unit
 ) {
+    var showPassword by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val account = loggedAccount
     var name by remember { mutableStateOf(account.name) }
