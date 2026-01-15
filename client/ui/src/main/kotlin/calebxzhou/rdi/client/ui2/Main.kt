@@ -99,6 +99,7 @@ fun main() = application {
                 "wd" -> Wardrobe
                 "mail" -> Mail
                 "hl" -> HostList
+                "wl" -> WorldList
                 "ml" -> ModpackList
                 "mm" -> ModpackManage
                 else -> Login
@@ -115,9 +116,20 @@ fun main() = application {
                 }
                 composable<Wardrobe> { WardrobeScreen(onBack = { navController.navigate(Profile) }) }
                 composable<Mail> { MailScreen(onBack = { navController.navigate(Profile) }) }
-                composable<HostList> { HostListScreen(onBack = { navController.navigate(Profile) }) }
+                composable<HostList> {
+                    HostListScreen(
+                        onBack = { navController.navigate(Profile) },
+                        onOpenWorldList = { navController.navigate(WorldList) }
+                    )
+                }
+                composable<WorldList> {
+                    WorldListScreen(onBack = { navController.navigate(HostList) })
+                }
                 composable<HostCreate> {
-                    HostCreateScreen(it.toRoute())
+                    HostCreateScreen(
+                        it.toRoute(),
+                        onBack = { navController.popBackStack() }
+                    )
                 }
                 composable<Profile> {
                     ProfileScreen(
@@ -128,13 +140,18 @@ fun main() = application {
                         },
                         onOpenWardrobe = { navController.navigate(Wardrobe) },
                         onOpenHostList = { navController.navigate(HostList) },
-                        onOpenMail = {navController.navigate(Mail)}
+                        onOpenMail = { navController.navigate(Mail) },
+                        onOpenModpackManage = { navController.navigate(ModpackManage) }
                     )
                 }
                 composable<ModpackList> {
                     ModpackListScreen(onOpenManage = { navController.navigate(ModpackManage) })
                 }
-                composable<ModpackManage> { ModpackManageScreen() }
+                composable<ModpackManage> {
+                    ModpackManageScreen(
+                        onOpenModpackList = { navController.navigate(ModpackList) }
+                    )
+                }
             }
         }
     }
