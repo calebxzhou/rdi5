@@ -26,16 +26,52 @@ import java.util.concurrent.TimeUnit
 
 
 object PlayerInfoCache {
-    // Async cache: returns futures and loads off-thread
-    private val cache: AsyncLoadingCache<ObjectId, RAccount.Dto> = Caffeine.newBuilder()
+    private val cache = Caffeine.newBuilder()
         .expireAfterWrite(30L, TimeUnit.MINUTES)
-        .buildAsync { key: ObjectId ->
-            // Caffeine will run this on a separate executor; safe to block here
-            runBlocking { getPlayerInfo(key) }
+        .build<ObjectId, RAccount.Dto>()
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val pending = LinkedHashMap<ObjectId, CompletableDeferred<RAccount.Dto>>()
+    private val mutex = Mutex()
+    private var batchJob: Job? = null
+    operator fun minusAssign(uid: ObjectId) {
+        cache.invalidate(uid)
+    }
+    suspend operator fun get(uid: ObjectId): RAccount.Dto {
+        return getAsync(uid)
+    }
+    suspend fun getAsync(uid: ObjectId): RAccount.Dto {
+        cache.getIfPresent(uid)?.let { return it }
+        val deferred = mutex.withLock {
+            cache.getIfPresent(uid)?.let { return it }
+            pending[uid] ?: CompletableDeferred<RAccount.Dto>().also { pending[uid] = it }
         }
-
-    operator fun get(uid: ObjectId): RAccount.Dto {
-        return cache.get(uid).join()
+        scheduleBatch()
+        return deferred.await()
+    }
+    private fun scheduleBatch() {
+        if (batchJob?.isActive == true) return
+        batchJob = scope.launch {
+            while (true) {
+                delay(50)
+                val batch = mutex.withLock {
+                    if (pending.isEmpty()) return@withLock emptyMap()
+                    val snapshot = pending.toMap()
+                    pending.clear()
+                    snapshot
+                }
+                if (batch.isEmpty()) break
+                val ids = batch.keys.toList()
+                val infos = runCatching { getPlayerInfos(ids) }.getOrNull()
+                val infoMap = infos?.associateBy { it.id }.orEmpty()
+                ids.forEach { id ->
+                    val info = infoMap[id] ?: RAccount.Dto(id, RAccount.DEFAULT.name, RAccount.Cloth())
+                    cache.put(id, info)
+                    batch[id]?.complete(info)
+                }
+                val hasMore = mutex.withLock { pending.isNotEmpty() }
+                if (!hasMore) break
+            }
+        }
     }
 }
 suspend fun playerLogin(usr: String, pwd: String): Result<RAccount> = runCatching {
@@ -78,6 +114,17 @@ object PlayerService {
         } catch (e: Exception) {
             lgr.warn("获取玩家信息失败", e)
             RAccount.DEFAULT.dto
+        }
+    }
+    suspend fun getPlayerInfos(uids: List<ObjectId>): List<RAccount.Dto> {
+        if (uids.isEmpty()) return emptyList()
+        return try {
+            val idsParam = uids.joinToString("\n") { it.toHexString() }
+            server.makeRequest<List<RAccount.Dto>>("player/infos", params = mapOf("ids" to idsParam)).data
+                ?: emptyList()
+        } catch (e: Exception) {
+            lgr.warn("批量获取玩家信息失败", e)
+            emptyList()
         }
     }
     suspend fun setCloth(cloth: RAccount.Cloth) : Result<Unit> = runCatching {
