@@ -183,30 +183,16 @@ private fun ChangeProfileDialog(
                     submitting = true
                     errorMessage = null
                     scope.launch {
-                        val response = withContext(Dispatchers.IO) {
-                            runCatching {
-                                server.makeRequest<Unit>("player/profile", HttpMethod.Put, params)
-                            }.getOrNull()
+                        runCatching {
+                            server.makeRequest<Unit>("player/profile", HttpMethod.Put, params)
+                            loggedAccount = PlayerService.login(account.qq, pwd).getOrThrow()
+                            PlayerInfoCache -= loggedAccount._id
+                        }.getOrElse {
+                            errorMessage = "修改失败: ${it.message}"
+                            return@launch
                         }
                         submitting = false
-                        if (response == null) {
-                            errorMessage = "修改失败"
-                            return@launch
-                        }
-                        if (!response.ok) {
-                            errorMessage = response.msg
-                            return@launch
-                        }
-                        val finalPwd = if (pwd.isEmpty()) account.pwd else pwd
-                        loggedAccount = RAccount(
-                            account._id,
-                            name,
-                            finalPwd,
-                            account.qq,
-                            account.score,
-                            account.cloth
-                        )
-                        onDismiss()
+                        onSuccess()
                     }
                 }
             ) {
