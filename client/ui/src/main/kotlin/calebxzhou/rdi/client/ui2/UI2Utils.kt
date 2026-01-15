@@ -1,7 +1,6 @@
 package calebxzhou.rdi.client.ui2
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -21,6 +20,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.AlertDialog
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.MaterialTheme
+import androidx.compose.material.SnackbarHost
+import androidx.compose.material.SnackbarHostState
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -260,4 +261,11 @@ fun TitleRow(title: String, onBack: () -> Unit, content: @Composable (RowScope.(
             content()
         }
     }
+}
+@Composable
+fun BoxScope.BottomSnakebar(state: SnackbarHostState){
+    SnackbarHost(
+        hostState = state,
+        modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp)
+    )
 }
