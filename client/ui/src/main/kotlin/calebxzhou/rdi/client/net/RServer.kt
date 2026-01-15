@@ -3,6 +3,13 @@ package calebxzhou.rdi.client.net
 import calebxzhou.mykotutils.ktor.DownloadProgress
 import calebxzhou.mykotutils.ktor.downloadFileFrom
 import calebxzhou.rdi.client.Const
+import calebxzhou.rdi.client.ui.component.alertErr
+import calebxzhou.rdi.client.ui.component.closeLoading
+import calebxzhou.rdi.client.ui.component.showLoading
+import calebxzhou.rdi.client.ui.frag.LoginFragment
+import calebxzhou.rdi.client.ui.frag.UpdateFragment
+import calebxzhou.rdi.client.ui.goto
+import calebxzhou.rdi.client.ui.nowFragment
 import calebxzhou.rdi.common.exception.RequestError
 import calebxzhou.rdi.common.model.RAccount
 import calebxzhou.rdi.common.model.Response
@@ -12,13 +19,6 @@ import calebxzhou.rdi.common.net.ktorClient
 import calebxzhou.rdi.common.serdesJson
 import calebxzhou.rdi.common.util.ioTask
 import calebxzhou.rdi.lgr
-import calebxzhou.rdi.client.ui.component.alertErr
-import calebxzhou.rdi.client.ui.component.closeLoading
-import calebxzhou.rdi.client.ui.component.showLoading
-import calebxzhou.rdi.client.ui.frag.LoginFragment
-import calebxzhou.rdi.client.ui.frag.UpdateFragment
-import calebxzhou.rdi.client.ui.goto
-import calebxzhou.rdi.client.ui.nowFragment
 import io.ktor.client.call.*
 import io.ktor.client.plugins.compression.*
 import io.ktor.client.plugins.sse.*
@@ -26,13 +26,13 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.sse.*
-import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.*
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
-import java.nio.file.Path
 import java.net.ConnectException
+import java.nio.file.Path
 
 val server
     get() = RServer.now
@@ -138,7 +138,8 @@ class RServer(
         header(HttpHeaders.Authorization, "Bearer ${loggedAccount.jwt}")
     }
 
-    inline fun requestU(
+    @Deprecated("")
+    inline fun _requestU(
         path: String,
         method: HttpMethod = HttpMethod.Post,
         params: Map<String, Any> = mapOf(),
@@ -146,9 +147,11 @@ class RServer(
         body: String? = null,
         crossinline onErr: (Response<Unit>) -> Unit = { alertErr(it.msg) },
         crossinline onOk: (Response<Unit>) -> Unit,
-    ) = request<Unit>(path, method, params, showLoading, body, onErr, onOk)
+    ) = _request<Unit>(path, method, params, showLoading, body, onErr, onOk)
 
-    inline fun <reified T> request(
+
+    @Deprecated("")
+    inline fun <reified T> _request(
         path: String,
         method: HttpMethod = HttpMethod.Get,
         params: Map<String, Any> = mapOf(),
@@ -186,6 +189,7 @@ class RServer(
 
         }
     }
+
 
     suspend inline fun download(
         path: String,
@@ -254,4 +258,46 @@ class RServer(
     }
 
 
+}
+
+inline fun CoroutineScope.rdiRequestU(
+    path: String,
+    method: HttpMethod = HttpMethod.Post,
+    params: Map<String, Any> = mapOf(),
+    body: String? = null,
+    crossinline onDone: () -> Unit = {},
+    crossinline onErr: (Throwable) -> Unit,
+    crossinline onOk: (Response<Unit>) -> Unit,
+) = rdiRequest<Unit>(path, method, params, body, onDone, onErr, onOk)
+
+inline fun <reified T> CoroutineScope.rdiRequest(
+    path: String,
+    method: HttpMethod = HttpMethod.Get,
+    params: Map<String, Any> = mapOf(),
+    body: String? = null,
+    crossinline onDone: () -> Unit = {},
+    crossinline onErr: (Throwable) -> Unit,
+    crossinline onOk: (Response<T>) -> Unit,
+) = this.launch {
+    runCatching {
+        val req = withContext(Dispatchers.IO) {
+            server.makeRequest<T>(path, method, params) {
+                body?.let {
+                    json()
+                    setBody(it)
+                }
+            }
+        }
+        if (req.ok) {
+            onOk(req)
+        } else {
+            lgr.error { "req error ${req.msg}" }
+            throw RequestError(req.msg)
+        }
+    }.getOrElse {
+
+        lgr.error(it) { "请求失败 " }
+        onErr(it)
+    }
+    onDone()
 }
