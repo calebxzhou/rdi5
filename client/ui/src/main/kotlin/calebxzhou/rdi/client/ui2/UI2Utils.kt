@@ -1,19 +1,34 @@
 package calebxzhou.rdi.client.ui2
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.AlertDialog
+import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.PlainTooltip
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,6 +43,8 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.TextUnitType
 import androidx.compose.ui.unit.dp
 import calebxzhou.mykotutils.std.jarResource
 import calebxzhou.rdi.RDI
@@ -145,3 +162,102 @@ val String.asIconText
             i += charCount
         }
     }
+val Int.wM: Modifier
+    get() = Modifier.width(this.dp)
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SimpleTooltip(text: String, position: TooltipAnchorPosition = TooltipAnchorPosition.Above, content: @Composable (() -> Unit)){
+    val state = rememberTooltipState()
+    TooltipBox(
+        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+            position,
+            4.dp
+        ),
+        tooltip = {
+            PlainTooltip(
+                caretShape = null,
+                containerColor = MaterialColor.GRAY_200.color
+            ) {
+                Text(text, fontSize = TextUnit(12f, TextUnitType.Sp),color = Color.Black)
+            }
+        },
+        state = state
+    ) {
+        content()
+    }
+}
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CircleIconButton(
+    icon: String,
+    tooltip: String? = "",
+    tooltipAnchorPosition: TooltipAnchorPosition = TooltipAnchorPosition.Below,
+    size: Int = 36,
+    contentPadding: PaddingValues = ButtonDefaults.TextButtonContentPadding,
+    bgColor: Color = MaterialTheme.colors.primary,
+    iconColor: Color = Color.White,
+    enabled: Boolean = true,
+    onClick: () -> Unit
+){
+    TextButton(
+        onClick = onClick,
+        shape = CircleShape,
+        modifier = Modifier.size(size.dp),
+        colors = ButtonDefaults.buttonColors(
+            backgroundColor = bgColor,
+            contentColor = iconColor
+        ),
+        contentPadding = contentPadding,
+        enabled = enabled
+    ){
+        val drawText = @Composable  { Text(icon.asIconText) }
+        tooltip?.let { tooltip ->
+            SimpleTooltip(tooltip,tooltipAnchorPosition){
+                drawText()
+            }
+        }?: drawText()
+
+    }
+}
+@Composable
+fun BackButton(onClick: () ->Unit){
+    TextButton(
+        onClick = { onClick.invoke() },
+        shape = CircleShape,
+        modifier = Modifier.size(32.dp),
+        colors = ButtonDefaults.buttonColors(
+            contentColor = MaterialColor.WHITE.color
+        )
+    ) {
+        Text("\uF060".asIconText)
+    }
+}
+@Composable
+fun MainColumn(content: @Composable (ColumnScope.() -> Unit)){
+    Column(modifier = Modifier.fillMaxSize().padding(start=24.dp, end = 24.dp, top=12.dp, bottom=8.dp)){ content() }
+}
+
+@Composable
+fun MainBox(content: @Composable (BoxScope.() -> Unit)){
+    Box(modifier = Modifier.fillMaxSize() ){ content() }
+}
+@Composable
+fun TitleRow(title: String, onBack: () -> Unit, content: @Composable (RowScope.() -> Unit)){
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            BackButton { onBack() }
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.h6
+            )
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            content()
+        }
+    }
+}
