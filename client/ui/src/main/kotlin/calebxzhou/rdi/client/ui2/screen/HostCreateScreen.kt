@@ -36,17 +36,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import calebxzhou.mykotutils.std.millisToHumanDateTime
+import calebxzhou.mykotutils.std.secondsToHumanDateTime
 import calebxzhou.rdi.client.Const
-import calebxzhou.rdi.client.net.server
-import calebxzhou.rdi.common.json
+import calebxzhou.rdi.client.net.rdiRequest
+import calebxzhou.rdi.client.net.rdiRequestU
+import calebxzhou.rdi.client.ui2.MainColumn
+import calebxzhou.rdi.client.ui2.TitleRow
 import calebxzhou.rdi.common.model.AllGameRules
 import calebxzhou.rdi.common.model.GameRule
 import calebxzhou.rdi.common.model.GameRuleValueType
+import calebxzhou.rdi.common.model.Host
 import calebxzhou.rdi.common.model.World
+import calebxzhou.rdi.common.serdesJson
 import io.ktor.http.HttpMethod
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.bson.types.ObjectId
 
 private const val ID_CREATE_NEW_SAVE = 100
@@ -60,11 +63,15 @@ private data class WorldOption(
 
 @Composable
 fun HostCreateScreen(
-    arg: HostCreate
+    arg: HostCreate,
+    onBack: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     val overrideRules = remember { mutableStateMapOf<String, String>() }
 
+    var hostName by remember { mutableStateOf("") }
+    var modpackIdText by remember { mutableStateOf(arg.modpackId) }
+    var packVerText by remember { mutableStateOf(arg.packVer) }
     var worlds by remember { mutableStateOf<List<World>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -80,26 +87,22 @@ fun HostCreateScreen(
     var levelType by remember { mutableStateOf(if (arg.skyblock) "skyblockbuilder:skyblock" else "minecraft:normal") }
     var levelChoice by remember { mutableStateOf(if (arg.skyblock) 2 else 0) }
 
-    LaunchedEffect(arg.modpackId, arg.packVer) {
+    LaunchedEffect(Unit) {
         loading = true
-        errorMessage = null
-        val response = withContext(Dispatchers.IO) {
-            runCatching { server.makeRequest<List<World>>("world") }.getOrNull()
-        }
-        if (response == null) {
-            errorMessage = "加载存档失败"
-        } else if (!response.ok) {
-            errorMessage = response.msg
-        } else {
-            worlds = response.data ?: emptyList()
-        }
-        loading = false
+        scope.rdiRequest<List<World>>(
+            "world",
+            onErr = { "无法载入存档数据: ${it.message}" },
+            onOk = { resp ->
+                worlds = resp.data ?: emptyList()
+            },
+            onDone = { loading = false }
+        )
     }
 
     val worldOptions = remember(worlds) {
         buildList {
             worlds.forEachIndexed { index, world ->
-                val label = "${world.name} (${(world._id.timestamp * 1000L).millisToHumanDateTime})"
+                val label = "${world.name} (${(world._id.timestamp).secondsToHumanDateTime})"
                 add(WorldOption(index, label, world))
             }
             if (worlds.size < 5) {
@@ -115,12 +118,20 @@ fun HostCreateScreen(
         }
     }
 
-    Column(
-        modifier = Modifier.fillMaxSize().padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Text("创建新地图", style = MaterialTheme.typography.h5)
-        Text("整合包：${arg.modpackName} V${arg.packVer}", style = MaterialTheme.typography.body1)
+    MainColumn {
+        TitleRow("创建新地图",onBack){
+
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("主机名称")
+            OutlinedTextField(
+                value = hostName,
+                onValueChange = { hostName = it },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Text("整合包：${arg.modpackName} ${arg.packVer}")
+        }
 
         if (loading) {
             Row(
@@ -219,42 +230,51 @@ fun HostCreateScreen(
                 enabled = !submitting,
                 onClick = {
                     if (submitting) return@Button
-                    submitting = true
                     statusMessage = null
-                    scope.launch {
-                        val selectedWorld = worldOptions.firstOrNull { it.id == selectedWorldId }?.world
-                        val params = mutableMapOf<String, Any>(
-                            "modpackId" to arg.modpackId,
-                            "packVer" to arg.packVer,
-                            "difficulty" to difficulty,
-                            "gameMode" to gameMode,
-                            "levelType" to levelType,
-                            "gameRules" to overrideRules.toMap().json
-                        )
-                        if (selectedWorld != null) {
-                            params += "useWorld" to selectedWorld._id
-                            params += "worldOpr" to "use"
-                        } else if (selectedWorldId == ID_CREATE_NEW_SAVE) {
-                            params += "worldOpr" to "create"
-                        } else if (selectedWorldId == ID_NO_SAVE) {
-                            params += "worldOpr" to "no"
-                        }
-
-                        val response = withContext(Dispatchers.IO) {
-                            runCatching {
-                                server.makeRequest<Unit>("host", HttpMethod.Post, params)
-                            }.getOrNull()
-                        }
-
-                        submitting = false
-                        if (response == null) {
-                            statusMessage = "创建失败，请检查网络"
-                        } else if (!response.ok) {
-                            statusMessage = response.msg
-                        } else {
-                            showResult = "已提交创建请求 完成后信箱通知你"
-                        }
+                    val trimmedName = hostName.trim()
+                    if (trimmedName.isEmpty()) {
+                        statusMessage = "请输入主机名称"
+                        return@Button
                     }
+                    val trimmedModpackId = modpackIdText.trim()
+                    if (!ObjectId.isValid(trimmedModpackId)) {
+                        statusMessage = "整合包 ID 格式不正确"
+                        return@Button
+                    }
+                    val trimmedPackVer = packVerText.trim()
+                    if (trimmedPackVer.isEmpty()) {
+                        statusMessage = "请输入整合包版本"
+                        return@Button
+                    }
+                    submitting = true
+                    val selectedWorld = worldOptions.firstOrNull { it.id == selectedWorldId }?.world
+                    val saveWorld = selectedWorldId != ID_NO_SAVE
+                    val worldId = when {
+                        selectedWorld != null -> selectedWorld._id
+                        selectedWorldId == ID_CREATE_NEW_SAVE -> null
+                        else -> null
+                    }
+                    val createDto = Host.CreateDto(
+                        name = trimmedName,
+                        modpackId = ObjectId(trimmedModpackId),
+                        packVer = trimmedPackVer,
+                        saveWorld = saveWorld,
+                        worldId = worldId,
+                        difficulty = difficulty,
+                        gameMode = gameMode,
+                        levelType = levelType,
+                        allowCheats = false,
+                        gameRules = overrideRules.toMutableMap()
+                    )
+                    val body = serdesJson.encodeToString(createDto)
+                    scope.rdiRequestU(
+                        path = "host/v2",
+                        method = HttpMethod.Post,
+                        body = body,
+                        onErr = { statusMessage = "创建失败: ${it.message}" },
+                        onOk = { showResult = "已提交创建请求 完成后信箱通知你" },
+                        onDone = { submitting = false }
+                    )
                 }
             ) {
                 Text(if (submitting) "创建中..." else "创建")
@@ -409,6 +429,7 @@ private fun GameRuleItem(
                             }
                         )
                     }
+
                     GameRuleValueType.INTEGER -> {
                         OutlinedTextField(
                             value = textValue,
