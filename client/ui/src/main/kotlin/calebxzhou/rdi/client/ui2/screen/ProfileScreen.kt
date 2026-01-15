@@ -138,7 +138,23 @@ private fun ChangeProfileDialog(
                     label = { Text("新密码 留空则不修改") },
                     singleLine = true,
                     enabled = !submitting,
-                    visualTransformation = PasswordVisualTransformation(),
+                    visualTransformation = if (showPassword) {
+                        VisualTransformation.None
+                    } else {
+                        PasswordVisualTransformation()
+                    },
+                    trailingIcon = {
+                        Text(
+                            text = "\uDB80\uDE08".asIconText,
+                            style = MaterialTheme.typography.h6.copy(
+                                fontFamily = CodeFontFamily,
+                                fontSize = 20.sp
+                            ),
+                            modifier = Modifier
+                                .padding(end = 8.dp)
+                                .clickable { showPassword = !showPassword }
+                        )
+                    },
                     modifier = Modifier.fillMaxWidth()
                 )
                 errorMessage?.let { Text(it, color = MaterialTheme.colors.error) }
