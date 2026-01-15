@@ -15,3 +15,6 @@ object Wardrobe
 @Serializable object ModpackManage
 @Serializable object Login
 @Serializable object Profile
+@Serializable object HostList
+@Serializable object Mail
+@Serializable object WorldList
