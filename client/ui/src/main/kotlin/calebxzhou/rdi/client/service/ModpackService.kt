@@ -63,7 +63,7 @@ object ModpackService {
                 )
             }
         ) { cfmod, prog ->
-            onProgress("mod下载中：${cfmod.slug} ${prog.percent.toFixed(2)}%")
+            onProgress("mod下载中：${cfmod.slug} ${prog.fraction.toFixed(2)}%")
         }.getOrElse {
             if (it is CFDownloadModException) {
                 it.failed.forEach { (mod, ex) ->

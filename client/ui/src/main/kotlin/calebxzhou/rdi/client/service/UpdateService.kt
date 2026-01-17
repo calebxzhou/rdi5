@@ -86,7 +86,7 @@ object UpdateService {
             val downloadedBytes = dl.bytesDownloaded.takeIf { it >= 0 } ?: 0L
             val percentValue = when {
                 totalBytes > 0 -> downloadedBytes * 100.0 / totalBytes
-                dl.percent >= 0 -> dl.percent.toDouble()
+                dl.fraction >= 0 -> dl.fraction*100.0
                 else -> -1.0
             }
 
