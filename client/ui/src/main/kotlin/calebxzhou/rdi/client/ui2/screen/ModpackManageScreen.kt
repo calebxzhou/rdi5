@@ -51,8 +51,6 @@ import calebxzhou.rdi.client.net.server
 import calebxzhou.rdi.client.service.GameService
 import calebxzhou.rdi.client.service.ModpackService
 import calebxzhou.rdi.client.service.ModpackService.startInstall
-import calebxzhou.rdi.client.ui.frag.TaskFragment
-import calebxzhou.rdi.client.ui.go
 import calebxzhou.rdi.client.ui2.CircleIconButton
 import calebxzhou.rdi.client.ui2.DEFAULT_MODPACK_ICON
 import calebxzhou.rdi.client.ui2.MainColumn
@@ -62,6 +60,7 @@ import calebxzhou.rdi.client.ui2.asIconText
 import calebxzhou.rdi.client.ui2.hM
 import calebxzhou.rdi.common.model.McVersion
 import calebxzhou.rdi.common.model.Modpack
+import calebxzhou.rdi.common.model.Task
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -77,7 +76,8 @@ import kotlin.collections.component2
 @Composable
 fun ModpackManageScreen(
     onBack: () -> Unit = {},
-    onOpenModpackList: (() -> Unit)? = null
+    onOpenModpackList: (() -> Unit)? = null,
+    onOpenTask: ((Task) -> Unit)? = null
 ) {
     val scope = rememberCoroutineScope()
     var loading by remember { mutableStateOf(true) }
@@ -119,7 +119,10 @@ fun ModpackManageScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             items(McVersion.entries) { mcver ->
-                McVersionCard(mcver = mcver)
+                McVersionCard(
+                    mcver = mcver,
+                    onOpenTask = onOpenTask
+                )
             }
         }
 
@@ -137,7 +140,7 @@ fun ModpackManageScreen(
         errorMessage?.let { Text(it, color = MaterialTheme.colors.error) }
         Spacer(16.hM)
         if (!loading && localDirs.isEmpty()) {
-            Text("尚未安装本地整合包", color = Color.Black)
+            Text("尚未安装整合包。点击右上角\uDB86\uDDD5按钮下载想玩的包。".asIconText, color = Color.Black)
         }
 
         LazyVerticalGrid(
@@ -209,7 +212,10 @@ fun ModpackManageScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun McVersionCard(mcver: McVersion) {
+fun McVersionCard(
+    mcver: McVersion,
+    onOpenTask: ((Task) -> Unit)? = null
+) {
     val iconBitmap = remember(mcver) {
         RDIClient.jarResource(mcver.icon).use { stream ->
             Image.makeFromEncoded(stream.readBytes()).toComposeImageBitmap()
@@ -264,31 +270,20 @@ fun McVersionCard(mcver: McVersion) {
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     CircleIconButton("\uF019", "下载全部所需文件") {
-                        /*TaskFragment("下载MC文件") {
-                            GameService.downloadVersion(mcver) { log(it) }
-                            GameService.downloadLoader(mcver, mcver.firstLoader) { log(it) }
-                        }.go()*/
+                        onOpenTask?.invoke(GameService.downloadVersion(mcver,mcver.firstLoader))
                     }
                     CircleIconButton("\uF305", "仅下载MC核心") {
-                        /*TaskFragment("下载MC核心文件") {
-                            GameService.downloadClient(mcver.metadata) { log(it) }
-                        }.go()*/
+                        onOpenTask?.invoke(GameService.downloadClient(mcver.metadata))
                     }
                     CircleIconButton("\uDB84\uDE5F", "仅下载运行库") {
-                        /*TaskFragment("下载运行库文件") {
-                            GameService.downloadLibraries(mcver.metadata) { log(it) }
-                        }.go()*/
+                        onOpenTask?.invoke(GameService.downloadLibraries(mcver.metadata.libraries))
                     }
                     CircleIconButton("\uF001", "仅下载音频资源") {
-                        /* TaskFragment("下载音频资源文件") {
-                             GameService.downloadAssets(mcver.metadata) { log(it) }
-                         }.go()*/
+                        onOpenTask?.invoke(GameService.downloadAssets(mcver.metadata))
                     }
                     mcver.loaderVersions.forEach { (loader, _) ->
                         CircleIconButton("\uEEFF", "安装${loader.name.lowercase()}") {
-                            /* TaskFragment("下载${loader}文件") {
-                                 GameService.downloadLoader(mcver, loader) { log(it) }
-                             }.go()*/
+                            onOpenTask?.invoke(GameService.downloadLoader(mcver,loader))
                         }
                     }
                 }
