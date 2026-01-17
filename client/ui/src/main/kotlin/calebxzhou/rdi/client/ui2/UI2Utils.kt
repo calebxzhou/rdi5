@@ -313,7 +313,13 @@ fun TitleRow(
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            BackButton { onBack() }
+            CircleIconButton(
+                icon = "\uF060",
+                tooltip = if (longPressToBack) "长按返回" else "返回",
+                size = 32,
+                longPressDelay = if (longPressToBack) 3000L else 0L
+            ) { onBack.invoke() }
+
             Spacer(modifier = Modifier.width(12.dp))
             Text(
                 text = title,
