@@ -59,7 +59,7 @@ fun ProfileScreen(
                     "⏻",
                     "退出登录",
                     bgColor = MaterialColor.RED_900.color,
-                    contentPadding = PaddingValues(start = 1.dp)
+                    contentPadding = PaddingValues(start = 1.dp, bottom = 4.dp)
                 ) {
                     loggedAccount = RAccount.DEFAULT
                     onLogout?.invoke()
@@ -73,7 +73,7 @@ fun ProfileScreen(
                     showChangeDialog = true
                 }
                 Spacer(Modifier.width(12.dp))
-                CircleIconButton("\uEE1C","衣柜", bgColor = MaterialColor.PINK_900.color) {
+                CircleIconButton("\uEE1C","衣柜", bgColor = MaterialColor.PINK_900.color,contentPadding = PaddingValues(start = 1.dp)) {
                     onOpenWardrobe?.invoke()
                 }
                 Spacer(Modifier.width(12.dp))
