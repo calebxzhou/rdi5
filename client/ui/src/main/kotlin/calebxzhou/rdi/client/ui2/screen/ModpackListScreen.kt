@@ -20,6 +20,8 @@ import calebxzhou.rdi.client.net.loggedAccount
 import calebxzhou.rdi.client.net.rdiRequest
 import calebxzhou.rdi.client.ui2.CircleIconButton
 import calebxzhou.rdi.client.ui2.MainColumn
+import calebxzhou.rdi.client.ui2.Space8h
+import calebxzhou.rdi.client.ui2.Space8w
 import calebxzhou.rdi.client.ui2.TitleRow
 import calebxzhou.rdi.client.ui2.comp.ModpackCard
 import calebxzhou.rdi.common.model.Modpack
@@ -31,7 +33,8 @@ import calebxzhou.rdi.common.model.Modpack
 @Composable
 fun ModpackListScreen(
     onBack: (() -> Unit) = {},
-    onOpenManage: (() -> Unit)={}
+    onOpenUpload: (() -> Unit) = {},
+    onOpenInfo: ((String) -> Unit) = {}
 ) {
     var modpacks by remember { mutableStateOf<List<Modpack.BriefVo>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
@@ -56,50 +59,41 @@ fun ModpackListScreen(
     }
 
     MainColumn {
-        TitleRow("整合包列表", onBack) {
+        TitleRow("大家的整合包", onBack) {
             Checkbox(
                 checked = onlyMine,
                 onCheckedChange = { onlyMine = it }
             )
             Text("只看我的包")
+            Space8w()
+            CircleIconButton("\uDB80\uDFD5", "上传新包") {
+                onOpenUpload.invoke()
+            }
         }
-        CircleIconButton("\uF0C7","已安装的包") {
-            onOpenManage.invoke()
+        Space8h()
 
+        if (loading) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                CircularProgressIndicator()
+            }
         }
-        CircleIconButton("\uDB80\uDFD5","上传新包") {
-            //onOpenManage.invoke()
+
+        errorMessage?.let {
+            Text(it, color = MaterialTheme.colors.error)
         }
 
-    }
-
-    Text(
-        text = "选择想玩的整合包及版本创建地图。如果没有想玩的，可以上传自己的整合包。",
-        color = Color.Black
-    )
-
-    if (loading) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(280.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxSize()
         ) {
-            CircularProgressIndicator()
-        }
-    }
-
-    errorMessage?.let {
-        Text(it, color = MaterialTheme.colors.error)
-    }
-
-    LazyVerticalGrid(
-        columns = GridCells.Adaptive(280.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = Modifier.fillMaxSize()
-    ) {
-        items(visibleModpacks, key = { it.id.toHexString() }) { modpack ->
-            modpack.ModpackCard(onClick = { TODO() })
+            items(visibleModpacks, key = { it.id.toHexString() }) { modpack ->
+                modpack.ModpackCard(onClick = { onOpenInfo(modpack.id.toHexString()) })
+            }
         }
     }
 }
-
