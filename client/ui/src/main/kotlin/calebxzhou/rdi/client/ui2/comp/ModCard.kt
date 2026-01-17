@@ -52,34 +52,29 @@ fun Mod.CardVo.ModCard(modifier: Modifier = Modifier) {
             modifier = Modifier.weight(1f),
             horizontalAlignment = Alignment.Start
         ) {
-            // Title Row
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                val hasChineseName = !nameCn.isNullOrBlank()
-                val primaryText = if (hasChineseName) nameCn!!.trim() else name.trim()
+            val hasChineseName = !nameCn.isNullOrBlank()
+            val primaryText = if (hasChineseName) nameCn!!.trim() else name.trim()
 
-                Text(
-                    text = primaryText.ifBlank { name.trim() },
-                    color = MaterialColor.GRAY_900.color,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false)
-                )
+            Text(
+                text = primaryText.ifBlank { name.trim() },
+                color = MaterialColor.GRAY_900.color,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
 
-                if (hasChineseName) {
-                    val secondaryTrimmed = name.trim()
-                    if (secondaryTrimmed.isNotEmpty()) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = secondaryTrimmed, // Shortening logic handled by text overflow
-                            color = MaterialColor.BLUE_600.color,
-                            fontSize = 14.sp,
-                            fontStyle = FontStyle.Italic,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
+            if (hasChineseName) {
+                val secondaryTrimmed = name.trim()
+                if (secondaryTrimmed.isNotEmpty()) {
+                    Text(
+                        text = secondaryTrimmed,
+                        color = MaterialColor.BLUE_600.color,
+                        fontSize = 14.sp,
+                        fontStyle = FontStyle.Italic,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
             
