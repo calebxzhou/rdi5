@@ -42,7 +42,7 @@ object CurseForgeService {
 
 
     //从完整的cf mod信息取得card vo
-    private fun CurseForgeModInfo.toBriefVo(modFile: File? = null): ModCardVo {
+    private fun CurseForgeModInfo.toBriefVo(modFile: File? = null): Mod.CardVo {
         val briefInfo = slugBriefInfo[slug]
         val icons = buildList {
             briefInfo?.logoUrl?.let { add(it) }
@@ -57,7 +57,7 @@ object CurseForgeService {
             ?: modFile?.let { JarFile(it).readNeoForgeConfig()?.modDescription }
             ?: "暂无介绍"
 
-        return ModCardVo(
+        return Mod.CardVo(
             name = resolvedName,
             nameCn = briefInfo?.nameCn,
             intro = briefInfo?.intro ?: introText,

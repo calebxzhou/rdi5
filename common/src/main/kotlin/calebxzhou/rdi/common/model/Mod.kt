@@ -21,7 +21,7 @@ data class Mod(
         CLIENT,SERVER,BOTH
     }
     @Transient
-    var vo: ModCardVo?=null
+    var vo: Mod.CardVo?=null
     @Transient
     var file: File?=null
     //展示modcard的信息

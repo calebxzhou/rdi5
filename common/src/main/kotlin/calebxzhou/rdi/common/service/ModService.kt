@@ -3,8 +3,8 @@ package calebxzhou.rdi.common.service
 import calebxzhou.mykotutils.log.Loggers
 import calebxzhou.rdi.common.DL_MOD_DIR
 import calebxzhou.rdi.common.RDI
+import calebxzhou.rdi.common.model.Mod
 import calebxzhou.rdi.common.model.ModBriefInfo
-import calebxzhou.rdi.common.model.ModCardVo
 import calebxzhou.rdi.common.serdesJson
 import com.electronwill.nightconfig.core.CommentedConfig
 import com.electronwill.nightconfig.core.Config
@@ -48,11 +48,11 @@ object ModService {
 
     private val builtinDependencyIds = setOf("minecraft", "forge", "neoforge", "fabricloader")
 
-    fun ModBriefInfo.toVo(modFile: File? = null): ModCardVo {
+    fun ModBriefInfo.toVo(modFile: File? = null): Mod.CardVo {
         val iconBytes = modFile?.let {
             runCatching { JarFile(it).use { jar -> jar.modLogo } }.getOrNull()
         }
-        return ModCardVo(
+        return Mod.CardVo(
             name = name,
             nameCn = nameCn,
             intro = intro,
