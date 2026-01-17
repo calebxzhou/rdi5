@@ -12,9 +12,12 @@ object Wardrobe
     val skyblock: Boolean,
 )
 @Serializable object ModpackList
+@Serializable data class ModpackInfo(val modpackId: String)
 @Serializable object ModpackManage
+@Serializable object ModpackUpload
 @Serializable object Login
 @Serializable object Profile
 @Serializable object HostList
 @Serializable object Mail
 @Serializable object WorldList
+@Serializable object TaskView

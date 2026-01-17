@@ -131,6 +131,14 @@ fun main() = application {
                         onBack = { navController.popBackStack() }
                     )
                 }
+                composable<TaskView> {
+                    val task = TaskStore.current
+                    if (task != null) {
+                        TaskScreen(task, onBack = { navController.popBackStack() })
+                    } else {
+                        Text("没有可显示的任务")
+                    }
+                }
                 composable<Profile> {
                     ProfileScreen(
                         onLogout = {
@@ -145,12 +153,33 @@ fun main() = application {
                     )
                 }
                 composable<ModpackList> {
-                    ModpackListScreen(onOpenManage = { navController.navigate(ModpackManage) })
+                    ModpackListScreen(
+                        onBack = { navController.navigate(ModpackManage) },
+                        onOpenUpload = { navController.navigate(ModpackUpload) },
+                        onOpenInfo = { modpackId ->
+                            navController.navigate(ModpackInfo(modpackId))
+                        }
+                    )
+                }
+                composable<ModpackInfo> {
+                    val route = it.toRoute<ModpackInfo>()
+                    ModpackInfoScreen(
+                        modpackId = route.modpackId,
+                        onBack = { navController.navigate(ModpackList) }
+                    )
                 }
                 composable<ModpackManage> {
                     ModpackManageScreen(
-                        onOpenModpackList = { navController.navigate(ModpackList) }
+                        onBack = { navController.navigate(Profile) },
+                        onOpenModpackList = { navController.navigate(ModpackList) },
+                        onOpenTask = { task ->
+                            TaskStore.current = task
+                            navController.navigate(TaskView)
+                        }
                     )
+                }
+                composable<ModpackUpload> {
+                    ModpackUploadScreen(onBack = { navController.navigate(ModpackList) })
                 }
             }
         }
