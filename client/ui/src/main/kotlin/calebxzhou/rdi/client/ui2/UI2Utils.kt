@@ -4,6 +4,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
@@ -23,7 +24,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.decodeToImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.SpanStyle
@@ -192,19 +195,18 @@ fun SimpleTooltip(
         content()
     }
 }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CircleIconButton(
-    icon: String,
+private fun IconButtonBase(
     tooltip: String? = "",
     tooltipAnchorPosition: TooltipAnchorPosition = TooltipAnchorPosition.Below,
     size: Int = 36,
-    contentPadding: PaddingValues = ButtonDefaults.TextButtonContentPadding,
     bgColor: Color = MaterialTheme.colors.primary,
-    iconColor: Color = Color.White,
     enabled: Boolean = true,
     longPressDelay: Long = 0L,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    content: @Composable (Modifier) -> Unit
 ) {
     val scope = rememberCoroutineScope()
     val progress = remember { Animatable(0f) }
@@ -267,25 +269,94 @@ fun CircleIconButton(
                     )
                 }
             }
-            TextButton(
-                onClick = if (useLongPress) ({}) else onClick,
-                shape = CircleShape,
-                modifier = Modifier.align(Alignment.Center).size(size.dp).then(pressModifier),
-                colors = ButtonDefaults.buttonColors(
-                    backgroundColor = bgColor,
-                    contentColor = iconColor
-                ),
-                contentPadding = contentPadding,
-                enabled = enabled
-            ) {
-                Text(text=icon.asIconText, fontSize = TextUnit(size*0.5f, TextUnitType.Sp))
-            }
+            content(Modifier.align(Alignment.Center).size(size.dp).then(pressModifier))
         }
     }
     tooltip?.let { tip ->
         SimpleTooltip(tip, tooltipAnchorPosition) { drawButton() }
     } ?: drawButton()
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ImageIconButton(
+    icon: String,
+    tooltip: String? = null,
+    tooltipAnchorPosition: TooltipAnchorPosition = TooltipAnchorPosition.Below,
+    size: Int = 36,
+    contentPadding: PaddingValues = ButtonDefaults.TextButtonContentPadding,
+    bgColor: Color = Color.White,
+    enabled: Boolean = true,
+    longPressDelay: Long = 0L,
+    onClick: () -> Unit={}
+) {
+    IconButtonBase(
+        tooltip = tooltip,
+        tooltipAnchorPosition = tooltipAnchorPosition,
+        size = size,
+        bgColor = bgColor,
+        enabled = enabled,
+        longPressDelay = longPressDelay,
+        onClick = onClick
+    ) { modifier ->
+        TextButton(
+            onClick = if (longPressDelay > 0L) ({}) else onClick,
+            shape = CircleShape,
+            modifier = modifier,
+            contentPadding = contentPadding,
+            colors = ButtonDefaults.buttonColors(
+                backgroundColor = bgColor
+            ),
+            enabled = enabled
+        ) {
+            Image(
+                bitmap = iconBitmap(icon),
+                contentDescription = tooltip,
+                modifier = Modifier.size((size * 2 / 3).dp)
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CircleIconButton(
+    icon: String,
+    tooltip: String? = "",
+    tooltipAnchorPosition: TooltipAnchorPosition = TooltipAnchorPosition.Below,
+    size: Int = 36,
+    contentPadding: PaddingValues = ButtonDefaults.TextButtonContentPadding,
+    bgColor: Color = MaterialTheme.colors.primary,
+    iconColor: Color = Color.White,
+    enabled: Boolean = true,
+    longPressDelay: Long = 0L,
+    onClick: () -> Unit
+) {
+    IconButtonBase(
+        tooltip = tooltip,
+        tooltipAnchorPosition = tooltipAnchorPosition,
+        size = size,
+        bgColor = bgColor,
+        enabled = enabled,
+        longPressDelay = longPressDelay,
+        onClick = onClick
+    ) { modifier ->
+        TextButton(
+            onClick = if (longPressDelay > 0L) ({}) else onClick,
+            shape = CircleShape,
+            modifier = modifier,
+            colors = ButtonDefaults.buttonColors(
+                backgroundColor = bgColor,
+                contentColor = iconColor
+            ),
+            contentPadding = contentPadding,
+            enabled = enabled
+        ) {
+            Text(text = icon.asIconText, fontSize = TextUnit(size * 0.5f, TextUnitType.Sp))
+        }
+    }
+}
+
 @Composable
 fun MainColumn(content: @Composable (ColumnScope.() -> Unit)) {
     Column(
@@ -331,6 +402,7 @@ fun TitleRow(
         }
     }
 }
+
 @Composable
 fun BoxScope.BottomSnakebar(state: SnackbarHostState) {
     SnackbarHost(
@@ -338,12 +410,19 @@ fun BoxScope.BottomSnakebar(state: SnackbarHostState) {
         modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp)
     )
 }
+
 @Composable
-fun Space8w(){
+fun Space8w() {
     Spacer(modifier = Modifier.width(8.dp))
 }
 
 @Composable
-fun Space8h(){
+fun Space8h() {
     Spacer(modifier = Modifier.height(8.dp))
+}
+
+fun iconBitmap(icon: String): ImageBitmap {
+    RDIClient.jarResource("assets/icons/$icon.png").use {
+        return it.readBytes().decodeToImageBitmap()
+    }
 }
