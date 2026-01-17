@@ -1,40 +1,14 @@
 package calebxzhou.rdi.client.ui2.screen
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material.AlertDialog
-import androidx.compose.material.ButtonDefaults
-import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.OutlinedTextField
-import androidx.compose.material.SnackbarDuration
-import androidx.compose.material.SnackbarHost
-import androidx.compose.material.SnackbarHostState
-import androidx.compose.material.Text
-import androidx.compose.material.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.*
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.rememberTooltipState
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.rememberTooltipState
 import androidx.compose.ui.graphics.decodeToImageBitmap
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -46,14 +20,10 @@ import calebxzhou.rdi.client.net.loggedAccount
 import calebxzhou.rdi.client.net.server
 import calebxzhou.rdi.client.service.PlayerInfoCache
 import calebxzhou.rdi.client.service.PlayerService
-import calebxzhou.rdi.client.ui2.CircleIconButton
-import calebxzhou.rdi.client.ui2.CodeFontFamily
-import calebxzhou.rdi.client.ui2.MaterialColor
-import calebxzhou.rdi.client.ui2.SimpleTooltip
-import calebxzhou.rdi.client.ui2.asIconText
+import calebxzhou.rdi.client.ui2.*
 import calebxzhou.rdi.client.ui2.comp.HeadButton
 import calebxzhou.rdi.common.model.RAccount
-import io.ktor.http.HttpMethod
+import io.ktor.http.*
 import kotlinx.coroutines.launch
 
 /**
@@ -79,22 +49,8 @@ fun ProfileScreen(
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 HeadButton(loggedAccount._id)
-                SimpleTooltip("MC资源及整合包管理") {
-                    TextButton(
-                        onClick = { onOpenModpackManage?.invoke() },
-                        shape = CircleShape,
-                        modifier = Modifier.size(36.dp),
-                        contentPadding = PaddingValues(0.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            backgroundColor = Color.Transparent
-                        )
-                    ) {
-                        Image(
-                            bitmap = grassIcon,
-                            contentDescription = "Grass Block",
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
+                ImageIconButton("grass_block","MC资源及整合包管理", ) {
+                    onOpenModpackManage?.invoke()
                 }
             }
             Spacer(Modifier.height(20.dp))
