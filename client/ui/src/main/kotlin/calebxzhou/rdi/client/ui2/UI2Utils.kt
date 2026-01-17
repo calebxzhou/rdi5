@@ -321,3 +321,12 @@ fun BoxScope.BottomSnakebar(state: SnackbarHostState){
         modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp)
     )
 }
+@Composable
+fun Space8w(){
+    Spacer(modifier = Modifier.width(8.dp))
+}
+
+@Composable
+fun Space8h(){
+    Spacer(modifier = Modifier.height(8.dp))
+}
