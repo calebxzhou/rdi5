@@ -202,40 +202,88 @@ fun CircleIconButton(
     bgColor: Color = MaterialTheme.colors.primary,
     iconColor: Color = Color.White,
     enabled: Boolean = true,
+    longPressDelay: Long = 0L,
     onClick: () -> Unit
-){
-    TextButton(
-        onClick = onClick,
-        shape = CircleShape,
-        modifier = Modifier.size(size.dp),
-        colors = ButtonDefaults.buttonColors(
-            backgroundColor = bgColor,
-            contentColor = iconColor
-        ),
-        contentPadding = contentPadding,
-        enabled = enabled
-    ){
-        val drawText = @Composable  { Text(icon.asIconText) }
-        tooltip?.let { tooltip ->
-            SimpleTooltip(tooltip,tooltipAnchorPosition){
-                drawText()
+) {
+    val scope = rememberCoroutineScope()
+    val progress = remember { Animatable(0f) }
+    var fired by remember { mutableStateOf(false) }
+    val ringPadding = 4.dp
+    val ringStroke = 3.dp
+    val useLongPress = longPressDelay > 0L
+    val ringSize = if (useLongPress) (size.dp + ringPadding * 2) else size.dp
+    val pressModifier = if (useLongPress) {
+        Modifier.pointerInput(longPressDelay, enabled) {
+            if (!enabled) return@pointerInput
+            detectTapGestures(
+                onPress = {
+                    fired = false
+                    val job = scope.launch {
+                        progress.snapTo(0f)
+                        progress.animateTo(
+                            targetValue = 1f,
+                            animationSpec = tween(
+                                durationMillis = longPressDelay.toInt(),
+                                easing = LinearEasing
+                            )
+                        )
+                        if (!fired) {
+                            fired = true
+                            onClick()
+                        }
+                    }
+                    val released = tryAwaitRelease()
+                    if (released) {
+                        job.cancel()
+                        scope.launch { progress.snapTo(0f) }
+                    }
+                }
+            )
+        }
+    } else {
+        Modifier
+    }
+    val drawButton = @Composable {
+        Box(modifier = Modifier.size(ringSize)) {
+            if (useLongPress && progress.value > 0f) {
+                Canvas(modifier = Modifier.matchParentSize()) {
+                    val strokePx = ringStroke.toPx()
+                    val canvasSize = this.size
+                    val canvasMin = minOf(canvasSize.width, canvasSize.height)
+                    val diameter = canvasMin - strokePx
+                    val offset = (canvasMin - diameter) / 2f
+                    drawArc(
+                        color = bgColor,
+                        startAngle = -90f,
+                        sweepAngle = progress.value.coerceIn(0f, 1f) * 360f,
+                        useCenter = false,
+                        topLeft = Offset(offset, offset),
+                        size = Size(diameter, diameter),
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(
+                            width = strokePx,
+                            cap = StrokeCap.Round
+                        )
+                    )
+                }
             }
-        }?: drawText()
-
+            TextButton(
+                onClick = if (useLongPress) ({}) else onClick,
+                shape = CircleShape,
+                modifier = Modifier.align(Alignment.Center).size(size.dp).then(pressModifier),
+                colors = ButtonDefaults.buttonColors(
+                    backgroundColor = bgColor,
+                    contentColor = iconColor
+                ),
+                contentPadding = contentPadding,
+                enabled = enabled
+            ) {
+                Text(text=icon.asIconText, fontSize = TextUnit(size*0.5f, TextUnitType.Sp))
+            }
+        }
     }
-}
-@Composable
-fun BackButton(onClick: () ->Unit){
-    TextButton(
-        onClick = { onClick.invoke() },
-        shape = CircleShape,
-        modifier = Modifier.size(32.dp),
-        colors = ButtonDefaults.buttonColors(
-            contentColor = MaterialColor.WHITE.color
-        )
-    ) {
-        Text("\uF060".asIconText)
-    }
+    tooltip?.let { tip ->
+        SimpleTooltip(tip, tooltipAnchorPosition) { drawButton() }
+    } ?: drawButton()
 }
 @Composable
 fun MainColumn(content: @Composable (ColumnScope.() -> Unit)){
