@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -14,6 +15,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.unit.*
 import calebxzhou.rdi.client.service.PlayerInfoCache
+import calebxzhou.rdi.client.ui2.SimpleTooltip
 import calebxzhou.rdi.common.net.httpRequest
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -26,6 +28,7 @@ import org.jetbrains.skia.Image
 /**
  * calebxzhou @ 2026-01-14 19:53
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HeadButton(
     uid: ObjectId,
@@ -65,51 +68,53 @@ fun HeadButton(
         }
     }
 
-    val rowModifier = if (showName) {
-        Modifier
-    } else {
-        Modifier
-    }
-    Row(
-        modifier = rowModifier
-            .clickable(onClick = onClick)
-            .padding(horizontal = paddingSize, vertical = paddingSize),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Avatar
-        Box(modifier = Modifier.size(avatarSize)) {
-            val img = skinImage
-            if (img != null) {
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    val w = size.width.toInt()
-                    val h = size.height.toInt()
-                    // Draw Head
-                    drawImage(
-                        image = img,
-                        srcOffset = IntOffset(8, 8),
-                        srcSize = IntSize(8, 8),
-                        dstSize = IntSize(w, h),
-                        filterQuality = FilterQuality.None
-                    )
-                    // Draw Hat (Overlay)
-                    drawImage(
-                        image = img,
-                        srcOffset = IntOffset(40, 8),
-                        srcSize = IntSize(8, 8),
-                        dstSize = IntSize(w, h),
-                        filterQuality = FilterQuality.None
-                    )
-                }
-            } else {
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    drawRect(color = Color(0xFFA0A0A0))
+    val row = @Composable {
+        Row(
+            modifier = Modifier
+                .clickable(onClick = onClick)
+                .padding(horizontal = paddingSize, vertical = paddingSize),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Avatar
+            Box(modifier = Modifier.size(avatarSize)) {
+                val img = skinImage
+                if (img != null) {
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        val w = size.width.toInt()
+                        val h = size.height.toInt()
+                        // Draw Head
+                        drawImage(
+                            image = img,
+                            srcOffset = IntOffset(8, 8),
+                            srcSize = IntSize(8, 8),
+                            dstSize = IntSize(w, h),
+                            filterQuality = FilterQuality.None
+                        )
+                        // Draw Hat (Overlay)
+                        drawImage(
+                            image = img,
+                            srcOffset = IntOffset(40, 8),
+                            srcSize = IntSize(8, 8),
+                            dstSize = IntSize(w, h),
+                            filterQuality = FilterQuality.None
+                        )
+                    }
+                } else {
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        drawRect(color = Color(0xFFA0A0A0))
+                    }
                 }
             }
-        }
 
-        if (showName) {
-            Spacer(modifier = Modifier.width(spacerSize))
-            Text(text = name, style = textStyle)
+            if (showName) {
+                Spacer(modifier = Modifier.width(spacerSize))
+                Text(text = name, style = textStyle)
+            }
         }
+    }
+    if(showName){
+       row ()
+    }else{
+        SimpleTooltip(name){row()}
     }
 }
