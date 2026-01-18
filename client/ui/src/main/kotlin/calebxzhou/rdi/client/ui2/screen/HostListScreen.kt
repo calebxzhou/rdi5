@@ -5,17 +5,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.AlertDialog
-import androidx.compose.material.Button
-import androidx.compose.material.ButtonDefaults
-import androidx.compose.material.Checkbox
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.RadioButton
-import androidx.compose.material.Text
-import androidx.compose.material.TextButton
+import androidx.compose.material.*
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,14 +15,13 @@ import androidx.compose.ui.unit.dp
 import calebxzhou.rdi.client.Const
 import calebxzhou.rdi.client.auth.LocalCredentials
 import calebxzhou.rdi.client.net.server
-import calebxzhou.rdi.client.ui2.BackButton
+import calebxzhou.rdi.client.service.ModpackService.startPlay
 import calebxzhou.rdi.client.ui2.CircleIconButton
 import calebxzhou.rdi.client.ui2.MainColumn
-import calebxzhou.rdi.client.ui2.MaterialColor
-import calebxzhou.rdi.client.ui2.SimpleTooltip
 import calebxzhou.rdi.client.ui2.TitleRow
 import calebxzhou.rdi.client.ui2.comp.HostCard
 import calebxzhou.rdi.common.model.Host
+import kotlinx.coroutines.launch
 import org.bson.types.ObjectId
 
 /**
@@ -41,8 +31,10 @@ import org.bson.types.ObjectId
 @Composable
 fun HostListScreen(
     onBack: (() -> Unit),
-    onOpenWorldList: (() -> Unit)? = null
+    onOpenWorldList: (() -> Unit)? = null,
+    onOpenHostInfo: ((String) -> Unit)? = null
 ) {
+    val scope = rememberCoroutineScope()
     var hosts by remember { mutableStateOf<List<Host.BriefVo>>(emptyList()) }
     var showMy by remember { mutableStateOf(true) }
     var showCarrierDialog by remember { mutableStateOf(false) }
@@ -100,7 +92,14 @@ fun HostListScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(hosts) { host ->
-                    host.HostCard(onClickPlay = { })
+                    host.HostCard(onClickPlay = {
+                        scope.launch {
+                            val res = server.makeRequest<Host>("host/${host._id}")
+                            res.data?.startPlay()
+                        }
+                    }, onClick = {
+                        onOpenHostInfo?.invoke(host._id.toHexString())
+                    })
                     /*calebxzhou.rdi.client.ui.component.HostCard(
                         host = host,
                         onClick = {
