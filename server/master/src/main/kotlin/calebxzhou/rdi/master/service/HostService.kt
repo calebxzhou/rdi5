@@ -38,9 +38,11 @@ import calebxzhou.rdi.master.service.HostService.sendCommand
 import calebxzhou.rdi.master.service.HostService.setRole
 import calebxzhou.rdi.master.service.HostService.start
 import calebxzhou.rdi.master.service.HostService.status
+import calebxzhou.rdi.master.service.HostService.toDetailVo
 import calebxzhou.rdi.master.service.HostService.transferOwnership
 import calebxzhou.rdi.master.service.ModpackService.getVersion
 import calebxzhou.rdi.master.service.ModpackService.installToHost
+import calebxzhou.rdi.master.service.ModpackService.toBriefVo
 import calebxzhou.rdi.master.service.WorldService.createWorld
 import calebxzhou.rdi.model.Role
 import com.github.dockerjava.api.model.Mount
@@ -160,6 +162,11 @@ fun Route.hostRoutes() = route("/host") {
         get {
             HostService.getById(idParam("hostId"))?.let {
                 response(data = it)
+            } ?: err("无此地图")
+        }
+        get("detail") {
+            HostService.getById(idParam("hostId"))?.let {
+                response(data = it.toDetailVo())
             } ?: err("无此地图")
         }
         /*post("/modpack/{modpackId}/{verName}") {
@@ -1060,6 +1067,32 @@ object HostService {
         dbcl.find(eq("worldId", worldId)).firstOrNull()
 
     suspend fun getById(id: ObjectId): Host? = dbcl.find(eq("_id", id)).firstOrNull()
+    suspend fun Host.toDetailVo(): Host.DetailVo{
+        val modpack = ModpackService.getById(modpackId)
+        val modpackVo = modpack?.toBriefVo()
+            ?: Modpack.BriefVo(id = modpackId, name = "未知整合包")
+        val onlinePlayers = runCatching { getOnlinePlayers() }.getOrElse { emptyList() }
+        return Host.DetailVo(
+            _id = _id,
+            name = name,
+            intro = intro,
+            iconUrl = modpackVo.icon,
+            ownerId = ownerId,
+            modpack = modpackVo,
+            packVer = packVer,
+            worldId = worldId,
+            port = port,
+            difficulty = difficulty,
+            gameMode = gameMode,
+            levelType = levelType,
+            gameRules = gameRules,
+            whitelist = whitelist,
+            allowCheats = allowCheats,
+            members = members,
+            extraMods = extraMods,
+            onlinePlayerIds = onlinePlayers
+        )
+    }
     /*
 
         suspend fun remountWorld(host: Host, newWorldId: ObjectId?) {
