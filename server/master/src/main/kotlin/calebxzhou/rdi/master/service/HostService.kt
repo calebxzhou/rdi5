@@ -19,6 +19,7 @@ import calebxzhou.rdi.master.model.WsMessage
 import calebxzhou.rdi.master.net.*
 import calebxzhou.rdi.master.service.HostService.addMember
 import calebxzhou.rdi.master.service.HostService.changeGameRules
+import calebxzhou.rdi.master.service.HostService.changeOptions
 import calebxzhou.rdi.master.service.HostService.changeVersion
 import calebxzhou.rdi.master.service.HostService.createHost
 import calebxzhou.rdi.master.service.HostService.createHostLegacy
@@ -64,6 +65,7 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.toList
 import org.bson.Document
+import org.bson.conversions.Bson
 import org.bson.types.ObjectId
 import java.io.File
 import java.util.Properties
@@ -134,10 +136,15 @@ fun Route.hostRoutes() = route("/host") {
             call.hostContext().needAdmin.restart()
             ok()
         }
-        put("/gamerules") {
-            call.hostContext().needAdmin.changeGameRules(call.paramT("data"))
+        put("/options") {
+            val ctx = call.hostContext().needAdmin
+            ctx.changeOptions(call.receive<Host.OptionsDto>())
             ok()
         }
+        /*put("/gamerules") {
+            call.hostContext().needAdmin.changeGameRules(call.paramT("data"))
+            ok()
+        }*/
         post("/update") {
             call.hostContext().needAdmin.changeVersion(paramNull("verName"))
             ok()
@@ -819,6 +826,22 @@ object HostService {
         dbcl.updateOne(eq("_id", host._id), set(Host::gameRules.name, newRules))
         host.makeContainer(host.worldId, modpack, version, newRules)
         clearShutFlag(host._id)
+    }
+
+    suspend fun HostContext.changeOptions(payload: Host.OptionsDto) {
+        payload.gameRules?.let { rules ->
+            changeGameRules(rules)
+        }
+        val updates = mutableListOf<Bson>()
+        payload.difficulty?.let { updates += set(Host::difficulty.name, it) }
+        payload.gameMode?.let { updates += set(Host::gameMode.name, it) }
+        payload.levelType?.takeIf { it.isNotBlank() }?.let { updates += set(Host::levelType.name, it) }
+        payload.whitelist?.let { updates += set(Host::whitelist.name, it) }
+        payload.allowCheats?.let { updates += set(Host::allowCheats.name, it) }
+        if (updates.isNotEmpty()) {
+            val update = if (updates.size == 1) updates.first() else combine(updates)
+            dbcl.updateOne(eq("_id", host._id), update)
+        }
     }
 
     suspend fun HostContext.start() {

@@ -104,5 +104,14 @@ data class Host(
         val allowCheats: Boolean,
         val gameRules: MutableMap<String,String>
     )
+    @Serializable
+    data class OptionsDto(
+        val difficulty: Int? = null,
+        val gameMode: Int? = null,
+        val levelType: String? = null,
+        val whitelist: Boolean? = null,
+        val allowCheats: Boolean? = null,
+        val gameRules: Map<String, String>? = null
+    )
 
 }
