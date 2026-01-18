@@ -1,0 +1,7 @@
+package calebxzhou.rdi.client.ui2
+
+import calebxzhou.rdi.common.model.Task
+
+object TaskStore {
+    var current: Task? = null
+}
