@@ -504,7 +504,7 @@ object ModpackService {
         val downloadedMods = CurseForgeApi.downloadMods(
             mods,
         ) { cfm, prog ->
-            onProgress("${cfm.slug} mod下载中 ${prog.percent.toFixed(2)}%")
+            onProgress("${cfm.slug} mod下载中 ${(prog.fraction*100f).toFixed(2)}%")
         }.getOrElse {
             if (it is CFDownloadModException) {
                 it.failed.forEach { (mod, ex) ->
@@ -650,7 +650,7 @@ object ModpackService {
                         it.targetPath
                     )
                 }) { cfmod, prog ->
-                onProgress("mod下载中：${cfmod.slug} ${prog.percent.toFixed(2)}")
+                onProgress("mod下载中：${cfmod.slug} ${(prog.fraction*100f).toFixed(2)}")
             }.getOrThrow()
             onProgress("所有mod下载完成 开始安装。。${downloadedMods.size}个mod")
             onProgress("构建客户端版。。")
