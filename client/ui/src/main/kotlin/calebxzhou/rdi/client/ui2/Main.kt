@@ -33,6 +33,7 @@ import calebxzhou.rdi.client.ui2.screen.*
 import calebxzhou.rdi.common.serdesJson
 import kotlinx.coroutines.launch
 import java.awt.Toolkit
+import org.bson.types.ObjectId
 
 lateinit var UIFontFamily: FontFamily
 lateinit var ArtFontFamily: FontFamily
@@ -119,7 +120,20 @@ fun main() = application {
                 composable<HostList> {
                     HostListScreen(
                         onBack = { navController.navigate(Profile) },
-                        onOpenWorldList = { navController.navigate(WorldList) }
+                        onOpenWorldList = { navController.navigate(WorldList) },
+                        onOpenHostInfo = { hostId ->
+                            navController.navigate(HostInfo(hostId))
+                        }
+                    )
+                }
+                composable<HostInfo> {
+                    val route = it.toRoute<HostInfo>()
+                    HostInfoScreen(
+                        hostId = ObjectId(route.hostId),
+                        onBack = { navController.navigate(HostList) },
+                        onOpenModpackInfo = { modpackId ->
+                            navController.navigate(ModpackInfo(modpackId, fromHostId = route.hostId))
+                        }
                     )
                 }
                 composable<WorldList> {
@@ -165,7 +179,13 @@ fun main() = application {
                     val route = it.toRoute<ModpackInfo>()
                     ModpackInfoScreen(
                         modpackId = route.modpackId,
-                        onBack = { navController.navigate(ModpackList) }
+                        onBack = {
+                            if (route.fromHostId != null) {
+                                navController.navigate(HostInfo(route.fromHostId))
+                            } else {
+                                navController.navigate(ModpackList)
+                            }
+                        }
                     )
                 }
                 composable<ModpackManage> {
