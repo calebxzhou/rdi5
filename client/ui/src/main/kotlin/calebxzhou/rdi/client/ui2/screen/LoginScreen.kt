@@ -21,7 +21,9 @@ import calebxzhou.rdi.client.auth.LocalCredentials
 import calebxzhou.rdi.client.net.server
 import calebxzhou.rdi.client.service.PlayerService
 import calebxzhou.rdi.client.service.UpdateService
+import calebxzhou.rdi.client.ui2.BottomSnakebar
 import calebxzhou.rdi.client.ui2.CodeFontFamily
+import calebxzhou.rdi.client.ui2.MainBox
 import calebxzhou.rdi.client.ui2.asIconText
 import calebxzhou.rdi.common.exception.RequestError
 import io.ktor.http.*
@@ -53,6 +55,8 @@ fun LoginScreen(
     var loginError by remember { mutableStateOf<String?>(null) }
     var updateStatus by remember { mutableStateOf("正在检查更新...") }
     var updateDetail by remember { mutableStateOf("") }
+    val snackbarHostState = remember { SnackbarHostState() }
+    var okMessage by remember { mutableStateOf<String?>(null) }
 
     fun attemptLogin() {
         if (qq.isBlank() || pwd.isBlank()) {
@@ -102,23 +106,70 @@ fun LoginScreen(
             )
         }
     }
+    LaunchedEffect(okMessage) {
+        okMessage?.let {
+            snackbarHostState.showSnackbar(it, duration = SnackbarDuration.Short)
+            okMessage = null
+        }
+    }
 
-    Column(
-        modifier = Modifier.fillMaxSize().background(Color.White).padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text("登录", style = MaterialTheme.typography.h5, color = Color.Black)
-
+    MainBox {
         Column(
-            modifier = Modifier.fillMaxWidth(0.4f),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier.fillMaxSize().background(Color.White).padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Box(modifier = Modifier.fillMaxWidth()) {
+            Text("登录", style = MaterialTheme.typography.h5, color = Color.Black)
+
+            Column(
+                modifier = Modifier.fillMaxWidth(0.4f),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        value = qq,
+                        onValueChange = { qq = it },
+                        label = { Text("RDID/QQ号") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().onKeyEvent { event ->
+                            if (event.type == KeyEventType.KeyUp && event.key == Key.Enter) {
+                                attemptLogin()
+                                true
+                            } else {
+                                false
+                            }
+                        },
+                        trailingIcon = {
+                            TextButton(onClick = { showAccounts = true }) {
+                                Text("▼")
+                            }
+                        },
+                    )
+                    DropdownMenu(
+                        expanded = showAccounts,
+                        onDismissRequest = { showAccounts = false }
+                    ) {
+                        storedAccounts.forEach { entry ->
+                            val info = entry.value
+                            DropdownMenuItem(onClick = {
+                                qq = info.qq
+                                pwd = info.pwd
+                                showAccounts = false
+                            }) {
+                                Text("${info.name} (${info.qq})")
+                            }
+                        }
+                        if (storedAccounts.isEmpty()) {
+                            DropdownMenuItem(onClick = { showAccounts = false }) {
+                                Text("暂无历史账号")
+                            }
+                        }
+                    }
+                }
                 OutlinedTextField(
-                    value = qq,
-                    onValueChange = { qq = it },
-                    label = { Text("RDID/QQ号") },
+                    value = pwd,
+                    onValueChange = { pwd = it },
+                    label = { Text("密码") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth().onKeyEvent { event ->
                         if (event.type == KeyEventType.KeyUp && event.key == Key.Enter) {
@@ -128,131 +179,93 @@ fun LoginScreen(
                             false
                         }
                     },
+                    visualTransformation = if (showPassword) {
+                        VisualTransformation.None
+                    } else {
+                        PasswordVisualTransformation()
+                    },
                     trailingIcon = {
-                        TextButton(onClick = { showAccounts = true }) {
-                            Text("▼")
-                        }
+                        Text(
+                            text = "\uDB80\uDE08".asIconText,
+                            style = MaterialTheme.typography.h6.copy(
+                                fontFamily = CodeFontFamily,
+                                fontSize = 20.sp
+                            ),
+                            modifier = Modifier
+                                .padding(end = 8.dp)
+                                .clickable { showPassword = !showPassword }
+                        )
                     },
                 )
-                DropdownMenu(
-                    expanded = showAccounts,
-                    onDismissRequest = { showAccounts = false }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    storedAccounts.forEach { entry ->
-                        val info = entry.value
-                        DropdownMenuItem(onClick = {
-                            qq = info.qq
-                            pwd = info.pwd
-                            showAccounts = false
-                        }) {
-                            Text("${info.name} (${info.qq})")
+                    TextButton(onClick = {
+                        scope.launch {
+                            withContext(Dispatchers.IO) {
+                                createShortcut()
+                            }
                         }
+                    }) {
+                        Text("创建桌面快捷方式")
                     }
-                    if (storedAccounts.isEmpty()) {
-                        DropdownMenuItem(onClick = { showAccounts = false }) {
-                            Text("暂无历史账号")
-                        }
+                    TextButton(onClick = { showRegister = true }) {
+                        Text("注册")
                     }
                 }
-            }
-            OutlinedTextField(
-                value = pwd,
-                onValueChange = { pwd = it },
-                label = { Text("密码") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth().onKeyEvent { event ->
-                    if (event.type == KeyEventType.KeyUp && event.key == Key.Enter) {
-                        attemptLogin()
-                        true
-                    } else {
-                        false
+
+                loginError?.let { message ->
+                    Text(message, color = MaterialTheme.colors.error)
+                }
+
+                Row(
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier.width(20.dp).height(20.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (submitting) {
+                            CircularProgressIndicator(modifier = Modifier.width(16.dp), strokeWidth = 2.dp)
+                        }
                     }
-                },
-                visualTransformation = if (showPassword) {
-                    VisualTransformation.None
-                } else {
-                    PasswordVisualTransformation()
-                },
-                trailingIcon = {
-                    Text(
-                        text = "\uDB80\uDE08".asIconText,
-                        style = MaterialTheme.typography.h6.copy(
-                            fontFamily = CodeFontFamily,
-                            fontSize = 20.sp
-                        ),
-                        modifier = Modifier
-                            .padding(end = 8.dp)
-                            .clickable { showPassword = !showPassword }
-                    )
-                },
-            )
+                    Button(
+                        onClick = {
+                            attemptLogin()
+                        },
+                        enabled = !submitting
+                    ) {
+                        Text(if (submitting) "登录中..." else "登录")
+                    }
+                }
+
+            }
+            Spacer(modifier = Modifier.weight(1f))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                TextButton(onClick = {
-                    scope.launch {
-                        withContext(Dispatchers.IO) {
-                            createShortcut()
-                        }
-                    }
-                }) {
-                    Text("创建桌面快捷方式")
-                }
-                TextButton(onClick = { showRegister = true }) {
-                    Text("注册")
-                }
-            }
-
-            loginError?.let { message ->
-                Text(message, color = MaterialTheme.colors.error)
-            }
-
-            Row(
-                modifier = Modifier.align(Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.Center
             ) {
-                Box(
-                    modifier = Modifier.width(20.dp).height(20.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (submitting) {
-                        CircularProgressIndicator(modifier = Modifier.width(16.dp), strokeWidth = 2.dp)
-                    }
-                }
-                Button(
-                    onClick = {
-                        attemptLogin()
-                    },
-                    enabled = !submitting
-                ) {
-                    Text(if (submitting) "登录中..." else "登录")
-                }
-            }
-
-        }
-        Spacer(modifier = Modifier.weight(1f))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = updateStatus,
-                style = MaterialTheme.typography.caption,
-                color = MaterialTheme.colors.onSurface
-            )
-            if (updateDetail.isNotBlank()) {
-                Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = updateDetail,
+                    text = updateStatus,
                     style = MaterialTheme.typography.caption,
                     color = MaterialTheme.colors.onSurface
                 )
+                if (updateDetail.isNotBlank()) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = updateDetail,
+                        style = MaterialTheme.typography.caption,
+                        color = MaterialTheme.colors.onSurface
+                    )
+                }
             }
         }
+        BottomSnakebar(snackbarHostState)
     }
 
     if (showRegister) {
@@ -262,6 +275,7 @@ fun LoginScreen(
             },
             onSuccess = {
                 showRegister = false
+                okMessage = "注册成功，请登录"
             }
         )
     }
@@ -285,6 +299,7 @@ private fun RegisterDialog(
         title = { Text("注册新账号") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("")
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
