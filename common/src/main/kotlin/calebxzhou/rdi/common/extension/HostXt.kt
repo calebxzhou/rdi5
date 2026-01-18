@@ -18,3 +18,6 @@ fun Host.isOwner(acc: RAccount) = owner?.id == acc._id
 fun Host.isAdmin(acc: RAccount): Boolean = isAdmin(acc._id)
 fun Host.isAdmin(uid: ObjectId): Boolean =
     members.any { it.id == uid && (it.role == Role.OWNER || it.role == Role.ADMIN) }
+fun Host.DetailVo.isAdmin(acc: RAccount): Boolean = isAdmin(acc._id)
+fun Host.DetailVo.isAdmin(uid: ObjectId): Boolean =
+    this.ownerId==uid||members.any { it.id == uid && (it.role == Role.OWNER || it.role == Role.ADMIN) }
