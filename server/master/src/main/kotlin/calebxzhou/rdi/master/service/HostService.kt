@@ -1127,7 +1127,7 @@ object HostService {
 
 
     suspend fun HostContext.delMember() {
-        if (targetMember.role.level <= Role.ADMIN.level) {
+        if (targetMember.role.level <= Role.ADMIN.level && this.member.role != Role.OWNER) {
             throw RequestError("无法踢出管理员")
         }
         dbcl.updateOne(
