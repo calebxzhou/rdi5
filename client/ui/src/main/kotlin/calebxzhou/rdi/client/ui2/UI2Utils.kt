@@ -426,3 +426,31 @@ fun iconBitmap(icon: String): ImageBitmap {
         return it.readBytes().decodeToImageBitmap()
     }
 }
+@Composable
+fun ErrorText(text: String){
+    Text("\uF467 $text".asIconText, color = MaterialTheme.colors.error)
+}
+
+@Composable
+fun ConfirmDialog(
+    title: String,
+    message: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = { Text(message) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("确定", color = MaterialColor.GREEN_900.color)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        }
+    )
+}
