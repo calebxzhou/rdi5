@@ -612,7 +612,7 @@ fun HostInfoScreen(
                     .padding(16.dp)
             ) {
                 TitleRow("地图设置", { showOptionsDialog = false }) {
-                    TextButton(onClick = {
+                    CircleIconButton("\uF058", bgColor = MaterialColor.GREEN_900.color){
                         val body = serdesJson.encodeToString(
                             Host.OptionsDto(
                                 difficulty = optionDifficulty,
@@ -634,44 +634,40 @@ fun HostInfoScreen(
                             onErr = { errorMessage = it.message ?: "保存失败" }
                         )
                         showOptionsDialog = false
-                    }) {
-                        Text("保存", color = MaterialColor.GREEN_900.color)
                     }
                 }
                 Space8h()
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("难度")
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp),verticalAlignment = Alignment.CenterVertically) {
+                        Text("难度：")
                         listOf(
                             0 to "和平",
                             1 to "简单",
                             2 to "普通",
                             3 to "困难"
                         ).forEach { (value, label) ->
-                            Row(verticalAlignment = Alignment.CenterVertically) {
                                 RadioButton(
                                     selected = optionDifficulty == value,
                                     onClick = { optionDifficulty = value }
                                 )
                                 Text(label)
-                            }
+
                         }
                     }
-                    Text("游戏模式")
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp),verticalAlignment = Alignment.CenterVertically) {
+                        Text("游戏模式：")
                         listOf(
                             0 to "生存",
                             1 to "创造",
                             2 to "冒险",
                             3 to "旁观"
                         ).forEach { (value, label) ->
-                            Row(verticalAlignment = Alignment.CenterVertically) {
                                 RadioButton(
                                     selected = optionGameMode == value,
                                     onClick = { optionGameMode = value }
                                 )
                                 Text(label)
-                            }
+
                         }
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
