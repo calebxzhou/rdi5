@@ -17,7 +17,9 @@ val lgr = KotlinLogging.logger {  }
 val logMarker
     get() = {marker: String ->  MarkerFactory.getMarker(marker)}
 fun main(){
-    RDIClient.start(_root_ide_package_.calebxzhou.rdi.client.ui.frag.TitleFragment())
+    //redirect new ui
+    calebxzhou.rdi.client.ui2.main()
+    //RDIClient.start(_root_ide_package_.calebxzhou.rdi.client.ui.frag.TitleFragment())
 }
 object RDIClient {
 
