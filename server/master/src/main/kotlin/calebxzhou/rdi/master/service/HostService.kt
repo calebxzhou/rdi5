@@ -520,15 +520,19 @@ object HostService {
     }
 
     // ---------- Core Logic (no ApplicationCall side-effects) ----------
-    suspend fun Host.getOnlinePlayers(): List<ObjectId> = try {
-        McServerPinger.ping(this.port).players?.let { players ->
-            players.sample.map { UUID.fromString(it.id).objectId }
-        } ?: emptyList()
-    } catch (cancel: CancellationException) {
-        throw cancel
-    } catch (t: Throwable) {
-        lgr.warn(t) { "Failed to ping host ${this._id}: ${t.message}" }
-        emptyList()
+    suspend fun Host.getOnlinePlayers(): List<ObjectId> {
+        return try {
+            if(status!= HostStatus.PLAYABLE)
+                return emptyList()
+            McServerPinger.ping(this.port).players?.let { players ->
+                players.sample.map { UUID.fromString(it.id).objectId }
+            } ?: emptyList()
+        } catch (cancel: CancellationException) {
+            throw cancel
+        } catch (t: Throwable) {
+            lgr.warn(t) { "Failed to ping host ${this._id}: ${t.message}" }
+            emptyList()
+        }
     }
 
     suspend fun RAccount.createHostLegacy(
