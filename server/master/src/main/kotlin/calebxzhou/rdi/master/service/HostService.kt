@@ -356,7 +356,11 @@ object HostService {
                 throw RequestError("不是地图受邀成员")
             }
         }
-        val tarMem = idParamNull("uid2")?.let { uid2 -> host.members.find { it.id == uid2 } }
+        val tarMem = parameters["uid2"]?.let { rawId ->
+            runCatching { ObjectId(rawId) }.getOrNull()
+        }?.let { uid2 ->
+            host.members.find { it.id == uid2 }
+        }
         return HostContext(host, player(), reqMem, tarMem)
     }
 
