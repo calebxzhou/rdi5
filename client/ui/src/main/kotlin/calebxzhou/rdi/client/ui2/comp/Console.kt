@@ -1,15 +1,14 @@
 package calebxzhou.rdi.client.ui2.comp
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
@@ -17,7 +16,21 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import calebxzhou.rdi.client.ui2.CircleIconButton
 import calebxzhou.rdi.client.ui2.CodeFontFamily
+import calebxzhou.rdi.client.ui2.MaterialColor
+import calebxzhou.rdi.client.ui2.alertErr
+import calebxzhou.rdi.client.ui2.alertOk
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.*
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
+import javax.swing.JFileChooser
+import javax.swing.filechooser.FileNameExtensionFilter
 
 class ConsoleState(
     private val maxLogLines: Int = 200
@@ -43,6 +56,7 @@ class ConsoleState(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Console(
     state: ConsoleState,
@@ -50,6 +64,9 @@ fun Console(
 ) {
     val listState = rememberLazyListState()
     val lineCount = state.lines.size
+    val scope = rememberCoroutineScope()
+    var showSuccess by remember { mutableStateOf(false) }
+    var showError by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(lineCount) {
         if (lineCount > 0) {
@@ -57,20 +74,95 @@ fun Console(
         }
     }
 
-    LazyColumn(
-        state = listState,
-        modifier = modifier
-            .fillMaxSize()
-            .background(Color.Black),
-        contentPadding = PaddingValues(vertical = 8.dp, horizontal = 12.dp)
-    ) {
-        items(state.lines.size) { index ->
-            Text(
-                text = formatLine(state.lines[index]),
-                fontFamily = CodeFontFamily,
-                color = Color.White
-            )
+    Box(modifier = modifier.fillMaxSize()) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black),
+            contentPadding = PaddingValues(vertical = 8.dp, horizontal = 12.dp)
+        ) {
+            items(state.lines.size) { index ->
+                Text(
+                    text = formatLine(state.lines[index]),
+                    fontFamily = CodeFontFamily,
+                    color = Color.White
+                )
+            }
         }
+
+        // Export button in top-right corner
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(8.dp)
+        ) {
+            CircleIconButton(
+                icon = "\uF019",
+                tooltip = "导出日志",
+                bgColor = MaterialColor.BLUE_700.color,
+                size = 32
+            ) {
+                scope.launch {
+                    val result = exportLogsToZip(state.lines)
+                    if (result.isSuccess) {
+                        showSuccess = true
+                    } else {
+                        showError = result.exceptionOrNull()?.message ?: "导出失败"
+                    }
+                }
+            }
+        }
+    }
+
+    // Success/Error dialogs
+    if (showSuccess) {
+        alertOk("日志已成功导出")
+        showSuccess = false
+    }
+    showError?.let { error ->
+        alertErr("导出失败: $error")
+        showError = null
+    }
+}
+
+private suspend fun exportLogsToZip(lines: List<String>): Result<File> = withContext(Dispatchers.IO) {
+    try {
+        // Show file chooser dialog
+        val chooser = JFileChooser().apply {
+            dialogTitle = "选择日志保存位置"
+            fileSelectionMode = JFileChooser.FILES_ONLY
+            val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+            selectedFile = File(System.getProperty("user.home"), "console_log_$timestamp.zip")
+            fileFilter = FileNameExtensionFilter("ZIP 文件 (*.zip)", "zip")
+        }
+
+        val result = chooser.showSaveDialog(null)
+        if (result != JFileChooser.APPROVE_OPTION) {
+            return@withContext Result.failure(Exception("用户取消了操作"))
+        }
+
+        var outputFile = chooser.selectedFile
+        if (!outputFile.name.endsWith(".zip", ignoreCase = true)) {
+            outputFile = File(outputFile.parentFile, "${outputFile.name}.zip")
+        }
+
+        // Create zip file
+        ZipOutputStream(outputFile.outputStream()).use { zipOut ->
+            val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+            val entry = ZipEntry("console_log_$timestamp.txt")
+            zipOut.putNextEntry(entry)
+            
+            lines.forEach { line ->
+                zipOut.write("$line\n".toByteArray(Charsets.UTF_8))
+            }
+            
+            zipOut.closeEntry()
+        }
+
+        Result.success(outputFile)
+    } catch (e: Exception) {
+        Result.failure(e)
     }
 }
 
