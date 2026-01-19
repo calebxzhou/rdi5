@@ -38,9 +38,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import calebxzhou.mykotutils.std.secondsToHumanDateTime
 import calebxzhou.rdi.client.net.loggedAccount
 import calebxzhou.rdi.client.net.rdiRequest
@@ -115,7 +115,6 @@ fun HostInfoScreen(
     var showGameRulesDialog by remember { mutableStateOf(false) }
     var gameRulesTouched by remember { mutableStateOf(false) }
     val gameRuleOverrides = remember { mutableStateMapOf<String, String>() }
-    val baseRuleById = remember { AllGameRules.associateBy { it.id } }
 
     fun reload() {
         loading = true
