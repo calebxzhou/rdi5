@@ -64,7 +64,7 @@ fun HostListScreen(
                 onOpenWorldList?.invoke()
             }
             Spacer(modifier = Modifier.width(8.dp))
-            CircleIconButton("\uEF09","节点"){ showCarrierDialog = true }
+            CircleIconButton("\uEF09","节点", contentPadding = PaddingValues(0.dp)){ showCarrierDialog = true }
             Spacer(modifier = Modifier.width(8.dp))
 
             CircleIconButton("\uF067","创建新地图"){
