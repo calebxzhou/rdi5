@@ -21,12 +21,16 @@ import calebxzhou.rdi.client.ui.frag.TaskFragment
 import calebxzhou.rdi.client.ui.go
 import calebxzhou.rdi.client.ui.pointerBuffer
 import calebxzhou.rdi.client.ui.toast
+import calebxzhou.rdi.common.model.Task
+import calebxzhou.rdi.common.model.TaskProgress
+import calebxzhou.rdi.common.model.validateModpackName
 import kotlinx.coroutines.*
 import org.bson.types.ObjectId
 import org.lwjgl.util.tinyfd.TinyFileDialogs
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.Collections
 import kotlin.io.path.name
 
 val selectModpackFile
@@ -44,7 +48,8 @@ object ModpackService {
         return GameService.versionListDir.resolve("${modpackId}_${verName}")
     }
 
-    suspend fun installVersion(
+
+    suspend fun installVersionLegacy(
         mcVersion: McVersion,
         modLoader: ModLoader,
         modpackId: ObjectId,

@@ -12,14 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.AlertDialog
-import androidx.compose.material.Card
 import androidx.compose.material.Checkbox
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.MaterialTheme
@@ -68,11 +61,10 @@ import calebxzhou.rdi.client.ui2.TitleRow
 import calebxzhou.rdi.client.ui2.asIconText
 import calebxzhou.rdi.client.ui2.comp.Console
 import calebxzhou.rdi.client.ui2.comp.ConsoleState
+import calebxzhou.rdi.client.ui2.comp.GameRuleModal
 import calebxzhou.rdi.client.ui2.comp.HeadButton
 import calebxzhou.rdi.client.ui2.comp.ModpackCard
 import calebxzhou.rdi.common.extension.isAdmin
-import calebxzhou.rdi.common.model.AllGameRules
-import calebxzhou.rdi.common.model.GameRuleValueType
 import calebxzhou.rdi.common.model.Host
 import calebxzhou.rdi.common.model.Modpack
 import calebxzhou.rdi.common.serdesJson
@@ -700,118 +692,15 @@ fun HostInfoScreen(
         }
     }
 
-    if (showGameRulesDialog && host != null) {
-        val groupedRules = AllGameRules.groupBy { it.category }.toSortedMap()
-        val changedCount = gameRuleOverrides.size
-        fun updateOverride(ruleId: String, newValue: String) {
-            val baseRule = baseRuleById[ruleId] ?: return
-            val normalized = newValue.trim()
-            if (normalized.equals(baseRule.value, ignoreCase = true) || normalized.isEmpty()) {
-                gameRuleOverrides.remove(ruleId)
-            } else {
-                gameRuleOverrides[ruleId] = normalized
-            }
+    GameRuleModal(
+        show = showGameRulesDialog && host != null,
+        overrideRules = gameRuleOverrides,
+        onClose = { showGameRulesDialog = false },
+        onBack = {
+            showGameRulesDialog = false
+            showOptionsDialog = true
         }
-
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color(0x99000000))
-                .zIndex(2f)
-                .pointerInput(Unit) { detectTapGestures(onPress = { tryAwaitRelease() }) }
-        ) {
-            Column(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .fillMaxWidth(0.9f)
-                    .height(560.dp)
-                    .background(Color.White, androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
-                    .padding(16.dp)
-            ) {
-                val title = if (changedCount > 0) "游戏规则设定（${changedCount}项已更改）" else "游戏规则设定"
-                TitleRow(title, {
-                    showGameRulesDialog = false
-                    showOptionsDialog = true
-                }) {
-                    CircleIconButton("\uDB81\uDC50","重置"){
-                        gameRuleOverrides.clear()
-                    }
-                }
-                LazyVerticalGrid(
-                    columns = GridCells.Adaptive(320.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                ) {
-                    groupedRules.forEach { (category, rules) ->
-                        item(span = { GridItemSpan(maxLineSpan) }) {
-                            Text(category, fontSize = 15.sp)
-                        }
-                        items(rules.sortedBy { it.name }, key = { it.id }) { rule ->
-                            val currentValue = gameRuleOverrides[rule.id] ?: rule.value
-                            val isChanged = gameRuleOverrides.containsKey(rule.id)
-                            val cardColor = if (isChanged) Color(0xFFEDEDED) else Color.White
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                backgroundColor = cardColor,
-                                elevation = 0.dp
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(8.dp),
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        when (rule.valueType) {
-                                            GameRuleValueType.BOOLEAN -> {
-                                                Checkbox(
-                                                    checked = currentValue.equals("true", true),
-                                                    onCheckedChange = { checked ->
-                                                        updateOverride(rule.id, checked.toString())
-                                                    }
-                                                )
-                                            }
-                                            GameRuleValueType.INTEGER -> {
-                                                var text by remember(rule.id, currentValue) {
-                                                    mutableStateOf(currentValue)
-                                                }
-                                                OutlinedTextField(
-                                                    value = text,
-                                                    onValueChange = { input ->
-                                                        text = input
-                                                        val parsed = input.trim().toIntOrNull()
-                                                        if (parsed != null) {
-                                                            updateOverride(rule.id, parsed.toString())
-                                                        } else if (input.isBlank()) {
-                                                            updateOverride(rule.id, "")
-                                                        }
-                                                    },
-                                                    label = { Text("数值") },
-                                                    singleLine = true,
-                                                    modifier = Modifier.width(96.dp)
-                                                )
-                                            }
-                                        }
-                                        Space8w()
-                                        Text(rule.name, fontSize = 14.sp)
-                                    }
-                                    Text(
-                                        rule.description,
-                                        fontSize = 12.sp,
-                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
-                                    )
-                                    rule.effect?.takeIf { it.isNotBlank() }?.let {
-                                        Text(it, fontSize = 12.sp, color = MaterialColor.GRAY_700.color)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
+    )
 
     roleChangeConfirm?.let { change ->
         val msg = if (change.newRole == Role.ADMIN) "确定设置该成员为管理员？" else "确定取消管理员身份？"
