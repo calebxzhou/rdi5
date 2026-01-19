@@ -1,6 +1,7 @@
 package calebxzhou.rdi.client.ui2.screen
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
@@ -8,24 +9,9 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.AlertDialog
-import androidx.compose.material.Button
-import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.SnackbarDuration
-import androidx.compose.material.SnackbarHostState
-import androidx.compose.material.Tab
-import androidx.compose.material.TabRow
-import androidx.compose.material.Text
-import androidx.compose.material.TextButton
+import androidx.compose.material.*
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -35,28 +21,24 @@ import calebxzhou.mykotutils.std.millisToHumanDateTime
 import calebxzhou.rdi.client.net.loggedAccount
 import calebxzhou.rdi.client.net.rdiRequest
 import calebxzhou.rdi.client.net.rdiRequestU
+import calebxzhou.rdi.client.service.ModpackService
 import calebxzhou.rdi.client.service.ModpackService.startInstall
-import calebxzhou.rdi.client.ui2.BottomSnakebar
-import calebxzhou.rdi.client.ui2.CircleIconButton
-import calebxzhou.rdi.client.ui2.ImageIconButton
-import calebxzhou.rdi.client.ui2.MainBox
-import calebxzhou.rdi.client.ui2.MainColumn
-import calebxzhou.rdi.client.ui2.MaterialColor
-import calebxzhou.rdi.client.ui2.Space8h
-import calebxzhou.rdi.client.ui2.Space8w
-import calebxzhou.rdi.client.ui2.TitleRow
-import calebxzhou.rdi.client.ui2.asIconText
+import calebxzhou.rdi.client.ui2.*
 import calebxzhou.rdi.client.ui2.comp.HeadButton
 import calebxzhou.rdi.client.ui2.comp.ModCard
 import calebxzhou.rdi.common.model.Mod
 import calebxzhou.rdi.common.model.Modpack
+import calebxzhou.rdi.common.model.Task
 import calebxzhou.rdi.common.model.latest
+import calebxzhou.rdi.common.model.validateIconUrl
+import calebxzhou.rdi.common.model.validateModpackName
+import calebxzhou.rdi.common.serdesJson
 import calebxzhou.rdi.common.service.CurseForgeService.fillCurseForgeVo
+import io.ktor.http.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.bson.types.ObjectId
-import io.ktor.http.HttpMethod
 
 /**
  * calebxzhou @ 2026-01-17 20:44
@@ -67,7 +49,8 @@ fun ModpackInfoScreen(
     modpackId: String,
     onBack: () -> Unit,
     onOpenUpload: ((ObjectId, String) -> Unit)? = null,
-    onCreateHost: ((String, String, String, Boolean) -> Unit)? = null
+    onCreateHost: ((String, String, String, Boolean) -> Unit)? = null,
+    onOpenTask: ((Task) -> Unit)? = null
 ) {
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -81,6 +64,12 @@ fun ModpackInfoScreen(
     var confirmDeletePack by remember { mutableStateOf(false) }
     var confirmDeleteVersion by remember { mutableStateOf<Modpack.Version?>(null) }
     var confirmRebuildVersion by remember { mutableStateOf<Modpack.Version?>(null) }
+    var confirmRedownloadVersion by remember { mutableStateOf<Modpack.Version?>(null) }
+    var showEditDialog by remember { mutableStateOf(false) }
+    var editName by remember { mutableStateOf("") }
+    var editIconUrl by remember { mutableStateOf("") }
+    var editInfo by remember { mutableStateOf("") }
+    var editSourceUrl by remember { mutableStateOf("") }
     var selectedTab by remember { mutableStateOf(0) }
 
     fun reload() {
@@ -116,6 +105,15 @@ fun ModpackInfoScreen(
         )
     }
 
+    fun startDownload(pack: Modpack.DetailVo, version: Modpack.Version) {
+        val task = version.startInstall(pack.mcVer, pack.modloader, pack.name)
+        if (onOpenTask != null) {
+            onOpenTask(task)
+        } else {
+            okMessage = "暂不支持在此页面下载"
+        }
+    }
+
     LaunchedEffect(modpackId) {
         reload()
     }
@@ -147,7 +145,15 @@ fun ModpackInfoScreen(
                         icon = "\uF01F",
                         tooltip = "修改信息",
                         bgColor = MaterialColor.YELLOW_900.color
-                    ) {   }
+                    ) {
+                        pack.let {
+                            editName = it.name
+                            editIconUrl = it.icon ?: ""
+                            editInfo = it.info
+                            editSourceUrl = it.sourceUrl ?: ""
+                            showEditDialog = true
+                        }
+                    }
                     Space8w()
                     CircleIconButton(
                         icon = "\uEA81",
@@ -277,7 +283,11 @@ fun ModpackInfoScreen(
                                             icon = "\uF019",
                                             tooltip = "下载整合包"
                                         ) {
-                                            version.startInstall(pack.mcVer, pack.modloader, pack.name)
+                                            if (ModpackService.getVersionDir(pack._id, version.name).exists()) {
+                                                confirmRedownloadVersion = version
+                                                return@CircleIconButton
+                                            }
+                                            startDownload(pack, version)
                                         }
                                     }
                                 }
@@ -334,6 +344,103 @@ fun ModpackInfoScreen(
         )
     }
 
+    if (showEditDialog && pack != null) {
+        AlertDialog(
+            onDismissRequest = { showEditDialog = false },
+            title = { Text("修改整合包信息") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = editName,
+                        onValueChange = { editName = it },
+                        label = { Text("名称") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = editIconUrl,
+                        onValueChange = { editIconUrl = it },
+                        label = { Text("图标链接") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = editSourceUrl,
+                        onValueChange = { editSourceUrl = it },
+                        label = { Text("来源链接") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = editInfo,
+                        onValueChange = { editInfo = it },
+                        label = { Text("简介") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    scope.launch {
+                        try {
+                            validateModpackName(editName)
+                        } catch (e: Exception) {
+                            errorMessage = e.message ?: "整合包名称不合法"
+                            return@launch
+                        }
+                        runCatching { validateIconUrl(editIconUrl.trim().ifBlank { null }) }.onFailure {
+                            errorMessage = it.message ?: "图标链接不合法"
+                            return@launch
+                        }
+                        val body = serdesJson.encodeToString(
+                            Modpack.OptionsDto(
+                                name = editName.trim().ifBlank { null },
+                                iconUrl = editIconUrl.trim().ifBlank { null },
+                                info = editInfo.trim().ifBlank { null },
+                                sourceUrl = editSourceUrl.trim().ifBlank { null }
+                            )
+                        )
+                        scope.rdiRequestU(
+                            path = "modpack/${pack._id}/options",
+                            method = HttpMethod.Put,
+                            body = body,
+                            onOk = {
+                                okMessage = "已更新"
+                                reload()
+                            },
+                            onErr = { errorMessage = it.message ?: "更新失败" }
+                        )
+                        showEditDialog = false
+                    }
+                }) {
+                    Text("保存")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEditDialog = false }) {
+                    Text("取消")
+                }
+            }
+        )
+    }
+
+    confirmRedownloadVersion?.let { version ->
+        val currentPack = pack
+        if (currentPack != null) {
+            ConfirmDialog(
+                title = "确认重新下载",
+                message = "整合包版本“${version.name}”已存在，是否重新下载？",
+                onConfirm = {
+                    confirmRedownloadVersion = null
+                    startDownload(currentPack, version)
+                },
+                onDismiss = { confirmRedownloadVersion = null }
+            )
+        } else {
+            confirmRedownloadVersion = null
+        }
+    }
+
     confirmDeleteVersion?.let { version ->
         AlertDialog(
             onDismissRequest = { confirmDeleteVersion = null },
@@ -367,7 +474,7 @@ fun ModpackInfoScreen(
         AlertDialog(
             onDismissRequest = { confirmRebuildVersion = null },
             title = { Text("确认重构版本") },
-            text = { Text("将使用最新版rdi核心重新构建此版本，确定吗？") },
+            text = { Text("整合包出现mod不完整等问题，可重构以解决。确定吗？") },
             confirmButton = {
                 TextButton(onClick = {
                     confirmRebuildVersion = null
