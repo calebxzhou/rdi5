@@ -8,6 +8,8 @@ import calebxzhou.mykotutils.std.deleteRecursivelyNoSymlink
 import calebxzhou.mykotutils.std.sha1
 import calebxzhou.mykotutils.std.toFixed
 import calebxzhou.rdi.common.model.*
+import calebxzhou.rdi.common.model.validateIconUrl
+import calebxzhou.rdi.common.model.validateModpackName
 import calebxzhou.rdi.common.serdesJson
 import calebxzhou.rdi.common.util.ioScope
 import calebxzhou.rdi.common.util.str
@@ -251,9 +253,13 @@ object ModpackService {
         payload.name?.let { name ->
             val trimmed = name.trim()
             if (trimmed.isBlank()) throw ParamError("名称不能为空")
+            validateModpackName(trimmed)
             updates += Updates.set(Modpack::name.name, trimmed)
         }
-        payload.iconUrl?.let { updates += Updates.set(Modpack::iconUrl.name, it) }
+        payload.iconUrl?.let {
+            validateIconUrl(it)
+            updates += Updates.set(Modpack::iconUrl.name, it)
+        }
         payload.info?.let { updates += Updates.set(Modpack::info.name, it) }
         payload.sourceUrl?.let { updates += Updates.set(Modpack::sourceUrl.name, it) }
         if (updates.isNotEmpty()) {
@@ -352,6 +358,7 @@ object ModpackService {
     }
 
     suspend fun create(uid: ObjectId, name: String, ver: McVersion, modLoader: ModLoader): Modpack {
+        validateModpackName(name)
         val modpackCount = dbcl.countDocuments(eq("authorId", uid)).toInt()
         if (modpackCount >= MAX_MODPACK_PER_USER) {
             throw RequestError("一个人最多传5个包")

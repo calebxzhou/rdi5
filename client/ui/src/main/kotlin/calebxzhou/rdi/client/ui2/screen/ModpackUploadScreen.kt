@@ -2,55 +2,31 @@ package calebxzhou.rdi.client.ui2.screen
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Text
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
+import androidx.compose.runtime.*
 import androidx.compose.ui.unit.dp
 import calebxzhou.mykotutils.std.humanFileSize
 import calebxzhou.mykotutils.std.humanSpeed
 import calebxzhou.mykotutils.std.urlEncoded
 import calebxzhou.rdi.client.net.server
 import calebxzhou.rdi.client.ui.pointerBuffer
-import calebxzhou.rdi.client.ui2.CircleIconButton
-import calebxzhou.rdi.client.ui2.MainColumn
-import calebxzhou.rdi.client.ui2.Space8h
-import calebxzhou.rdi.client.ui2.Space8w
-import calebxzhou.rdi.client.ui2.TitleRow
+import calebxzhou.rdi.client.ui2.*
 import calebxzhou.rdi.client.ui2.comp.ModCard
-import calebxzhou.rdi.client.ui2.wM
-import calebxzhou.rdi.common.model.CurseForgeModpackData
-import calebxzhou.rdi.common.model.McVersion
-import calebxzhou.rdi.common.model.Mod
-import calebxzhou.rdi.common.model.ModLoader
-import calebxzhou.rdi.common.model.Modpack
+import calebxzhou.rdi.common.model.*
 import calebxzhou.rdi.common.serdesJson
 import calebxzhou.rdi.common.service.CurseForgeService
 import calebxzhou.rdi.common.service.CurseForgeService.mapMods
-import io.ktor.client.request.forms.InputProvider
-import io.ktor.client.request.forms.MultiPartFormDataContent
-import io.ktor.client.request.forms.formData
-import io.ktor.client.plugins.onUpload
-import io.ktor.client.request.setBody
-import io.ktor.http.ContentType
-import io.ktor.http.Headers
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpMethod
-import io.ktor.utils.io.streams.asInput
+import io.ktor.client.plugins.*
+import io.ktor.client.request.*
+import io.ktor.client.request.forms.*
+import io.ktor.http.*
+import io.ktor.utils.io.streams.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.io.buffered
@@ -394,6 +370,12 @@ private suspend fun getOrCreateModpack(
         return existing
     }
 
+    try {
+        validateModpackName(name)
+    } catch (e: Exception) {
+        onError(e.message ?: "整合包名称不合法")
+        return null
+    }
     onProgress("创建整合包 ${name}...")
     val mcVersion = McVersion.from(data.manifest.minecraft.version) ?: run {
         onError("不支持的MC版本: ${data.manifest.minecraft.version}")
@@ -418,5 +400,3 @@ private suspend fun getOrCreateModpack(
     }
     return createResp.data
 }
-
-
