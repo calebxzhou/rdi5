@@ -12,10 +12,10 @@ class Modpack(
     @Contextual
     val authorId: ObjectId,
     val iconUrl: String? = null,
-    val info: String="暂无简介",
+    val info: String = "暂无简介",
     val modloader: ModLoader,
     val mcVer: McVersion,
-    val sourceUrl : String ? = null,
+    val sourceUrl: String? = null,
     val versions: List<Version> = arrayListOf(),
 ) {
 
@@ -28,11 +28,12 @@ class Modpack(
         val name: String,
         val changelog: String,
         //构建完成状态
-        val totalSize: Long?=0L,
+        val totalSize: Long? = 0L,
         val status: Status,
         val mods: MutableList<Mod> = arrayListOf(),
-        ){
+    ) {
     }
+
     @Serializable
     data class BriefVo(
         @Contextual
@@ -58,12 +59,14 @@ class Modpack(
         val authorId: ObjectId,
         val authorName: String = "",
         val modCount: Int,
+        val sourceUrl: String? = null,
         val icon: String? = null,
         val info: String = "暂无简介",
         val modloader: ModLoader,
         val mcVer: McVersion,
         val versions: List<Version> = arrayListOf(),
     )
+
     @Serializable
     data class OptionsDto(
         val name: String? = null,
@@ -71,8 +74,10 @@ class Modpack(
         val info: String? = null,
         val sourceUrl: String? = null
     )
-    enum class Status{
-        FAIL,OK,BUILDING,WAIT,
+
+    enum class Status {
+        FAIL, OK, BUILDING, WAIT,
     }
 }
+
 val List<Modpack.Version>.latest get() = maxBy { it.time }
