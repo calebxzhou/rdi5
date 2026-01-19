@@ -23,7 +23,6 @@ import calebxzhou.rdi.client.ui.pointerBuffer
 import calebxzhou.rdi.client.ui.toast
 import calebxzhou.rdi.common.model.Task
 import calebxzhou.rdi.common.model.TaskProgress
-import calebxzhou.rdi.common.model.validateModpackName
 import kotlinx.coroutines.*
 import org.bson.types.ObjectId
 import org.lwjgl.util.tinyfd.TinyFileDialogs
@@ -83,7 +82,7 @@ object ModpackService {
             return
         }
         onProgress("所有Mod下载完成，准备下载客户端包...")
-        val clientPack = downloadVersionClientPack(modpackId, verName, onProgress)
+        val clientPack = downloadVersionClientPackLegacy(modpackId, verName, onProgress)
         if (clientPack == null) {
             onProgress("客户端包下载失败，安装终止")
             return
@@ -146,7 +145,7 @@ object ModpackService {
         onProgress("整合包安装完成 位于:${versionDir.absolutePath}")
     }
 
-    suspend fun downloadVersionClientPack(modpackId: ObjectId, verName: String, onProgress: (String) -> Unit): File? {
+    suspend fun downloadVersionClientPackLegacy(modpackId: ObjectId, verName: String, onProgress: (String) -> Unit): File? {
         val file = DL_PACKS_DIR.resolve("${modpackId}_$verName.zip")
         val hash = server.makeRequest<String>("modpack/$modpackId/version/$verName/client/hash").data
         if (file.exists() && file.sha1 == hash) {
@@ -169,12 +168,180 @@ object ModpackService {
         return file
     }
 
-    fun Modpack.Version.startInstall(mcVersion: McVersion, modLoader: ModLoader, modpackName: String? = null) {
+    fun Modpack.Version.startInstallLegacy(mcVersion: McVersion, modLoader: ModLoader, modpackName: String? = null) {
         TaskFragment("完整下载整合包 ${modpackName ?: ""} ${totalSize?.humanFileSize} ") {
-            installVersion(mcVersion, modLoader, modpackId, this@startInstall.name, mods) { progress ->
+            installVersionLegacy(mcVersion, modLoader, modpackId, this@startInstallLegacy.name, mods) { progress ->
                 this.log(progress)
             }
         }.go()
+    }
+
+    fun installVersion(
+        mcVersion: McVersion,
+        modLoader: ModLoader,
+        modpackId: ObjectId,
+        verName: String,
+        mods: List<Mod>
+    ): Task {
+        val downloadedMods = Collections.synchronizedList(mutableListOf<CFDownloadMod>())
+        var clientPackFile: File? = null
+        val versionDir = getVersionDir(modpackId, verName)
+
+        val downloadModsTask = Task.Group(
+            name = "下载Mod",
+            subTasks = mods.map { mod ->
+                Task.Leaf("mod ${mod.slug}") { ctx ->
+                    val target = CFDownloadMod(
+                        mod.projectId.toInt(),
+                        mod.fileId.toInt(),
+                        mod.slug,
+                        DL_MOD_DIR.resolve(mod.fileName).toPath()
+                    )
+                    val result = CurseForgeApi.downloadMods(listOf(target)) { cfmod, prog ->
+                        val fraction = if (prog.fraction > 1f) prog.fraction / 100f else prog.fraction
+                        ctx.emitProgress(TaskProgress("下载中 ${cfmod.slug} ${prog.fraction.toFixed(2)}%", fraction))
+                    }
+                    val downloaded = result.getOrElse { err ->
+                        if (err is CFDownloadModException) {
+                            err.failed.forEach { (_, ex) ->
+                                ex.printStackTrace()
+                            }
+                            throw IllegalStateException("Mod下载失败: ${err.failed.toMap().keys.joinToString(", ") { it.slug }}")
+                        } else {
+                            err.printStackTrace()
+                            throw IllegalStateException("Mod下载失败: ${err.message}")
+                        }
+                    }
+                    downloadedMods += downloaded
+                    ctx.emitProgress(TaskProgress("下载完成", 1f))
+                }
+            }
+        )
+
+        val downloadClientPackTask = Task.Leaf("下载客户端整合包") { ctx ->
+            val file = DL_PACKS_DIR.resolve("${modpackId}_$verName.zip")
+            val hash = server.makeRequest<String>("modpack/$modpackId/version/$verName/client/hash").data
+                ?: throw IllegalStateException("客户端包哈希为空")
+            if (file.exists() && file.sha1 == hash) {
+                ctx.emitProgress(TaskProgress("客户端整合包已存在", 1f))
+                clientPackFile = file
+                return@Leaf
+            }
+            ctx.emitProgress(TaskProgress("开始下载...", 0f))
+            server.download("modpack/$modpackId/version/$verName/client", file.toPath()) { prog ->
+                val fraction = if (prog.totalBytes > 0) {
+                    prog.bytesDownloaded.toFloat() / prog.totalBytes
+                } else {
+                    null
+                }
+                val msg = if (prog.totalBytes > 0) {
+                    "${prog.bytesDownloaded.humanFileSize}/${prog.totalBytes.humanFileSize}"
+                } else {
+                    prog.bytesDownloaded.humanFileSize
+                }
+                ctx.emitProgress(TaskProgress(msg, fraction))
+            }
+            if (hash != file.sha1) {
+                file.delete()
+                throw IllegalStateException("客户端包下载损坏，请重试")
+            }
+            clientPackFile = file
+            ctx.emitProgress(TaskProgress("下载完成", 1f))
+        }
+
+        val extractTask = Task.Leaf("解压客户端整合包") { ctx ->
+            val clientPack = clientPackFile ?: throw IllegalStateException("客户端包未准备好")
+            if (versionDir.exists()) {
+                versionDir.deleteRecursively()
+            }
+            versionDir.mkdirs()
+            ctx.emitProgress(TaskProgress("解压中...", null))
+            clientPack.openChineseZip().use { zip ->
+                zip.entries().asSequence().forEach { entry ->
+                    val relativePath = entry.name.trimStart('/')
+                    val destination = versionDir.resolve(relativePath)
+                    if (entry.isDirectory) {
+                        destination.mkdirs()
+                    } else {
+                        destination.parentFile?.mkdirs()
+                        zip.getInputStream(entry).use { input ->
+                            destination.outputStream().use { output ->
+                                input.copyTo(output)
+                            }
+                        }
+                    }
+                }
+            }
+            ctx.emitProgress(TaskProgress("解压完成", 1f))
+        }
+
+        val linkModsTask = Task.Leaf("建立mods软链接") { ctx ->
+            val modsDir = versionDir.resolve("mods").apply { mkdirs() }
+
+            fun linkOrFail(src: Path, dst: Path) {
+                runCatching {
+                    Files.deleteIfExists(dst)
+                    Files.createSymbolicLink(dst, src)
+                }.onFailure {
+                    throw IllegalStateException("创建符号链接失败，需要管理员权限: ${dst.toFile().absolutePath}")
+                }
+            }
+
+            downloadedMods.forEachIndexed { index, dlmod ->
+                linkOrFail(dlmod.path, modsDir.resolve(dlmod.path.fileName.name).toPath())
+                val fraction = (index + 1).toFloat() / downloadedMods.size.coerceAtLeast(1)
+                ctx.emitProgress(TaskProgress("已链接 ${index + 1}/${downloadedMods.size}", fraction))
+            }
+
+            val mcSlug = "${mcVersion.mcVer}-${modLoader.name.lowercase()}"
+            val mcCoreTarget = DL_MOD_DIR.resolve("rdi-5-mc-client-$mcSlug.jar").toPath()
+            val mcCoreLink = modsDir.resolve("rdi-5-mc-client-$mcSlug.jar").toPath()
+            if (mcCoreTarget.toFile().exists()) {
+                Files.deleteIfExists(mcCoreLink)
+                linkOrFail(mcCoreTarget, mcCoreLink)
+            } else {
+                throw IllegalStateException("缺少核心文件: ${mcCoreTarget.toFile().absolutePath}")
+            }
+            ctx.emitProgress(TaskProgress("链接完成", 1f))
+        }
+
+        val writeOptionsTask = Task.Leaf("写入语言文件") { ctx ->
+            """
+            lang:zh_cn
+            darkMojangStudiosBackground:true
+            forceUnicodeFont:true
+            """.trimIndent().let { versionDir.resolve("options.txt").writeText(it) }
+            ctx.emitProgress(TaskProgress("写入完成", 1f))
+        }
+
+        return Task.Sequence(
+            name = "安装整合包 $verName",
+            subTasks = listOf(
+                downloadModsTask,
+                downloadClientPackTask,
+                extractTask,
+                linkModsTask,
+                writeOptionsTask
+            )
+        )
+    }
+
+    fun Modpack.Version.startInstall(
+        mcVersion: McVersion,
+        modLoader: ModLoader,
+        modpackName: String? = null
+    ): Task {
+        val title = buildString {
+            append("完整下载整合包")
+            if (!modpackName.isNullOrBlank()) append(" ").append(modpackName)
+            totalSize?.humanFileSize?.let { append(" ").append(it) }
+        }
+        return Task.Sequence(
+            name = title,
+            subTasks = listOf(
+                installVersion(mcVersion, modLoader, modpackId, this@startInstall.name, mods)
+            )
+        )
     }
 
     fun isVersionInstalled(modpackId: ObjectId, verName: String): Boolean {
@@ -211,7 +378,7 @@ object ModpackService {
         if (!isVersionInstalled(modpackId, packVer)) {
             confirm("未下载此地图的整合包，无法游玩。要现在开始下载吗？") {
                 ioTask {
-                    version.startInstall(modpack.mcVer, modpack.modloader)
+                    version.startInstallLegacy(modpack.mcVer, modpack.modloader)
                 }
             }
             return@ioTask
