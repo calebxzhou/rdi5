@@ -3,37 +3,17 @@ package calebxzhou.rdi.client.service
 import calebxzhou.mykotutils.ktor.DownloadProgress
 import calebxzhou.mykotutils.ktor.downloadFileFrom
 import calebxzhou.mykotutils.log.Loggers
-import calebxzhou.mykotutils.std.exportFromJarResource
-import calebxzhou.mykotutils.std.humanFileSize
-import calebxzhou.mykotutils.std.jarResource
-import calebxzhou.mykotutils.std.javaExePath
-import calebxzhou.mykotutils.std.readAllString
-import calebxzhou.mykotutils.std.sha1
-import calebxzhou.mykotutils.std.toFixed
+import calebxzhou.mykotutils.std.*
 import calebxzhou.rdi.CONF
-import calebxzhou.rdi.client.Const
 import calebxzhou.rdi.RDIClient
-import calebxzhou.rdi.client.model.MojangAssetIndexFile
-import calebxzhou.rdi.client.model.MojangAssetObject
-import calebxzhou.rdi.client.model.MojangDownloadArtifact
-import calebxzhou.rdi.client.model.MojangLibrary
-import calebxzhou.rdi.client.model.MojangRule
-import calebxzhou.rdi.client.model.MojangRuleAction
-import calebxzhou.rdi.client.model.MojangVersionManifest
-import calebxzhou.rdi.client.model.loaderManifest
-import calebxzhou.rdi.client.model.manifest
-import calebxzhou.rdi.client.model.metadata
-import calebxzhou.rdi.client.model.nativesDir
+import calebxzhou.rdi.client.Const
+import calebxzhou.rdi.client.model.*
+import calebxzhou.rdi.client.net.loggedAccount
 import calebxzhou.rdi.common.json
+import calebxzhou.rdi.common.model.*
 import calebxzhou.rdi.common.model.LibraryOsArch.Companion.detectHostOs
-import calebxzhou.rdi.common.model.McVersion
-import calebxzhou.rdi.common.model.ModLoader
-import calebxzhou.rdi.common.model.Task
-import calebxzhou.rdi.common.model.TaskProgress
 import calebxzhou.rdi.common.serdesJson
 import calebxzhou.rdi.common.util.toUUID
-import calebxzhou.rdi.client.net.loggedAccount
-import calebxzhou.rdi.common.model.TaskContext
 import com.sun.management.OperatingSystemMXBean
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Semaphore
@@ -44,14 +24,14 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import java.lang.management.ManagementFactory
 import java.io.File
+import java.lang.management.ManagementFactory
 import java.nio.charset.StandardCharsets
+import kotlin.concurrent.thread
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.util.*
 import java.util.zip.ZipFile
-import java.util.concurrent.atomic.AtomicInteger
 
 object GameService {
     private val lgr by Loggers
@@ -981,7 +961,7 @@ object GameService {
         return Result.success(target)
     }
 
-    fun start(mcVer: McVersion, versionId: String, vararg jvmArgs: String, onProgress: (String) -> Unit) {
+    fun start(mcVer: McVersion, versionId: String, vararg jvmArgs: String, onLine: (String) -> Unit): Process {
         val loaderManifest = mcVer.loaderManifest
         val manifest = mcVer.manifest
         val nativesDir = mcVer.nativesDir
@@ -1043,23 +1023,26 @@ object GameService {
             .redirectErrorStream(true)
             .start()
         started = true
-        try {
-            process.inputStream.bufferedReader(StandardCharsets.UTF_8).useLines { lines ->
-                lines.forEach { line ->
-                    if (line.isNotBlank()) {
-                        onProgress(line)
+        thread(name = "mc-log-reader", isDaemon = true) {
+            try {
+                process.inputStream.bufferedReader(StandardCharsets.UTF_8).useLines { lines ->
+                    lines.forEach { line ->
+                        if (line.isNotBlank()) {
+                            onLine(line)
+                        }
                     }
                 }
+                val exitCode = process.waitFor()
+                if (exitCode != 0) {
+                    onLine("启动失败，退出代码: $exitCode")
+                } else {
+                    onLine("已退出")
+                }
+            } finally {
+                started = false
             }
-            val exitCode = process.waitFor()
-            if (exitCode != 0) {
-                onProgress("启动失败，退出代码: $exitCode")
-            } else
-                onProgress("已退出")
-        } finally {
-            started = false
         }
-        // Actual process launch (auth, tokens, etc.) will be wired separately.
+        return process
     }
 
     private fun resolveArgumentList(source: List<JsonElement>): List<String> {
