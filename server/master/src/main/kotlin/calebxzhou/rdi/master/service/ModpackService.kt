@@ -18,6 +18,7 @@ import calebxzhou.rdi.master.exception.ParamError
 import calebxzhou.rdi.master.exception.RequestError
 import calebxzhou.rdi.master.net.*
 import calebxzhou.rdi.master.service.HostService.status
+import calebxzhou.rdi.master.service.ModpackService.changeOptions
 import calebxzhou.rdi.master.service.ModpackService.createVersion
 import calebxzhou.rdi.master.service.ModpackService.deleteModpack
 import calebxzhou.rdi.master.service.ModpackService.deleteVersion
@@ -47,6 +48,7 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.io.readByteArray
 import org.bson.Document
+import org.bson.conversions.Bson
 import org.bson.types.ObjectId
 import java.awt.Color
 import java.awt.image.BufferedImage
@@ -247,9 +249,9 @@ object ModpackService {
     suspend fun ApplicationCall.modpackGuardContext(): ModpackContext {
         val requesterId = uid
         val player = PlayerService.getById(requesterId) ?: throw RequestError("用户不存在")
-        val modpack = ModpackService.dbcl.find(eq("_id", idParam("modpackId"))).firstOrNull()
+        val modpack = ModpackService.dbcl.find(eq("_id", idPathParam("modpackId"))).firstOrNull()
             ?: throw RequestError("整合包不存在")
-        val verName = paramNull("verName")?.trim()?.takeIf { it.isNotEmpty() }
+        val verName = pathParamNull("verName")?.trim()?.takeIf { it.isNotEmpty() }
         val version = verName?.let { name ->
             modpack.versions.firstOrNull { it.name == name }
         }

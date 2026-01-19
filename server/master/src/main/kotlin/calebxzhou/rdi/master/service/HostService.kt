@@ -348,7 +348,7 @@ object HostService {
 
     suspend fun ApplicationCall.hostContext(): HostContext {
         val requesterId = uid
-        val host = HostService.getById(idParam("hostId")) ?: throw RequestError("无此地图")
+        val host = HostService.getById(idPathParam("hostId")) ?: throw RequestError("无此地图")
         val reqMem = host.members.firstOrNull { it.id == requesterId } ?: run {
             if (PlayerService.getName(host.ownerId) == "davickk") {
                 Host.Member(id = requesterId, role = Role.MEMBER)
@@ -356,7 +356,7 @@ object HostService {
                 throw RequestError("不是地图受邀成员")
             }
         }
-        val tarMem = parameters["uid2"]?.let { rawId ->
+        val tarMem = pathParamNull("uid2")?.let { rawId ->
             runCatching { ObjectId(rawId) }.getOrNull()
         }?.let { uid2 ->
             host.members.find { it.id == uid2 }
