@@ -122,7 +122,11 @@ fun Route.modpackRoutes() {
                 call.modpackGuardContext().requireAuthor().deleteModpack()
                 ok()
             }
-
+            put("/options") {
+                val ctx = call.modpackGuardContext().requireAuthor()
+                ctx.changeOptions(call.receive<Modpack.OptionsDto>())
+                ok()
+            }
             route("/version/{verName}") {
                 get {
                     call.modpackGuardContext().versionNull?.let { response(data = it) }
@@ -240,6 +244,22 @@ object ModpackService {
     fun ModpackContext.requireAuthor(): ModpackContext {
         if (!isAuthor) throw RequestError("不是你的整合包")
         return this
+    }
+
+    suspend fun ModpackContext.changeOptions(payload: Modpack.OptionsDto) {
+        val updates = mutableListOf<Bson>()
+        payload.name?.let { name ->
+            val trimmed = name.trim()
+            if (trimmed.isBlank()) throw ParamError("名称不能为空")
+            updates += Updates.set(Modpack::name.name, trimmed)
+        }
+        payload.iconUrl?.let { updates += Updates.set(Modpack::iconUrl.name, it) }
+        payload.info?.let { updates += Updates.set(Modpack::info.name, it) }
+        payload.sourceUrl?.let { updates += Updates.set(Modpack::sourceUrl.name, it) }
+        if (updates.isNotEmpty()) {
+            val update = if (updates.size == 1) updates.first() else Updates.combine(updates)
+            dbcl.updateOne(eq("_id", modpack._id), update)
+        }
     }
 
     fun Modpack.isMcVer(ver: McVersion): Boolean {
