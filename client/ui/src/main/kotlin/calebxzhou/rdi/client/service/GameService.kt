@@ -867,7 +867,7 @@ object GameService {
     }
 
     private suspend fun downloadLibrariesTask(libraries: List<MojangLibrary>, ctx: TaskContext) {
-        executeTask(downloadLibraries(libraries), ctx)
+        downloadLibraries(libraries).execute(ctx)
     }
 
     private suspend fun downloadSingleLibrary(library: MojangLibrary, ctx: TaskContext) {
@@ -882,37 +882,6 @@ object GameService {
         }.getOrThrow()
         ctx.emitProgress(TaskProgress("下载完成", 1f))
     }
-
-    private suspend fun executeTask(task: Task, ctx: TaskContext) {
-        when (task) {
-            is Task.Leaf -> task.execute(ctx)
-            is Task.Group -> {
-                val total = task.subTasks.size.coerceAtLeast(1)
-                val completed = AtomicInteger(0)
-                val semaphore = Semaphore(task.parallelism.coerceAtLeast(1))
-                coroutineScope {
-                    task.subTasks.map { subTask ->
-                        async(Dispatchers.IO) {
-                            semaphore.withPermit {
-                                executeTask(subTask, ctx)
-                            }
-                            val done = completed.incrementAndGet()
-                            ctx.emitProgress(TaskProgress("已完成 $done/$total", done.toFloat() / total))
-                        }
-                    }.awaitAll()
-                }
-            }
-            is Task.Sequence -> {
-                val total = task.subTasks.size.coerceAtLeast(1)
-                task.subTasks.forEachIndexed { index, subTask ->
-                    executeTask(subTask, ctx)
-                    val done = index + 1
-                    ctx.emitProgress(TaskProgress("已完成 $done/$total", done.toFloat() / total))
-                }
-            }
-        }
-    }
-
 
     private suspend fun downloadMojmapIfNeededTask(holder: LoaderInstallHolder, ctx: TaskContext) {
         val installProfile = holder.installProfile ?: return
