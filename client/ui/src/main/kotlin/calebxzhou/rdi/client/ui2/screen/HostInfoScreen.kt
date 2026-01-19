@@ -83,9 +83,6 @@ import org.bson.types.ObjectId
 fun HostInfoScreen(
     hostId: ObjectId,
     onBack: () -> Unit = {},
-    onNavigateToConsole: (ObjectId) -> Unit = {},
-    onNavigateToSettings: (Host.DetailVo) -> Unit = {},
-    onNavigateToInvite: (ObjectId) -> Unit = {},
     onOpenModpackInfo: ((String) -> Unit)? = null
 ) {
     val scope = rememberCoroutineScope()
