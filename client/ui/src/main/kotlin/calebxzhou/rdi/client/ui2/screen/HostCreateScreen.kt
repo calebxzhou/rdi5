@@ -1,56 +1,25 @@
 package calebxzhou.rdi.client.ui2.screen
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material.AlertDialog
-import androidx.compose.material.Button
-import androidx.compose.material.Card
-import androidx.compose.material.Checkbox
-import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.OutlinedTextField
-import androidx.compose.material.RadioButton
-import androidx.compose.material.Surface
-import androidx.compose.material.Text
-import androidx.compose.material.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.*
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import calebxzhou.mykotutils.std.millisToHumanDateTime
 import calebxzhou.mykotutils.std.secondsToHumanDateTime
 import calebxzhou.rdi.client.Const
+import calebxzhou.rdi.client.net.loggedAccount
 import calebxzhou.rdi.client.net.rdiRequest
 import calebxzhou.rdi.client.net.rdiRequestU
-import calebxzhou.rdi.client.ui2.MainColumn
-import calebxzhou.rdi.client.ui2.TitleRow
-import calebxzhou.rdi.common.model.AllGameRules
-import calebxzhou.rdi.common.model.GameRule
-import calebxzhou.rdi.common.model.GameRuleValueType
+import calebxzhou.rdi.client.ui2.*
+import calebxzhou.rdi.client.ui2.comp.GameRuleModal
 import calebxzhou.rdi.common.model.Host
 import calebxzhou.rdi.common.model.World
 import calebxzhou.rdi.common.serdesJson
-import io.ktor.http.HttpMethod
-import kotlinx.coroutines.launch
+import io.ktor.http.*
 import org.bson.types.ObjectId
+import kotlin.random.Random
 
 private const val ID_CREATE_NEW_SAVE = 100
 private const val ID_NO_SAVE = 101
@@ -61,6 +30,7 @@ private data class WorldOption(
     val world: World?
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HostCreateScreen(
     arg: HostCreate,
@@ -68,8 +38,8 @@ fun HostCreateScreen(
 ) {
     val scope = rememberCoroutineScope()
     val overrideRules = remember { mutableStateMapOf<String, String>() }
-
-    var hostName by remember { mutableStateOf("") }
+    var title by remember { mutableStateOf("使用整合包 ${arg.modpackName} ${arg.packVer} 创建新地图") }
+    var hostName by remember { mutableStateOf("${loggedAccount.name}的世界${Random.nextInt(1000)}") }
     var modpackIdText by remember { mutableStateOf(arg.modpackId) }
     var packVerText by remember { mutableStateOf(arg.packVer) }
     var worlds by remember { mutableStateOf<List<World>>(emptyList()) }
@@ -117,20 +87,69 @@ fun HostCreateScreen(
             selectedWorldId = worldOptions.first().id
         }
     }
-
+    fun submit(){
+        if (submitting) return
+        statusMessage = null
+        val trimmedName = hostName.trim()
+        if (trimmedName.isEmpty()) {
+            statusMessage = "请输入主机名称"
+            return
+        }
+        val trimmedModpackId = modpackIdText.trim()
+        if (!ObjectId.isValid(trimmedModpackId)) {
+            statusMessage = "整合包 ID 格式不正确"
+            return
+        }
+        val trimmedPackVer = packVerText.trim()
+        if (trimmedPackVer.isEmpty()) {
+            statusMessage = "请输入整合包版本"
+            return
+        }
+        submitting = true
+        val selectedWorld = worldOptions.firstOrNull { it.id == selectedWorldId }?.world
+        val saveWorld = selectedWorldId != ID_NO_SAVE
+        val worldId = when {
+            selectedWorld != null -> selectedWorld._id
+            selectedWorldId == ID_CREATE_NEW_SAVE -> null
+            else -> null
+        }
+        val createDto = Host.CreateDto(
+            name = trimmedName,
+            modpackId = ObjectId(trimmedModpackId),
+            packVer = trimmedPackVer,
+            saveWorld = saveWorld,
+            worldId = worldId,
+            difficulty = difficulty,
+            gameMode = gameMode,
+            levelType = levelType,
+            allowCheats = false,
+            gameRules = overrideRules.toMutableMap()
+        )
+        val body = serdesJson.encodeToString(createDto)
+        scope.rdiRequestU(
+            path = "host/v2",
+            method = HttpMethod.Post,
+            body = body,
+            onErr = { statusMessage = "创建失败: ${it.message}" },
+            onOk = { showResult = "已提交创建请求 完成后信箱通知你" },
+            onDone = { submitting = false }
+        )
+    }
     MainColumn {
-        TitleRow("创建新地图",onBack){
-
+        TitleRow(title,onBack){
+            CircleIconButton("\uDB82\uDE50", bgColor = MaterialColor.GREEN_900.color){
+                submit()
+            }
         }
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("主机名称")
+
             OutlinedTextField(
+                label = {Text("主机名称")},
                 value = hostName,
                 onValueChange = { hostName = it },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth()
+                modifier = 300.wM
             )
-            Text("整合包：${arg.modpackName} ${arg.packVer}")
         }
 
         if (loading) {
@@ -145,76 +164,77 @@ fun HostCreateScreen(
         errorMessage?.let {
             Text(it, color = MaterialTheme.colors.error)
         }
+        Row(modifier = Modifier.fillMaxWidth()) {
 
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("选择存档数据")
-            worldOptions.forEach { option ->
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    RadioButton(
-                        selected = option.id == selectedWorldId,
-                        onClick = {
-                            selectedWorldId = option.id
-                            if (option.id == ID_NO_SAVE && !Const.DEBUG) {
-                                showNoSaveWarn = true
+            Column(modifier = Modifier.weight(0.5f)) {
+                Text("选择存档数据")
+                worldOptions.forEach { option ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(
+                            selected = option.id == selectedWorldId,
+                            onClick = {
+                                selectedWorldId = option.id
+                                if (option.id == ID_NO_SAVE && !Const.DEBUG) {
+                                    showNoSaveWarn = true
+                                }
+                            }
+                        )
+                        Text(option.label)
+                    }
+                }
+            }
+            Column(modifier = Modifier.weight(0.5f)) {
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("难度")
+                    DifficultyOption("和平", 0, difficulty) { difficulty = it }
+                    DifficultyOption("简单", 1, difficulty) { difficulty = it }
+                    DifficultyOption("普通", 2, difficulty) { difficulty = it }
+                    DifficultyOption("困难", 3, difficulty) { difficulty = it }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("模式")
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        DifficultyOption("生存", 0, gameMode) { gameMode = it }
+                        DifficultyOption("创造", 1, gameMode) { gameMode = it }
+                        DifficultyOption("冒险", 2, gameMode) { gameMode = it }
+                    }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("地形")
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        if (arg.skyblock) {
+                            DifficultyOption("空岛", 2, levelChoice) {
+                                levelChoice = it
+                                levelType = "skyblockbuilder:skyblock"
+                            }
+                        } else {
+                            DifficultyOption("普通", 0, levelChoice) {
+                                levelChoice = it
+                                levelType = "minecraft:normal"
+                            }
+                            DifficultyOption("超平坦", 1, levelChoice) {
+                                levelChoice = it
+                                levelType = "minecraft:flat"
                             }
                         }
-                    )
-                    Text(option.label)
+                    }
                 }
-            }
-        }
-
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("难度")
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                DifficultyOption("和平", 0, difficulty) { difficulty = it }
-                DifficultyOption("简单", 1, difficulty) { difficulty = it }
-                DifficultyOption("普通", 2, difficulty) { difficulty = it }
-                DifficultyOption("困难", 3, difficulty) { difficulty = it }
-            }
-        }
-
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("模式")
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                DifficultyOption("生存", 0, gameMode) { gameMode = it }
-                DifficultyOption("创造", 1, gameMode) { gameMode = it }
-                DifficultyOption("冒险", 2, gameMode) { gameMode = it }
-            }
-        }
-
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("地形")
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (arg.skyblock) {
-                    DifficultyOption("空岛", 2, levelChoice) {
-                        levelChoice = it
-                        levelType = "skyblockbuilder:skyblock"
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Button(onClick = { showRules = true }) {
+                        Text("设置游戏规则")
                     }
-                } else {
-                    DifficultyOption("普通", 0, levelChoice) {
-                        levelChoice = it
-                        levelType = "minecraft:normal"
-                    }
-                    DifficultyOption("超平坦", 1, levelChoice) {
-                        levelChoice = it
-                        levelType = "minecraft:flat"
+                    if (overrideRules.isNotEmpty()) {
+                        Text("已修改 ${overrideRules.size} 项", style = MaterialTheme.typography.caption)
                     }
                 }
             }
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Button(onClick = { showRules = true }) {
-                Text("设置游戏规则")
-            }
-            if (overrideRules.isNotEmpty()) {
-                Text("已修改 ${overrideRules.size} 项", style = MaterialTheme.typography.caption)
-            }
-        }
+
+
 
         Spacer(modifier = Modifier.weight(1f))
 
@@ -222,70 +242,13 @@ fun HostCreateScreen(
             Text(it, color = MaterialTheme.colors.error)
         }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
-        ) {
-            Button(
-                enabled = !submitting,
-                onClick = {
-                    if (submitting) return@Button
-                    statusMessage = null
-                    val trimmedName = hostName.trim()
-                    if (trimmedName.isEmpty()) {
-                        statusMessage = "请输入主机名称"
-                        return@Button
-                    }
-                    val trimmedModpackId = modpackIdText.trim()
-                    if (!ObjectId.isValid(trimmedModpackId)) {
-                        statusMessage = "整合包 ID 格式不正确"
-                        return@Button
-                    }
-                    val trimmedPackVer = packVerText.trim()
-                    if (trimmedPackVer.isEmpty()) {
-                        statusMessage = "请输入整合包版本"
-                        return@Button
-                    }
-                    submitting = true
-                    val selectedWorld = worldOptions.firstOrNull { it.id == selectedWorldId }?.world
-                    val saveWorld = selectedWorldId != ID_NO_SAVE
-                    val worldId = when {
-                        selectedWorld != null -> selectedWorld._id
-                        selectedWorldId == ID_CREATE_NEW_SAVE -> null
-                        else -> null
-                    }
-                    val createDto = Host.CreateDto(
-                        name = trimmedName,
-                        modpackId = ObjectId(trimmedModpackId),
-                        packVer = trimmedPackVer,
-                        saveWorld = saveWorld,
-                        worldId = worldId,
-                        difficulty = difficulty,
-                        gameMode = gameMode,
-                        levelType = levelType,
-                        allowCheats = false,
-                        gameRules = overrideRules.toMutableMap()
-                    )
-                    val body = serdesJson.encodeToString(createDto)
-                    scope.rdiRequestU(
-                        path = "host/v2",
-                        method = HttpMethod.Post,
-                        body = body,
-                        onErr = { statusMessage = "创建失败: ${it.message}" },
-                        onOk = { showResult = "已提交创建请求 完成后信箱通知你" },
-                        onDone = { submitting = false }
-                    )
-                }
-            ) {
-                Text(if (submitting) "创建中..." else "创建")
-            }
-        }
     }
 
     if (showRules) {
-        GameRulesDialog(
+        GameRuleModal(
+            show = true,
             overrideRules = overrideRules,
-            onDismiss = { showRules = false }
+            onClose = { showRules = false }
         )
     }
 
@@ -318,6 +281,7 @@ fun HostCreateScreen(
             }
         )
     }
+
 }
 
 @Composable
