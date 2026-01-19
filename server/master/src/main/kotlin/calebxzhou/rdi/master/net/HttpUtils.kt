@@ -128,15 +128,20 @@ private fun ApplicationCall.isFormLikeContent(): Boolean {
 suspend fun RoutingContext.param(name: String): String = call.param(name)
 
 suspend inline fun <reified T> ApplicationCall.paramT(name: String): T = serdesJson.decodeFromString(param(name))
+suspend fun RoutingContext.pathParam(name: String): String = call.pathParam(name)
 suspend fun RoutingContext.idParam(name: String): ObjectId = call.idParam(name)
 suspend fun RoutingContext.paramNull(name: String): String? = call.paramNull(name)
+suspend fun RoutingContext.idPathParam(name: String): ObjectId = call.idPathParam(name)
 suspend fun ApplicationCall.param(name: String): String =
     paramNull(name) ?: throw ParamError("缺少参数: $name")
 suspend fun ApplicationCall.idParamNull(name: String): ObjectId? =
     paramNull(name)?.let { ObjectId(it) }
 suspend fun ApplicationCall.idParam(name: String): ObjectId =
     idParamNull(name) ?: throw ParamError("缺少ID: $name")
-
+suspend fun ApplicationCall.idPathParam(name: String): ObjectId =
+    pathParam(name).takeIf { ObjectId.isValid(it) }?.let { ObjectId(it) } ?: throw ParamError("$name ID格式错误")
+suspend fun ApplicationCall.pathParam(name: String): String = this.parameters[name] ?: throw ParamError("缺少参数: $name")
+suspend fun ApplicationCall.pathParamNull(name: String): String? = this.parameters[name]
 /** Same as [param] but returns null when absent. */
 suspend fun ApplicationCall.paramNull(name: String): String? {
     // Path / route
