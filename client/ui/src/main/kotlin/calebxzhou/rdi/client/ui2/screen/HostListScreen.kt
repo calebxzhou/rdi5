@@ -32,7 +32,8 @@ import org.bson.types.ObjectId
 fun HostListScreen(
     onBack: (() -> Unit),
     onOpenWorldList: (() -> Unit)? = null,
-    onOpenHostInfo: ((String) -> Unit)? = null
+    onOpenHostInfo: ((String) -> Unit)? = null,
+    onOpenModpackList: (() -> Unit)? = null
 ) {
     val scope = rememberCoroutineScope()
     var hosts by remember { mutableStateOf<List<Host.BriefVo>>(emptyList()) }
@@ -68,7 +69,7 @@ fun HostListScreen(
             Spacer(modifier = Modifier.width(8.dp))
 
             CircleIconButton("\uF067","创建新地图"){
-
+                onOpenModpackList?.invoke()
             }
 
         }
