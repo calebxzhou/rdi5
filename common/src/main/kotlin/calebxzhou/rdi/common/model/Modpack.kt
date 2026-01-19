@@ -15,6 +15,7 @@ class Modpack(
     val info: String="暂无简介",
     val modloader: ModLoader,
     val mcVer: McVersion,
+    val sourceUrl : String ? = null,
     val versions: List<Version> = arrayListOf(),
 ) {
 
