@@ -123,7 +123,8 @@ fun main() = application {
                         onOpenWorldList = { navController.navigate(WorldList) },
                         onOpenHostInfo = { hostId ->
                             navController.navigate(HostInfo(hostId))
-                        }
+                        },
+                        onOpenModpackList = { navController.navigate(ModpackList) }
                     )
                 }
                 composable<HostInfo> {
@@ -185,6 +186,20 @@ fun main() = application {
                             } else {
                                 navController.navigate(ModpackList)
                             }
+                        },
+                        onCreateHost = { modpackId, modpackName, packVer, skyblock ->
+                            navController.navigate(
+                                HostCreate(
+                                    modpackId = modpackId,
+                                    modpackName = modpackName,
+                                    packVer = packVer,
+                                    skyblock = skyblock
+                                )
+                            )
+                        },
+                        onOpenTask = { task ->
+                            TaskStore.current = task
+                            navController.navigate(TaskView)
                         }
                     )
                 }
