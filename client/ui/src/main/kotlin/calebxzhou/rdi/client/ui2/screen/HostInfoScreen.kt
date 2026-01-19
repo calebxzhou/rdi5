@@ -100,6 +100,9 @@ fun HostInfoScreen(
     var roleChangeConfirm by remember { mutableStateOf<RoleChange?>(null) }
     var transferConfirm by remember { mutableStateOf<ObjectId?>(null) }
     var kickConfirm by remember { mutableStateOf<ObjectId?>(null) }
+    var stopConfirm by remember { mutableStateOf(false) }
+    var restartConfirm by remember { mutableStateOf(false) }
+    var forceStopConfirm by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableStateOf(0) }
     var consoleState by remember { mutableStateOf(ConsoleState()) }
     var logStreamJob by remember { mutableStateOf<Job?>(null) }
@@ -426,36 +429,21 @@ fun HostInfoScreen(
                                             tooltip = "重启",
                                             bgColor = MaterialColor.BLUE_800.color
                                         ) {
-                                            scope.rdiRequestU(
-                                                path = "host/$hostId/restart",
-                                                method = HttpMethod.Post,
-                                                onOk = { okMessage = "重启指令已发送" },
-                                                onErr = { errorMessage = it.message ?: "重启失败" }
-                                            )
+                                            restartConfirm = true
                                         }
                                         CircleIconButton(
                                             icon = "\uF04D",
                                             tooltip = "停止",
                                             bgColor = MaterialColor.RED_700.color
                                         ) {
-                                            scope.rdiRequestU(
-                                                path = "host/$hostId/stop",
-                                                method = HttpMethod.Post,
-                                                onOk = { okMessage = "停止指令已发送" },
-                                                onErr = { errorMessage = it.message ?: "停止失败" }
-                                            )
+                                            stopConfirm = true
                                         }
                                         CircleIconButton(
                                             icon = "\uF05E",
                                             tooltip = "强制停止",
                                             bgColor = MaterialColor.RED_900.color
                                         ) {
-                                            scope.rdiRequestU(
-                                                path = "host/$hostId/force-stop",
-                                                method = HttpMethod.Post,
-                                                onOk = { okMessage = "强制停止指令已发送" },
-                                                onErr = { errorMessage = it.message ?: "强制停止失败" }
-                                            )
+                                            forceStopConfirm = true
                                         }
                                     }
                                 }
