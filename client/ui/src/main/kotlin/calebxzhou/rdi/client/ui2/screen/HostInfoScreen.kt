@@ -238,11 +238,6 @@ fun HostInfoScreen(
                         )
                     }
                     Space8w()
-                    CircleIconButton(
-                        icon = "\uDB80\uDD8D",
-                        tooltip = "后台",
-                        bgColor = MaterialColor.TEAL_900.color
-                    ) { onNavigateToConsole(hostId) }
                     if (meAdmin) {
                         Space8w()
                     CircleIconButton(
@@ -745,6 +740,57 @@ fun HostInfoScreen(
                 kickConfirm = null
             },
             onDismiss = { kickConfirm = null }
+        )
+    }
+
+    if (restartConfirm) {
+        ConfirmDialog(
+            title = "确认重启",
+            message = "确定重启该地图吗？",
+            onConfirm = {
+                scope.rdiRequestU(
+                    path = "host/$hostId/restart",
+                    method = HttpMethod.Post,
+                    onOk = { okMessage = "重启指令已发送" },
+                    onErr = { errorMessage = it.message ?: "重启失败" }
+                )
+                restartConfirm = false
+            },
+            onDismiss = { restartConfirm = false }
+        )
+    }
+
+    if (stopConfirm) {
+        ConfirmDialog(
+            title = "确认停止",
+            message = "确定停止该地图吗？",
+            onConfirm = {
+                scope.rdiRequestU(
+                    path = "host/$hostId/stop",
+                    method = HttpMethod.Post,
+                    onOk = { okMessage = "停止指令已发送" },
+                    onErr = { errorMessage = it.message ?: "停止失败" }
+                )
+                stopConfirm = false
+            },
+            onDismiss = { stopConfirm = false }
+        )
+    }
+
+    if (forceStopConfirm) {
+        ConfirmDialog(
+            title = "确认强制停止",
+            message = "确定强制停止该地图吗？",
+            onConfirm = {
+                scope.rdiRequestU(
+                    path = "host/$hostId/force-stop",
+                    method = HttpMethod.Post,
+                    onOk = { okMessage = "强制停止指令已发送" },
+                    onErr = { errorMessage = it.message ?: "强制停止失败" }
+                )
+                forceStopConfirm = false
+            },
+            onDismiss = { forceStopConfirm = false }
         )
     }
 }
