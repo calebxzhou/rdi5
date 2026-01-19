@@ -64,6 +64,13 @@ class Modpack(
         val mcVer: McVersion,
         val versions: List<Version> = arrayListOf(),
     )
+    @Serializable
+    data class OptionsDto(
+        val name: String? = null,
+        val iconUrl: String? = null,
+        val info: String? = null,
+        val sourceUrl: String? = null
+    )
     enum class Status{
         FAIL,OK,BUILDING,WAIT,
     }
