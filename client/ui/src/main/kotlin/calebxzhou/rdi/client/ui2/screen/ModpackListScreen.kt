@@ -59,7 +59,7 @@ fun ModpackListScreen(
     }
 
     MainColumn {
-        TitleRow("大家的整合包", onBack) {
+        TitleRow("选择整合包 · 创建地图", onBack) {
             Checkbox(
                 checked = onlyMine,
                 onCheckedChange = { onlyMine = it }
