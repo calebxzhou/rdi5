@@ -388,8 +388,10 @@ fun ModpackInfoScreen(
                             errorMessage = e.message ?: "整合包名称不合法"
                             return@launch
                         }
-                        runCatching { validateIconUrl(editIconUrl.trim().ifBlank { null }) }.onFailure {
-                            errorMessage = it.message ?: "图标链接不合法"
+                        try {
+                            validateIconUrl(editIconUrl.trim().ifBlank { null })
+                        } catch (e: Exception) {
+                            errorMessage = e.message ?: "图标链接不合法"
                             return@launch
                         }
                         val body = serdesJson.encodeToString(

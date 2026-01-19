@@ -422,7 +422,7 @@ object GameService {
         index.objects.entries.forEach { entry ->
             when {
                 shouldDownloadAsset(entry.key) -> toDownload += entry
-                //todo 相似音效只用同一份
+
                 shouldUseEmptySound(entry.key) -> toStub += entry
                 else -> Unit
             }
@@ -480,6 +480,7 @@ object GameService {
         }
 
         if (linkPlans.isNotEmpty()) {
+            //相似音效只用同一份
             val linksTask = Task.Leaf("链接相似资源") { ctx ->
                 linkPlans.forEachIndexed { index, plan ->
                     createObjectLink(plan.fromHash, plan.toHash)
