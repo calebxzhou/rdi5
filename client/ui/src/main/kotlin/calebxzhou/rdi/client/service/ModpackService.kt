@@ -424,7 +424,9 @@ object ModpackService {
         val dir: File,
         val verName: String,
         val vo: Modpack.BriefVo
-    )
+    ){
+        val versionId = dir.name
+    }
     suspend fun getLocalPackDirs(): List<LocalDir> = coroutineScope {
         val pattern = Regex("^([0-9a-fA-F]{24})_(.+)$")
         val dirs = GameService.versionListDir.listFiles()?.asSequence()
