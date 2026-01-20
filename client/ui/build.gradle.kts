@@ -3,7 +3,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 val ktorVersion = "3.3.3"
-val version = "5.9.2"
+val version = "5.10"
 project.version = version
 plugins {
     kotlin("jvm") version "2.2.21"
@@ -29,7 +29,7 @@ base {
     archivesName.set("rdi-5-ui")
 }
 val hotDevClassName = providers.gradleProperty("className")
-    .orElse("calebxzhou.rdi.client.ui2.MainKt")
+    .orElse("calebxzhou.rdi.client.MainKt")
 
 tasks.matching { it.name == "hotRun" }.configureEach {
     val runDir = layout.projectDirectory.dir("run").asFile
@@ -77,7 +77,13 @@ dependencies {
     implementation("org.jetbrains.androidx.navigation:navigation-compose:2.9.1")
     // Source: https://mvnrepository.com/artifact/org.jetbrains.compose.material3/material3-desktop
     implementation("org.jetbrains.compose.material3:material3-desktop:1.10.0-alpha05")
-
+    val lwjglVersion = "3.3.3"
+    val components = listOf("", "glfw", "opengl")
+    components.forEach { component ->
+        val suffix = if (component.isNotEmpty()) "-$component" else ""
+        implementation("org.lwjgl:lwjgl${suffix}:$lwjglVersion")
+        implementation("org.lwjgl:lwjgl${suffix}:$lwjglVersion:natives-windows")
+    }
 
     testImplementation(kotlin("test"))
     implementation("io.netty:netty-all:4.2.7.Final")
@@ -169,7 +175,7 @@ fun registerCopyTask(name: String, extraDestinations: List<String> = emptyList()
 registerCopyTask("出core2-local")
 registerCopyTask("出core2-release", listOf("\\\\rdi5\\rdi55\\ihq\\client-libs\\lib"))
 tasks.register<Exec>("makeShipPack") {
-    dependsOn(tasks.named("出core2-local"))
+   // dependsOn(tasks.named("出core2-local"))
 
     val shipDir = layout.projectDirectory.dir("${System.getProperty("user.home")}\\Documents\\rdi5ship")
     val filesNeed = listOf("lib", "双击启动.cmd", "fonts", "jre","jre8")
@@ -207,5 +213,5 @@ tasks.register<Exec>("makeShipPack") {
 
 
 application {
-    mainClass.set("calebxzhou.rdi.RDIKt")
+    mainClass.set("calebxzhou.rdi.client.MainKt")
 }
