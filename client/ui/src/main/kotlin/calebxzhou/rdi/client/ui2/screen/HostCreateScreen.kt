@@ -35,6 +35,7 @@ private data class WorldOption(
 fun HostCreateScreen(
     arg: HostCreate,
     onBack: () -> Unit,
+    onNavigateProfile: () -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
     val overrideRules = remember { mutableStateMapOf<String, String>() }
@@ -275,6 +276,7 @@ fun HostCreateScreen(
             confirmButton = {
                 TextButton(onClick = {
                     showResult = null
+                    onNavigateProfile()
                 }) {
                     Text("确定")
                 }
