@@ -18,7 +18,7 @@ class GameDlTest {
     @Test
     fun dl21(): Unit = runBlocking {
 
-        GameService.downloadVersion(McVersion.V211) { println(it) }
+        GameService.downloadVersionLegacy(McVersion.V211) { println(it) }
     }
 
     /*@Test
@@ -40,7 +40,7 @@ class GameDlTest {
     }
     @Test
     fun installLoader21(): Unit = runBlocking {
-        GameService.downloadLoader(McVersion.V211, ModLoader.neoforge) { println(it) }
+        GameService.downloadLoaderLegacy(McVersion.V211, ModLoader.neoforge) { println(it) }
     }
 
     /*@Test

@@ -92,7 +92,7 @@ class ModpackTest {
 */		 }
     @Test
     fun downloadClient() : Unit = runBlocking {
-        ModpackService.downloadVersionClientPack(
+        ModpackService.downloadVersionClientPackLegacy(
             ObjectId("693bda0ed294de2450aa7caf"),"1.9.2",){ println(it) }
     }
 }
