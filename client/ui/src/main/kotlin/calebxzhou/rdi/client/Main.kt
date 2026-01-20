@@ -88,7 +88,7 @@ fun main() = application {
     )
     Window(
         onCloseRequest = ::exitApplication,
-        title = System.getProperty("rdi.window.title") ?: "RDI UI2",
+        title = "RDI ${Const.VERSION_NUMBER}",
         icon = windowIcon,
         state = windowState
     ) {
