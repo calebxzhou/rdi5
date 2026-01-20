@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.TextUnitType
 import androidx.compose.ui.unit.dp
 import calebxzhou.mykotutils.std.jarResource
 import calebxzhou.rdi.RDIClient
+import calebxzhou.rdi.client.IconFontFamily
 import kotlinx.coroutines.launch
 import org.jetbrains.skia.Image
 import javax.swing.JOptionPane
@@ -154,7 +155,7 @@ val String.asIconText
 
             val charCount = Character.charCount(codePoint)
             if (isPua) {
-                withStyle(style = SpanStyle(fontFamily = IconFontFamily)) {
+                withStyle(style = SpanStyle(fontFamily = _root_ide_package_.calebxzhou.rdi.client.IconFontFamily)) {
                     append(str.substring(i, i + charCount))
                 }
             } else {
