@@ -9,20 +9,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import calebxzhou.mykotutils.std.canCreateSymlink
 import calebxzhou.mykotutils.std.jarResource
 import calebxzhou.mykotutils.std.javaExePath
 import calebxzhou.mykotutils.std.readAllString
 import calebxzhou.rdi.RDIClient
+import calebxzhou.rdi.client.CodeFontFamily
 import calebxzhou.rdi.client.auth.LocalCredentials
 import calebxzhou.rdi.client.net.server
 import calebxzhou.rdi.client.service.PlayerService
 import calebxzhou.rdi.client.service.UpdateService
 import calebxzhou.rdi.client.ui2.BottomSnakebar
-import calebxzhou.rdi.client.CodeFontFamily
 import calebxzhou.rdi.client.ui2.MainBox
 import calebxzhou.rdi.client.ui2.asIconText
 import calebxzhou.rdi.common.exception.RequestError
@@ -57,6 +60,7 @@ fun LoginScreen(
     var updateDetail by remember { mutableStateOf("") }
     val snackbarHostState = remember { SnackbarHostState() }
     var okMessage by remember { mutableStateOf<String?>(null) }
+    var symlinkError by remember { mutableStateOf<String?>(null) }
 
     fun attemptLogin() {
         if (qq.isBlank() || pwd.isBlank()) {
@@ -88,6 +92,10 @@ fun LoginScreen(
         }
     }
     LaunchedEffect(Unit) {
+        if (!canCreateSymlink()) {
+            symlinkError = """RDI需要权限为Mod及资源文件创建软连接。
+请点击上方【创建桌面快捷方式】按钮，从桌面图标运行RDI。"""
+        }
         if (server.noUpdate) {
             updateStatus = "已跳过更新"
             updateDetail = ""
@@ -214,11 +222,19 @@ fun LoginScreen(
                             }
                         }
                     }) {
-                        Text("创建桌面快捷方式")
+                        Text("创建桌面快捷方式", fontWeight = FontWeight.Bold)
                     }
                     TextButton(onClick = { showRegister = true }) {
                         Text("注册")
                     }
+                }
+                symlinkError?.let { message ->
+                    Text(message, color = MaterialTheme.colors.error)
+                    Text(
+                        "或者按下Win+R运行secpol.msc\n进入菜单“本地策略/用户权限/创建符号链接”，添加当前系统用户${System.getProperty("user.name")}，确定后重启电脑。",
+                        color = Color(0xFFCC4C4C),
+                        fontStyle = FontStyle.Italic
+                    )
                 }
 
                 loginError?.let { message ->
