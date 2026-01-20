@@ -3,13 +3,6 @@ package calebxzhou.rdi.client.net
 import calebxzhou.mykotutils.ktor.DownloadProgress
 import calebxzhou.mykotutils.ktor.downloadFileFrom
 import calebxzhou.rdi.client.Const
-import calebxzhou.rdi.client.ui.component.alertErr
-import calebxzhou.rdi.client.ui.component.closeLoading
-import calebxzhou.rdi.client.ui.component.showLoading
-import calebxzhou.rdi.client.ui.frag.LoginFragment
-import calebxzhou.rdi.client.ui.frag.UpdateFragment
-import calebxzhou.rdi.client.ui.goto
-import calebxzhou.rdi.client.ui.nowFragment
 import calebxzhou.rdi.common.exception.RequestError
 import calebxzhou.rdi.common.model.RAccount
 import calebxzhou.rdi.common.model.Response
@@ -67,14 +60,6 @@ class RServer(
 
     }
 
-
-    fun connect() {
-        if (!noUpdate) {
-            goto(UpdateFragment())
-        } else {
-            goto(LoginFragment())
-        }
-    }
 
     suspend inline fun createRequest(
         path: String,
@@ -136,58 +121,6 @@ class RServer(
 
     fun HttpRequestBuilder.accountAuthHeader() {
         header(HttpHeaders.Authorization, "Bearer ${loggedAccount.jwt}")
-    }
-
-    @Deprecated("")
-    inline fun _requestU(
-        path: String,
-        method: HttpMethod = HttpMethod.Post,
-        params: Map<String, Any> = mapOf(),
-        showLoading: Boolean = true,
-        body: String? = null,
-        crossinline onErr: (Response<Unit>) -> Unit = { alertErr(it.msg) },
-        crossinline onOk: (Response<Unit>) -> Unit,
-    ) = _request<Unit>(path, method, params, showLoading, body, onErr, onOk)
-
-
-    @Deprecated("")
-    inline fun <reified T> _request(
-        path: String,
-        method: HttpMethod = HttpMethod.Get,
-        params: Map<String, Any> = mapOf(),
-        showLoading: Boolean = true,
-        body: String? = null,
-        crossinline onErr: (Response<T>) -> Unit = { alertErr(it.msg) },
-        crossinline onOk: suspend (Response<T>) -> Unit,
-    ) {
-        if (showLoading) {
-            nowFragment?.showLoading()
-        }
-        ioTask {
-            try {
-                val req = makeRequest<T>(path, method, params) {
-                    body?.let {
-                        json()
-                        setBody(it)
-                    }
-                }
-                if (showLoading)
-                    nowFragment?.closeLoading()
-                if (req.ok) {
-                    onOk(req)
-                } else {
-                    onErr(req)
-                    lgr.error("req error ${req.msg}")
-                }
-            } catch (e: Exception) {
-                if (showLoading)
-                    nowFragment?.closeLoading()
-                alertErr("请求失败: ${e.message}")
-                e.printStackTrace()
-            }
-
-
-        }
     }
 
 

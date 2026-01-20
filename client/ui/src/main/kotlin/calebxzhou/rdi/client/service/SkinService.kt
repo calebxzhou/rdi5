@@ -10,9 +10,9 @@ import calebxzhou.rdi.common.exception.RequestError
 import calebxzhou.rdi.common.model.RAccount
 import calebxzhou.rdi.common.net.httpRequest
 import calebxzhou.rdi.common.serdesJson
-import io.ktor.client.request.url
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.isSuccess
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import io.ktor.http.*
 
 object SkinService {
     suspend fun applyBlessingSkin(

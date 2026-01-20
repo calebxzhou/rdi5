@@ -23,17 +23,6 @@ repositories {
     mavenLocal()
     mavenCentral()
     google()
-    exclusiveContent {
-        forRepository {
-            maven {
-                name = "IzzelAliz Maven"
-                url = uri("https://maven.izzel.io/releases/")
-            }
-        }
-        filter {
-            includeGroup("icyllis.modernui")
-        }
-    }
 }
 
 base {
@@ -93,19 +82,8 @@ dependencies {
     testImplementation(kotlin("test"))
     implementation("io.netty:netty-all:4.2.7.Final")
     implementation(project(":common"))
-    val lwjglVersion = "3.3.3"
-    val components = listOf("", "glfw", "opengl", "openal", "stb", "tinyfd", "jemalloc")
-    components.forEach { component ->
-        val suffix = if (component.isNotEmpty()) "-$component" else ""
-        implementation("org.lwjgl:lwjgl${suffix}:$lwjglVersion")
-        implementation("org.lwjgl:lwjgl${suffix}:$lwjglVersion:natives-windows")
-    }
 
     runtimeOnly("org.hotswapagent:hotswap-agent-core:2.0.1")
-    implementation("icyllis.modernui:ModernUI-Core:3.12.0")
-    testImplementation("icyllis.modernui:ModernUI-Core:3.12.0")
-    implementation("icyllis.modernui:ModernUI-Markflow:3.12.0")
-    testImplementation("icyllis.modernui:ModernUI-Markflow:3.12.0")
     implementation("com.github.oshi:oshi-core:6.9.1")
     implementation("com.electronwill.night-config:toml:3.8.3")
     implementation("ch.qos.logback:logback-classic:1.5.21")
