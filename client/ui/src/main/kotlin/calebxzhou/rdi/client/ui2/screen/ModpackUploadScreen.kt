@@ -15,7 +15,6 @@ import calebxzhou.mykotutils.std.humanFileSize
 import calebxzhou.mykotutils.std.humanSpeed
 import calebxzhou.mykotutils.std.urlEncoded
 import calebxzhou.rdi.client.net.server
-import calebxzhou.rdi.client.ui.pointerBuffer
 import calebxzhou.rdi.client.ui2.*
 import calebxzhou.rdi.client.ui2.comp.ModCard
 import calebxzhou.rdi.common.model.*
@@ -31,8 +30,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.io.buffered
 import org.bson.types.ObjectId
-import org.lwjgl.util.tinyfd.TinyFileDialogs
 import java.io.File
+import javax.swing.JFileChooser
+import javax.swing.filechooser.FileNameExtensionFilter
 
 /**
  * calebxzhou @ 2026-01-17 13:53
@@ -203,16 +203,16 @@ private suspend fun selectModpackFile(
     onError: (String) -> Unit,
     onLoaded: (CurseForgeModpackData, List<Mod>) -> Unit
 ) {
-    val initialPath = "C:/Users/${System.getProperty("user.name")}/Downloads"
-    val selected = TinyFileDialogs.tinyfd_openFileDialog(
-        "选择整合包 (ZIP)",
-        initialPath,
-        ("*.zip").pointerBuffer,
-        "CurseForge整合包 (*.zip)",
-        false
-    ) ?: return
+    val chooser = JFileChooser().apply {
+        dialogTitle = "选择整合包 (ZIP)"
+        fileSelectionMode = JFileChooser.FILES_ONLY
+        currentDirectory = File("C:/Users/${System.getProperty("user.name")}/Downloads")
+        fileFilter = FileNameExtensionFilter("CurseForge整合包 (*.zip)", "zip")
+    }
+    val result = chooser.showOpenDialog(null)
+    if (result != JFileChooser.APPROVE_OPTION) return
 
-    val file = File(selected)
+    val file = chooser.selectedFile
     if (!file.exists() || !file.isFile) {
         onError("未找到所选文件")
         onProgress("未找到所选文件")
