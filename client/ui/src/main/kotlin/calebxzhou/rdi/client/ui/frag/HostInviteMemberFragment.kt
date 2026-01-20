@@ -16,7 +16,7 @@ class HostInviteMemberFragment(val hostId: ObjectId) : RFragment("邀请成员")
             quickOptions {
                 "邀请" colored MaterialColor.GREEN_900 with {
                     val qq = qqInput.text
-                    server.requestU("host/${hostId}/member/$qq") {
+                    server._requestU("host/${hostId}/member/$qq") {
                         close()
                         toast("拉人成功")
                     }

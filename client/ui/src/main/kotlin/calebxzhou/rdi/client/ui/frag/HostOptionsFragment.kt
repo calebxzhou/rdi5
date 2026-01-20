@@ -20,7 +20,7 @@ class HostOptionsFragment(val host: Host): RFragment("地图设置") {
             quickOptions {
                 "提交" colored MaterialColor.TEAL_900 with {
                     confirm("已修改以下内容：\n游戏规则：${host.gameRules.map { "${it.key}:${it.value}" }.toList().joinToString("\n")} \n 是否提交？") {
-                        server.requestU("host/${host._id}/gamerules", HttpMethod.Put,mapOf("data" to host.gameRules.json) ){
+                        server._requestU("host/${host._id}/gamerules", HttpMethod.Put,mapOf("data" to host.gameRules.json) ){
                             toast("已提交修改")
                             close()
                         }

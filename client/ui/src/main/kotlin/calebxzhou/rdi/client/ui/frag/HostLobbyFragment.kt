@@ -3,7 +3,7 @@ package calebxzhou.rdi.client.ui.frag
 import calebxzhou.rdi.client.Const
 import calebxzhou.rdi.common.model.Host
 import calebxzhou.rdi.client.net.server
-import calebxzhou.rdi.client.service.ModpackService.startPlay
+import calebxzhou.rdi.client.service.ModpackService.startPlayLegacy
 import calebxzhou.rdi.client.ui.*
 import calebxzhou.rdi.client.ui.component.HostGrid
 import icyllis.modernui.view.Gravity
@@ -47,12 +47,12 @@ class HostLobbyFragment : RFragment("大厅") {
             return
         }
 
-        server.request<List<Host.Vo>>("host/${if (my) "my" else "lobby/0"}") { response ->
+        server._request<List<Host.BriefVo>>("host/${if (my) "my" else "lobby/0"}") { response ->
             response.data?.let { showHosts(it) }
         }
     }
 
-    private fun showHosts(hosts: List<Host.Vo>) = uiThread {
+    private fun showHosts(hosts: List<Host.BriefVo>) = uiThread {
         contentView.removeAllViews()
         if (hosts.isEmpty()) {
             contentView.textView("暂无可展示的") {
@@ -64,19 +64,18 @@ class HostLobbyFragment : RFragment("大厅") {
             return@uiThread
         }
         contentView += HostGrid(contentView.context, hosts, { HostInfoFragment(it._id).go() }, {
-            server.request<Host>("host/${it._id}") {
-                it.data?.startPlay()
+            server._request<Host>("host/${it._id}") {
+                it.data?.startPlayLegacy()
             }
         })
     }
 
 
-    private fun generateMockHosts(): List<Host.Vo> = List(50) { index ->
-        val base = Host.Vo.TEST
+    private fun generateMockHosts(): List<Host.BriefVo> = List(50) { index ->
+        val base = Host.BriefVo.TEST
         base.copy(
             _id = ObjectId(),
             name = "${base.name} #${index + 1}",
-            ownerName = "${base.ownerName} #${index + 1}",
             port = base.port + index
         )
     }

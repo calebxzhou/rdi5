@@ -22,7 +22,7 @@ class HostCreateFragment(val modpackId: ObjectId, val modpackName: String, val p
     private val overrideGameRules = mutableMapOf<String, String>()
     init {
         contentViewInit = {
-            server.request<List<World>>(
+            server._request<List<World>>(
                 path = "world",
                 showLoading = true,
                 onOk = { loadWorlds(it.data!!) }
@@ -144,7 +144,7 @@ class HostCreateFragment(val modpackId: ObjectId, val modpackName: String, val p
                     }
                 }
 
-                server.requestU("host", params = params) {
+                server._requestU("host", params = params) {
                     close()
                     alertOk("已提交创建请求 完成后信箱通知你")
                 }

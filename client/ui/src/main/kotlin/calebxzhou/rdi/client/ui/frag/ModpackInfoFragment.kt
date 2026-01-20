@@ -3,7 +3,6 @@ package calebxzhou.rdi.client.ui.frag
 import calebxzhou.mykotutils.std.humanFileSize
 import calebxzhou.mykotutils.std.millisToHumanDateTime
 import calebxzhou.rdi.common.model.Modpack
-import calebxzhou.rdi.common.model.ModpackDetailedVo
 import calebxzhou.rdi.common.model.latest
 import calebxzhou.rdi.common.service.CurseForgeService
 import calebxzhou.rdi.common.service.CurseForgeService.fillCurseForgeVo
@@ -11,7 +10,7 @@ import calebxzhou.rdi.common.service.CurseForgeService.mapMods
 import calebxzhou.rdi.common.util.ioTask
 import calebxzhou.rdi.client.net.loggedAccount
 import calebxzhou.rdi.client.net.server
-import calebxzhou.rdi.client.service.ModpackService.startInstall
+import calebxzhou.rdi.client.service.ModpackService.startInstallLegacy
 import calebxzhou.rdi.client.service.selectModpackFile
 import calebxzhou.rdi.client.ui.*
 import calebxzhou.rdi.client.ui.component.ModGrid
@@ -26,7 +25,7 @@ class ModpackInfoFragment(val modpackId: ObjectId) : RFragment("整合包信息"
 
     init {
         contentViewInit = {
-            server.request<ModpackDetailedVo>("modpack/$modpackId") {
+            server._request<Modpack.DetailVo>("modpack/$modpackId") {
                 it.data?.run {
 
                     load()
@@ -34,15 +33,15 @@ class ModpackInfoFragment(val modpackId: ObjectId) : RFragment("整合包信息"
             }
         }
     }
-    private val ModpackDetailedVo.isAuthorNow get() = this.authorId == loggedAccount._id
-    private fun ModpackDetailedVo.load() = uiThread {
+    private val Modpack.DetailVo.isAuthorNow get() = this.authorId == loggedAccount._id
+    private fun Modpack.DetailVo.load() = uiThread {
 
         titleView.apply {
             quickOptions {
                 if (isAuthorNow) {
                     "\uF1F8 删除整个包" colored MaterialColor.RED_900 with {
                         confirm("确定要永久删除这个整合包吗？？无法恢复！！") {
-                            server.requestU("modpack/$modpackId", HttpMethod.Delete) {
+                            server._requestU("modpack/$modpackId", HttpMethod.Delete) {
                                 toast("删完了")
                                 close()
                             }
@@ -87,7 +86,7 @@ class ModpackInfoFragment(val modpackId: ObjectId) : RFragment("整合包信息"
                         if(isAuthorNow){
                             "\uF1F8 删除此版本" colored MaterialColor.RED_900 with {
                                 confirm("确定要永久删除这个版本吗？？无法恢复！！") {
-                                    server.requestU("modpack/$modpackId/version/${v.name}", HttpMethod.Delete) {
+                                    server._requestU("modpack/$modpackId/version/${v.name}", HttpMethod.Delete) {
                                         toast("删完了")
                                         reloadFragment()
                                     }
@@ -95,7 +94,7 @@ class ModpackInfoFragment(val modpackId: ObjectId) : RFragment("整合包信息"
                             }
                             "\uF0AD 重构" with {
                                 confirm("将使用最新版rdi核心重新构建此版本的整合包，确定吗？") {
-                                    server.requestU("modpack/$modpackId/version/${v.name}/rebuild") {
+                                    server._requestU("modpack/$modpackId/version/${v.name}/rebuild") {
                                         toast("提交请求了 完事了发信箱告诉你")
                                         reloadFragment()
                                     }
@@ -104,7 +103,7 @@ class ModpackInfoFragment(val modpackId: ObjectId) : RFragment("整合包信息"
                         }
                         if(v.status == Modpack.Status.OK) {
                             "\uF019 下载整合包" with {
-                                v.startInstall(mcVer, modloader, name)
+                                v.startInstallLegacy(mcVer, modloader, name)
                             }
                         }
                     }

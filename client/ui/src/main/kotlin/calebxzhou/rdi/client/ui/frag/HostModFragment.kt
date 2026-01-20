@@ -3,7 +3,6 @@ package calebxzhou.rdi.client.ui.frag
 import calebxzhou.rdi.common.json
 import calebxzhou.rdi.common.model.Host
 import calebxzhou.rdi.common.model.Mod
-import calebxzhou.rdi.common.model.ModCardVo
 import calebxzhou.rdi.common.service.CurseForgeService
 import calebxzhou.rdi.common.service.ModService.checkDependencies
 import calebxzhou.rdi.common.service.ModService.toVo
@@ -35,7 +34,7 @@ class HostModFragment(val hostId: ObjectId) : RFragment("地图的所有Mod") {
 
             packModText = textView("整合包Mod：")
             packModGrid = ModGrid(context).also { this += it }
-            server.request<Host>("host/${hostId}"){
+            server._request<Host>("host/${hostId}"){
                 it.data?.let {
 
                     loadPackMods(it)
@@ -60,7 +59,7 @@ class HostModFragment(val hostId: ObjectId) : RFragment("地图的所有Mod") {
                 }
                 "重新下载" colored MaterialColor.BLUE_900 with {
                     confirm("将重新下载这些Mod，并添加到地图。确定吗？"){
-                        server.requestU("host/${hostId}/extra_mod",  method = HttpMethod.Put){
+                        server._requestU("host/${hostId}/extra_mod",  method = HttpMethod.Put){
                             alertOk("已提交重新下载请求，完成后会发送结果到信箱")
                         }
                     }
@@ -100,7 +99,7 @@ class HostModFragment(val hostId: ObjectId) : RFragment("地图的所有Mod") {
     }
 
 
-    private fun placeholderBrief(slug: String) = ModCardVo(
+    private fun placeholderBrief(slug: String) = Mod.CardVo(
         name = slug,
         nameCn = null,
         intro = "暂无简介",
@@ -192,17 +191,17 @@ class HostModFragment(val hostId: ObjectId) : RFragment("地图的所有Mod") {
         fun onNext() = ioTask {
             if (add) {
                 val etaSecs = selected.size * 10
-                server.requestU("host/${hostId}/extra_mod", body = selected.json) {
+                server._requestU("host/${hostId}/extra_mod", body = selected.json) {
                         alertOk("已提交Mod添加请求，大约要等${etaSecs / 60}分${etaSecs % 60}秒，完成后会发送结果到信箱")
 
                 }
             } else {
-                server.requestU(
+                server._requestU(
                     "host/${hostId}/extra_mod",
                     body = selected.json,
                     method = HttpMethod.Delete
                 ) {
-                    server.request<Host>("host/${hostId}"){
+                    server._request<Host>("host/${hostId}"){
                         alertOk("成功删除了这${selected.size}个Mod")
                     }
 

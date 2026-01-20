@@ -30,6 +30,7 @@ class TaskFragment(
 	}
 
 	private fun startTaskOnce() {
+
 		if (taskJob != null) return
 		taskJob = ioScope.launch {
 			runCatching { task() }

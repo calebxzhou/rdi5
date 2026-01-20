@@ -12,7 +12,7 @@ class WorldListFragment: RFragment("选择存档") {
     init {
         contentViewInit = {
 
-            server.request<List<World>>("world"){
+            server._request<List<World>>("world"){
                 load(it.data!!)
             }
         }
@@ -26,7 +26,7 @@ class WorldListFragment: RFragment("选择存档") {
                     contextMenu {
                         "删除" with {
                             confirm("要永久删除存档”${world.name}“及其所有的回档点吗？无法恢复！"){
-                                server.requestU("world/${world._id}", HttpMethod.Delete){
+                                server._requestU("world/${world._id}", HttpMethod.Delete){
                                     toast("已删除")
                                     reloadFragment()
                                 }
@@ -34,7 +34,7 @@ class WorldListFragment: RFragment("选择存档") {
                         }
                         "复制" with{
                             confirm("要给存档”${world.name}“复制一份一模一样的吗？"){
-                                server.requestU("world/${world._id}/copy", HttpMethod.Post){
+                                server._requestU("world/${world._id}/copy", HttpMethod.Post){
                                     toast("已复制")
                                     reloadFragment()
                                 }

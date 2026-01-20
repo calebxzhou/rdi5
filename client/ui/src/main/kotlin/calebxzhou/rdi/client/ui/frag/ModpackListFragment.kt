@@ -1,11 +1,12 @@
 package calebxzhou.rdi.client.ui.frag
 
-import calebxzhou.rdi.common.model.ModpackVo
+import calebxzhou.rdi.common.model.Modpack.BriefVo
 import calebxzhou.rdi.common.util.ioTask
 import calebxzhou.rdi.client.net.loggedAccount
 import calebxzhou.rdi.client.net.server
 import calebxzhou.rdi.client.ui.*
 import calebxzhou.rdi.client.ui.component.ModpackGrid
+import calebxzhou.rdi.common.model.Modpack
 import kotlin.collections.filter
 
 class ModpackListFragment() : RFragment("整合包列表") {
@@ -29,12 +30,12 @@ class ModpackListFragment() : RFragment("整合包列表") {
         }
     }
 
-    private fun load(filter: (ModpackVo) -> Boolean = { true }) = ioTask {
-        server.makeRequest<List<ModpackVo>>("modpack").data?.let {
+    private fun load(filter: (Modpack.BriefVo) -> Boolean = { true }) = ioTask {
+        server.makeRequest<List<Modpack.BriefVo>>("modpack").data?.let {
             uiThread {
                 contentView.apply {
-                    this += ModpackGrid(context, it.filter(filter)) { modpackVo ->
-                        ModpackInfoFragment(modpackVo.id).go()
+                    this += ModpackGrid(context, it.filter(filter)) { modpack ->
+                        ModpackInfoFragment(modpack.id).go()
                     }
                 }
             }

@@ -23,7 +23,7 @@ class MailFragment : RFragment("信箱") {
 
     init {
         contentViewInit = {
-            server.request<List<Mail.Vo>>("mail") {
+            server._request<List<Mail.Vo>>("mail") {
                 load(it.data!!)
             }
         }
@@ -91,7 +91,7 @@ class MailFragment : RFragment("信箱") {
                     }
                     confirm("要删除所选的邮件吗？") {
                         val payload = selectedIds.toList().json
-                        server.requestU("mail", HttpMethod.Delete, body = payload) {
+                        server._requestU("mail", HttpMethod.Delete, body = payload) {
                             toast("已删除")
                             selectedIds.clear()
                             reloadFragment()
@@ -133,7 +133,7 @@ class MailFragment : RFragment("信箱") {
     class Detail(id: ObjectId) : RFragment("详细内容") {
         init {
             this.contentViewInit = {
-                server.request<Mail>("mail/${id}") {
+                server._request<Mail>("mail/${id}") {
                     load(it.data!!)
                 }
             }
@@ -141,7 +141,7 @@ class MailFragment : RFragment("信箱") {
                 quickOptions {
                     "\uF014 删除" colored MaterialColor.RED_900 with {
                         confirm("要删除这封邮件吗？") {
-                            server.requestU("mail/${id}", HttpMethod.Delete) {
+                            server._requestU("mail/${id}", HttpMethod.Delete) {
                                 toast("已删除")
                                 close()
                             }

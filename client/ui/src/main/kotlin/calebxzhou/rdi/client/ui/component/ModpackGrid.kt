@@ -1,7 +1,8 @@
 package calebxzhou.rdi.client.ui.component
 
-import calebxzhou.rdi.common.model.ModpackVo
+import calebxzhou.rdi.common.model.Modpack.BriefVo
 import calebxzhou.rdi.client.ui.*
+import calebxzhou.rdi.common.model.Modpack
 import icyllis.modernui.core.Context
 import icyllis.modernui.view.Gravity
 import icyllis.modernui.view.View
@@ -9,15 +10,15 @@ import icyllis.modernui.view.ViewGroup
 import icyllis.modernui.widget.LinearLayout
 
 class ModpackGrid(
-    ctx: Context,
-    var modpacks: List<ModpackVo> = arrayListOf(),
-    private val onItemClick: (ModpackVo) -> Unit = {},
+	ctx: Context,
+	var modpacks: List<Modpack.BriefVo> = arrayListOf(),
+	private val onItemClick: (Modpack.BriefVo) -> Unit = {},
 ) : LinearLayout(ctx) {
 
 	private val cardsContainer: LinearLayout = LinearLayout(ctx).apply { vertical() }
 
 	private var pendingRender: Runnable? = null
-	private val cards = linkedMapOf<ModpackVo, ModpackCard>()
+	private val cards = linkedMapOf<Modpack.BriefVo, ModpackCard>()
 
 	init {
 		vertical()
@@ -41,7 +42,7 @@ class ModpackGrid(
 
 
 
-	private fun renderGrid(items: List<ModpackVo>) {
+	private fun renderGrid(items: List<Modpack.BriefVo>) {
 		val availableWidth = cardsContainer.width
 		if (availableWidth <= 0) {
 			scheduleRender(items)
@@ -89,7 +90,7 @@ class ModpackGrid(
 		}
 	}
 
-	private fun scheduleRender(items: List<ModpackVo>) {
+	private fun scheduleRender(items: List<Modpack.BriefVo>) {
 		pendingRender?.let { cardsContainer.removeCallbacks(it) }
 		val task = Runnable {
 			pendingRender = null

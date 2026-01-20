@@ -13,8 +13,8 @@ import java.io.ByteArrayInputStream
 
 class HostCard(
     ctx: Context,
-    val data: Host.Vo,
-    private val onClickPlay: (Host.Vo) -> Unit = {},
+    val data: Host.BriefVo,
+    private val onClickPlay: (Host.BriefVo) -> Unit = {},
 ) : LinearLayout(ctx) {
     init {
         orientation = HORIZONTAL
@@ -22,7 +22,7 @@ class HostCard(
         imageView {
             scaleType = ImageView.ScaleType.CENTER_CROP
             layoutParams = linearLayoutParam(dp(50f), dp(50f))
-            setImageDrawable(data.icon?.let { ImageDrawable(ByteArrayInputStream(it)) } ?: iconDrawable("team"))
+            //icon be url now ! setImageDrawable(data.icon?.let { ImageDrawable(ByteArrayInputStream(it)) } ?: iconDrawable("team"))
         }
         linearLayout {
             orientation = VERTICAL

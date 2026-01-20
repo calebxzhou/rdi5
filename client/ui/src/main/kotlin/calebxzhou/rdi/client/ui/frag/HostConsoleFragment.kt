@@ -24,7 +24,7 @@ class HostConsoleFragment(val hostId: ObjectId) : RFragment("后台") {
             quickOptions {
                 "▶ 打开" colored MaterialColor.GREEN_900 with {
                     confirm("确定要启动吗？"){
-                        server.requestU("host/${hostId}/start"){
+                        server._requestU("host/${hostId}/start"){
                             toast("启动指令已发送")
                         }
                     }
@@ -32,7 +32,7 @@ class HostConsoleFragment(val hostId: ObjectId) : RFragment("后台") {
 
                 "⟳ 重启" colored MaterialColor.BLUE_800 with {
                     confirm("确定重启吗？"){
-                        server.requestU("host/${hostId}/restart"){
+                        server._requestU("host/${hostId}/restart"){
                             toast("重启指令已发送")
                         }
                     }
@@ -40,7 +40,7 @@ class HostConsoleFragment(val hostId: ObjectId) : RFragment("后台") {
                 "⏹ 关闭" colored MaterialColor.RED_900 with {
                     confirm("确定停止吗？") {
 
-                        server.requestU("host/${hostId}/stop"){
+                        server._requestU("host/${hostId}/stop"){
                             toast("停止指令已发送")
                         }
                     }
@@ -69,7 +69,7 @@ class HostConsoleFragment(val hostId: ObjectId) : RFragment("后台") {
         isFragmentActive = true
         logStreamJob = ioScope.launch {
             try {
-                server.request<String>("host/${hostId}/log/200"){
+                server._request<String>("host/${hostId}/log/200"){
                     it.data!!.lineSequence()
                         .toMutableList()
                         .reversed()

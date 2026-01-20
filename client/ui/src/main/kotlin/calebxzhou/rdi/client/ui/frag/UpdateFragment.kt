@@ -109,7 +109,7 @@ class UpdateFragment() : RFragment("正在检查更新") {
             val downloadedBytes = dl.bytesDownloaded.takeIf { it >= 0 } ?: 0L
             val percentValue = when {
                 totalBytes > 0 -> downloadedBytes * 100.0 / totalBytes
-                dl.percent >= 0 -> dl.percent.toDouble()
+               // dl.percent >= 0 -> dl.percent.toDouble()
                 else -> -1.0
             }
 

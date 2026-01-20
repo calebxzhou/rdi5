@@ -1,7 +1,6 @@
 package calebxzhou.rdi.client.ui.component
 
 import calebxzhou.rdi.common.model.Mod
-import calebxzhou.rdi.common.model.ModCardVo
 import calebxzhou.rdi.common.net.httpRequest
 import calebxzhou.rdi.common.util.ioScope
 import calebxzhou.rdi.client.ui.MaterialColor
@@ -33,7 +32,7 @@ class ModCard(
     enableSelect: Boolean = true,
     simpleMode: Boolean = true
 ): LinearLayout(context) {
-    var vo = mod.vo?: ModCardVo(name = mod.slug)
+    var vo = mod.vo?: Mod.CardVo(name = mod.slug)
     private val iconView: ImageView
     private val primaryTitleView: TextView
     private val secondaryTitleView: TextView

@@ -52,7 +52,7 @@ class ChangeProfileFragment: RFragment("修改信息") {
         // Only add password to params if it's not empty
         if (pwd.isNotEmpty() && pwd != account.pwd) params["pwd"] = pwd
         //if (qq != account.qq) params["qq"] = qq
-        server.requestU("player/profile", params = params, method = HttpMethod.Put) {
+        server._requestU("player/profile", params = params, method = HttpMethod.Put) {
             // Use existing password if new password is empty
             val finalPwd = pwd.ifEmpty { account.pwd }
             val newAccount = RAccount(account._id, name, finalPwd, account.qq, account.score, account.cloth)

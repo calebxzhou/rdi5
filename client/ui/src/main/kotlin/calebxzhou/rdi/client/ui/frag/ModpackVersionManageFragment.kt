@@ -1,17 +1,10 @@
 package calebxzhou.rdi.client.ui.frag
 
-import calebxzhou.mykotutils.std.deleteRecursivelyNoSymlink
-import calebxzhou.rdi.common.model.Modpack
 import calebxzhou.rdi.common.util.ioTask
-import calebxzhou.rdi.client.net.server
 import calebxzhou.rdi.client.service.ModpackService
-import calebxzhou.rdi.client.service.ModpackService.startInstall
 import calebxzhou.rdi.client.ui.*
-import calebxzhou.rdi.client.ui.component.alertErr
 import calebxzhou.rdi.client.ui.component.closeLoading
-import calebxzhou.rdi.client.ui.component.confirm
 import calebxzhou.rdi.client.ui.component.showLoading
-import java.awt.Desktop
 
 class ModpackVersionManageFragment : RFragment("本地整合包版本管理") {
     override var fragSize = FragmentSize.MEDIUM
@@ -26,7 +19,7 @@ class ModpackVersionManageFragment : RFragment("本地整合包版本管理") {
                     closeLoading()
                     return@ioTask
                 }
-                dirs.forEach { packdir ->
+               /* dirs.forEach { packdir ->
                     uiThread {
                         linearLayout {
                             horizontal()
@@ -68,7 +61,7 @@ class ModpackVersionManageFragment : RFragment("本地整合包版本管理") {
                         }
                     }
                 }
-                closeLoading()
+               */ closeLoading()
             }
         }
     }

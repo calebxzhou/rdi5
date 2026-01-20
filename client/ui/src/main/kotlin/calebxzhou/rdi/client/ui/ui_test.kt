@@ -1,7 +1,7 @@
 package calebxzhou.rdi.client.ui
 
 import calebxzhou.rdi.client.Const
-import calebxzhou.rdi.RDI
+import calebxzhou.rdi.RDIClient
 import calebxzhou.rdi.common.model.RAccount
 import calebxzhou.rdi.client.net.loggedAccount
 import calebxzhou.rdi.client.service.PlayerService
@@ -27,5 +27,5 @@ suspend fun main() {
         //SelectAccountFragment(RServer.now)
         //ServerFragment()
         //RoomFragment(room)
-    RDI().start(frag)
+    RDIClient.start(frag)
 }

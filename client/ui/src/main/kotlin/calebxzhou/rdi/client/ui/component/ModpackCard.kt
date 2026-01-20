@@ -1,8 +1,11 @@
 package calebxzhou.rdi.client.ui.component
 
 import calebxzhou.mykotutils.std.humanFileSize
-import calebxzhou.rdi.common.model.ModpackVo
 import calebxzhou.rdi.client.ui.*
+import calebxzhou.rdi.common.model.Modpack
+import calebxzhou.rdi.common.model.Modpack.BriefVo
+import calebxzhou.rdi.common.net.httpRequest
+import calebxzhou.rdi.common.util.ioScope
 import icyllis.modernui.core.Context
 import icyllis.modernui.graphics.Paint
 import icyllis.modernui.graphics.drawable.ImageDrawable
@@ -12,11 +15,14 @@ import icyllis.modernui.view.Gravity
 import icyllis.modernui.widget.ImageView
 import icyllis.modernui.widget.LinearLayout
 import icyllis.modernui.widget.TextView
+import io.ktor.client.request.url
+import io.ktor.client.statement.bodyAsBytes
+import kotlinx.coroutines.launch
 import java.io.ByteArrayInputStream
 
 class ModpackCard(
     context: Context,
-    val modpack: ModpackVo,
+    val modpack: Modpack.BriefVo,
 ) : LinearLayout(context) {
 
     private lateinit var iconView: ImageView
@@ -82,16 +88,7 @@ class ModpackCard(
 
     private fun bindData() {
         nameView.text = modpack.name.ifBlank { "未命名模组包" }
-        // Icon
-        val iconBytes = modpack.icon
-        val packIcon = if (iconBytes != null && iconBytes.isNotEmpty()) {
-            try {
-                ImageDrawable(ByteArrayInputStream(iconBytes))
-            } catch (_: Exception) {
-                null
-            }
-        } else null
-        iconView.setImageDrawable(packIcon ?: iconDrawable("mcmod"))
+        loadIcon()
 
         // Author and description directly from ModpackInfo
         authorView.text = "上传者：${modpack.authorName}"
@@ -99,6 +96,24 @@ class ModpackCard(
         val description = modpack.info.trim().ifBlank { "暂无简介" }
         descriptionView.text = description
 
+    }
+
+    private fun loadIcon() {
+        val iconUrl = modpack.icon?.trim().orEmpty()
+        if (iconUrl.isBlank()) {
+            iconView.setImageDrawable(iconDrawable("mcmod"))
+            return
+        }
+
+        ioScope.launch {
+            val bytes = runCatching { httpRequest { url(iconUrl) }.bodyAsBytes() }.getOrNull()
+            uiThread {
+                val drawable = bytes?.takeIf { it.isNotEmpty() }?.let {
+                    runCatching { ImageDrawable(ByteArrayInputStream(it)) }.getOrNull()
+                }
+                iconView.setImageDrawable(drawable ?: iconDrawable("mcmod"))
+            }
+        }
     }
 
     private fun addTag(icon: String?, label: String) {

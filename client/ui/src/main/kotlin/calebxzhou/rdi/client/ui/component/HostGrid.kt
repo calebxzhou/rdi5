@@ -11,14 +11,14 @@ import kotlin.math.max
 
 class HostGrid(
     ctx: Context,
-    val hosts: List<Host.Vo> = emptyList(),
-    private val onItemClick: (Host.Vo) -> Unit = {},
-    private val onPlayClick: (Host.Vo) -> Unit = onItemClick,
+    val hosts: List<Host.BriefVo> = emptyList(),
+    private val onItemClick: (Host.BriefVo) -> Unit = {},
+    private val onPlayClick: (Host.BriefVo) -> Unit = onItemClick,
 ) : LinearLayout(ctx) {
 
     private val cardsContainer: LinearLayout = LinearLayout(ctx).apply { vertical() }
 
-    private val cards = linkedMapOf<Host.Vo, HostCard>()
+    private val cards = linkedMapOf<Host.BriefVo, HostCard>()
     private var pendingRender: Runnable? = null
 
 
@@ -48,7 +48,7 @@ class HostGrid(
     }
 
 
-    private fun scheduleRender(items: List<Host.Vo>) {
+    private fun scheduleRender(items: List<Host.BriefVo>) {
         pendingRender?.let { cardsContainer.removeCallbacks(it) }
         val task = Runnable {
             pendingRender = null
@@ -60,7 +60,7 @@ class HostGrid(
         cardsContainer.post(task)
     }
 
-    private fun renderGrid(items: List<Host.Vo>) {
+    private fun renderGrid(items: List<Host.BriefVo>) {
         val availableWidth = cardsContainer.width
         if (availableWidth <= 0) {
             scheduleRender(items)

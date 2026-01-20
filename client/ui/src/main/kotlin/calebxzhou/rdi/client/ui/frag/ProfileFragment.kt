@@ -3,7 +3,6 @@ package calebxzhou.rdi.client.ui.frag
 import calebxzhou.rdi.client.net.loggedAccount
 import calebxzhou.rdi.client.ui.*
 import calebxzhou.rdi.client.ui.component.HwSpecView
-import calebxzhou.rdi.client.ui2.screen.Ui2Screen
 import calebxzhou.rdi.client.ui2.startUi2
 
 class ProfileFragment : RFragment("我的信息") {
@@ -34,7 +33,6 @@ class ProfileFragment : RFragment("我的信息") {
                 textView("    ")
                 textView("\uEE1C") {
                     setOnClickListener {
-                        startUi2(Ui2Screen.Wardrobe)
                         //WardrobeFragment().go()
                     }
                 }
