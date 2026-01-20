@@ -15,9 +15,7 @@ import calebxzhou.rdi.common.model.LibraryOsArch.Companion.detectHostOs
 import calebxzhou.rdi.common.serdesJson
 import calebxzhou.rdi.common.util.toUUID
 import com.sun.management.OperatingSystemMXBean
-import kotlinx.coroutines.*
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.delay
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.JsonArray
@@ -82,15 +80,6 @@ object GameService {
         }
 
 
-    suspend fun downloadVersionLegacy(version: McVersion, onProgress: (String) -> Unit) {
-        onProgress("正在获取 ${version.mcVer} 的版本信息...")
-        val manifest = version.metadata
-        downloadClientLegacy(manifest, onProgress)
-        downloadLibrariesLegacy(manifest, onProgress)
-        extractNatives(manifest, onProgress)
-        downloadAssetsLegacy(manifest, onProgress)
-        onProgress("$version 所需文件下载完成")
-    }
 
     fun downloadVersion(version: McVersion, loader: ModLoader? = null): Task {
         val manifest = version.metadata
@@ -142,22 +131,6 @@ object GameService {
         return lower.endsWith(".dll") || lower.endsWith(".so") || lower.endsWith(".dylib")
     }
 
-    suspend fun downloadClientLegacy(manifest: MojangVersionManifest, onProgress: (String) -> Unit) {
-        manifest.id
-        var clientArtf = manifest.downloads?.client ?: return
-        if (CONF.useMirror) {
-            clientArtf = MojangDownloadArtifact(
-                url = "https://bmclapi2.bangbang93.com/version/${manifest.id}/client",
-                sha1 = clientArtf.sha1,
-                size = clientArtf.size,
-                path = clientArtf.path
-            )
-        }
-        val versionDir = versionListDir.resolve(manifest.id).apply { mkdirs() }
-        File(versionDir, "${manifest.id}.json").writeText(manifest.json)
-        val target = File(versionDir, "${manifest.id}.jar")
-        downloadArtifactLegacy("客户端核心 ${manifest.id}", clientArtf, target, onProgress)
-    }
 
     fun downloadClient(manifest: MojangVersionManifest): Task {
         return Task.Leaf("下载客户端 ${manifest.id}") { ctx ->
@@ -198,24 +171,6 @@ object GameService {
            return httpRequest { url(version.metaUrl) }.body()
        }*/
 
-    suspend fun downloadLibrariesLegacy(manifest: MojangVersionManifest, onProgress: (String) -> Unit) {
-        downloadLibrariesLegacy(manifest.libraries, onProgress)
-    }
-
-    private suspend fun downloadLibrariesLegacy(libraries: List<MojangLibrary>, onProgress: (String) -> Unit) =
-        coroutineScope {
-            val semaphore = Semaphore(MAX_PARALLEL_LIBRARY_DOWNLOADS)
-            libraries
-                .filter { it.shouldDownloadByArch() }
-                .apply { onProgress("需要下载的库文件: ${this.size}个： ${this.joinToString("\n") { it.name }}") }
-                .map { library ->
-                    async(Dispatchers.IO) {
-                        semaphore.withPermit {
-                            downloadLibraryArtifactsLegacy(library, onProgress)
-                        }
-                    }
-                }.awaitAll()
-        }
 
 
     private fun MojangLibrary.shouldDownloadByArch(): Boolean {
@@ -230,11 +185,7 @@ object GameService {
         get() = this.filter { it.rules != null }
             .filter { it.shouldDownloadByArch() }
     val MojangLibrary.file get() = File(libsDir, this.downloads.artifact.path!!)
-    private suspend fun downloadLibraryArtifactsLegacy(library: MojangLibrary, onProgress: (String) -> Unit): File {
-        return downloadLibraryArtifact(library) { progress ->
-            onProgress("${library.name} ${progress.bytesDownloaded.humanFileSize}/${progress.totalBytes.humanFileSize}")
-        }.getOrThrow()
-    }
+
 
     private suspend fun downloadLibraryArtifact(
         library: MojangLibrary,
@@ -283,86 +234,6 @@ object GameService {
                 continue
             }
             return Result.success(target)
-        }
-    }
-
-    private suspend fun downloadArtifactLegacy(
-        label: String,
-        artifact: MojangDownloadArtifact,
-        target: File,
-        onProgress: (String) -> Unit
-    ) {
-        if (target.exists()) {
-            val existingSha = runCatching { target.sha1 }.getOrNull()
-            if (existingSha != null && existingSha.equals(artifact.sha1, true)) {
-                onProgress("跳过 $label (已存在)")
-                return
-            }
-        }
-
-        target.parentFile?.mkdirs()
-        onProgress("下载 $label...")
-        val success = target.toPath().downloadFileFrom(artifact.url.rewriteMirrorUrl) { progress ->
-            val percent = progress.fraction.takeIf { it >= 0 }
-                ?.let { String.format(locale, "%.1f%%", it) }
-                ?: "--"
-            onProgress("$label 下载中 $percent")
-        }.getOrElse {
-            target.delete()
-            throw it
-        }
-        val downloadedSha = target.sha1
-        if (!downloadedSha.equals(artifact.sha1, true)) {
-            target.delete()
-            throw IllegalStateException("$label 校验失败")
-        }
-    }
-
-    suspend fun downloadAssetsLegacy(manifest: MojangVersionManifest, onProgress: (String) -> Unit) {
-        val assetIndexMeta = manifest.assetIndex ?: let { onProgress("找不到资源"); return }
-        val metaJson = this.jarResource("mcmeta/assets-index/${assetIndexMeta.id}.json").readAllString()
-        val index = serdesJson.decodeFromString<MojangAssetIndexFile>(metaJson)
-        assetIndexesDir.resolve("${assetIndexMeta.id}.json").writeText(metaJson)
-
-        val toDownload = mutableListOf<Map.Entry<String, MojangAssetObject>>()
-        val toStub = mutableListOf<Map.Entry<String, MojangAssetObject>>()
-
-        index.objects.entries.forEach { entry ->
-            when {
-                shouldDownloadAsset(entry.key) -> toDownload += entry
-                shouldUseEmptySound(entry.key) -> toStub += entry
-                else -> Unit
-            }
-        }
-
-        onProgress("准备下载资源 (${toDownload.size}/${index.objects.size}) ... 空音频替换 ${toStub.size} 个")
-
-        // Write stub ogg files for skipped sounds
-        toStub.forEach { (_, obj) ->
-            writeEmptySoundStub(obj.hash)
-        }
-
-        val errors = Collections.synchronizedList(mutableListOf<String>())
-        supervisorScope {
-            val semaphore = Semaphore(MAX_PARALLEL_ASSET_DOWNLOADS)
-            toDownload.map { (path, obj) ->
-                async(Dispatchers.IO) {
-                    semaphore.withPermit {
-                        runCatching {
-                            onProgress("开始下载资源 $path")
-                            //downloadAssetObject(path, obj, onProgress)
-                        }.onFailure { throwable ->
-                            val message = throwable.message ?: throwable::class.simpleName ?: "unknown"
-                            errors += "$path: $message"
-                            onProgress("资源 $path 下载失败: $message")
-                        }
-                    }
-                }
-            }.awaitAll()
-        }
-        if (errors.isNotEmpty()) {
-            val preview = errors.take(3).joinToString()
-            throw IllegalStateException("共有 ${errors.size} 个资源下载失败，例如: $preview")
         }
     }
 
@@ -544,31 +415,6 @@ object GameService {
             zip.getInputStream(entry).bufferedReader(StandardCharsets.UTF_8).use { reader ->
                 return reader.readText()
             }
-        }
-    }
-
-    private suspend fun downloadMojmapIfNeededLegacy(
-        installProfile: LoaderInstallProfile,
-        vanillaManifest: MojangVersionManifest,
-        onProgress: (String) -> Unit
-    ) {
-        val mojmaps = installProfile.data["MOJMAPS"] ?: return
-        val downloads = vanillaManifest.downloads ?: return
-        val tasks = mutableListOf<Triple<String, MojangDownloadArtifact, String>>()
-        extractLibraryDescriptor(mojmaps.client)?.let { descriptor ->
-            downloads.clientMappings?.let { artifact ->
-                tasks += Triple("客户端", artifact, descriptor)
-            }
-        }
-        extractLibraryDescriptor(mojmaps.server)?.let { descriptor ->
-            downloads.serverMappings?.let { artifact ->
-                tasks += Triple("服务端", artifact, descriptor)
-            }
-        }
-        tasks.forEach { (label, artifact, descriptor) ->
-            val relativePath = descriptorToLibraryPath(descriptor)
-            val target = File(libsDir, relativePath)
-            downloadArtifactLegacy("$label Mojmap", artifact, target, onProgress)
         }
     }
 
@@ -754,41 +600,6 @@ object GameService {
         )
     }
 
-    suspend fun downloadLoaderLegacy(version: McVersion, loader: ModLoader, onProgress: (String) -> Unit) {
-        val loaderMeta = version.loaderVersions[loader]
-            ?: error("未配置 $loader 安装器下载链接")
-        "launcher_profiles.json".let { File(DIR, it).apply { this.exportFromJarResource(it) } }
-        val installBooter =
-            "forge-install-bootstrapper.jar".let { File(DIR, it).apply { this.exportFromJarResource(it) } }
-        val installer = DIR.resolve("${version.mcVer}-$loader-installer.jar")
-        installer.parentFile?.mkdirs()
-        onProgress("下载 $version $loader 安装器...")
-        if (!installer.exists() || installer.sha1 != loaderMeta.installerSha1) {
-            installer.toPath().downloadFileFrom(loaderMeta.installerUrl.rewriteMirrorUrl) { progress ->
-                onProgress("$loader 安装器 ${progress.fraction.toFixed(2)}%")
-            }
-        }
-
-        val vanillaManifest = version.metadata
-
-        val versionJsonText = readInstallerEntry(installer, "version.json")
-        val loaderVersionManifest = serdesJson.decodeFromString<MojangVersionManifest>(versionJsonText)
-        val loaderVersionDir = versionListDir.resolve(loaderVersionManifest.id).apply { mkdirs() }
-        File(loaderVersionDir, "${loaderVersionManifest.id}.json").writeText(loaderVersionManifest.json)
-
-        val installProfileText = readInstallerEntry(installer, "install_profile.json")
-        val installProfile = serdesJson.decodeFromString<LoaderInstallProfile>(installProfileText)
-        val loaderLibraries = (installProfile.libraries + loaderVersionManifest.libraries)
-            .distinctBy { libraryKey(it) }
-        if (loaderLibraries.isNotEmpty()) {
-            onProgress("下载 $loader 依赖 (${loaderLibraries.size}) ...")
-            downloadLibrariesLegacy(loaderLibraries, onProgress)
-        }
-
-        downloadMojmapIfNeededLegacy(installProfile, vanillaManifest, onProgress)
-
-        runInstallerBootstrapperLegacy(installBooter, installer, onProgress)
-    }
 
     private data class LoaderInstallHolder(
         val version: McVersion,
