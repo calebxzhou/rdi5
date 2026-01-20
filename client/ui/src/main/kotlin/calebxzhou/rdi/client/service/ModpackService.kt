@@ -23,6 +23,9 @@ import calebxzhou.rdi.client.ui.pointerBuffer
 import calebxzhou.rdi.client.ui.toast
 import calebxzhou.rdi.common.model.Task
 import calebxzhou.rdi.common.model.TaskProgress
+import calebxzhou.rdi.common.exception.RequestError
+import calebxzhou.rdi.client.ui2.McPlayArgs
+import io.ktor.http.HttpMethod
 import kotlinx.coroutines.*
 import org.bson.types.ObjectId
 import org.lwjgl.util.tinyfd.TinyFileDialogs
@@ -352,7 +355,51 @@ object ModpackService {
         return true
     }
 
-    fun Host.startPlay() = ioTask {
+    suspend fun Host.DetailVo.startPlay(): McPlayArgs {
+        val statusResp = server.makeRequest<HostStatus>("host/${_id}/status")
+        val status = statusResp.data ?: throw RequestError("获取地图状态失败: ${statusResp.msg}")
+
+        val versionResp = server.makeRequest<Modpack.Version>("modpack/${modpack.id}/version/$packVer")
+        val version = versionResp.data ?: throw RequestError("获取整合包版本信息失败: ${versionResp.msg}")
+
+        if (!(modpack.mcVer.firstLoaderDir.exists())) {
+            throw RequestError("未安装MC版本资源：${modpack.mcVer.mcVer}")
+        }
+        if (!isVersionInstalled(modpack.id, packVer)) {
+            throw RequestError("未下载此地图的整合包，无法游玩")
+        }
+
+        when (status) {
+            HostStatus.PLAYABLE, HostStatus.STARTED -> Unit
+            HostStatus.STOPPED -> {
+                val startResp = server.makeRequest<Unit>("host/${_id}/start", HttpMethod.Post)
+                if (!startResp.ok) {
+                    throw RequestError("启动地图失败: ${startResp.msg}")
+                }
+            }
+            else -> throw RequestError("地图状态未知，无法游玩")
+        }
+
+        if (GameService.started) {
+            throw RequestError("mc运行中，如需切换要玩的地图，请先关闭mc")
+        }
+
+        val bgp = LocalCredentials.read().carrier != 0
+        val versionId = "${modpack.id.str}_${version.name}"
+        val args = listOf(
+            "-Drdi.ihq.url=${server.hqUrl}",
+            "-Drdi.game.ip=${if (bgp) server.bgpIp else server.ip}:${server.gamePort}",
+            "-Drdi.host.name=${name}",
+            "-Drdi.host.port=${port}"
+        )
+        return McPlayArgs(
+            title = "游玩 $name",
+            mcVer = modpack.mcVer,
+            versionId = versionId,
+            jvmArgs = args
+        )
+    }
+    fun Host.startPlayLegacy() = ioTask {
         val status = server.makeRequest<HostStatus>("host/${_id}/status").run {
             data ?: run {
                 alertErr("获取地图状态失败，无法游玩: ${this.msg}")
@@ -409,8 +456,8 @@ object ModpackService {
                         modpack.mcVer, "${modpackId.str}_${version.name}",
                         "-Drdi.ihq.url=${server.hqUrl}",
                         "-Drdi.game.ip=${if (bgp) server.bgpIp else server.ip}:${server.gamePort}",
-                        "-Drdi.host.name=${this@startPlay.name}",
-                        "-Drdi.host.port=${this@startPlay.port}"
+                        "-Drdi.host.name=${this@startPlayLegacy.name}",
+                        "-Drdi.host.port=${this@startPlayLegacy.port}"
                     ) {
                         this.log(it)
                     }
