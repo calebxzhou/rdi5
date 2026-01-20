@@ -51,7 +51,7 @@ tasks.matching { it.name == "hotRun" }.configureEach {
         workingDir = runDir
         jvmArgs(
             "-Drdi.debug=true",
-            "-Drdi.init.screen=hl",
+            "-Drdi.init.screen=ml",
            // "-Drdi.mockData=true",
             "-Drdi.account=eyJfaWQiOiI2OGIzMTRiYmFkYWY1MmRkYWI5NmI1ZWQiLCJuYW1lIjoiMTIzMTIzIiwicHdkIjoiMTIzQEBAIiwicXEiOiIxMjMxMjMifQ=="
         )
