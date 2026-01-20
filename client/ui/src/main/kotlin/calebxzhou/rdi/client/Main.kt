@@ -27,6 +27,7 @@ import calebxzhou.rdi.client.service.PlayerService
 import calebxzhou.rdi.client.ui2.McPlayStore
 import calebxzhou.rdi.client.ui2.TaskStore
 import calebxzhou.rdi.client.ui2.screen.*
+import calebxzhou.rdi.common.model.RAccount
 import calebxzhou.rdi.common.serdesJson
 import kotlinx.coroutines.launch
 import org.bson.types.ObjectId
@@ -70,7 +71,7 @@ fun main() = application {
     System.getProperty("rdi.jwt")?.let {
         loggedAccount.jwt = it
     }
-    if (loggedAccount.jwt == null) {
+    if (loggedAccount.jwt == null && loggedAccount != RAccount.DEFAULT) {
         ioScope.launch {
             val jwt = PlayerService.getJwt(loggedAccount.qq, loggedAccount.pwd)
             loggedAccount.jwt = jwt
