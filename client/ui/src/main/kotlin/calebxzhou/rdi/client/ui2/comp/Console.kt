@@ -150,7 +150,7 @@ private suspend fun exportLogsToZip(lines: List<String>): Result<File> = withCon
         // Create zip file
         ZipOutputStream(outputFile.outputStream()).use { zipOut ->
             val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-            val entry = ZipEntry("console_log_$timestamp.txt")
+            val entry = ZipEntry("console_log_$timestamp.log")
             zipOut.putNextEntry(entry)
             
             lines.forEach { line ->
