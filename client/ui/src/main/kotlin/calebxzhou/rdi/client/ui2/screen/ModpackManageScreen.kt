@@ -254,17 +254,17 @@ fun McVersionCard(
                     CircleIconButton("\uF019", "下载全部所需文件") {
                         onOpenTask?.invoke(GameService.downloadVersion(mcver,mcver.firstLoader))
                     }
-                    CircleIconButton("\uF305", "仅下载MC核心") {
+                    CircleIconButton("\uF305", "仅下载MC核心", bgColor = Color.Gray) {
                         onOpenTask?.invoke(GameService.downloadClient(mcver.metadata))
                     }
-                    CircleIconButton("\uDB84\uDE5F", "仅下载运行库") {
+                    CircleIconButton("\uDB84\uDE5F", "仅下载运行库", bgColor = Color.Gray) {
                         onOpenTask?.invoke(GameService.downloadLibraries(mcver.metadata.libraries))
                     }
-                    CircleIconButton("\uF001", "仅下载音频资源") {
+                    CircleIconButton("\uF001", "仅下载音频资源", bgColor = Color.Gray) {
                         onOpenTask?.invoke(GameService.downloadAssets(mcver.metadata))
                     }
                     mcver.loaderVersions.forEach { (loader, _) ->
-                        CircleIconButton("\uEEFF", "安装${loader.name.lowercase()}") {
+                        CircleIconButton("\uEEFF", "安装${loader.name.lowercase()}", bgColor = Color.Gray) {
                             onOpenTask?.invoke(GameService.downloadLoader(mcver,loader))
                         }
                     }
