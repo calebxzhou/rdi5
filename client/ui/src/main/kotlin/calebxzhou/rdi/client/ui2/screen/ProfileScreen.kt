@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import calebxzhou.mykotutils.std.jarResource
 import calebxzhou.rdi.RDIClient
+import calebxzhou.rdi.client.CodeFontFamily
 import calebxzhou.rdi.client.net.loggedAccount
 import calebxzhou.rdi.client.net.server
 import calebxzhou.rdi.client.service.PlayerInfoCache
