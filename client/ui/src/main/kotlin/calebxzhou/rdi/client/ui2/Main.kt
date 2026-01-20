@@ -124,7 +124,11 @@ fun main() = application {
                         onOpenHostInfo = { hostId ->
                             navController.navigate(HostInfo(hostId))
                         },
-                        onOpenModpackList = { navController.navigate(ModpackList) }
+                        onOpenModpackList = { navController.navigate(ModpackList) },
+                        onOpenMcPlay = { args ->
+                            McPlayStore.current = args
+                            navController.navigate(McPlayView)
+                        }
                     )
                 }
                 composable<HostInfo> {
@@ -134,6 +138,10 @@ fun main() = application {
                         onBack = { navController.navigate(HostList) },
                         onOpenModpackInfo = { modpackId ->
                             navController.navigate(ModpackInfo(modpackId, fromHostId = route.hostId))
+                        },
+                        onOpenMcPlay = { args ->
+                            McPlayStore.current = args
+                            navController.navigate(McPlayView)
                         }
                     )
                 }
@@ -143,7 +151,8 @@ fun main() = application {
                 composable<HostCreate> {
                     HostCreateScreen(
                         it.toRoute(),
-                        onBack = { navController.popBackStack() }
+                        onBack = { navController.popBackStack() },
+                        onNavigateProfile = { navController.navigate(Profile) }
                     )
                 }
                 composable<TaskView> {
@@ -152,6 +161,20 @@ fun main() = application {
                         TaskScreen(task, onBack = { navController.popBackStack() })
                     } else {
                         Text("没有可显示的任务")
+                    }
+                }
+                composable<McPlayView> {
+                    val args = McPlayStore.current
+                    if (args != null) {
+                        McPlayScreen(
+                            title = args.title,
+                            mcVer = args.mcVer,
+                            versionId = args.versionId,
+                            jvmArgs = args.jvmArgs.toTypedArray(),
+                            onBack = { navController.popBackStack() }
+                        )
+                    } else {
+                        Text("没有可显示的游戏")
                     }
                 }
                 composable<Profile> {
@@ -210,6 +233,10 @@ fun main() = application {
                         onOpenTask = { task ->
                             TaskStore.current = task
                             navController.navigate(TaskView)
+                        },
+                        onOpenMcPlay = { args ->
+                            McPlayStore.current = args
+                            navController.navigate(McPlayView)
                         }
                     )
                 }

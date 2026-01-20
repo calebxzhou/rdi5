@@ -11,9 +11,11 @@ import androidx.compose.runtime.setValue
 import calebxzhou.rdi.client.service.GameService
 import calebxzhou.rdi.client.ui2.CircleIconButton
 import calebxzhou.rdi.client.ui2.MainColumn
+import calebxzhou.rdi.client.ui2.McPlayStore
+import calebxzhou.rdi.client.ui2.Space8h
+import calebxzhou.rdi.client.ui2.Space8w
 import calebxzhou.rdi.client.ui2.TitleRow
 import calebxzhou.rdi.client.ui2.comp.Console
-import calebxzhou.rdi.client.ui2.comp.ConsoleState
 import calebxzhou.rdi.common.model.McVersion
 import kotlinx.coroutines.launch
 
@@ -30,27 +32,56 @@ fun McPlayScreen(
     onBack: ()-> Unit )
 {
     val scope = rememberCoroutineScope()
-    var consoleState by remember { mutableStateOf(ConsoleState()) }
-    var process by remember { mutableStateOf<Process?>(null) }
+    val consoleState = McPlayStore.consoleState
+    var process by remember { mutableStateOf(McPlayStore.process?.takeIf { it.isAlive }) }
+    val isRunning = process?.isAlive == true
+    fun onProcessExit() {
+        process = null
+        McPlayStore.process = null
+    }
     fun startProcess() {
+        if (process?.isAlive == true) return
         consoleState.clear()
-        process = GameService.start(mcVer, versionId, *jvmArgs) { line ->
-            scope.launch { consoleState.append(line) }
+        val started = GameService.start(mcVer, versionId, *jvmArgs) { line ->
+            scope.launch {
+                consoleState.append(line)
+                if (line.startsWith("启动失败") || line.startsWith("已退出")) {
+                    onProcessExit()
+                }
+            }
         }
+        process = started
+        McPlayStore.process = started
     }
     LaunchedEffect(versionId, jvmArgs) {
-        startProcess()
+        if (process?.isAlive != true) {
+            startProcess()
+        }
     }
     MainColumn {
         TitleRow(title,onBack){
+            if (!isRunning) {
+                CircleIconButton("\uF04B", "启动MC") {
+                    startProcess()
+                }
+                Space8w()
+            }
             CircleIconButton("\uEAD2","重启MC"){
                 process?.destroy()
                 startProcess()
             }
-            CircleIconButton("\uF04D","强制结束MC"){
+            Space8w()
+            CircleIconButton("\uF04D","停止MC"){
+                process?.destroy()
+                onProcessExit()
+            }
+            Space8w()
+            CircleIconButton("\uF05E","强制结束MC"){
                 process?.destroyForcibly()
+                onProcessExit()
             }
         }
+        Space8h()
         Console(consoleState)
     }
 }

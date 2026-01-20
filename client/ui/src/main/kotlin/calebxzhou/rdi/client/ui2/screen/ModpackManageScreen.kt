@@ -44,7 +44,8 @@ import java.awt.Desktop
 fun ModpackManageScreen(
     onBack: () -> Unit = {},
     onOpenModpackList: (() -> Unit)? = null,
-    onOpenTask: ((Task) -> Unit)? = null
+    onOpenTask: ((Task) -> Unit)? = null,
+    onOpenMcPlay: ((McPlayArgs) -> Unit)? = null
 ) {
     val scope = rememberCoroutineScope()
     var loading by remember { mutableStateOf(true) }
@@ -116,8 +117,12 @@ fun ModpackManageScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             items(localDirs, key = { "${it.vo.id}_${it.verName}" }) { packdir ->
+                val versionId = "${packdir.vo.id}_${packdir.verName}"
+                val runningArgs = McPlayStore.current
+                val isRunning = runningArgs?.versionId == versionId && McPlayStore.process?.isAlive == true
                 ModpackManageCard(
                     packdir = packdir,
+                    isRunning = isRunning,
                     onDelete = { confirmDelete = packdir },
                     onReinstall = {
                         scope.launch {
@@ -149,6 +154,11 @@ fun ModpackManageScreen(
                                 errorMessage = "无法打开目录: ${it.message}"
                             }
                         }
+                    },
+                    onOpenMcPlay = if (isRunning && runningArgs != null) {
+                        { onOpenMcPlay?.invoke(runningArgs) }
+                    } else {
+                        null
                     }
                 )
             }
@@ -269,84 +279,109 @@ fun McVersionCard(
 @Composable
 fun ModpackManageCard(
     packdir: ModpackService.LocalDir,
+    isRunning: Boolean = false,
     onDelete: () -> Unit,
     onReinstall: () -> Unit,
-    onOpenFolder: () -> Unit
+    onOpenFolder: () -> Unit,
+    onOpenMcPlay: (() -> Unit)? = null
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = Color(0xFFF9F9FB),
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-        elevation = 1.dp
+
+    val cardShape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+    val glowModifier = if (isRunning) {
+        Modifier
+            .background(Color(0xFFE9D5FF), cardShape)
+            .padding(2.dp)
+    } else {
+        Modifier
+    }
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(glowModifier)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(8.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = Color(0xFFF9F9FB),
+            shape = cardShape,
+            elevation = 1.dp
         ) {
-            Box(
-                modifier = Modifier
-                    .size(64.dp)
-                    .background(MaterialColor.GRAY_200.color, androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
-                    .padding(4.dp),
-                contentAlignment = Alignment.Center
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Image(
-                    bitmap = DEFAULT_MODPACK_ICON,
-                    contentDescription = "Modpack Icon",
+                Box(
                     modifier = Modifier
                         .size(64.dp)
                         .background(MaterialColor.GRAY_200.color, androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
-                        .padding(4.dp)
-                )
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        .padding(4.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = packdir.vo.name ,
-                        style = MaterialTheme.typography.subtitle1,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color.Black
-                    )
-                    Text(
-                        text = packdir.verName,
-                        style = MaterialTheme.typography.body2,
-                        color = MaterialColor.GRAY_700.color
+                    Image(
+                        bitmap = DEFAULT_MODPACK_ICON,
+                        contentDescription = "Modpack Icon",
+                        modifier = Modifier
+                            .size(64.dp)
+                            .background(MaterialColor.GRAY_200.color, androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+                            .padding(4.dp)
                     )
                 }
-                Row(
-                    modifier = Modifier.horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    CircleIconButton(
-                        "\uEA81",
-                        "删除",
-                        bgColor = MaterialColor.RED_900.color,
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        onDelete()
+                        Text(
+                            text = packdir.vo.name ,
+                            style = MaterialTheme.typography.subtitle1,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.Black
+                        )
+                        Text(
+                            text = packdir.verName,
+                            style = MaterialTheme.typography.body2,
+                            color = MaterialColor.GRAY_700.color
+                        )
                     }
-                    CircleIconButton(
-                        "\uDB81\uDC53",
-                        "重装",
-                        bgColor = MaterialColor.PINK_900.color,
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        onReinstall()
-                    }
-                    CircleIconButton(
-                        "\uEAED",
-                        "打开文件夹",
-                    ) {
-                        onOpenFolder ()
+                        CircleIconButton(
+                            "\uEA81",
+                            "删除",
+                            bgColor = MaterialColor.RED_900.color,
+                        ) {
+                            onDelete()
+                        }
+                        CircleIconButton(
+                            "\uDB81\uDC53",
+                            "重装",
+                            bgColor = MaterialColor.PINK_900.color,
+                        ) {
+                            onReinstall()
+                        }
+                        CircleIconButton(
+                            "\uEAED",
+                            "打开文件夹",
+                        ) {
+                            onOpenFolder ()
+                        }
+                        if (isRunning && onOpenMcPlay != null) {
+                            CircleIconButton(
+                                "\uF120",
+                                "控制台",
+                                bgColor = MaterialColor.BLUE_800.color,
+                            ) {
+                                onOpenMcPlay()
+                            }
+                        }
                     }
                 }
             }
         }
-
     }
 }

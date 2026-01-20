@@ -16,6 +16,7 @@ import calebxzhou.rdi.client.Const
 import calebxzhou.rdi.client.auth.LocalCredentials
 import calebxzhou.rdi.client.net.server
 import calebxzhou.rdi.client.service.ModpackService.startPlay
+import calebxzhou.rdi.client.ui2.McPlayArgs
 import calebxzhou.rdi.client.ui2.CircleIconButton
 import calebxzhou.rdi.client.ui2.MainColumn
 import calebxzhou.rdi.client.ui2.TitleRow
@@ -33,12 +34,14 @@ fun HostListScreen(
     onBack: (() -> Unit),
     onOpenWorldList: (() -> Unit)? = null,
     onOpenHostInfo: ((String) -> Unit)? = null,
-    onOpenModpackList: (() -> Unit)? = null
+    onOpenModpackList: (() -> Unit)? = null,
+    onOpenMcPlay: ((McPlayArgs) -> Unit)? = null
 ) {
     val scope = rememberCoroutineScope()
     var hosts by remember { mutableStateOf<List<Host.BriefVo>>(emptyList()) }
     var showMy by remember { mutableStateOf(true) }
     var showCarrierDialog by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
     val creds = remember { LocalCredentials.read() }
     var selectedCarrier by remember { mutableStateOf(creds.carrier) }
 
@@ -54,6 +57,7 @@ fun HostListScreen(
     MainColumn{
         // Header / Toolbar
         TitleRow("地图大厅", onBack = onBack){
+            errorMessage?.let { Text(it, color = MaterialTheme.colors.error) }
             Checkbox(
                 checked = showMy,
                 onCheckedChange = { showMy = it }
@@ -95,8 +99,23 @@ fun HostListScreen(
                 items(hosts) { host ->
                     host.HostCard(onClickPlay = {
                         scope.launch {
-                            val res = server.makeRequest<Host>("host/${host._id}")
-                            res.data?.startPlay()
+                            val res = server.makeRequest<Host.DetailVo>("host/${host._id}/detail")
+                            val detail = res.data
+                                ?: run {
+                                    errorMessage = "获取地图信息失败: ${res.msg}"
+                                    return@launch
+                                }
+                            val args = try {
+                                detail.startPlay()
+                            } catch (e: Exception) {
+                                errorMessage = e.message ?: "无法开始游玩"
+                                return@launch
+                            }
+                            if (onOpenMcPlay != null) {
+                                onOpenMcPlay(args)
+                            } else {
+                                errorMessage = "暂不支持在此页面游玩"
+                            }
                         }
                     }, onClick = {
                         onOpenHostInfo?.invoke(host._id.toHexString())

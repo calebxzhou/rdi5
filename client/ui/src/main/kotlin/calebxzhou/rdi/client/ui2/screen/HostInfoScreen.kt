@@ -8,14 +8,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.material.AlertDialog
 import androidx.compose.material.Checkbox
 import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.MaterialTheme
 import androidx.compose.material.RadioButton
 import androidx.compose.material.SnackbarDuration
 import androidx.compose.material.SnackbarHostState
@@ -47,6 +45,7 @@ import calebxzhou.rdi.client.net.rdiRequest
 import calebxzhou.rdi.client.net.rdiRequestU
 import calebxzhou.rdi.client.net.server
 import calebxzhou.rdi.client.service.ModpackService.startPlay
+import calebxzhou.rdi.client.ui2.McPlayArgs
 import calebxzhou.rdi.client.ui2.BottomSnakebar
 import calebxzhou.rdi.client.ui2.CircleIconButton
 import calebxzhou.rdi.client.ui2.ConfirmDialog
@@ -83,7 +82,8 @@ import org.bson.types.ObjectId
 fun HostInfoScreen(
     hostId: ObjectId,
     onBack: () -> Unit = {},
-    onOpenModpackInfo: ((String) -> Unit)? = null
+    onOpenModpackInfo: ((String) -> Unit)? = null,
+    onOpenMcPlay: ((McPlayArgs) -> Unit)? = null
 ) {
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -230,11 +230,19 @@ fun HostInfoScreen(
                         tooltip = "开始游玩",
                         bgColor = MaterialColor.GREEN_900.color
                     ) {
-                        scope.rdiRequest<Host>(
-                            path = "host/$hostId",
-                            onOk = { response -> response.data?.startPlay() },
-                            onErr = { errorMessage = "获取地图信息失败: ${it.message}" }
-                        )
+                        scope.launch {
+                            val args = try {
+                                host.startPlay()
+                            } catch (e: Exception) {
+                                errorMessage = e.message ?: "无法开始游玩"
+                                return@launch
+                            }
+                            if (onOpenMcPlay != null) {
+                                onOpenMcPlay(args)
+                            } else {
+                                errorMessage = "暂不支持在此页面游玩"
+                            }
+                        }
                     }
                     Space8w()
                     if (meAdmin) {

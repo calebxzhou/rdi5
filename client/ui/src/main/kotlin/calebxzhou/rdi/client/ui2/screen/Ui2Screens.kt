@@ -22,3 +22,4 @@ object Wardrobe
 @Serializable object Mail
 @Serializable object WorldList
 @Serializable object TaskView
+@Serializable object McPlayView
