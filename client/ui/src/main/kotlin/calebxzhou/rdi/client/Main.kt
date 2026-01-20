@@ -1,15 +1,10 @@
-package calebxzhou.rdi.client.ui2
+package calebxzhou.rdi.client
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material.Button
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.material.Typography
-import androidx.compose.runtime.*
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.decodeToImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.text.font.FontFamily
@@ -23,17 +18,22 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import calebxzhou.mykotutils.std.canCreateSymlink
 import calebxzhou.mykotutils.std.decodeBase64
 import calebxzhou.mykotutils.std.ioScope
 import calebxzhou.mykotutils.std.jarResource
 import calebxzhou.rdi.RDIClient
 import calebxzhou.rdi.client.net.loggedAccount
 import calebxzhou.rdi.client.service.PlayerService
+import calebxzhou.rdi.client.ui2.McPlayStore
+import calebxzhou.rdi.client.ui2.TaskStore
+import calebxzhou.rdi.client.ui2.alertErrOs
 import calebxzhou.rdi.client.ui2.screen.*
 import calebxzhou.rdi.common.serdesJson
 import kotlinx.coroutines.launch
-import java.awt.Toolkit
 import org.bson.types.ObjectId
+import java.awt.Toolkit
+import kotlin.concurrent.thread
 
 lateinit var UIFontFamily: FontFamily
 lateinit var ArtFontFamily: FontFamily
@@ -41,6 +41,15 @@ lateinit var CodeFontFamily: FontFamily
 lateinit var IconFontFamily: FontFamily
 
 fun main() = application {
+    if (!canCreateSymlink()) {
+        thread {
+            alertErrOs(
+                """rdi无权为mod文件创建软连接，会导致整合包玩不了，不能安装mod！
+解决方法：1.以管理员身份运行rdi
+ 或者 2.Win+R secpol.msc 本地策略/用户权限/创建符号链接，添加当前用户，确定后重启电脑"""
+            )
+        }
+    }
     val windowIcon = remember {
         jarResource("icon.png").use { stream ->
             BitmapPainter(stream.readAllBytes().decodeToImageBitmap())
@@ -71,12 +80,12 @@ fun main() = application {
     }
     //JWT
     System.getProperty("rdi.jwt")?.let {
-        loggedAccount.jwt=it
+        loggedAccount.jwt = it
     }
-    if(loggedAccount.jwt == null){
+    if (loggedAccount.jwt == null) {
         ioScope.launch {
             val jwt = PlayerService.getJwt(loggedAccount.qq, loggedAccount.pwd)
-            loggedAccount.jwt=jwt
+            loggedAccount.jwt = jwt
         }
     }
     // 设置窗口初始大小为屏幕的2/3，并居中显示
