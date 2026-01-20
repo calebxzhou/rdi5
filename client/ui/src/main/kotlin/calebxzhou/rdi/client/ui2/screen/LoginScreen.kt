@@ -22,7 +22,7 @@ import calebxzhou.rdi.client.net.server
 import calebxzhou.rdi.client.service.PlayerService
 import calebxzhou.rdi.client.service.UpdateService
 import calebxzhou.rdi.client.ui2.BottomSnakebar
-import calebxzhou.rdi.client.ui2.CodeFontFamily
+import calebxzhou.rdi.client.CodeFontFamily
 import calebxzhou.rdi.client.ui2.MainBox
 import calebxzhou.rdi.client.ui2.asIconText
 import calebxzhou.rdi.common.exception.RequestError
@@ -204,8 +204,13 @@ fun LoginScreen(
                 ) {
                     TextButton(onClick = {
                         scope.launch {
-                            withContext(Dispatchers.IO) {
+                            val result = withContext(Dispatchers.IO) {
                                 createShortcut()
+                            }
+                            if (result.isSuccess) {
+                                okMessage = "已创建桌面快捷方式"
+                            } else {
+                                loginError = result.exceptionOrNull()?.message ?: "创建快捷方式失败"
                             }
                         }
                     }) {
@@ -401,7 +406,7 @@ private fun createShortcut(): Result<Unit> {
                 iconFile.outputStream().use { output -> input.copyTo(output) }
             }
         }
-        val args = "-cp \"lib/*;rdi-5-ui.jar\" calebxzhou.rdi.RDIKt"
+        val args = "-cp \"lib/*;rdi-5-ui.jar\" calebxzhou.rdi.client.MainKt"
         fun esc(path: String) = path.replace("'", "''")
         val template = RDIClient.jarResource("shortcut_maker.ps1").readAllString()
         val script = template

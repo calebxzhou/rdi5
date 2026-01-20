@@ -17,7 +17,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import calebxzhou.rdi.client.ui2.CircleIconButton
-import calebxzhou.rdi.client.ui2.CodeFontFamily
+import calebxzhou.rdi.client.CodeFontFamily
 import calebxzhou.rdi.client.ui2.MaterialColor
 import calebxzhou.rdi.client.ui2.alertErr
 import calebxzhou.rdi.client.ui2.alertOk

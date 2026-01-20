@@ -24,9 +24,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import calebxzhou.mykotutils.std.humanFileSize
-import calebxzhou.rdi.client.ui2.CodeFontFamily
+import calebxzhou.rdi.client.CodeFontFamily
 import calebxzhou.rdi.client.ui2.DEFAULT_MODPACK_ICON
-import calebxzhou.rdi.client.ui2.IconFontFamily
+import calebxzhou.rdi.client.IconFontFamily
 import calebxzhou.rdi.client.ui2.MaterialColor
 import calebxzhou.rdi.common.model.Modpack
 
