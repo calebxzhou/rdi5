@@ -110,7 +110,7 @@ fun Route.hostRoutes() = route("/host") {
             response(data = hosts)
         }
         get("/my/{page?}") {
-            response(data = call.player().listHostLobby(paramNull("page")?.toInt() ?: 0, myOnly = true))
+            response(data = call.player().listHostLobby(paramNull("page")?.toInt() ?: 0, onlyShowMy = true))
         }
     }
     route("/{hostId}") {
@@ -1006,7 +1006,7 @@ object HostService {
     suspend fun RAccount.listHostLobby(
         page: Int,
         pageSize: Int = HOSTS_PER_PAGE,
-        myOnly: Boolean = false
+        onlyShowMy: Boolean = false
     ): List<Host.BriefVo> {
         val safePage = page.coerceAtLeast(0)
         val safeSize = pageSize.coerceIn(1, 100)
@@ -1023,17 +1023,14 @@ object HostService {
             //官服永远显示
             if (PlayerService.getName(host.ownerId) == "davickk")
                 return@filter true
-            //不是受邀成员 只显示能玩的
-            if (!myOnly) {
-                val status = host.status
-                if (status != HostStatus.PLAYABLE && status != HostStatus.STARTED && status != HostStatus.PAUSED) {
-                    return@filter false
-                }
-            }
+
             val isMember = host.ownerId == requesterId || host.members.any { it.id == requesterId }
-            if (myOnly && !isMember) return@filter false
-            if (host.whitelist && !isMember) return@filter false
-            true
+            //只显示受邀时
+            if (onlyShowMy) {
+                return@filter isMember
+            }
+            if (isMember) return@filter true
+            host.status == HostStatus.PLAYABLE
         }
 
         if (visibleHosts.isEmpty()) return emptyList()
