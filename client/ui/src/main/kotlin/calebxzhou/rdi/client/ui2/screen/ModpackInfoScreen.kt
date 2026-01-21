@@ -203,13 +203,22 @@ fun ModpackInfoScreen(
                                 Text("正在载入${pack.modCount}个Mod的详细信息...")
                             }
                             Space8h()
+                            val sortedMods = remember(mods) {
+                                mods.sortedWith(
+                                    compareBy(
+                                        String.CASE_INSENSITIVE_ORDER
+                                    ) { mod ->mod.vo?.name?.takeIf { it.isNotBlank() }
+                                            ?: mod.slug
+                                    }
+                                )
+                            }
                             LazyVerticalGrid(
                                 columns = GridCells.Adaptive(320.dp),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 verticalArrangement = Arrangement.spacedBy(12.dp),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                items(mods, key = { it.hash }) { mod ->
+                                items(sortedMods, key = { it.hash }) { mod ->
                                     val card = mod.vo
                                     if (card != null) {
                                         card.ModCard()
