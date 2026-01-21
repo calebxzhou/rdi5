@@ -613,22 +613,6 @@ object ModpackService {
     }
 
     fun Modpack.Version.processMods(modpack: Modpack) {
-        //升级kff到最新版
-        val kffMod = if (modpack.isMcVer(McVersion.V211)) {
-            Mod(
-                "cf", "351264", "kotlin-for-forge",
-                "6994056",
-                "3853038505"
-            )
-        } else if (modpack.isMcVer(McVersion.V201)) {
-            Mod(
-                "cf", "351264", "kotlin-for-forge",
-                "7291067",
-                "2392977662"
-            )
-        } else throw RequestError("不支持的mc版本 无法添加kotlin for forge")
-        mods.removeIf { it.slug == "kotlin-for-forge" }
-        mods += kffMod
         //移除备份有关的
         mods.removeIf { it.slug.contains("backup") }
         //移除fancymenu以及相关的
