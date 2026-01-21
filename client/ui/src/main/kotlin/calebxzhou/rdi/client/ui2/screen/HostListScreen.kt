@@ -39,7 +39,7 @@ fun HostListScreen(
 ) {
     val scope = rememberCoroutineScope()
     var hosts by remember { mutableStateOf<List<Host.BriefVo>>(emptyList()) }
-    var showMy by remember { mutableStateOf(true) }
+    var showMy by remember { mutableStateOf(false) }
     var showCarrierDialog by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val creds = remember { LocalCredentials.read() }
