@@ -43,7 +43,6 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.utils.io.*
-import jogamp.opengl.util.pngj.ImageLineHelper.pack
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.toList
@@ -232,7 +231,7 @@ object ModpackService {
     internal var testDbcl: MongoCollection<Modpack>? = null
     val dbcl: MongoCollection<Modpack>
         get() = testDbcl ?: realDbcl
-    private val clientNeedDirs = listOf("config", "mods", "defaultconfigs", "kubejs", "global_packs", "resourcepacks")
+    //private val clientNeedDirs = listOf("config", "mods", "defaultconfigs", "kubejs", "global_packs", "resourcepacks")
     private val disallowedClientPaths = setOf("config/fancymenu")
     private val allowedQuestLangFiles = setOf("en_us.snbt", "zh_cn.snbt")
     private const val QUEST_LANG_PREFIX = "config/ftbquests/quests/lang/"
@@ -640,8 +639,12 @@ object ModpackService {
         //gto/gtl
         mods.find { it.slug == "just-enough-resources-jer" }?.side = Mod.Side.BOTH
         //会自动还原服务端配置
-        //todo 如果这个mod存在，并且包里有default-server.properties，覆盖对应选项到server.properties模板（5.10以后）
+        //已实现 如果这个mod存在，并且包里有default-server.properties，覆盖对应选项到server.properties模板（5.10以后）
         mods.removeIf { it.slug == "default-server-properties" }
+        //客户端才用
+        mods.find { it.slug == "modern-ui" }?.side = Mod.Side.CLIENT
+        //1.18.2跑不起来
+        mods.removeIf { it.slug == "skybox-loader-forge" }
     }
 
     suspend fun Modpack.buildVersion(version: Modpack.Version, onProgress: (String) -> Unit) {
@@ -667,7 +670,7 @@ object ModpackService {
             }.getOrThrow()
             onProgress("所有mod下载完成 开始安装。。${downloadedMods.size}个mod")
             onProgress("构建客户端版。。")
-            buildClientZip(version)
+            buildClientPack(version)
             onProgress("客户端版本构建完成")
             onProgress("整合包构建完成！")
             version.setStatus(Modpack.Status.OK)
@@ -678,14 +681,13 @@ object ModpackService {
         }
     }
 
-    private fun buildClientZip(version: Modpack.Version) {
+    private fun buildClientPack(version: Modpack.Version) {
         val sourceZip = version.zip
         if (!sourceZip.exists()) return
         val clientZip = version.clientZip
         clientZip.parentFile?.mkdirs()
         if (clientZip.exists()) clientZip.delete()
 
-        val neededDirs = clientNeedDirs.toSet()
         var entriesCopied = 0
 
         open(sourceZip).use { source ->
@@ -697,14 +699,23 @@ object ModpackService {
                     if (disallowedClientPaths.any { relativeLower.startsWith(it) }) {
                         return@forEach
                     }
+                    //probeJS缓存 没有用
+                    if (relativeLower.startsWith("kubejs/probe/")) {
+                        return@forEach
+                    }
+                    //太大了 客户端不需要
+                    if (relativeLower.endsWith(".mca")) {
+                        return@forEach
+                    }
+                    //没用
                     if (relativeLower.endsWith(".ogg")) {
                         return@forEach
                     }
+                    //不需要其他语言
                     if (isQuestLangEntryDisallowed(relativeLower, entry.isDirectory)) {
                         return@forEach
                     }
                     val topLevel = relative.substringBefore('/', relative)
-                    if (topLevel !in neededDirs) return@forEach
 
                     if (entry.isDirectory) {
                         if (addDirectoryEntry(relative, output, addedDirs)) {
@@ -712,7 +723,7 @@ object ModpackService {
                         }
                         return@forEach
                     }
-
+                    //太大资源包不要
                     if (topLevel == "resourcepacks") {
                         val bytes = readResourcepackEntry(source, entry, relativeLower) ?: return@forEach
                         ensureZipParents(relative, output, addedDirs)
@@ -722,6 +733,7 @@ object ModpackService {
                         output.closeEntry()
                         entriesCopied++
                     } else {
+                        //png压缩jpg
                         ensureZipParents(relative, output, addedDirs)
                         val clientEntry = ZipEntry(relative).apply { time = entry.time }
                         output.putNextEntry(clientEntry)
