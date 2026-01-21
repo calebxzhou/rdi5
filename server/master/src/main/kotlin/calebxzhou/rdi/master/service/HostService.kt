@@ -18,7 +18,6 @@ import calebxzhou.rdi.master.exception.RequestError
 import calebxzhou.rdi.master.model.WsMessage
 import calebxzhou.rdi.master.net.*
 import calebxzhou.rdi.master.service.HostService.addMember
-import calebxzhou.rdi.master.service.HostService.changeGameRules
 import calebxzhou.rdi.master.service.HostService.changeOptions
 import calebxzhou.rdi.master.service.HostService.changeVersion
 import calebxzhou.rdi.master.service.HostService.createHost
@@ -302,6 +301,7 @@ object HostService {
                         //以后会支持其他mod loader 暂时只支持forge/neoforge
                         McVersion.V211 -> "@libraries/net/neoforged/neoforge/21.1.217/unix_args.txt"
                         McVersion.V201 -> "@libraries/net/minecraftforge/forge/1.20.1-47.4.13/unix_args.txt"
+                        McVersion.V182 -> "@libraries/net/minecraftforge/forge/1.18.2-40.3.12/unix_args.txt"
                     }
                 } --universe /data --nogui"
             ).apply {
@@ -772,7 +772,7 @@ object HostService {
             }
         }
         val image = when (modpack.mcVer) {
-            McVersion.V211, McVersion.V201 -> "rdi:j21"
+            McVersion.V211, McVersion.V201, McVersion.V182 -> "rdi:j21"
             // V165 V122 V071 -> "rdi:j8"
             else -> throw RequestError("不支持的MC版本")
         }

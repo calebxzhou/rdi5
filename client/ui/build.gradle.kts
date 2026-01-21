@@ -3,7 +3,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 val ktorVersion = "3.3.3"
-val version = "5.10"
+val version = "5.10.2"
 project.version = version
 plugins {
     kotlin("jvm") version "2.2.21"
@@ -40,7 +40,7 @@ tasks.matching { it.name == "hotRun" }.configureEach {
         workingDir = runDir
         jvmArgs(
             "-Drdi.debug=true",
-            "-Drdi.init.screen=ml",
+           // "-Drdi.init.screen=ml",
            // "-Drdi.mockData=true",
             "-Drdi.account=eyJfaWQiOiI2OGIzMTRiYmFkYWY1MmRkYWI5NmI1ZWQiLCJuYW1lIjoiMTIzMTIzIiwicHdkIjoiMTIzQEBAIiwicXEiOiIxMjMxMjMifQ=="
         )
