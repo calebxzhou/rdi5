@@ -11,6 +11,7 @@ import androidx.compose.runtime.setValue
 import calebxzhou.rdi.client.service.GameService
 import calebxzhou.rdi.client.ui2.CircleIconButton
 import calebxzhou.rdi.client.ui2.MainColumn
+import calebxzhou.rdi.client.ui2.MaterialColor
 import calebxzhou.rdi.client.ui2.McPlayStore
 import calebxzhou.rdi.client.ui2.Space8h
 import calebxzhou.rdi.client.ui2.Space8w
@@ -60,23 +61,17 @@ fun McPlayScreen(
     }
     MainColumn {
         TitleRow(title,onBack){
-            if (!isRunning) {
-                CircleIconButton("\uF04B", "启动MC") {
-                    startProcess()
-                }
-                Space8w()
-            }
             CircleIconButton("\uEAD2","重启MC"){
                 process?.destroy()
                 startProcess()
             }
             Space8w()
-            CircleIconButton("\uF04D","停止MC"){
+            CircleIconButton("\uF04D","停止MC", bgColor = MaterialColor.ORANGE_900.color){
                 process?.destroy()
                 onProcessExit()
             }
             Space8w()
-            CircleIconButton("\uF05E","强制结束MC"){
+            CircleIconButton("\uF05E","强制结束MC", bgColor = MaterialColor.RED_900.color){
                 process?.destroyForcibly()
                 onProcessExit()
             }
