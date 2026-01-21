@@ -613,7 +613,7 @@ object HostService {
             throw RequestError("名称长度应在3~24，当前为${host.name.displayLength}（一个汉字算两个长度）")
         }
         val playerId = _id
-        if (getByOwner(playerId).size > 3) {
+        if (getByOwner(playerId).size > 3 && !this.isDav) {
             throw RequestError("最多只可创建3张地图")
         }
         val world = host.worldId?.let {

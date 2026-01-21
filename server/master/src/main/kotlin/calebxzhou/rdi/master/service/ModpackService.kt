@@ -359,7 +359,8 @@ object ModpackService {
     suspend fun create(uid: ObjectId, name: String, ver: McVersion, modLoader: ModLoader): Modpack {
         validateModpackName(name)
         val modpackCount = dbcl.countDocuments(eq("authorId", uid)).toInt()
-        if (modpackCount >= MAX_MODPACK_PER_USER) {
+        val player = PlayerService.getById(uid)
+        if (modpackCount >= MAX_MODPACK_PER_USER && player?.isDav == false) {
             throw RequestError("一个人最多传5个包")
         }
         if (dbcl.countDocuments(eq(Modpack::name.name, name)) > 0) {

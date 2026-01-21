@@ -61,3 +61,4 @@ data class RAccount(
     val dto = Dto(_id, name, cloth)
 
 }
+val RAccount.isDav get() = name == "davickk"

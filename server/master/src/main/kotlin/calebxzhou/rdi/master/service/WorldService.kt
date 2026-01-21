@@ -9,6 +9,7 @@ import calebxzhou.rdi.master.net.*
 import calebxzhou.rdi.master.service.WorldService.createWorld
 import calebxzhou.mykotutils.log.Loggers
 import calebxzhou.mykotutils.std.deleteRecursivelyNoSymlink
+import calebxzhou.rdi.common.model.isDav
 import calebxzhou.rdi.master.WORLDS_DIR
 import com.mongodb.client.model.Filters.eq
 import io.ktor.server.routing.*
@@ -56,8 +57,9 @@ object WorldService {
 
     suspend fun RAccount.ownWorlds() = WorldService.listByOwner(_id)
 
-    private suspend fun ensureCapacity(teamId: ObjectId) {
-        if (listByOwner(teamId).size >= PLAYER_MAX_WORLD) {
+    private suspend fun ensureCapacity(ownerId: ObjectId) {
+        val player = PlayerService.getById(ownerId)
+        if (listByOwner(ownerId).size >= PLAYER_MAX_WORLD && player?.isDav == false) {
             throw RequestError("存档最多${PLAYER_MAX_WORLD}个")
         }
     }
