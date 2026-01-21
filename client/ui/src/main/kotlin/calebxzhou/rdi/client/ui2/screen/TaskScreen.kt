@@ -165,15 +165,15 @@ fun TaskScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    itemsIndexed(treeRows, key = { _, item -> pathKey(item.path) }) { _, item ->
-                        val key = pathKey(item.path)
+                    itemsIndexed(treeRows, key = { _, item -> pathKey(item.keyPath) }) { _, item ->
+                        val key = pathKey(item.keyPath)
                         val progress = taskProgressStateMap[key]?.value
                         val done = taskDoneStateMap[key]?.value == true
                         TaskTreeRow(
                             row = item,
                             progress = progress,
                             done = done,
-                            expanded = expandState[pathKey(item.path)] ?: true,
+                            expanded = expandState[pathKey(item.keyPath)] ?: true,
                             onToggle = {
                                 val current = expandState[key] ?: true
                                 expandState = expandState.toMutableMap().apply {
@@ -229,7 +229,7 @@ private fun SubTaskRow(item: SubTaskState) {
 }
 
 private data class TaskTreeRowState(
-    val path: List<String>,
+    val keyPath: List<String>,
     val name: String,
     val level: Int,
     val isGroup: Boolean
@@ -237,20 +237,20 @@ private data class TaskTreeRowState(
 
 private fun buildTaskRows(
     task: Task,
-    path: List<String>,
+    keyPath: List<String>,
     level: Int,
     expandState: Map<String, Boolean>,
     rows: MutableList<TaskTreeRowState> = mutableListOf()
 ): List<TaskTreeRowState> {
     val isGroup = task is Task.Group || task is Task.Sequence
     rows += TaskTreeRowState(
-        path = path,
+        keyPath = keyPath,
         name = task.name,
         level = level,
         isGroup = isGroup
     )
     if (isGroup) {
-        val key = pathKey(path)
+        val key = pathKey(keyPath)
         val expanded = expandState[key] ?: true
         if (expanded) {
             val children = when (task) {
@@ -258,8 +258,14 @@ private fun buildTaskRows(
                 is Task.Sequence -> task.subTasks
                 else -> emptyList()
             }
-            children.forEach { sub ->
-                buildTaskRows(sub, path + sub.name, level + 1, expandState, rows)
+            children.forEachIndexed { index, sub ->
+                buildTaskRows(
+                    sub,
+                    keyPath + childKeySegment(sub.name, index),
+                    level + 1,
+                    expandState,
+                    rows
+                )
             }
         }
     }
@@ -320,7 +326,7 @@ private suspend fun runRootTask(
             runTaskWithProgress(
                 task = task,
                 onProgress = onCurrent,
-                taskPath = listOf(task.name),
+                taskKeyPath = listOf(task.name),
                 onTaskProgress = onTaskProgress,
                 onTaskDone = onTaskDone
             )
@@ -348,7 +354,7 @@ private suspend fun runRootTask(
             runTaskWithProgress(
                 task = task,
                 onProgress = onCurrent,
-                taskPath = listOf(task.name),
+                taskKeyPath = listOf(task.name),
                 onTaskProgress = onTaskProgress,
                 onTaskDone = onTaskDone
             )
@@ -377,7 +383,7 @@ private suspend fun runGroup(
     val completed = AtomicInteger(0)
     val errors = Collections.synchronizedList(mutableListOf<String>())
     val semaphore = Semaphore(task.parallelism.coerceAtLeast(1))
-    val pending = task.subTasks.toMutableList()
+    val pending = task.subTasks.mapIndexed { index, subTask -> IndexedValue(index, subTask) }.toMutableList()
     val pendingLock = ReentrantLock()
 
     emitOnMain {
@@ -406,7 +412,7 @@ private suspend fun runGroup(
                 semaphore.withPermit {
                     emitOnMain {
                         subTasks[index] = subTasks[index].copy(
-                            name = nextTask.name,
+                            name = nextTask.value.name,
                             message = "等待中",
                             fraction = null,
                             error = null,
@@ -415,8 +421,9 @@ private suspend fun runGroup(
                         )
                     }
                     runCatching {
+                        val keyPath = groupPath + childKeySegment(nextTask.value.name, nextTask.index)
                         runTaskWithProgress(
-                            task = nextTask,
+                            task = nextTask.value,
                             onProgress = { progress ->
                                 emitOnMain {
                                     subTasks[index] = subTasks[index].copy(
@@ -425,7 +432,7 @@ private suspend fun runGroup(
                                     )
                                 }
                             },
-                            taskPath = groupPath + nextTask.name,
+                            taskKeyPath = keyPath,
                             onTaskProgress = onTaskProgress,
                             onTaskDone = onTaskDone
                         )
@@ -441,7 +448,7 @@ private suspend fun runGroup(
                                 done = false
                             )
                         }
-                        errors += "${nextTask.name}: $message"
+                        errors += "${nextTask.value.name}: $message"
                     }
                     val done = completed.incrementAndGet()
                     val fraction = done.toFloat() / total
@@ -465,7 +472,7 @@ private suspend fun runGroup(
 private suspend fun runTaskWithProgress(
     task: Task,
     onProgress: (TaskProgress) -> Unit,
-    taskPath: List<String> = emptyList(),
+    taskKeyPath: List<String> = emptyList(),
     onTaskProgress: (List<String>, TaskProgress) -> Unit,
     onTaskDone: (List<String>) -> Unit
 ) {
@@ -473,7 +480,7 @@ private suspend fun runTaskWithProgress(
         is Task.Leaf -> {
             val throttled = throttleProgress { progress ->
                 onProgress(progress)
-                onTaskProgress(taskPath, progress)
+                onTaskProgress(taskKeyPath, progress)
             }
             val ctx = TaskContext(emitProgress = { progress ->
                 throttled(progress)
@@ -481,24 +488,24 @@ private suspend fun runTaskWithProgress(
             withContext(Dispatchers.IO) {
                 task.execute(ctx)
             }
-            onTaskDone(taskPath)
+            onTaskDone(taskKeyPath)
         }
         is Task.Group -> {
             emitOnMain {
                 val progress = TaskProgress("开始子任务 ${task.subTasks.size} 个", 0f)
                 onProgress(progress)
-                onTaskProgress(taskPath, progress)
+                onTaskProgress(taskKeyPath, progress)
             }
             val total = task.subTasks.size.coerceAtLeast(1)
             val completed = AtomicInteger(0)
             val parallelism = task.parallelism.coerceAtLeast(1)
             if (parallelism == 1) {
-                task.subTasks.forEach { subTask ->
+                task.subTasks.forEachIndexed { index, subTask ->
                     withContext(Dispatchers.IO) {
                         runTaskWithProgress(
                             task = subTask,
                             onProgress = onProgress,
-                            taskPath = taskPath + subTask.name,
+                            taskKeyPath = taskKeyPath + childKeySegment(subTask.name, index),
                             onTaskProgress = onTaskProgress,
                             onTaskDone = onTaskDone
                         )
@@ -507,19 +514,19 @@ private suspend fun runTaskWithProgress(
                     emitOnMain {
                         val progress = TaskProgress("已完成 $done/$total", done.toFloat() / total)
                         onProgress(progress)
-                        onTaskProgress(taskPath, progress)
+                        onTaskProgress(taskKeyPath, progress)
                     }
                 }
             } else {
                 val semaphore = Semaphore(parallelism)
                 coroutineScope {
-                    task.subTasks.map { subTask ->
+                    task.subTasks.mapIndexed { index, subTask ->
                         async(Dispatchers.IO) {
                             semaphore.withPermit {
                                 runTaskWithProgress(
                                     task = subTask,
                                     onProgress = onProgress,
-                                    taskPath = taskPath + subTask.name,
+                                    taskKeyPath = taskKeyPath + childKeySegment(subTask.name, index),
                                     onTaskProgress = onTaskProgress,
                                     onTaskDone = onTaskDone
                                 )
@@ -528,28 +535,28 @@ private suspend fun runTaskWithProgress(
                             emitOnMain {
                                 val progress = TaskProgress("已完成 $done/$total", done.toFloat() / total)
                                 onProgress(progress)
-                                onTaskProgress(taskPath, progress)
+                                onTaskProgress(taskKeyPath, progress)
                             }
                         }
                     }.awaitAll()
                 }
             }
-            onTaskDone(taskPath)
+            onTaskDone(taskKeyPath)
         }
         is Task.Sequence -> {
             emitOnMain {
                 val progress = TaskProgress("开始子任务 ${task.subTasks.size} 个", 0f)
                 onProgress(progress)
-                onTaskProgress(taskPath, progress)
+                onTaskProgress(taskKeyPath, progress)
             }
             val total = task.subTasks.size.coerceAtLeast(1)
             val completed = AtomicInteger(0)
-            task.subTasks.forEach { subTask ->
+            task.subTasks.forEachIndexed { index, subTask ->
                 withContext(Dispatchers.IO) {
                     runTaskWithProgress(
                         task = subTask,
                         onProgress = onProgress,
-                        taskPath = taskPath + subTask.name,
+                        taskKeyPath = taskKeyPath + childKeySegment(subTask.name, index),
                         onTaskProgress = onTaskProgress,
                         onTaskDone = onTaskDone
                     )
@@ -558,15 +565,16 @@ private suspend fun runTaskWithProgress(
                 emitOnMain {
                     val progress = TaskProgress("已完成 $done/$total", done.toFloat() / total)
                     onProgress(progress)
-                    onTaskProgress(taskPath, progress)
+                    onTaskProgress(taskKeyPath, progress)
                 }
             }
-            onTaskDone(taskPath)
+            onTaskDone(taskKeyPath)
         }
     }
 }
 
 private fun pathKey(path: List<String>): String = path.joinToString(" / ")
+private fun childKeySegment(name: String, index: Int): String = "$name#$index"
 
 private fun String.truncate(maxChars: Int): String {
     if (length <= maxChars) return this
@@ -595,8 +603,8 @@ private fun initExpandState(
             is Task.Sequence -> task.subTasks
             else -> emptyList()
         }
-        children.forEach { sub ->
-            initExpandState(sub, path + sub.name, expandState, progressStates, doneStates)
+        children.forEachIndexed { index, sub ->
+            initExpandState(sub, path + childKeySegment(sub.name, index), expandState, progressStates, doneStates)
         }
     } else {
         val key = pathKey(path)
