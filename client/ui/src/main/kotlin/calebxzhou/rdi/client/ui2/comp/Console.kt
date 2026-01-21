@@ -33,7 +33,7 @@ import javax.swing.JFileChooser
 import javax.swing.filechooser.FileNameExtensionFilter
 
 class ConsoleState(
-    private val maxLogLines: Int = 200
+    private val maxLogLines: Int = 500
 ) {
     private val _lines: SnapshotStateList<String> = mutableStateListOf()
     val lines: List<String> get() = _lines
