@@ -97,6 +97,7 @@ data class MojangLibrary(
 	val name: String,
 	val downloads: MojangLibraryDownloads,
 	val rules: List<MojangRule>? = null,
+	val natives: Map<String, String>? = null,
 )
 
 @Serializable

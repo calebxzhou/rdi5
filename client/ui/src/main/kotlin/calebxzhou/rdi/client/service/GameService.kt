@@ -104,7 +104,9 @@ object GameService {
     private fun extractNatives(manifest: MojangVersionManifest, onProgress: (String) -> Unit) {
         val nativesDir = versionListDir.resolve(manifest.id).resolve("natives").apply { mkdirs() }
         manifest.libraries.filterNativeOnly.forEach { library ->
-            val jarFile = library.file
+            val jarFile = library.nativeArtifact()?.path?.let { path ->
+                File(libsDir, path)
+            } ?: library.file
             if (!jarFile.exists()) {
                 onProgress("运行库${library.name}下载失败，无法提取")
                 return@forEach
@@ -174,15 +176,22 @@ object GameService {
 
 
     private fun MojangLibrary.shouldDownloadByArch(): Boolean {
-        //没有系统要求的直接下载
-        if (rules == null) return true
-        val allowOs = rules.filter { it.action == MojangRuleAction.allow }.mapNotNull { it.os?.name }
-        return hostOs.ruleOsName in allowOs && this.name.endsWith(hostOs.archSuffix)
+        // Rules default to allow; the last matching rule decides.
+        return rulesAllow(rules)
+    }
+
+    private fun MojangLibrary.nativeClassifierKey(): String? {
+        return natives?.get(hostOs.ruleOsName)
+    }
+
+    private fun MojangLibrary.nativeArtifact(): MojangDownloadArtifact? {
+        val key = nativeClassifierKey() ?: return null
+        return downloads.classifiers?.get(key)
     }
 
     //只有native的lib
     private val List<MojangLibrary>.filterNativeOnly
-        get() = this.filter { it.rules != null }
+        get() = this.filter { it.nativeArtifact() != null }
             .filter { it.shouldDownloadByArch() }
     val MojangLibrary.file get() = File(libsDir, this.downloads.artifact.path!!)
 
@@ -194,6 +203,14 @@ object GameService {
         val artifact = library.downloads.artifact
         val relativePath = artifact.path ?: return Result.failure(IllegalStateException("缺少库路径"))
         val target = File(libsDir, relativePath)
+        return downloadLibraryArtifact(artifact, target, onProgress)
+    }
+
+    private suspend fun downloadLibraryArtifact(
+        artifact: MojangDownloadArtifact,
+        target: File,
+        onProgress: (DownloadProgress) -> Unit
+    ): Result<File> {
         if (target.exists()) {
             val existingSha = runCatching { target.sha1 }.getOrNull()
             if (existingSha != null && existingSha.equals(artifact.sha1, true)) {
@@ -206,7 +223,7 @@ object GameService {
         var attempt = 0
         while (true) {
             val result = target.toPath().downloadFileFrom(
-                url = if(attempt<2)artifact.url.rewriteMirrorUrl else artifact.url,
+                url = if (attempt < 2) artifact.url.rewriteMirrorUrl else artifact.url,
                 knownSize = artifact.size
             ) { progress ->
                 onProgress(progress)
@@ -226,7 +243,7 @@ object GameService {
             if (!downloadedSha.equals(artifact.sha1, true)) {
                 target.delete()
                 if (attempt >= maxRetries) {
-                    throw IllegalStateException("${library.name} 校验失败")
+                    throw IllegalStateException("${target.name}库文件校验失败")
                 }
                 val backoffMs = 1000L * (attempt + 1)
                 delay(backoffMs)
@@ -672,6 +689,18 @@ object GameService {
                 )
             )
         }.getOrThrow()
+        library.nativeArtifact()?.let { nativeArtifact ->
+            val nativePath = nativeArtifact.path ?: return@let
+            val nativeFile = File(libsDir, nativePath)
+            downloadLibraryArtifact(nativeArtifact, nativeFile) { progress ->
+                ctx.emitProgress(
+                    TaskProgress(
+                        "${library.name} ${progress.bytesDownloaded.humanFileSize}/${progress.totalBytes.humanFileSize}",
+                        progress.fraction
+                    )
+                )
+            }.getOrThrow()
+        }
         ctx.emitProgress(TaskProgress("下载完成", 1f))
     }
 
@@ -796,7 +825,7 @@ object GameService {
             .distinct()
             .toMutableList()
             .apply {
-                this += versionListDir.resolve(versionId).resolve("$versionId.jar").absolutePath
+              //  this += versionListDir.resolve(mcVer.mcVer).resolve("${mcVer.mcVer }.jar").absolutePath
             }
             .joinToString(File.pathSeparator)
         val useMemStr = runCatching {
@@ -915,11 +944,14 @@ object GameService {
 
     private fun MojangVersionManifest.buildClasspath(): List<String> {
         val entries = this.libraries
+            .asSequence()
+            .filter { lib -> lib.shouldDownloadByArch() }
             .mapNotNull { lib -> lib.downloads.artifact.path }
             .map { File(libsDir, it).absolutePath }
             .toMutableList()
 
             .distinct()
+            .toList()
         return entries
     }
 }
