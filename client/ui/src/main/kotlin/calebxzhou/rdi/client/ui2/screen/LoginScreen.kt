@@ -1,7 +1,6 @@
 package calebxzhou.rdi.client.ui2.screen
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.runtime.*
@@ -11,23 +10,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import calebxzhou.mykotutils.std.canCreateSymlink
 import calebxzhou.mykotutils.std.jarResource
 import calebxzhou.mykotutils.std.javaExePath
 import calebxzhou.mykotutils.std.readAllString
 import calebxzhou.rdi.RDIClient
-import calebxzhou.rdi.client.CodeFontFamily
 import calebxzhou.rdi.client.auth.LocalCredentials
 import calebxzhou.rdi.client.net.server
 import calebxzhou.rdi.client.service.PlayerService
 import calebxzhou.rdi.client.service.UpdateService
 import calebxzhou.rdi.client.ui2.BottomSnakebar
 import calebxzhou.rdi.client.ui2.MainBox
-import calebxzhou.rdi.client.ui2.asIconText
+import calebxzhou.rdi.client.ui2.comp.PasswordField
 import calebxzhou.rdi.common.exception.RequestError
 import io.ktor.http.*
 import kotlinx.coroutines.Dispatchers
@@ -174,36 +169,12 @@ fun LoginScreen(
                         }
                     }
                 }
-                OutlinedTextField(
+                PasswordField(
                     value = pwd,
                     onValueChange = { pwd = it },
-                    label = { Text("密码") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth().onKeyEvent { event ->
-                        if (event.type == KeyEventType.KeyUp && event.key == Key.Enter) {
-                            attemptLogin()
-                            true
-                        } else {
-                            false
-                        }
-                    },
-                    visualTransformation = if (showPassword) {
-                        VisualTransformation.None
-                    } else {
-                        PasswordVisualTransformation()
-                    },
-                    trailingIcon = {
-                        Text(
-                            text = "\uDB80\uDE08".asIconText,
-                            style = MaterialTheme.typography.h6.copy(
-                                fontFamily = CodeFontFamily,
-                                fontSize = 20.sp
-                            ),
-                            modifier = Modifier
-                                .padding(end = 8.dp)
-                                .clickable { showPassword = !showPassword }
-                        )
-                    },
+                    showPassword = showPassword,
+                    onToggleVisibility = { showPassword = !showPassword },
+                    onEnter = { attemptLogin() }
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -313,6 +284,8 @@ private fun RegisterDialog(
     var pwd by remember { mutableStateOf("") }
     var pwd2 by remember { mutableStateOf("") }
     var submitting by remember { mutableStateOf(false) }
+    var showPassword by remember { mutableStateOf(false) }
+    var showPassword2 by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     AlertDialog(
@@ -335,21 +308,21 @@ private fun RegisterDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                OutlinedTextField(
+                PasswordField(
                     value = pwd,
                     onValueChange = { pwd = it },
-                    label = { Text("密码") },
-                    singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
-                    modifier = Modifier.fillMaxWidth()
+                    label = "密码",
+                    showPassword = showPassword,
+                    onToggleVisibility = { showPassword = !showPassword },
+                    onEnter = {}
                 )
-                OutlinedTextField(
+                PasswordField(
                     value = pwd2,
                     onValueChange = { pwd2 = it },
-                    label = { Text("确认密码") },
-                    singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
-                    modifier = Modifier.fillMaxWidth()
+                    label = "确认密码",
+                    showPassword = showPassword2,
+                    onToggleVisibility = { showPassword2 = !showPassword2 },
+                    onEnter = {}
                 )
                 errorMessage?.let { Text(it, color = MaterialTheme.colors.error) }
             }

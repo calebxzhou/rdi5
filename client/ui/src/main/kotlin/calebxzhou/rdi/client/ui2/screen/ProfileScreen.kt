@@ -1,6 +1,5 @@
 package calebxzhou.rdi.client.ui2.screen
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -10,19 +9,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.decodeToImageBitmap
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import calebxzhou.mykotutils.std.jarResource
 import calebxzhou.rdi.RDIClient
-import calebxzhou.rdi.client.CodeFontFamily
 import calebxzhou.rdi.client.net.loggedAccount
 import calebxzhou.rdi.client.net.server
 import calebxzhou.rdi.client.service.PlayerInfoCache
 import calebxzhou.rdi.client.service.PlayerService
 import calebxzhou.rdi.client.ui2.*
 import calebxzhou.rdi.client.ui2.comp.HeadButton
+import calebxzhou.rdi.client.ui2.comp.PasswordField
 import calebxzhou.rdi.common.model.RAccount
 import io.ktor.http.*
 import kotlinx.coroutines.launch
@@ -136,30 +132,14 @@ private fun ChangeProfileDialog(
                     enabled = !submitting,
                     modifier = Modifier.fillMaxWidth()
                 )
-                OutlinedTextField(
+                PasswordField(
                     value = pwd,
                     onValueChange = { pwd = it },
-                    label = { Text("新密码 留空则不修改") },
-                    singleLine = true,
+                    label = "新密码 留空则不修改",
                     enabled = !submitting,
-                    visualTransformation = if (showPassword) {
-                        VisualTransformation.None
-                    } else {
-                        PasswordVisualTransformation()
-                    },
-                    trailingIcon = {
-                        Text(
-                            text = "\uDB80\uDE08".asIconText,
-                            style = MaterialTheme.typography.h6.copy(
-                                fontFamily = CodeFontFamily,
-                                fontSize = 20.sp
-                            ),
-                            modifier = Modifier
-                                .padding(end = 8.dp)
-                                .clickable { showPassword = !showPassword }
-                        )
-                    },
-                    modifier = Modifier.fillMaxWidth()
+                    showPassword = showPassword,
+                    onToggleVisibility = { showPassword = !showPassword },
+                    onEnter = {}
                 )
                 errorMessage?.let { Text(it, color = MaterialTheme.colors.error) }
             }
