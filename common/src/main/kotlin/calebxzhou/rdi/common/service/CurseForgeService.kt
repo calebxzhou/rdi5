@@ -186,8 +186,6 @@ object CurseForgeService {
                 return@mapNotNull null
             }
             val cfSlug = modInfo.slug
-            //不需要kff client/server已经有了
-            if(cfSlug == "kotlin-for-forge") return@mapNotNull null
             //todo 删掉rgp client 删掉fancymenu及其dependents
             val fileInfo = fileInfoMap[curseFile.fileId] ?: let {
                 lgr.error("mod ${curseFile.projectId}/${curseFile.fileId} file info map没有信息")
@@ -291,9 +289,10 @@ object CurseForgeService {
                 throw ModpackException("manifest.json 中缺少整合包名称")
             }
 
-            val versionName = manifest.version.trim()
+            var versionName = manifest.version.trim()
             if (versionName.isEmpty()) {
-                throw ModpackException("manifest.json 中缺少版本号")
+                lgr.warn ("manifest.json 中缺少版本号")
+                versionName = "1.0"
             }
 
             return CurseForgeModpackData(
