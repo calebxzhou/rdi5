@@ -3,6 +3,7 @@ package calebxzhou.rdi.client
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.material.Typography
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.decodeToImageBitmap
@@ -23,15 +24,28 @@ import calebxzhou.mykotutils.std.ioScope
 import calebxzhou.mykotutils.std.jarResource
 import calebxzhou.rdi.RDIClient
 import calebxzhou.rdi.client.net.loggedAccount
+import calebxzhou.rdi.client.service.GameService
 import calebxzhou.rdi.client.service.PlayerService
 import calebxzhou.rdi.client.ui2.McPlayStore
 import calebxzhou.rdi.client.ui2.TaskStore
 import calebxzhou.rdi.client.ui2.screen.*
 import calebxzhou.rdi.common.model.RAccount
+import calebxzhou.rdi.common.model.Task
+import calebxzhou.rdi.common.model.TaskProgress
 import calebxzhou.rdi.common.serdesJson
 import kotlinx.coroutines.launch
 import org.bson.types.ObjectId
 import java.awt.Toolkit
+import java.awt.dnd.DnDConstants
+import java.awt.dnd.DropTarget
+import java.awt.dnd.DropTargetAdapter
+import java.awt.dnd.DropTargetDragEvent
+import java.awt.dnd.DropTargetDropEvent
+import java.awt.datatransfer.DataFlavor
+import java.nio.file.Files
+import java.nio.file.StandardOpenOption
+import java.util.zip.ZipFile
+import javax.swing.SwingUtilities
 
 lateinit var UIFontFamily: FontFamily
 lateinit var ArtFontFamily: FontFamily
@@ -92,6 +106,16 @@ fun main() = application {
     ) {
         MaterialTheme(typography = Typography(defaultFontFamily = UIFontFamily)) {
             val navController = rememberNavController()
+            val dropWindow = window
+            DisposableEffect(dropWindow, navController) {
+                installPackDropTarget(dropWindow) { task ->
+                    TaskStore.current = task
+                    SwingUtilities.invokeLater {
+                        navController.navigate(TaskView)
+                    }
+                }
+                onDispose { dropWindow.dropTarget = null }
+            }
             val initScreenName = System.getProperty("rdi.init.screen")?.trim()
             val startDestination = when (initScreenName) {
                 "pf" -> Profile
@@ -243,5 +267,107 @@ fun main() = application {
                 }
             }
         }
+    }
+}
+
+private fun installPackDropTarget(
+    window: java.awt.Window,
+    onOpenTask: (Task) -> Unit
+) {
+    val listener = object : DropTargetAdapter() {
+        override fun dragEnter(dtde: DropTargetDragEvent) {
+            if (dtde.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
+                dtde.acceptDrag(DnDConstants.ACTION_COPY)
+            } else {
+                dtde.rejectDrag()
+            }
+        }
+
+        override fun dragOver(dtde: DropTargetDragEvent) {
+            if (dtde.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
+                dtde.acceptDrag(DnDConstants.ACTION_COPY)
+            } else {
+                dtde.rejectDrag()
+            }
+        }
+
+        override fun drop(dtde: DropTargetDropEvent) {
+            if (!dtde.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) return
+            dtde.acceptDrop(DnDConstants.ACTION_COPY)
+            val files = dtde.transferable.getTransferData(DataFlavor.javaFileListFlavor) as? List<*>
+                ?: return
+            val packFiles = files.filterIsInstance<java.io.File>()
+                .filter { it.name.endsWith(".mc.rdipack", ignoreCase = true) }
+            if (packFiles.isEmpty()) return
+            val task = if (packFiles.size == 1) {
+                buildImportPackTask(packFiles.first())
+            } else {
+                Task.Sequence(
+                    name = "导入整合包",
+                    subTasks = packFiles.map { buildImportPackTask(it) }
+                )
+            }
+            onOpenTask(task)
+        }
+    }
+    window.dropTarget = DropTarget(window, listener)
+    (window as? java.awt.Container)?.let { container ->
+        attachDropTargetRecursively(container, listener)
+    }
+    (window as? javax.swing.RootPaneContainer)?.let { root ->
+        attachDropTargetRecursively(root.contentPane, listener)
+        attachDropTargetRecursively(root.glassPane as? java.awt.Container, listener)
+    }
+}
+
+private fun attachDropTargetRecursively(
+    container: java.awt.Container?,
+    listener: DropTargetAdapter
+) {
+    if (container == null) return
+    container.dropTarget = DropTarget(container, listener)
+    container.components.forEach { component ->
+        component.dropTarget = DropTarget(component, listener)
+        if (component is java.awt.Container) {
+            attachDropTargetRecursively(component, listener)
+        }
+    }
+}
+
+private fun buildImportPackTask(zipFile: java.io.File): Task {
+    return Task.Leaf("导入 ${zipFile.name}") { ctx ->
+        val targetRoot = GameService.DIR.canonicalFile
+        val totalFiles = ZipFile(zipFile).use { zip ->
+            zip.entries().asSequence().count { !it.isDirectory }
+        }.coerceAtLeast(1)
+        var processed = 0
+        ZipFile(zipFile).use { zip ->
+            zip.entries().asSequence().forEach { entry ->
+                val name = entry.name.replace('\\', '/').trimStart('/')
+                if (name.isEmpty()) return@forEach
+                val outFile = targetRoot.resolve(name)
+                val normalized = outFile.canonicalFile
+                if (!normalized.path.startsWith(targetRoot.path)) return@forEach
+                if (entry.isDirectory) {
+                    normalized.mkdirs()
+                } else {
+                    normalized.parentFile?.mkdirs()
+                    zip.getInputStream(entry).use { input ->
+                        Files.newOutputStream(
+                            normalized.toPath(),
+                            StandardOpenOption.CREATE,
+                            StandardOpenOption.TRUNCATE_EXISTING
+                        ).use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                    processed += 1
+                    ctx.emitProgress(
+                        TaskProgress("解压 ${entry.name}", processed.toFloat() / totalFiles)
+                    )
+                }
+            }
+        }
+        ctx.emitProgress(TaskProgress("完成", 1f))
     }
 }
