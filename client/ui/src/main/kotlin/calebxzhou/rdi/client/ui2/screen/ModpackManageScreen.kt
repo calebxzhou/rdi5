@@ -27,6 +27,7 @@ import calebxzhou.rdi.client.service.GameService
 import calebxzhou.rdi.client.service.ModpackService
 import calebxzhou.rdi.client.service.ModpackService.startInstall
 import calebxzhou.rdi.client.ui2.*
+import calebxzhou.rdi.client.ui2.comp.HttpImage
 import calebxzhou.rdi.common.model.McVersion
 import calebxzhou.rdi.common.model.Modpack
 import calebxzhou.rdi.common.model.Task
@@ -35,6 +36,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.skia.Image
 import java.awt.Desktop
+import java.io.FileOutputStream
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
+import javax.swing.JFileChooser
+import javax.swing.filechooser.FileNameExtensionFilter
 
 /**
  * calebxzhou @ 2026-01-13 23:14
@@ -152,6 +158,14 @@ fun ModpackManageScreen(
                                 }
                             }.onFailure {
                                 errorMessage = "无法打开目录: ${it.message}"
+                            }
+                        }
+                    },
+                    onExportLogs = {
+                        scope.launch {
+                            val result = exportLogsPack(packdir)
+                            if (result.isFailure) {
+                                errorMessage = result.exceptionOrNull()?.message ?: "导出日志失败"
                             }
                         }
                     },
@@ -283,6 +297,7 @@ fun ModpackManageCard(
     onDelete: () -> Unit,
     onReinstall: () -> Unit,
     onOpenFolder: () -> Unit,
+    onExportLogs: () -> Unit,
     onOpenMcPlay: (() -> Unit)? = null
 ) {
 
@@ -316,14 +331,20 @@ fun ModpackManageCard(
                         .padding(4.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Image(
-                        bitmap = DEFAULT_MODPACK_ICON,
-                        contentDescription = "Modpack Icon",
-                        modifier = Modifier
-                            .size(64.dp)
-                            .background(MaterialColor.GRAY_200.color, androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
-                            .padding(4.dp)
-                    )
+                    val iconUrl = packdir.vo.icon?.takeIf { it.isNotBlank() }
+                    if (iconUrl != null) {
+                        HttpImage(
+                            imgUrl = iconUrl,
+                            modifier = Modifier.fillMaxSize(),
+                            contentDescription = "Modpack Icon"
+                        )
+                    } else {
+                        Image(
+                            bitmap = DEFAULT_MODPACK_ICON,
+                            contentDescription = "Modpack Icon",
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(
@@ -370,6 +391,13 @@ fun ModpackManageCard(
                         ) {
                             onOpenFolder ()
                         }
+                        CircleIconButton(
+                            "\uEF11",
+                            "导出日志",
+                            bgColor = MaterialColor.GRAY_900.color,
+                        ) {
+                            onExportLogs()
+                        }
                         if (isRunning && onOpenMcPlay != null) {
                             CircleIconButton(
                                 "\uF120",
@@ -381,6 +409,48 @@ fun ModpackManageCard(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+private suspend fun exportLogsPack(packdir: ModpackService.LocalDir): Result<Unit> = withContext(Dispatchers.IO) {
+    runCatching {
+        val sourceDirs = listOf("logs", "crash-reports")
+            .map { packdir.dir.resolve(it) }
+            .filter { it.exists() && it.isDirectory }
+        if (sourceDirs.isEmpty()) {
+            throw IllegalStateException("没有可导出的日志目录")
+        }
+
+        val chooser = JFileChooser().apply {
+            dialogTitle = "选择日志保存位置"
+            fileSelectionMode = JFileChooser.FILES_ONLY
+            val safeName = packdir.vo.name.ifBlank { "modpack" }.replace(Regex("[\\\\/:*?\"<>|]"), "_")
+            val defaultName = "${safeName}_${packdir.verName}_logs.zip"
+            selectedFile = java.io.File(System.getProperty("user.home"), defaultName)
+            fileFilter = FileNameExtensionFilter("ZIP 文件 (*.zip)", "zip")
+        }
+        val result = chooser.showSaveDialog(null)
+        if (result != JFileChooser.APPROVE_OPTION) return@runCatching
+
+        var outputFile = chooser.selectedFile
+        if (!outputFile.name.endsWith(".zip", ignoreCase = true)) {
+            outputFile = java.io.File(outputFile.parentFile, "${outputFile.name}.zip")
+        }
+
+        ZipOutputStream(FileOutputStream(outputFile)).use { zipOut ->
+            sourceDirs.forEach { dir ->
+                val baseName = dir.name
+                dir.walkTopDown()
+                    .filter { it.isFile }
+                    .forEach { file ->
+                        val relative = file.relativeTo(dir).invariantSeparatorsPath
+                        val entryName = "$baseName/$relative"
+                        zipOut.putNextEntry(ZipEntry(entryName))
+                        file.inputStream().use { it.copyTo(zipOut) }
+                        zipOut.closeEntry()
+                    }
             }
         }
     }
