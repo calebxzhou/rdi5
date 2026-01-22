@@ -33,7 +33,7 @@ import javax.swing.JFileChooser
 import javax.swing.filechooser.FileNameExtensionFilter
 
 class ConsoleState(
-    private val maxLogLines: Int = 500
+    private val maxLogLines: Int = 1000
 ) {
     private val _lines: SnapshotStateList<String> = mutableStateListOf()
     val lines: List<String> get() = _lines
@@ -98,9 +98,9 @@ fun Console(
                 .padding(8.dp)
         ) {
             CircleIconButton(
-                icon = "\uF019",
+                icon = "\uEF11",
                 tooltip = "导出日志",
-                bgColor = MaterialColor.BLUE_700.color,
+                bgColor = MaterialColor.YELLOW_900.color,
                 size = 32
             ) {
                 scope.launch {
