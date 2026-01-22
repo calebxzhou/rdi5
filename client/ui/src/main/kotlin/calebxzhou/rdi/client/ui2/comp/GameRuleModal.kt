@@ -41,6 +41,8 @@ import calebxzhou.rdi.client.ui2.Space8w
 import calebxzhou.rdi.client.ui2.TitleRow
 import calebxzhou.rdi.common.model.AllGameRules
 import calebxzhou.rdi.common.model.GameRuleValueType
+import java.text.Collator
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,7 +55,11 @@ fun GameRuleModal(
 ) {
     if (!show) return
 
-    val groupedRules = remember { AllGameRules.groupBy { it.category }.toSortedMap() }
+    val groupedRules = remember {
+        val collator = Collator.getInstance(Locale.SIMPLIFIED_CHINESE)
+        AllGameRules.groupBy { it.category }
+            .toSortedMap(compareBy(collator) { it })
+    }
     val baseRuleById = remember { AllGameRules.associateBy { it.id } }
     val changedCount = overrideRules.size
 
