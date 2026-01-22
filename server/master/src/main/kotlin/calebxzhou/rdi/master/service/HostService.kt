@@ -846,7 +846,22 @@ object HostService {
         payload.gameRules?.let { rules ->
             changeGameRules(rules)
         }
+        if (payload.packVer != null && payload.modpackId == null) {
+            changeVersion(payload.packVer)
+        }
         val updates = mutableListOf<Bson>()
+        payload.name?.let {
+            validateName(it)
+            updates += set(Host::name.name, it)
+        }
+        payload.packVer?.let { updates += set(Host::packVer.name, it) }
+        /* 暂时不支持
+        payload.saveWorld?.let { saveWorld ->
+            if (!saveWorld) {
+                updates += set(Host::worldId.name, null)
+            }
+        }
+        payload.worldId?.let { updates += set(Host::worldId.name, it) }*/
         payload.difficulty?.let { updates += set(Host::difficulty.name, it) }
         payload.gameMode?.let { updates += set(Host::gameMode.name, it) }
         payload.levelType?.takeIf { it.isNotBlank() }?.let { updates += set(Host::levelType.name, it) }
