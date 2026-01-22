@@ -102,10 +102,18 @@ data class Host(
         val gameMode: Int,
         val levelType: String,
         val allowCheats: Boolean,
+        val whitelist: Boolean,
         val gameRules: MutableMap<String,String>
     )
     @Serializable
     data class OptionsDto(
+        val name: String? = null,
+        @Contextual
+        val modpackId: ObjectId? = null,
+        val packVer: String? = null,
+        val saveWorld: Boolean? = null,
+        @Contextual
+        val worldId: ObjectId? = null,
         val difficulty: Int? = null,
         val gameMode: Int? = null,
         val levelType: String? = null,
