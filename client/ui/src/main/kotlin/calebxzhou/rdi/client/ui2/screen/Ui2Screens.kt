@@ -10,6 +10,7 @@ object Wardrobe
     val modpackName: String,
     val packVer: String,
     val skyblock: Boolean,
+    val hostId: String? = null,
 )
 @Serializable object ModpackList
 @Serializable data class ModpackInfo(val modpackId: String, val fromHostId: String? = null)

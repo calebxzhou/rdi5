@@ -10,11 +10,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.material.AlertDialog
-import androidx.compose.material.Checkbox
 import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.RadioButton
 import androidx.compose.material.SnackbarDuration
 import androidx.compose.material.SnackbarHostState
 import androidx.compose.material.Tab
@@ -27,7 +24,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -35,10 +31,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
 import calebxzhou.mykotutils.std.secondsToHumanDateTime
 import calebxzhou.rdi.client.net.loggedAccount
 import calebxzhou.rdi.client.net.rdiRequest
@@ -60,13 +54,11 @@ import calebxzhou.rdi.client.ui2.TitleRow
 import calebxzhou.rdi.client.ui2.asIconText
 import calebxzhou.rdi.client.ui2.comp.Console
 import calebxzhou.rdi.client.ui2.comp.ConsoleState
-import calebxzhou.rdi.client.ui2.comp.GameRuleModal
 import calebxzhou.rdi.client.ui2.comp.HeadButton
 import calebxzhou.rdi.client.ui2.comp.ModpackCard
 import calebxzhou.rdi.common.extension.isAdmin
 import calebxzhou.rdi.common.model.Host
 import calebxzhou.rdi.common.model.Modpack
-import calebxzhou.rdi.common.serdesJson
 import calebxzhou.rdi.model.Role
 import io.ktor.client.plugins.sse.SSEBufferPolicy
 import io.ktor.http.HttpMethod
@@ -83,7 +75,8 @@ fun HostInfoScreen(
     hostId: ObjectId,
     onBack: () -> Unit = {},
     onOpenModpackInfo: ((String) -> Unit)? = null,
-    onOpenMcPlay: ((McPlayArgs) -> Unit)? = null
+    onOpenMcPlay: ((McPlayArgs) -> Unit)? = null,
+    onOpenHostEdit: ((Host.DetailVo) -> Unit)? = null
 ) {
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -106,15 +99,6 @@ fun HostInfoScreen(
     var logStreamSseJob by remember { mutableStateOf<Job?>(null) }
     var showInviteDialog by remember { mutableStateOf(false) }
     var inviteQq by remember { mutableStateOf("") }
-    var showOptionsDialog by remember { mutableStateOf(false) }
-    var optionDifficulty by remember { mutableStateOf(2) }
-    var optionGameMode by remember { mutableStateOf(0) }
-    var optionLevelType by remember { mutableStateOf("") }
-    var optionWhitelist by remember { mutableStateOf(false) }
-    var optionAllowCheats by remember { mutableStateOf(false) }
-    var showGameRulesDialog by remember { mutableStateOf(false) }
-    var gameRulesTouched by remember { mutableStateOf(false) }
-    val gameRuleOverrides = remember { mutableStateMapOf<String, String>() }
 
     fun reload() {
         loading = true
@@ -214,7 +198,6 @@ fun HostInfoScreen(
                 Space8w()
                 host?.let { host ->
                     SimpleTooltip("地图的创建者") {
-                        Text("\uEDEB ")
                         HeadButton(host.ownerId)
                     }
                     SimpleTooltip("在线玩家") {
@@ -251,12 +234,11 @@ fun HostInfoScreen(
                         icon = "\uF013",
                         tooltip = "设置"
                     ) {
-                        optionDifficulty = host.difficulty
-                        optionGameMode = host.gameMode
-                        optionLevelType = host.levelType
-                        optionWhitelist = host.whitelist
-                        optionAllowCheats = host.allowCheats
-                        showOptionsDialog = true
+                        if (onOpenHostEdit != null) {
+                            onOpenHostEdit(host)
+                        } else {
+                            errorMessage = "暂不支持编辑地图"
+                        }
                     }
                         if (modpackDetail != null) {
                             Space8w()
@@ -575,119 +557,7 @@ fun HostInfoScreen(
         )
     }
 
-    if (showOptionsDialog && host != null) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color(0x99000000))
-                .zIndex(1f)
-                .pointerInput(Unit) { detectTapGestures(onPress = { tryAwaitRelease() }) }
-        ) {
-            Column(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .fillMaxWidth(0.7f)
-                    .background(Color.White, androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
-                    .padding(16.dp)
-            ) {
-                TitleRow("地图设置", { showOptionsDialog = false }) {
-                    CircleIconButton("\uF058", bgColor = MaterialColor.GREEN_900.color){
-                        val body = serdesJson.encodeToString(
-                            Host.OptionsDto(
-                                difficulty = optionDifficulty,
-                                gameMode = optionGameMode,
-                                levelType = optionLevelType.ifBlank { null },
-                                whitelist = optionWhitelist,
-                                allowCheats = optionAllowCheats,
-                                gameRules = if (gameRulesTouched) gameRuleOverrides.toMap() else null
-                            )
-                        )
-                        scope.rdiRequestU(
-                            path = "host/$hostId/options",
-                            method = HttpMethod.Put,
-                            body = body,
-                            onOk = {
-                                okMessage = "设置已保存"
-                                reload()
-                            },
-                            onErr = { errorMessage = it.message ?: "保存失败" }
-                        )
-                        showOptionsDialog = false
-                    }
-                }
-                Space8h()
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp),verticalAlignment = Alignment.CenterVertically) {
-                        Text("难度：")
-                        listOf(
-                            0 to "和平",
-                            1 to "简单",
-                            2 to "普通",
-                            3 to "困难"
-                        ).forEach { (value, label) ->
-                                RadioButton(
-                                    selected = optionDifficulty == value,
-                                    onClick = { optionDifficulty = value }
-                                )
-                                Text(label)
-
-                        }
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp),verticalAlignment = Alignment.CenterVertically) {
-                        Text("游戏模式：")
-                        listOf(
-                            0 to "生存",
-                            1 to "创造",
-                            2 to "冒险",
-                            3 to "旁观"
-                        ).forEach { (value, label) ->
-                                RadioButton(
-                                    selected = optionGameMode == value,
-                                    onClick = { optionGameMode = value }
-                                )
-                                Text(label)
-
-                        }
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(
-                            checked = optionWhitelist,
-                            onCheckedChange = { optionWhitelist = it }
-                        )
-                        Text("白名单制 · 只有受邀成员允许游玩此地图")
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(
-                            checked = optionAllowCheats,
-                            onCheckedChange = { optionAllowCheats = it }
-                        )
-                        Text("允许作弊")
-                    }
-                    TextButton(onClick = {
-                        if (!gameRulesTouched) {
-                            gameRuleOverrides.clear()
-                            gameRuleOverrides.putAll(host.gameRules)
-                            gameRulesTouched = true
-                        }
-                        showOptionsDialog = false
-                        showGameRulesDialog = true
-                    }) {
-                        Text("游戏规则设定")
-                    }
-                }
-            }
-        }
-    }
-
-    GameRuleModal(
-        show = showGameRulesDialog && host != null,
-        overrideRules = gameRuleOverrides,
-        onClose = { showGameRulesDialog = false },
-        onBack = {
-            showGameRulesDialog = false
-            showOptionsDialog = true
-        }
-    )
+    // options dialog removed
 
     roleChangeConfirm?.let { change ->
         val msg = if (change.newRole == Role.ADMIN) "确定设置该成员为管理员？" else "确定取消管理员身份？"

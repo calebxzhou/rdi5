@@ -8,7 +8,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import calebxzhou.mykotutils.std.secondsToHumanDateTime
-import calebxzhou.rdi.client.Const
 import calebxzhou.rdi.client.net.loggedAccount
 import calebxzhou.rdi.client.net.rdiRequest
 import calebxzhou.rdi.client.net.rdiRequestU
@@ -21,19 +20,11 @@ import io.ktor.http.*
 import org.bson.types.ObjectId
 import kotlin.random.Random
 
-private const val ID_CREATE_NEW_SAVE = 100
-private const val ID_NO_SAVE = 101
-
-private data class WorldOption(
-    val id: Int,
-    val label: String,
-    val world: World?
-)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HostCreateScreen(
     arg: HostCreate,
+    //host: Host.DetailVo, // if options mode
     onBack: () -> Unit,
     onNavigateProfile: () -> Unit = {},
 ) {
@@ -51,13 +42,48 @@ fun HostCreateScreen(
     var showNoSaveWarn by remember { mutableStateOf(false) }
     var showResult by remember { mutableStateOf<String?>(null) }
     var submitting by remember { mutableStateOf(false) }
+    var editHostId by remember { mutableStateOf<ObjectId?>(null) }
+    var editWorldId by remember { mutableStateOf<ObjectId?>(null) }
+    var editPreferNoSave by remember { mutableStateOf(false) }
 
     var selectedWorldId by remember { mutableStateOf(0) }
     var difficulty by remember { mutableStateOf(2) }
     var gameMode by remember { mutableStateOf(0) }
     var levelType by remember { mutableStateOf(if (arg.skyblock) "skyblockbuilder:skyblock" else "minecraft:normal") }
     var levelChoice by remember { mutableStateOf(if (arg.skyblock) 2 else 0) }
+    var whitelist by remember { mutableStateOf(false) }
+    var allowCheats by remember { mutableStateOf(false) }
 
+    LaunchedEffect(arg.hostId) {
+        val rawHostId = arg.hostId?.trim()
+        if (rawHostId.isNullOrBlank() || !ObjectId.isValid(rawHostId)) return@LaunchedEffect
+        editHostId = ObjectId(rawHostId)
+        loading = true
+        scope.rdiRequest<Host.DetailVo>(
+            path = "host/$rawHostId/detail",
+            onOk = { resp ->
+                val detail = resp.data ?: return@rdiRequest
+                title = "编辑地图 ${detail.name}"
+                hostName = detail.name
+                modpackIdText = detail.modpack.id.toHexString()
+                packVerText = detail.packVer
+                difficulty = detail.difficulty
+                gameMode = detail.gameMode
+                levelType = detail.levelType
+                whitelist = detail.whitelist
+                allowCheats = detail.allowCheats
+                if (detail.worldId == null) {
+                    editPreferNoSave = true
+                } else {
+                    editWorldId = detail.worldId
+                }
+                overrideRules.clear()
+                overrideRules.putAll(detail.gameRules)
+            },
+            onErr = { errorMessage = "无法加载地图信息: ${it.message}" },
+            onDone = { loading = false }
+        )
+    }
     LaunchedEffect(Unit) {
         loading = true
         scope.rdiRequest<List<World>>(
@@ -74,18 +100,28 @@ fun HostCreateScreen(
         buildList {
             worlds.forEachIndexed { index, world ->
                 val label = "${world.name} (${(world._id.timestamp).secondsToHumanDateTime})"
-                add(WorldOption(index, label, world))
+                add(HostWorldOption(index, label, world))
             }
             if (worlds.size < 5) {
-                add(WorldOption(ID_CREATE_NEW_SAVE, "创建新存档", null))
+                add(HostWorldOption(HOST_CREATE_NEW_SAVE_ID, "创建新存档", null))
             }
-            add(WorldOption(ID_NO_SAVE, "不存档", null))
+            add(HostWorldOption(HOST_NO_SAVE_ID, "不存档", null))
         }
     }
 
-    LaunchedEffect(worldOptions) {
+    LaunchedEffect(worldOptions, editWorldId, editPreferNoSave) {
         if (worldOptions.isNotEmpty() && worldOptions.none { it.id == selectedWorldId }) {
             selectedWorldId = worldOptions.first().id
+        }
+        val targetWorldId = editWorldId
+        if (targetWorldId != null) {
+            selectedWorldId = worldOptions.firstOrNull { it.world?._id == targetWorldId }?.id
+                ?: HOST_NO_SAVE_ID
+            editWorldId = null
+        }
+        if (editPreferNoSave) {
+            selectedWorldId = HOST_NO_SAVE_ID
+            editPreferNoSave = false
         }
     }
     fun submit(){
@@ -97,44 +133,71 @@ fun HostCreateScreen(
             return
         }
         val trimmedModpackId = modpackIdText.trim()
-        if (!ObjectId.isValid(trimmedModpackId)) {
-            statusMessage = "整合包 ID 格式不正确"
-            return
-        }
         val trimmedPackVer = packVerText.trim()
-        if (trimmedPackVer.isEmpty()) {
-            statusMessage = "请输入整合包版本"
-            return
+        if (editHostId == null) {
+            if (!ObjectId.isValid(trimmedModpackId)) {
+                statusMessage = "整合包 ID 格式不正确"
+                return
+            }
+            if (trimmedPackVer.isEmpty()) {
+                statusMessage = "请输入整合包版本"
+                return
+            }
         }
         submitting = true
         val selectedWorld = worldOptions.firstOrNull { it.id == selectedWorldId }?.world
-        val saveWorld = selectedWorldId != ID_NO_SAVE
+        val saveWorld = selectedWorldId != HOST_NO_SAVE_ID
         val worldId = when {
             selectedWorld != null -> selectedWorld._id
-            selectedWorldId == ID_CREATE_NEW_SAVE -> null
+            selectedWorldId == HOST_CREATE_NEW_SAVE_ID -> null
             else -> null
         }
-        val createDto = Host.CreateDto(
-            name = trimmedName,
-            modpackId = ObjectId(trimmedModpackId),
-            packVer = trimmedPackVer,
-            saveWorld = saveWorld,
-            worldId = worldId,
-            difficulty = difficulty,
-            gameMode = gameMode,
-            levelType = levelType,
-            allowCheats = false,
-            gameRules = overrideRules.toMutableMap()
-        )
-        val body = serdesJson.encodeToString(createDto)
-        scope.rdiRequestU(
-            path = "host/v2",
-            method = HttpMethod.Post,
-            body = body,
-            onErr = { statusMessage = "创建失败: ${it.message}" },
-            onOk = { showResult = "已提交创建请求 完成后信箱通知你" },
-            onDone = { submitting = false }
-        )
+        val hostId = editHostId
+        if (hostId != null) {
+            val optionsDto = Host.OptionsDto(
+                name = trimmedName,
+                saveWorld = saveWorld,
+                worldId = worldId,
+                difficulty = difficulty,
+                gameMode = gameMode,
+                levelType = levelType,
+                allowCheats = allowCheats,
+                whitelist = whitelist,
+                gameRules = overrideRules.toMutableMap()
+            )
+            val body = serdesJson.encodeToString(optionsDto)
+            scope.rdiRequestU(
+                path = "host/${hostId.toHexString()}/options",
+                method = HttpMethod.Put,
+                body = body,
+                onErr = { statusMessage = "保存失败: ${it.message}" },
+                onOk = { showResult = "设置已保存" },
+                onDone = { submitting = false }
+            )
+        } else {
+            val createDto = Host.CreateDto(
+                name = trimmedName,
+                modpackId = ObjectId(trimmedModpackId),
+                packVer = trimmedPackVer,
+                saveWorld = saveWorld,
+                worldId = worldId,
+                difficulty = difficulty,
+                gameMode = gameMode,
+                levelType = levelType,
+                allowCheats = allowCheats,
+                whitelist = whitelist,
+                gameRules = overrideRules.toMutableMap()
+            )
+            val body = serdesJson.encodeToString(createDto)
+            scope.rdiRequestU(
+                path = "host/v2",
+                method = HttpMethod.Post,
+                body = body,
+                onErr = { statusMessage = "创建失败: ${it.message}" },
+                onOk = { showResult = "已提交创建请求 完成后信箱通知你" },
+                onDone = { submitting = false }
+            )
+        }
     }
     MainColumn {
         TitleRow(title,onBack){
@@ -143,7 +206,6 @@ fun HostCreateScreen(
             }
         }
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-
             OutlinedTextField(
                 label = {Text("主机名称")},
                 value = hostName,
@@ -152,7 +214,6 @@ fun HostCreateScreen(
                 modifier = 300.wM
             )
         }
-
         if (loading) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -166,7 +227,6 @@ fun HostCreateScreen(
             Text(it, color = MaterialTheme.colors.error)
         }
         Row(modifier = Modifier.fillMaxWidth()) {
-
             Column(modifier = Modifier.weight(0.5f)) {
                 Text("选择存档数据")
                 worldOptions.forEach { option ->
@@ -177,7 +237,7 @@ fun HostCreateScreen(
                             selected = option.id == selectedWorldId,
                             onClick = {
                                 selectedWorldId = option.id
-                                if (option.id == ID_NO_SAVE && !Const.DEBUG) {
+                                if (option.id == HOST_NO_SAVE_ID) {
                                     showNoSaveWarn = true
                                 }
                             }
@@ -185,9 +245,14 @@ fun HostCreateScreen(
                         Text(option.label)
                     }
                 }
+                if (showNoSaveWarn) {
+                    Text(
+                        "不保留任何存档数据，仅供测试使用！",
+                        color = MaterialColor.YELLOW_900.color
+                    )
+                }
             }
             Column(modifier = Modifier.weight(0.5f)) {
-
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("难度")
                     DifficultyOption("和平", 0, difficulty) { difficulty = it }
@@ -223,6 +288,17 @@ fun HostCreateScreen(
                         }
                     }
                 }
+                //whitelist
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(whitelist, { whitelist = it })
+                    Text("白名单 · 只有受邀成员能够游玩")
+                }
+
+                //cheat
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(allowCheats, { allowCheats = it })
+                    Text("允许作弊")
+                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Button(onClick = { showRules = true }) {
                         Text("设置游戏规则")
@@ -253,30 +329,21 @@ fun HostCreateScreen(
         )
     }
 
-    if (showNoSaveWarn) {
-        AlertDialog(
-            onDismissRequest = { showNoSaveWarn = false },
-            title = { Text("注意") },
-            text = { Text("如果不用存档，所有的地图、背包内容都不保存，\n关服后自动删除，仅供测试使用。\n谨慎选择！") },
-            confirmButton = {
-                TextButton(onClick = { showNoSaveWarn = false }) {
-                    Text("明白")
-                }
-            }
-        )
-    }
-
     showResult?.let { message ->
         AlertDialog(
             onDismissRequest = {
                 showResult = null
             },
-            title = { Text("创建请求已提交") },
+            title = { Text(if (editHostId != null) "设置已保存" else "创建请求已提交") },
             text = { Text(message) },
             confirmButton = {
                 TextButton(onClick = {
                     showResult = null
-                    onNavigateProfile()
+                    if (editHostId != null) {
+                        onBack()
+                    } else {
+                        onNavigateProfile()
+                    }
                 }) {
                     Text("确定")
                 }
@@ -301,4 +368,13 @@ private fun DifficultyOption(
         Text(label)
     }
 }
+
+const val HOST_CREATE_NEW_SAVE_ID = 100
+const val HOST_NO_SAVE_ID = 101
+
+data class HostWorldOption(
+    val id: Int,
+    val label: String,
+    val world: World?
+)
 

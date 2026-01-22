@@ -166,6 +166,17 @@ fun main() = application {
                         onOpenMcPlay = { args ->
                             McPlayStore.current = args
                             navController.navigate(McPlayView)
+                        },
+                        onOpenHostEdit = { host ->
+                            navController.navigate(
+                                HostCreate(
+                                    modpackId = host.modpack.id.toHexString(),
+                                    modpackName = host.modpack.name,
+                                    packVer = host.packVer,
+                                    skyblock = host.levelType.contains("skyblock", true),
+                                    hostId = host._id.toHexString()
+                                )
+                            )
                         }
                     )
                 }
