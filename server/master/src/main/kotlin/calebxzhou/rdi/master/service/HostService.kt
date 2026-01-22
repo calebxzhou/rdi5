@@ -11,6 +11,7 @@ import calebxzhou.rdi.common.serdesJson
 import calebxzhou.rdi.common.util.ioScope
 import calebxzhou.rdi.common.util.objectId
 import calebxzhou.rdi.common.util.str
+import calebxzhou.rdi.common.util.validateName
 import calebxzhou.rdi.master.DB
 import calebxzhou.rdi.master.HOSTS_DIR
 import calebxzhou.rdi.master.exception.ParamError
@@ -541,7 +542,7 @@ object HostService {
     // ---------- Core Logic (no ApplicationCall side-effects) ----------
     suspend fun Host.getOnlinePlayers(): List<ObjectId> {
         return try {
-            if(status!= HostStatus.PLAYABLE)
+            if (status != HostStatus.PLAYABLE)
                 return emptyList()
             McServerPinger.ping(this.port).players?.let { players ->
                 players.sample.map { UUID.fromString(it.id).objectId }
@@ -1070,7 +1071,7 @@ object HostService {
         dbcl.find(eq("worldId", worldId)).firstOrNull()
 
     suspend fun getById(id: ObjectId): Host? = dbcl.find(eq("_id", id)).firstOrNull()
-    suspend fun Host.toDetailVo(): Host.DetailVo{
+    suspend fun Host.toDetailVo(): Host.DetailVo {
         val modpack = ModpackService.getById(modpackId)
         val modpackVo = modpack?.toBriefVo()
             ?: Modpack.BriefVo(id = modpackId, name = "未知整合包")
