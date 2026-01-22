@@ -7,6 +7,7 @@ import calebxzhou.mykotutils.std.*
 import calebxzhou.rdi.CONF
 import calebxzhou.rdi.RDIClient
 import calebxzhou.rdi.client.Const
+import calebxzhou.rdi.client.ScreenSize
 import calebxzhou.rdi.client.model.*
 import calebxzhou.rdi.client.net.loggedAccount
 import calebxzhou.rdi.common.json
@@ -30,6 +31,7 @@ import java.nio.file.StandardCopyOption
 import java.util.*
 import java.util.zip.ZipFile
 import kotlin.concurrent.thread
+import java.awt.GraphicsEnvironment
 
 object GameService {
     private val lgr by Loggers
@@ -816,17 +818,13 @@ object GameService {
                 .replace($$"${auth_access_token}", loggedAccount.jwt ?: "")
                 .replace($$"${user_type}", "msa")
                 .replace($$"${version_type}", "RDI")
-                .replace($$"${resolution_width}", "1280")
-                .replace($$"${resolution_height}", "720")
-
-        }
+        }.toMutableList()
+        val (physicalWidth, physicalHeight) = resolvePhysicalScreenSize()
+        gameArgs += listOf("--width", "$physicalWidth", "--height", "$physicalHeight")
         val resolvedJvmArgs = resolveArgumentList(manifest.arguments.jvm + loaderManifest.arguments.jvm)
         val classpath = (manifest.buildClasspath() + loaderManifest.buildClasspath())
             .distinct()
             .toMutableList()
-            .apply {
-              //  this += versionListDir.resolve(mcVer.mcVer).resolve("${mcVer.mcVer }.jar").absolutePath
-            }
             .joinToString(File.pathSeparator)
         val useMemStr = runCatching {
             val osBean = ManagementFactory.getOperatingSystemMXBean()
@@ -883,6 +881,22 @@ object GameService {
             }
         }
         return process
+    }
+
+    private fun resolvePhysicalScreenSize(): Pair<Int, Int> {
+        val logicalWidth = ScreenSize.first.value.toInt()
+        val logicalHeight = ScreenSize.second.value.toInt()
+        return runCatching {
+            val transform = GraphicsEnvironment.getLocalGraphicsEnvironment()
+                .defaultScreenDevice
+                .defaultConfiguration
+                .defaultTransform
+            val scaleX = transform.scaleX.takeIf { it > 0.0 } ?: 1.0
+            val scaleY = transform.scaleY.takeIf { it > 0.0 } ?: 1.0
+            val width = (logicalWidth * scaleX).toInt().coerceAtLeast(logicalWidth)
+            val height = (logicalHeight * scaleY).toInt().coerceAtLeast(logicalHeight)
+            width to height
+        }.getOrDefault(logicalWidth to logicalHeight)
     }
 
     private fun resolveArgumentList(source: List<JsonElement>): List<String> {

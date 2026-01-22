@@ -10,6 +10,7 @@ import androidx.compose.ui.graphics.decodeToImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.platform.Font
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPosition
@@ -51,7 +52,7 @@ lateinit var UIFontFamily: FontFamily
 lateinit var ArtFontFamily: FontFamily
 lateinit var CodeFontFamily: FontFamily
 lateinit var IconFontFamily: FontFamily
-
+lateinit var ScreenSize: Pair<Dp, Dp>
 fun main() = application {
     val windowIcon = remember {
         jarResource("icon.png").use { stream ->
@@ -93,9 +94,10 @@ fun main() = application {
     }
     // 设置窗口初始大小为屏幕的2/3，并居中显示
     val screen = remember { Toolkit.getDefaultToolkit().screenSize }
+    ScreenSize = (screen.width * 2 / 3).dp to  (screen.height * 2 / 3).dp
     val windowState = rememberWindowState(
-        width = (screen.width * 2 / 3).dp,
-        height = (screen.height * 2 / 3).dp,
+        width = ScreenSize.first,
+        height = ScreenSize.second,
         position = WindowPosition(Alignment.Center)
     )
     Window(
