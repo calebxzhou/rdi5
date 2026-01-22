@@ -1,14 +1,14 @@
 package calebxzhou.rdi.common.util
 
+import calebxzhou.mykotutils.std.displayLength
+import calebxzhou.rdi.common.exception.RequestError
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.bson.types.ObjectId
-import java.io.File
 import java.nio.ByteBuffer
-import java.nio.file.Files
-import java.util.UUID
+import java.util.*
 
 fun ObjectId.toUUID(): UUID {
     val objectIdBytes = this.toByteArray()
@@ -38,3 +38,9 @@ val ioScope: CoroutineScope
 fun ioTask(handler: suspend () -> Unit) = ioScope.launch { handler() }
 
 val ObjectId.str get() = toHexString()
+fun validateName(name: String): Result<Unit> {
+    val trimmed = name.trim()
+    val len = trimmed.displayLength
+    if (len !in 3..32) throw RequestError("名称长度需在3~32个字符（一个汉字算两个）")
+    return Result.success(Unit)
+}
