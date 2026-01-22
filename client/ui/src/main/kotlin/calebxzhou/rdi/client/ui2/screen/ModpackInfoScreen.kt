@@ -260,8 +260,8 @@ fun ModpackInfoScreen(
                                     Space8w()
                                     if (version.status == Modpack.Status.OK) {
                                         CircleIconButton(
-                                            icon = "\uF04B",
-                                            tooltip = "创建地图",
+                                            icon = "\uDB86\uDD4B",
+                                            tooltip = "选定此版本创建地图",
                                             bgColor = MaterialColor.GREEN_700.color
                                         ) {
                                             val skyblock = version.mods.any { it.slug == "skyblock-builder" }
