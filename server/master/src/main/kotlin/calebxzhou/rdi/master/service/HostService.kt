@@ -347,14 +347,15 @@ object HostService {
 
 
     suspend fun ApplicationCall.hostContext(): HostContext {
-        val requesterId = uid
+        val player = player()
+        val requesterId = player._id
         val host = HostService.getById(idPathParam("hostId")) ?: throw RequestError("无此地图")
         val reqMem = host.members.firstOrNull { it.id == requesterId } ?: run {
-            if (PlayerService.getName(host.ownerId) == "davickk") {
-                Host.Member(id = requesterId, role = Role.MEMBER)
-            } else {
-                throw RequestError("不是地图受邀成员")
-            }
+            if (player.isDav) {
+                Host.Member(id = requesterId, role = Role.ADMIN)
+            } else if (!host.whitelist) {
+                Host.Member(id = requesterId, role = Role.GUEST)
+            } else throw RequestError("不是地图受邀成员")
         }
         val tarMem = pathParamNull("uid2")?.let { rawId ->
             runCatching { ObjectId(rawId) }.getOrNull()
@@ -642,6 +643,7 @@ object HostService {
             port = port,
             difficulty = host.difficulty,
             allowCheats = host.allowCheats,
+            whitelist = host.whitelist,
             gameMode = host.gameMode,
             levelType = host.levelType,
             members = listOf(Host.Member(id = playerId, role = Role.OWNER)),
