@@ -98,19 +98,6 @@ object DockerService {
         return createCmd.exec().id
     }
 
-
-    fun deleteVolume(volume: String): Result<Unit> {
-        try {
-
-            client.removeVolumeCmd(volume)
-                .exec()
-            return Result.success(Unit)
-        } catch (e: Exception) {
-            lgr.warn { "Error removing volume $volume: ${e.message}" }
-            throw e
-        }
-    }
-
     fun deleteContainer(containerName: String, removeVolumes: Boolean = false) {
         // First, try to force stop and remove the container if it exists
         findContainer(containerName)?.let { container ->
@@ -242,16 +229,6 @@ object DockerService {
         return callback
     }
 
-    fun pause(containerName: String) {
-
-        client.pauseContainerCmd(containerName).exec()
-
-    }
-
-    fun unpause(containerName: String) {
-        client.unpauseContainerCmd(containerName).exec()
-    }
-
     fun isStarted(containerName: String): Boolean {
         return try {
             val container = findContainer(containerName)
@@ -277,38 +254,5 @@ object DockerService {
             HostStatus.UNKNOWN
         }
     }
-
-
-    /*fun Room.getVolumeSize(): Long {
-        return try {
-            // Check if container is running first
-            val container = findContainerById(containerName, includeStopped = false) ?: return 0L
-
-            // If container is not found or not running, return 0
-
-            // Execute du command in the existing running container
-            val execCreateResponse = client.execCreateCmd(containerName)
-                .withCmd("sh", "-c", "du -sb /data | cut -f1")
-                .withAttachStdout(true)
-                .exec()
-
-            val outputStream = java.io.ByteArrayOutputStream()
-            val callback = object : Adapter<Frame>() {
-                override fun onNext(frame: Frame) {
-                    outputStream.write(frame.payload)
-                }
-            }
-
-            client.execStartCmd(execCreateResponse.id)
-                .exec(callback)
-                .awaitCompletion()
-
-            val output = outputStream.toString().trim()
-            output.toLongOrNull() ?: 0L
-        } catch (e: Exception) {
-            e.printStackTrace()
-            0L
-        }
-    }*/
 
 }
