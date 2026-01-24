@@ -54,7 +54,7 @@ val DB = MongoClient.create(
         )
         .build()).getDatabase(CONF.database.name)
 val CRASH_REPORT_DIR = File("crash-report")
-val DOWNLOAD_MODS_DIR = File("download-mods")
+val DOWNLOAD_MODS_DIR = File("dl-mods")
 val MODPACK_DATA_DIR = File("modpack")
 val HOSTS_DIR = File("hosts")
 val GAME_LIBS_DIR = File("game-libs")
