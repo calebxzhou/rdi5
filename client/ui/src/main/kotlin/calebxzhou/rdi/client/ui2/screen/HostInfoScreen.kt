@@ -95,7 +95,6 @@ fun HostInfoScreen(
     var forceStopConfirm by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableStateOf(0) }
     var consoleState by remember { mutableStateOf(ConsoleState()) }
-    var logStreamJob by remember { mutableStateOf<Job?>(null) }
     var logStreamSseJob by remember { mutableStateOf<Job?>(null) }
     var showInviteDialog by remember { mutableStateOf(false) }
     var inviteQq by remember { mutableStateOf("") }
@@ -151,25 +150,18 @@ fun HostInfoScreen(
             onDispose { }
         } else {
             consoleState.clear()
-            logStreamJob?.cancel()
             logStreamSseJob?.cancel()
-            logStreamJob = scope.rdiRequest<String>(
-                path = "host/$hostId/log/200",
-                onOk = { response ->
-                    response.data?.lineSequence()
-                        ?.toMutableList()
-                        ?.reversed()
-                        ?.map { it.trimEnd('\r') }
-                        ?.filter { it.isNotBlank() }
-                        ?.forEach { consoleState.append(it) }
-                },
-                onErr = { errorMessage = "日志加载失败: ${it.message}" }
-            )
             logStreamSseJob = server.sse(
                 path = "host/$hostId/log/stream",
                 bufferPolicy = SSEBufferPolicy.LastEvents(50),
                 onEvent = { event ->
                     if (event.event == "heartbeat") return@sse
+                    if (event.event == "error") {
+                        errorMessage = "读取日志错误: ${event.data ?: "unknown"}"
+                        logStreamSseJob?.cancel()
+                        logStreamSseJob = null
+                        return@sse
+                    }
                     val payload = event.data?.ifBlank { null } ?: return@sse
                     scope.launch {
                         payload.lineSequence()
@@ -179,14 +171,14 @@ fun HostInfoScreen(
                     }
                 },
                 onError = { throwable ->
-                    errorMessage = "日志流错误: ${throwable.message}"
+                    errorMessage = "读取日志错误: ${throwable.message}"
+                    logStreamSseJob?.cancel()
+                    logStreamSseJob = null
                 }
             )
             onDispose {
                 logStreamSseJob?.cancel()
                 logStreamSseJob = null
-                logStreamJob?.cancel()
-                logStreamJob = null
             }
         }
     }
