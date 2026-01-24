@@ -60,7 +60,7 @@ import java.io.InputStream
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
-import java.nio.file.StandardCopyOption
+import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
@@ -527,7 +527,6 @@ object ModpackService {
             i18nUpdateMod.delete()
         }
         onProgress("解压成功 开始下载mod")
-        val hostModsDir = hostDir.resolve("mods").apply { mkdirs() }
         val mods = version.mods.filter { it.side != Mod.Side.CLIENT }
             .map { CFDownloadMod(it.projectId.toInt(), it.fileId.toInt(), it.slug, it.targetPath) }
         val downloadedMods = CurseForgeApi.downloadMods(
@@ -548,36 +547,23 @@ object ModpackService {
             lgr.error { "Mod installation failed for host ${host.name} (${host._id}). Aborting installation but NOT throwing exception (Logic Error Tracing)." }
             return
         }
-        onProgress("mod全部下载成功 安装中..")
-        downloadedMods.forEach { mod ->
-            Files.createDirectories(mod.path.parent)
-            Files.copy(
-                mod.path,
-                hostModsDir.resolve(mod.path.fileName.name).toPath(),
-                StandardCopyOption.REPLACE_EXISTING
-            )
-
-        }
-
         val libsSource = libsDir.canonicalFile.also {
             if (!it.exists() || !it.isDirectory) {
                 throw RequestError("整合包依赖目录缺失: $it")
             }
         }
-        onProgress("安装运行库..")
-        copyDirectoryContents(libsSource, hostDir)
+        onProgress("运行库已共享")
     }
 
-    private fun copyDirectoryContents(sourceDir: File, targetDir: File) {
-        val entries = sourceDir.listFiles() ?: return
-        entries.forEach { entry ->
-            val target = File(targetDir, entry.name)
-            if (entry.isDirectory) {
-                entry.copyRecursively(target, overwrite = true)
-            } else {
-                target.parentFile?.mkdirs()
-                entry.copyTo(target, overwrite = true)
-            }
+    private fun createOrReplaceSymlink(link: Path, target: Path) {
+        runCatching {
+            Files.deleteIfExists(link)
+        }
+        link.parent?.let { Files.createDirectories(it) }
+        try {
+            Files.createSymbolicLink(link, target)
+        } catch (err: Exception) {
+            throw RequestError("创建软链接失败: ${link.toAbsolutePath()}")
         }
     }
 
@@ -658,6 +644,12 @@ object ModpackService {
         // if (version.hostsUsing().isNotEmpty()) throw RequestError("有主机正在使用此版本，无法重构")
         version.setTotalSize(version.zip.length())
         try {
+            if (version.dir.exists()) {
+                version.dir.deleteRecursivelyNoSymlink()
+            }
+            version.dir.mkdirs()
+            onProgress("解压整合包文件..")
+            unzipOverrides(version.zip, version.dir)
             val downloadedMods = CurseForgeApi.downloadMods(version.mods.filter { it.side != Mod.Side.CLIENT }
                 .map {
                     CFDownloadMod(

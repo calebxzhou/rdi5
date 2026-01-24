@@ -82,6 +82,7 @@ object DockerService {
             .withPidsLimit(512L)
             .withExtraHosts("host.docker.internal:host-gateway")
             .withMounts(mounts)
+            //.withAutoRemove(true)
 
 
         val createCmd = client.createContainerCmd(image)
@@ -241,7 +242,7 @@ object DockerService {
 
     fun getContainerStatus(containerName: String): HostStatus {
         return try {
-            val container = findContainer(containerName) ?: return HostStatus.UNKNOWN
+            val container = findContainer(containerName) ?: return HostStatus.STOPPED
             val state = container.state?.lowercase() ?: return HostStatus.UNKNOWN
             when (state) {
                 "running" -> HostStatus.STARTED

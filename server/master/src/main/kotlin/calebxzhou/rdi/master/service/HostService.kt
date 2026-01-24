@@ -2,12 +2,11 @@ package calebxzhou.rdi.master.service
 
 import calebxzhou.mykotutils.log.Loggers
 import calebxzhou.mykotutils.std.deleteRecursivelyNoSymlink
-import calebxzhou.mykotutils.std.displayLength
 import calebxzhou.mykotutils.std.jarResource
 import calebxzhou.mykotutils.std.readAllString
+import calebxzhou.rdi.common.DL_MOD_DIR
 import calebxzhou.rdi.common.json
 import calebxzhou.rdi.common.model.*
-import calebxzhou.rdi.common.serdesJson
 import calebxzhou.rdi.common.util.ioScope
 import calebxzhou.rdi.common.util.objectId
 import calebxzhou.rdi.common.util.str
@@ -22,11 +21,9 @@ import calebxzhou.rdi.master.service.HostService.addMember
 import calebxzhou.rdi.master.service.HostService.changeOptions
 import calebxzhou.rdi.master.service.HostService.changeVersion
 import calebxzhou.rdi.master.service.HostService.createHost
-import calebxzhou.rdi.master.service.HostService.createHostLegacy
 import calebxzhou.rdi.master.service.HostService.delMember
 import calebxzhou.rdi.master.service.HostService.delete
 import calebxzhou.rdi.master.service.HostService.forceStop
-import calebxzhou.rdi.master.service.HostService.getLog
 import calebxzhou.rdi.master.service.HostService.graceStop
 import calebxzhou.rdi.master.service.HostService.hostContext
 import calebxzhou.rdi.master.service.HostService.listHostLobby
@@ -45,6 +42,7 @@ import calebxzhou.rdi.master.service.ModpackService.installToHost
 import calebxzhou.rdi.master.service.ModpackService.toBriefVo
 import calebxzhou.rdi.master.service.WorldService.createWorld
 import calebxzhou.rdi.model.Role
+import com.github.dockerjava.api.exception.NotFoundException
 import com.github.dockerjava.api.model.Mount
 import com.github.dockerjava.api.model.MountType
 import com.github.dockerjava.api.model.TmpfsOptions
@@ -55,7 +53,7 @@ import com.mongodb.client.model.Updates
 import com.mongodb.client.model.Updates.combine
 import com.mongodb.client.model.Updates.set
 import io.ktor.server.application.*
-import io.ktor.server.request.receive
+import io.ktor.server.request.*
 import io.ktor.server.routing.*
 import io.ktor.server.sse.*
 import io.ktor.server.websocket.*
@@ -70,8 +68,7 @@ import org.bson.Document
 import org.bson.conversions.Bson
 import org.bson.types.ObjectId
 import java.io.File
-import java.util.Properties
-import java.util.UUID
+import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -81,21 +78,6 @@ val Host.dir get() = HOSTS_DIR.resolve(_id.str)
 // ---------- Routing DSL (mirrors teamRoutes style) ----------
 fun Route.hostRoutes() = route("/host") {
     route("") {
-        //旧版接口 保持兼容
-        post {
-            call.player().createHostLegacy(
-                idParam("modpackId"),
-                param("packVer"),
-                param("worldOpr"),
-                paramNull("useWorld")?.let { ObjectId(it) },
-                param("difficulty").toInt(),
-                param("gameMode").toInt(),
-                param("levelType"),
-                false,
-                param("gameRules").let { serdesJson.decodeFromString<MutableMap<String, String>>(it) }
-            )
-            ok()
-        }
         post("/v2") {
             call.player().createHost(call.receive())
             ok()
@@ -178,18 +160,15 @@ fun Route.hostRoutes() = route("/host") {
             sse("/stream") {
                 val ctx = try {
                     call.hostContext()
+                } catch (err: NotFoundException) {
+                    send(ServerSentEvent(event = "error", data = "此地图已被删除"))
+                    return@sse
                 } catch (err: RequestError) {
-                    runCatching {
-                        send(ServerSentEvent(event = "error", data = err.message ?: "unknown"))
-                    }
+                    send(ServerSentEvent(event = "error", data = err.message ?: "unknown"))
                     return@sse
                 }
                 ctx.listenLogs(this)
 
-            }
-            get("/{lines}") {
-                val logs = call.hostContext().getLog(paramNull("startLine")?.toInt() ?: 0, param("lines").toInt())
-                response(data = logs)
             }
         }
         route("/member/{uid2}") {
@@ -329,6 +308,52 @@ object HostService {
 
 
         return OverlaySources(libsDir, versionDir)
+    }
+
+    private fun Host.writeServerProperties() {
+        dir.resolve("allowed_symlinks.txt").writeText("[regex].*")
+        dir.resolve("eula.txt").writeText("eula=true")
+        "server.properties".run {
+            this.jarResource(this).readAllString()
+                .replace("#{port}", port.toString())
+                .replace(
+                    "#{difficulty}", when (difficulty) {
+                        0 -> "peaceful"
+                        1 -> "easy"
+                        2 -> "normal"
+                        3 -> "hard"
+                        else -> "normal"
+                    }
+                )
+                .replace("#{level-type}", levelType)
+                .replace(
+                    "#{gamemode}", when (gameMode) {
+                        0 -> "survival"
+                        1 -> "creative"
+                        2 -> "adventure"
+                        else -> "survival"
+                    }
+                ).let {
+                    dir.resolve(this).writeText(it)
+                }
+        }
+        val defaultPropsFile = dir.resolve("default-server.properties")
+        val serverPropsFile = dir.resolve("server.properties")
+        if (defaultPropsFile.exists() && serverPropsFile.exists()) {
+            val serverProps = Properties().apply {
+                serverPropsFile.inputStream().use { load(it) }
+            }
+            val defaultProps = Properties().apply {
+                defaultPropsFile.inputStream().use { load(it) }
+            }
+            defaultProps.forEach { key, value ->
+                if (key.toString() != "server-port") {
+                    lgr.info { "apply prop $key = $value" }
+                    serverProps.setProperty(key.toString(), value.toString())
+                }
+            }
+            serverPropsFile.outputStream().use { serverProps.store(it, null) }
+        }
     }
 
     val HostContext.needAdmin get() = requireRole(Role.ADMIN)
@@ -492,7 +517,7 @@ object HostService {
             if (onlinePlayers.isEmpty()) {
                 if (forceStop) {
                     clearShutFlag(host._id)
-                    stopHost(host, "forced idle shutdown")
+                    host.stop("forced idle shutdown")
                     continue
                 }
 
@@ -500,7 +525,7 @@ object HostService {
                 val newFlag = current + 1
                 updateShutFlag(host._id, newFlag)
                 if (newFlag >= SHUTDOWN_THRESHOLD) {
-                    stopHost(host, "idle for $newFlag consecutive minutes")
+                    host.stop("idle for $newFlag consecutive minutes")
                     clearShutFlag(host._id)
                 }
             } else {
@@ -529,14 +554,14 @@ object HostService {
         lgr.info { "保持在线 $hostId" }
     }
 
-    private fun stopHost(host: Host, reason: String) {
+    private fun Host.stop(reason: String) {
         runCatching {
-            DockerService.stop(host._id.str)
-            lgr.info { "Stopped host ${host._id} ($reason)" }
+            DockerService.stop(_id.str)
+            lgr.info { "Stopped host $name ($reason)" }
         }.onFailure {
-            lgr.warn(it) { "Failed to stop host ${host._id}: ${it.message}" }
+            lgr.warn(it) { "Failed to stop host ${name}: ${it.message}" }
         }
-        clearShutFlag(host._id)
+        clearShutFlag(_id)
     }
 
     // ---------- Core Logic (no ApplicationCall side-effects) ----------
@@ -555,65 +580,8 @@ object HostService {
         }
     }
 
-    suspend fun RAccount.createHostLegacy(
-        modpackId: ObjectId,
-        packVer: String,
-        worldOpr: String,
-        worldId: ObjectId?,
-        difficulty: Int,
-        gameMode: Int,
-        levelType: String,
-        allowCheats: Boolean,
-        gameRules: MutableMap<String, String>
-    ) {
-        val playerId = _id
-        if (getByOwner(playerId).size > 3) {
-            throw RequestError("每玩家最多只可创建3张地图")
-        }
-        val world = worldId?.let {
-            val occupyHost = findByWorld(it)
-            if (occupyHost != null)
-                throw RequestError("此存档数据已被地图“${occupyHost.name}”占用")
-            WorldService.getById(it)?.also { world ->
-                if (world.ownerId != playerId) throw RequestError("不是你的存档")
-            } ?: throw RequestError("无此存档")
-        } ?: let {
-            when (worldOpr) {
-                "create" -> createWorld(playerId, null, modpackId)
-                "use" -> throw ParamError("缺少存档ID")
-                "no" -> null
-                else -> null
-            }
-        }
-
-        val modpack = ModpackService.getById(modpackId) ?: throw RequestError("无此包")
-        val version = modpack.getVersion(packVer) ?: throw RequestError("无此版本")
-        val port = allocateRoomPort()
-        val host = Host(
-            name = "${name}的世界-" + (ownHosts().size + 1),
-            ownerId = playerId,
-            modpackId = modpackId,
-            packVer = packVer,
-            worldId = world?._id,
-            port = port,
-            difficulty = difficulty,
-            gameMode = gameMode,
-            levelType = levelType,
-            members = listOf(Host.Member(id = playerId, role = Role.OWNER)),
-            gameRules = gameRules
-        )
-        val mailId =
-            MailService.sendSystemMail(playerId, "地图创建中", "${host.name}正在创建中，请稍等几分钟...")._id
-        dbcl.insertOne(host)
-        startCreateHost(host, modpack, version, mailId)
-
-
-    }
-
     suspend fun RAccount.createHost(host: Host.CreateDto) {
-        if (host.name.displayLength !in 3..24) {
-            throw RequestError("名称长度应在3~24，当前为${host.name.displayLength}（一个汉字算两个长度）")
-        }
+        host.name.validateName()
         val playerId = _id
         if (getByOwner(playerId).size > 3 && !this.isDav) {
             throw RequestError("最多只可创建3张地图")
@@ -657,7 +625,6 @@ object HostService {
 
 
     }
-
     private fun startCreateHost(
         host: Host,
         modpack: Modpack,
@@ -671,52 +638,12 @@ object HostService {
                 }
                 host.dir.mkdir()
 
-                host.makeContainer(host.worldId, modpack, version, host.gameRules)
+                host.makeContainer(host.worldId, modpack, version)
 
                 modpack.installToHost(host.packVer, host) {
                     MailService.changeMail(mailId, "地图创建中", newContent = it)
                 }
-                "server.properties".run {
-                    this.jarResource(this).readAllString()
-                        .replace("#{port}", host.port.toString())
-                        .replace(
-                            "#{difficulty}", when (host.difficulty) {
-                                0 -> "peaceful"
-                                1 -> "easy"
-                                2 -> "normal"
-                                3 -> "hard"
-                                else -> "normal"
-                            }
-                        )
-                        .replace("#{level-type}", host.levelType)
-                        .replace(
-                            "#{gamemode}", when (host.gameMode) {
-                                0 -> "survival"
-                                1 -> "creative"
-                                2 -> "adventure"
-                                else -> "survival"
-                            }
-                        ).let {
-                            host.dir.resolve(this).writeText(it)
-                        }
-                }
-                val defaultPropsFile = host.dir.resolve("default-server.properties")
-                val serverPropsFile = host.dir.resolve("server.properties")
-                if (defaultPropsFile.exists() && serverPropsFile.exists()) {
-                    val serverProps = Properties().apply {
-                        serverPropsFile.inputStream().use { load(it) }
-                    }
-                    val defaultProps = Properties().apply {
-                        defaultPropsFile.inputStream().use { load(it) }
-                    }
-                    defaultProps.forEach { key, value ->
-                        if (key.toString() != "server-port") {
-                            lgr.info { "apply prop $key = $value" }
-                            serverProps.setProperty(key.toString(), value.toString())
-                        }
-                    }
-                    serverPropsFile.outputStream().use { serverProps.store(it, null) }
-                }
+                host.writeServerProperties()
                 lgr.info { "installToHost returned. Proceeding to start Docker container for host ${host._id} (Logic Error Tracing)." }
                 DockerService.start(host._id.str)
 
@@ -749,16 +676,38 @@ object HostService {
     private fun Host.makeContainer(
         worldId: ObjectId?,
         modpack: Modpack,
-        version: Modpack.Version,
-        gameRules: Map<String, String>
+        version: Modpack.Version
     ) {
+        DockerService.deleteContainer(_id.str)
 
+        val sharedLibsDir = modpack.libsDir.canonicalFile.also { it.mkdirs() }
+
+        val rdiCore = "rdi-5-mc-server-${modpack.mcVer.mcVer}-${modpack.modloader}.jar"
         val mounts = mutableListOf(
             Mount()
                 .withType(MountType.BIND)
                 .withSource(dir.absolutePath)
                 .withTarget("/opt/server"),
+            Mount()
+                .withType(MountType.BIND)
+                .withSource(sharedLibsDir.resolve("libraries").absolutePath)
+                .withTarget("/opt/server/libraries"),
+            Mount()
+                .withType(MountType.BIND)
+                .withSource(sharedLibsDir.resolve("mods").resolve(rdiCore).absolutePath)
+                .withTarget("/opt/server/mods/${rdiCore}"),
         ).apply {
+            version.mods
+                .filter { it.side != Mod.Side.CLIENT }
+                .forEach { mod ->
+                    val source = DL_MOD_DIR.resolve(mod.fileName)
+                    if (source.exists()) {
+                        this += Mount()
+                            .withType(MountType.BIND)
+                            .withSource(source.absolutePath)
+                            .withTarget("/opt/server/mods/${mod.fileName}")
+                    }
+                }
 
             if (worldId != null) {
                 //使用存档
@@ -800,9 +749,9 @@ object HostService {
     }
 
     suspend fun HostContext.changeVersion(packVer: String?) {
-        /*if (host.status != HostStatus.STOPPED) {
+        if (host.status != HostStatus.STOPPED) {
             throw RequestError("请先停止主机")
-        }*/
+        }
         val modpack = ModpackService.getById(host.modpackId) ?: throw RequestError("无此整合包")
         val modpackVer = modpack.versions.find { it.name == packVer } ?: modpack.versions.lastOrNull()
         ?: throw RequestError("无可用版本")
@@ -826,42 +775,37 @@ object HostService {
         MailService.changeMail(mailId, "地图整合包版本切换完成", "好了")
     }
 
-    suspend fun HostContext.changeGameRules(newRules: Map<String, String>) {
-        /*if (host.status != HostStatus.STOPPED) {
-            throw RequestError("请先停止主机")
-        }*/
-        val modpack = ModpackService.getById(host.modpackId) ?: throw RequestError("无此整合包")
-        val version = modpack.getVersion(host.packVer) ?: throw RequestError("无此版本")
-
-        // Recreate container with updated environment
-        DockerService.deleteContainer(host._id.str)
-        host.gameRules.clear()
-        host.gameRules.putAll(newRules)
-        dbcl.updateOne(eq("_id", host._id), set(Host::gameRules.name, newRules))
-        host.makeContainer(host.worldId, modpack, version, newRules)
-        clearShutFlag(host._id)
-    }
-
     suspend fun HostContext.changeOptions(payload: Host.OptionsDto) {
-        payload.gameRules?.let { rules ->
-            changeGameRules(rules)
-        }
+
         if (payload.packVer != null && payload.modpackId == null) {
             changeVersion(payload.packVer)
         }
         val updates = mutableListOf<Bson>()
+        payload.gameRules?.let { rules ->
+            updates += set(Host::gameRules.name, rules)
+        }
         payload.name?.let {
-            validateName(it)
+            it.validateName()
             updates += set(Host::name.name, it)
         }
         payload.packVer?.let { updates += set(Host::packVer.name, it) }
-        /* 暂时不支持
-        payload.saveWorld?.let { saveWorld ->
-            if (!saveWorld) {
+        when (payload.saveWorld) {
+            false -> {
                 updates += set(Host::worldId.name, null)
             }
+            true -> {
+                payload.worldId?.let {
+                    updates += set(Host::worldId.name, it)
+                } ?: run {
+                    val world = createWorld(player._id, null, host.modpackId)
+                    updates += set(Host::worldId.name, world._id)
+                }
+            }
+            //保持现状
+            null -> {
+                // no-op when saveWorld is not specified
+            }
         }
-        payload.worldId?.let { updates += set(Host::worldId.name, it) }*/
         payload.difficulty?.let { updates += set(Host::difficulty.name, it) }
         payload.gameMode?.let { updates += set(Host::gameMode.name, it) }
         payload.levelType?.takeIf { it.isNotBlank() }?.let { updates += set(Host::levelType.name, it) }
@@ -871,6 +815,8 @@ object HostService {
             val update = if (updates.size == 1) updates.first() else combine(updates)
             dbcl.updateOne(eq("_id", host._id), update)
         }
+        //刷新数据
+        getById(host._id)?.writeServerProperties()
     }
 
     suspend fun HostContext.start() {
@@ -878,10 +824,11 @@ object HostService {
         if (DockerService.isStarted(current._id.str)) {
             throw RequestError("已经启动过了")
         }
-        if (DockerService.findContainer(current._id.str) == null) {
-            throw RequestError("地图版本过旧 请点击地图详细信息界面的“更新”按钮")
-            return
-        }
+        val modpack = ModpackService.getById(current.modpackId) ?: throw RequestError("无此整合包")
+        val version = modpack.getVersion(current.packVer) ?: throw RequestError("无此版本")
+        DockerService.deleteContainer(current._id.str)
+        current.writeServerProperties()
+        current.makeContainer(current.worldId, modpack, version)
         DockerService.start(current._id.str)
         clearShutFlag(current._id)
     }
@@ -952,6 +899,7 @@ object HostService {
             return status
         }
 
+
     suspend fun findByModpackVersion(modpackId: ObjectId, verName: String): List<Host> {
         return dbcl.find(
             and(
@@ -970,46 +918,103 @@ object HostService {
     }
 
     // Get logs by range: [startLine, endLine), 0 means newest line
-    suspend fun HostContext.getLog(startLine: Int = 0, needLines: Int): String {
+    /*suspend fun HostContext.getLog(startLine: Int = 0, needLines: Int): String {
         if (needLines > 200) throw RequestError("行数太多")
         val hostId = host._id
         return DockerService.getLog(hostId.str, startLine, startLine + needLines)
-    }
+    }*/
 
     // ---------- Streaming Helper (still needs ApplicationCall for SSE) ----------
     suspend fun HostContext.listenLogs(session: ServerSSESession) {
         val hostId = host._id
         val containerName = hostId.str
-        val lines = Channel<String>(capacity = Channel.BUFFERED)
-        val subscription = DockerService.listenLog(
-            containerName,
-            onLine = { lines.trySend(it).isSuccess },
-            onError = { lines.close(it) },
-            onFinished = { lines.close() }
-        )
-
         session.heartbeat {
             period = 15.seconds
             event = ServerSentEvent(event = "heartbeat", data = "ping")
         }
 
+        var sentFileTail = false
+        var sentContainerTail = false
         try {
-            for (payload in lines) {
-                payload.lineSequence()
-                    .map { it.trimEnd('\r') }
-                    .filter { it.isNotEmpty() }
-                    .forEach { session.send(ServerSentEvent(data = it)) }
+            while (currentCoroutineContext().isActive) {
+                val hasContainer = DockerService.findContainer(containerName) != null
+                val started = hasContainer && DockerService.isStarted(containerName)
+                if (!started) {
+                    if (!sentFileTail) {
+                        runCatching { sendLatestLogTail(session, host.dir) }
+                        sentFileTail = true
+                    }
+                    sentContainerTail = false
+                    delay(2.seconds)
+                    continue
+                }
+
+                if (!sentContainerTail) {
+                    runCatching {
+                        DockerService.getLog(containerName, startLine = 0, endLine = 200)
+                            .lineSequence()
+                            .map { it.trimEnd('\r') }
+                            .filter { it.isNotBlank() }
+                            .toList()
+                            .asReversed()
+                            .forEach { session.send(ServerSentEvent(data = it)) }
+                    }
+                    sentContainerTail = true
+                    sentFileTail = false
+                }
+
+                val lines = Channel<String>(capacity = Channel.BUFFERED)
+                val subscription = DockerService.listenLog(
+                    containerName,
+                    onLine = { lines.trySend(it).isSuccess },
+                    onError = { err -> lines.close(err) },
+                    onFinished = { lines.close() }
+                )
+                try {
+                    for (payload in lines) {
+                        payload.lineSequence()
+                            .map { it.trimEnd('\r') }
+                            .filter { it.isNotEmpty() }
+                            .forEach { session.send(ServerSentEvent(data = it)) }
+                    }
+                } catch (t: NotFoundException) {
+                    sentContainerTail = false
+                } finally {
+                    runCatching { subscription.close() }
+                    lines.cancel()
+                }
             }
         } catch (cancel: CancellationException) {
-            throw cancel
+            //"已取消载入日志"
         } catch (t: Throwable) {
-            try {
-                session.send(ServerSentEvent(event = "error", data = t.message ?: "unknown"))
-            } catch (_: Throwable) {
+            runCatching { session.send(ServerSentEvent(event = "error", data = t.message ?: "unknown")) }
+            throw t
+        }
+    }
+
+    private suspend fun sendLatestLogTail(
+        session: ServerSSESession,
+        hostDir: File,
+        maxLines: Int = 200
+    ) {
+        val logFile = hostDir.resolve("logs").resolve("latest.log")
+        if (!logFile.exists()) {
+            session.send(ServerSentEvent(event = "error", data = "日志文件不存在"))
+            return
+        }
+        val buffer = ArrayDeque<String>(maxLines)
+        logFile.useLines { lines ->
+            lines.forEach { line ->
+                if (buffer.size == maxLines) {
+                    buffer.removeFirst()
+                }
+                buffer.addLast(line)
             }
-        } finally {
-            runCatching { subscription.close() }
-            lines.cancel()
+        }
+        buffer.forEach { line ->
+            if (line.isNotBlank()) {
+                session.send(ServerSentEvent(data = line))
+            }
         }
     }
 
