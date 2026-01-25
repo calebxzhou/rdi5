@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import calebxzhou.rdi.common.net.httpRequest
 import io.ktor.client.request.url
 import io.ktor.client.statement.bodyAsBytes
@@ -28,7 +29,8 @@ import org.jetbrains.skia.Image
 fun HttpImage(
     imgUrl: String,
     modifier: Modifier = Modifier,
-    contentDescription: String? = null
+    contentDescription: String? = null,
+    contentScale: ContentScale = ContentScale.Crop
 ) {
     val state = produceState(initialValue = HttpImageState.loading(), imgUrl) {
         value = HttpImageState.loading()
@@ -46,7 +48,8 @@ fun HttpImage(
                 Image(
                     bitmap = state.bitmap,
                     contentDescription = contentDescription,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = contentScale
                 )
             }
             else -> {

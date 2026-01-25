@@ -14,6 +14,7 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerMoveFilter
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -84,7 +85,8 @@ fun Host.BriefVo.HostCard(
                         Image(
                             bitmap = DEFAULT_HOST_ICON,
                             contentDescription = "Host Icon",
-                            modifier = Modifier.size(64.dp)
+                            modifier = Modifier.size(64.dp),
+                            contentScale = ContentScale.Crop
                         )
                     }
                 }

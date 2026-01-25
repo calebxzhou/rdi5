@@ -342,7 +342,8 @@ fun ModpackManageCard(
                         Image(
                             bitmap = DEFAULT_MODPACK_ICON,
                             contentDescription = "Modpack Icon",
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
                         )
                     }
                 }
