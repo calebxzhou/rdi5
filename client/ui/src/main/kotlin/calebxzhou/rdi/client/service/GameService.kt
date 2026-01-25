@@ -82,7 +82,6 @@ object GameService {
         }
 
 
-
     fun downloadVersion(version: McVersion, loader: ModLoader? = null): Task {
         val manifest = version.metadata
         val tasks = mutableListOf<Task>(
@@ -174,7 +173,6 @@ object GameService {
            }
            return httpRequest { url(version.metaUrl) }.body()
        }*/
-
 
 
     private fun MojangLibrary.shouldDownloadByArch(): Boolean {
@@ -281,7 +279,7 @@ object GameService {
         }
         val metaJson = jarResource("mcmeta/assets-index/${assetIndexMeta.id}.json").readAllString()
         val index = serdesJson.decodeFromString<MojangAssetIndexFile>(metaJson)
-        if(!assetIndexesDir.exists()){
+        if (!assetIndexesDir.exists()) {
             assetIndexesDir.mkdirs()
         }
         assetIndexesDir.resolve("${assetIndexMeta.id}.json").writeText(metaJson)
@@ -343,7 +341,12 @@ object GameService {
             Task.Leaf("资源 $path") { ctx ->
                 ctx.emitProgress(TaskProgress("开始下载...", 0f))
                 downloadAssetObject(path, obj) { prog ->
-                    ctx.emitProgress(TaskProgress("${prog.bytesDownloaded.humanFileSize}/${prog.totalBytes.humanFileSize}",prog.fraction))
+                    ctx.emitProgress(
+                        TaskProgress(
+                            "${prog.bytesDownloaded.humanFileSize}/${prog.totalBytes.humanFileSize}",
+                            prog.fraction
+                        )
+                    )
                 }.getOrThrow()
                 ctx.emitProgress(TaskProgress("下载完成", 1f))
             }
@@ -354,7 +357,12 @@ object GameService {
             val linksTask = Task.Leaf("链接相似资源") { ctx ->
                 linkPlans.forEachIndexed { index, plan ->
                     createObjectLink(plan.fromHash, plan.toHash)
-                    ctx.emitProgress(TaskProgress("已链接 ${index + 1}/${linkPlans.size}", (index + 1).toFloat() / linkPlans.size))
+                    ctx.emitProgress(
+                        TaskProgress(
+                            "已链接 ${index + 1}/${linkPlans.size}",
+                            (index + 1).toFloat() / linkPlans.size
+                        )
+                    )
                 }
             }
             return Task.Group(
@@ -827,14 +835,18 @@ object GameService {
             .toMutableList()
             .joinToString(File.pathSeparator)
         val useMemStr = runCatching {
-            val osBean = ManagementFactory.getOperatingSystemMXBean()
-            val freeBytes = (osBean as? OperatingSystemMXBean)
-                ?.freeMemorySize
-                ?: return@runCatching "-Xmx8G"
-            val freeMb = freeBytes / (1024L * 1024)
-            lgr.info { "剩余内存${freeBytes.humanFileSize}" }
-            val memGb = if (freeMb > 8192) freeMb else 8192
-            "-Xmx${memGb}M"
+            if (CONF.maxMemory > 0) {
+                "-Xmx${CONF.maxMemory}M"
+            } else {
+                val osBean = ManagementFactory.getOperatingSystemMXBean()
+                val freeBytes = (osBean as? OperatingSystemMXBean)
+                    ?.freeMemorySize
+                    ?: return@runCatching "-Xmx8G"
+                val freeMb = freeBytes / (1024L * 1024)
+                lgr.info { "剩余内存${freeBytes.humanFileSize}" }
+                val mem = if (freeMb > 8192) freeMb else 8192
+                "-Xmx${mem}M"
+            }
         }.getOrDefault("-Xmx8G")
         val processedJvmArgs = resolvedJvmArgs.map { arg ->
             arg.replace($$"${natives_directory}", nativesDir.absolutePath)
@@ -850,8 +862,18 @@ object GameService {
 
         lgr.info { "JVM Args: ${processedJvmArgs.joinToString(" ")}" }
         lgr.info { "Game Args: ${gameArgs.joinToString(" ")}" }
+        val jrePath = when (mcVer.jreVer) {
+
+            8 -> {
+                CONF.jre8Path ?: RDIClient.JRE8
+            }
+
+            else -> {
+                CONF.jre21Path ?: RDIClient.JRE21
+            }
+        }
         val command = listOf(
-            javaExePath,
+            jrePath,
             *processedJvmArgs.toTypedArray(),
             loaderManifest.mainClass,
             *gameArgs.toTypedArray(),
