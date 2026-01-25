@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toComposeImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import calebxzhou.mykotutils.std.deleteRecursivelyNoSymlink
@@ -370,11 +371,12 @@ fun ModpackManageCard(
                     }
                     Row(
                         modifier = Modifier.horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         CircleIconButton(
                             "\uEA81",
                             "删除",
+                            size=32,
                             bgColor = MaterialColor.RED_900.color,
                         ) {
                             onDelete()
@@ -382,6 +384,7 @@ fun ModpackManageCard(
                         CircleIconButton(
                             "\uDB81\uDC53",
                             "重装",
+                            size=32,
                             bgColor = MaterialColor.PINK_900.color,
                         ) {
                             onReinstall()
@@ -389,20 +392,23 @@ fun ModpackManageCard(
                         CircleIconButton(
                             "\uEAED",
                             "打开文件夹",
+                            size=32,
                         ) {
                             onOpenFolder ()
                         }
                         CircleIconButton(
                             "\uEF11",
                             "导出日志",
+                            size=32,
                             bgColor = MaterialColor.GRAY_900.color,
                         ) {
                             onExportLogs()
                         }
                         if (isRunning && onOpenMcPlay != null) {
                             CircleIconButton(
-                                "\uF120",
+                                "\uDB80\uDD8D",
                                 "控制台",
+                                size=32,
                                 bgColor = MaterialColor.BLUE_800.color,
                             ) {
                                 onOpenMcPlay()
