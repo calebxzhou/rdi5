@@ -977,8 +977,19 @@ object HostService {
                             .filter { it.isNotEmpty() }
                             .forEach { session.send(ServerSentEvent(data = it)) }
                     }
+                } catch (t: CancellationException) {
+                    throw t
+                } catch (t: io.ktor.utils.io.ClosedWriteChannelException) {
+                    return
+                } catch (t: io.ktor.util.cio.ChannelWriteException) {
+                    return
                 } catch (t: NotFoundException) {
                     sentContainerTail = false
+                } catch (t: Throwable) {
+                    if (t.message?.contains("Cannot write to channel", ignoreCase = true) == true) {
+                        return
+                    }
+                    throw t
                 } finally {
                     runCatching { subscription.close() }
                     lines.cancel()
@@ -987,8 +998,12 @@ object HostService {
         } catch (cancel: CancellationException) {
             //"已取消载入日志"
         } catch (t: Throwable) {
-            runCatching { session.send(ServerSentEvent(event = "error", data = t.message ?: "unknown")) }
-            throw t
+            val ignore = t is io.ktor.utils.io.ClosedWriteChannelException ||
+                t is io.ktor.util.cio.ChannelWriteException ||
+                t.message?.contains("Cannot write to channel", ignoreCase = true) == true
+            if (!ignore) {
+                runCatching { session.send(ServerSentEvent(event = "error", data = t.message ?: "unknown")) }
+            }
         }
     }
 
