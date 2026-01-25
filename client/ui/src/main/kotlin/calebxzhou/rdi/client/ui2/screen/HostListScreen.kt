@@ -13,7 +13,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import calebxzhou.rdi.client.Const
-import calebxzhou.rdi.client.auth.LocalCredentials
 import calebxzhou.rdi.client.net.server
 import calebxzhou.rdi.client.service.ModpackService.StartPlayResult
 import calebxzhou.rdi.client.service.ModpackService.startPlay
@@ -43,11 +42,8 @@ fun HostListScreen(
     val scope = rememberCoroutineScope()
     var hosts by remember { mutableStateOf<List<Host.BriefVo>>(emptyList()) }
     var showMy by remember { mutableStateOf(false) }
-    var showCarrierDialog by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var installConfirmTask by remember { mutableStateOf<Task?>(null) }
-    val creds = remember { LocalCredentials.read() }
-    var selectedCarrier by remember { mutableStateOf(creds.carrier) }
 
     LaunchedEffect(showMy) {
         if (Const.USE_MOCK_DATA) {
@@ -73,9 +69,6 @@ fun HostListScreen(
                 onOpenWorldList?.invoke()
             }
             Spacer(modifier = Modifier.width(8.dp))
-            CircleIconButton("\uEF09","节点", contentPadding = PaddingValues(0.dp)){ showCarrierDialog = true }
-            Spacer(modifier = Modifier.width(8.dp))
-
             CircleIconButton("\uF067","创建新地图"){
                 onOpenModpackList?.invoke()
             }
@@ -147,17 +140,6 @@ fun HostListScreen(
             }
         }
     }
-    if (showCarrierDialog) {
-        CarrierDialog(
-            selected = selectedCarrier,
-            onSelect = { carrier ->
-                selectedCarrier = carrier
-                creds.carrier = carrier
-                creds.save()
-            },
-            onDismiss = { showCarrierDialog = false }
-        )
-    }
     installConfirmTask?.let { task ->
         AlertDialog(
             onDismissRequest = { installConfirmTask = null },
@@ -186,41 +168,5 @@ private fun generateMockHosts(): List<Host.BriefVo> = List(50) { index ->
         _id = ObjectId(),
         name = "${base.name} #${index + 1}",
         port = base.port + index
-    )
-}
-@Composable
-fun CarrierDialog(
-    selected: Int,
-    onSelect: (Int) -> Unit,
-    onDismiss: () -> Unit
-) {
-    val carriers = listOf("电信", "移动", "联通", "教育网", "广电")
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("选择运营商节点") },
-        text = {
-            Column {
-                carriers.forEachIndexed { index, name ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onSelect(index) }
-                            .padding(vertical = 4.dp)
-                    ) {
-                        RadioButton(
-                            selected = selected == index,
-                            onClick = { onSelect(index) }
-                        )
-                        Text(name)
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("关闭")
-            }
-        }
     )
 }

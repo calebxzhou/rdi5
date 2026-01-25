@@ -11,8 +11,7 @@ import java.io.File
 
 @Serializable
 data class LocalCredentials(
-    var loginInfos: MutableMap< @Contextual ObjectId,LoginInfo> = hashMapOf(),
-    var carrier: Int = 0,
+    var loginInfos: MutableMap<@Contextual ObjectId, LoginInfo> = hashMapOf(),
 ) {
 
     companion object {

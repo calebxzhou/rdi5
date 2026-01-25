@@ -16,6 +16,7 @@ data class AppConfig(
     val maxMemory: Int=0,
     val jre21Path: String?=null,
     val jre8Path: String?=null,
+    val carrier: Int = 0,
 ){
     companion object {
         private val configFile = File("config.toml")

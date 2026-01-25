@@ -1,9 +1,11 @@
 package calebxzhou.rdi.client.ui2.screen
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.Checkbox
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.OutlinedTextField
+import androidx.compose.material.RadioButton
 import androidx.compose.material.Text
 import androidx.compose.material.rememberScaffoldState
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -44,6 +46,7 @@ fun SettingScreen(onBack: () -> Unit){
     var maxMemoryText by remember { mutableStateOf(if (config.maxMemory <= 0) "" else config.maxMemory.toString()) }
     var jre21Path by remember { mutableStateOf(config.jre21Path.orEmpty()) }
     var jre8Path by remember { mutableStateOf(config.jre8Path.orEmpty()) }
+    var carrier by remember { mutableStateOf(config.carrier) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var saving by remember { mutableStateOf(false) }
 
@@ -99,7 +102,8 @@ fun SettingScreen(onBack: () -> Unit){
                             useMirror = useMirror,
                             maxMemory = memoryValue ?: 0,
                             jre21Path = jre21,
-                            jre8Path = jre8
+                            jre8Path = jre8,
+                            carrier = carrier
                         )
                         AppConfig.save(next)
                         errorMessage = null
@@ -140,6 +144,11 @@ fun SettingScreen(onBack: () -> Unit){
                 onValueChange = { jre8Path = it },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
+            )
+            Space8h()
+            CarrierSelector(
+                selected = carrier,
+                onSelect = { carrier = it }
             )
             Space8h()
             errorMessage?.let { Text(it, color = MaterialTheme.colors.error) }
@@ -210,4 +219,30 @@ private fun readJavaMajorVersion(javaExe: File): Int? {
 
 private fun isWindows(): Boolean {
     return System.getProperty("os.name").contains("windows", ignoreCase = true)
+}
+
+@Composable
+private fun CarrierSelector(
+    selected: Int,
+    onSelect: (Int) -> Unit
+) {
+    val carriers = listOf("电信", "移动", "联通", "教育网", "广电")
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text("运营商节点")
+        carriers.forEachIndexed { index, name ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onSelect(index) }
+                    .padding(vertical = 4.dp)
+            ) {
+                RadioButton(
+                    selected = selected == index,
+                    onClick = { onSelect(index) }
+                )
+                Text(name)
+            }
+        }
+    }
 }

@@ -8,7 +8,7 @@ import calebxzhou.mykotutils.std.openChineseZip
 import calebxzhou.mykotutils.std.sha1
 import calebxzhou.mykotutils.std.toFixed
 import calebxzhou.rdi.RDIClient
-import calebxzhou.rdi.client.auth.LocalCredentials
+import calebxzhou.rdi.CONF
 import calebxzhou.rdi.client.model.firstLoaderDir
 import calebxzhou.rdi.client.net.server
 import calebxzhou.rdi.client.ui2.McPlayArgs
@@ -266,7 +266,7 @@ object ModpackService {
             throw RequestError("mc运行中，如需切换要玩的地图，请先关闭mc")
         }
 
-        val bgp = LocalCredentials.read().carrier != 0
+        val bgp = CONF.carrier != 0
         val versionId = "${modpack.id.str}_${version.name}"
         val args = listOf(
             "-Drdi.ihq.url=${server.hqUrl}",
@@ -308,6 +308,17 @@ object ModpackService {
         }
 
         deferred.awaitAll()
+    }
+    fun readLocalModpack(modpackFile: File){
+        if(modpackFile.isDirectory){
+
+        }else{
+            runCatching {
+                val zip = modpackFile.openChineseZip()
+
+                zip
+            }
+        }
     }
 }
 
