@@ -16,7 +16,9 @@ import calebxzhou.rdi.common.service.ModService.modDescription
 import calebxzhou.rdi.common.service.ModService.modLogo
 import calebxzhou.rdi.common.service.ModService.readNeoForgeConfig
 import calebxzhou.rdi.common.service.ModService.toVo
-import calebxzhou.rdi.service.ModrinthService.mr2CfSlug
+import calebxzhou.rdi.common.service.ModrinthService.mr2CfSlug
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.jar.JarFile
 
@@ -229,10 +231,6 @@ object CurseForgeService {
      * @throws ModpackException if validation fails
      */
     suspend fun loadModpack(zipPath: String): CurseForgeModpackData {
-        if (zipPath.isBlank()) {
-            throw ModpackException("请先输入整合包路径")
-        }
-
         val zipFile = File(zipPath)
         if (!zipFile.exists() || !zipFile.isFile) {
             throw ModpackException("找不到整合包文件: ${zipFile.path}")
@@ -297,17 +295,16 @@ object CurseForgeService {
 
             return CurseForgeModpackData(
                 manifest = manifest,
-                zipFile,
-                zip = zip,
-                overrideEntries = overrideEntries,
-                overridesFolder = overridesFolder
+                file = zipFile,
             )
         } catch (e: ModpackException) {
-            zip.close()
             throw e
         } catch (e: Exception) {
-            zip.close()
             throw ModpackException("处理整合包时出错: ${e.message}")
+        } finally {
+            withContext(Dispatchers.IO) {
+                zip.close()
+            }
         }
     }
 

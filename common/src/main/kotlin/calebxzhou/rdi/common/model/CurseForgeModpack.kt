@@ -2,9 +2,7 @@ package calebxzhou.rdi.common.model
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import java.io.Closeable
 import java.io.File
-import java.util.zip.ZipFile
 
 /**
  * calebxzhou @ 2025-12-23 13:13
@@ -13,12 +11,7 @@ import java.util.zip.ZipFile
 data class CurseForgeModpackData(
     val manifest: CurseForgePackManifest,
     val file: File,
-    val zip: ZipFile,
-    val overrideEntries: List<java.util.zip.ZipEntry>,
-    val overridesFolder: String
-): Closeable {
-    override fun close() = zip.close()
-}
+)
 
 @Serializable
 data class CurseForgePackManifest(
