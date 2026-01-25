@@ -86,13 +86,12 @@ fun ModpackInfoScreen(
                     mods = emptyList()
                     scope.launch {
                         val loaded = withContext(Dispatchers.IO) {
-                            runCatching { latest.mods.fillCurseForgeVo() }.getOrNull()
+                            runCatching { latest.mods.fillCurseForgeVo() }.getOrElse {
+                                it.printStackTrace();
+                                emptyList()
+                            }
                         }
-                        if (loaded != null) {
-                            mods = loaded
-                        } else {
-                            errorMessage = "载入Mod信息失败"
-                        }
+                        mods = loaded
                         modsLoading = false
                     }
                 } else {
