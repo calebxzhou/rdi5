@@ -3,7 +3,7 @@ package calebxzhou.rdi.client.service
 import calebxzhou.mykotutils.hwspec.HwSpec
 import calebxzhou.mykotutils.std.Ok
 import calebxzhou.rdi.client.auth.LocalCredentials
-import calebxzhou.rdi.client.auth.LoginInfo
+import calebxzhou.rdi.client.model.LoginInfo
 import calebxzhou.rdi.client.net.loggedAccount
 import calebxzhou.rdi.client.net.server
 import calebxzhou.rdi.client.service.PlayerService.getPlayerInfos

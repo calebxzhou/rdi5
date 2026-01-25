@@ -1,22 +1,14 @@
 package calebxzhou.rdi.client.auth
 
 import calebxzhou.rdi.RDIClient
+import calebxzhou.rdi.client.model.LoginInfo
 import calebxzhou.rdi.common.serdesJson
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import org.bson.types.ObjectId
 import java.io.File
 
-@Serializable
-data class LoginInfo(
-    val qq: String,
-    val name:String?="RDI玩家",
-    val pwd: String,
-    var lastLoggedTime: Long = System.currentTimeMillis(),
-){
-}
-val localCreds
-    get() = LocalCredentials.read()
+
 @Serializable
 data class LocalCredentials(
     var loginInfos: MutableMap< @Contextual ObjectId,LoginInfo> = hashMapOf(),
