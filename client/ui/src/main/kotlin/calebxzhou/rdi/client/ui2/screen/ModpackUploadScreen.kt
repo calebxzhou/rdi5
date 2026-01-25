@@ -234,7 +234,6 @@ private suspend fun selectModpackFile(
     } catch (e: Exception) {
         onError("解析整合包失败: ${e.message}")
         onProgress("解析整合包失败: ${e.message}")
-        modpackData.close()
     }
 }
 
@@ -327,7 +326,6 @@ private suspend fun uploadModpack(
             appendLine("传完了 服务器要开始构建 等5分钟 结果发你信箱里")
         }
     )
-    data.close()
 }
 
 private suspend fun getOrCreateModpack(
