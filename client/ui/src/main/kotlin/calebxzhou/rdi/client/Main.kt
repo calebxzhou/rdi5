@@ -152,6 +152,10 @@ fun main() = application {
                         onOpenMcPlay = { args ->
                             McPlayStore.current = args
                             navController.navigate(McPlayView)
+                        },
+                        onOpenTask = { task ->
+                            TaskStore.current = task
+                            navController.navigate(TaskView)
                         }
                     )
                 }
@@ -166,6 +170,10 @@ fun main() = application {
                         onOpenMcPlay = { args ->
                             McPlayStore.current = args
                             navController.navigate(McPlayView)
+                        },
+                        onOpenTask = { task ->
+                            TaskStore.current = task
+                            navController.navigate(TaskView)
                         },
                         onOpenHostEdit = { host ->
                             navController.navigate(

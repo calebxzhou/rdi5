@@ -38,6 +38,7 @@ import calebxzhou.rdi.client.net.loggedAccount
 import calebxzhou.rdi.client.net.rdiRequest
 import calebxzhou.rdi.client.net.rdiRequestU
 import calebxzhou.rdi.client.net.server
+import calebxzhou.rdi.client.service.ModpackService.StartPlayResult
 import calebxzhou.rdi.client.service.ModpackService.startPlay
 import calebxzhou.rdi.client.ui2.McPlayArgs
 import calebxzhou.rdi.client.ui2.BottomSnakebar
@@ -59,6 +60,7 @@ import calebxzhou.rdi.client.ui2.comp.ModpackCard
 import calebxzhou.rdi.common.extension.isAdmin
 import calebxzhou.rdi.common.model.Host
 import calebxzhou.rdi.common.model.Modpack
+import calebxzhou.rdi.common.model.Task
 import calebxzhou.rdi.model.Role
 import io.ktor.client.plugins.sse.SSEBufferPolicy
 import io.ktor.http.HttpMethod
@@ -76,7 +78,8 @@ fun HostInfoScreen(
     onBack: () -> Unit = {},
     onOpenModpackInfo: ((String) -> Unit)? = null,
     onOpenMcPlay: ((McPlayArgs) -> Unit)? = null,
-    onOpenHostEdit: ((Host.DetailVo) -> Unit)? = null
+    onOpenHostEdit: ((Host.DetailVo) -> Unit)? = null,
+    onOpenTask: ((Task) -> Unit)? = null
 ) {
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -98,6 +101,7 @@ fun HostInfoScreen(
     var logStreamSseJob by remember { mutableStateOf<Job?>(null) }
     var showInviteDialog by remember { mutableStateOf(false) }
     var inviteQq by remember { mutableStateOf("") }
+    var installConfirmTask by remember { mutableStateOf<Task?>(null) }
 
     fun reload() {
         loading = true
@@ -212,10 +216,17 @@ fun HostInfoScreen(
                                 errorMessage = e.message ?: "无法开始游玩"
                                 return@launch
                             }
-                            if (onOpenMcPlay != null) {
-                                onOpenMcPlay(args)
-                            } else {
-                                errorMessage = "暂不支持在此页面游玩"
+                            when (args) {
+                                is StartPlayResult.Ready -> {
+                                    if (onOpenMcPlay != null) {
+                                        onOpenMcPlay(args.args)
+                                    } else {
+                                        errorMessage = "暂不支持在此页面游玩"
+                                    }
+                                }
+                                is StartPlayResult.NeedInstall -> {
+                                    installConfirmTask = args.task
+                                }
                             }
                         }
                     }
@@ -546,6 +557,22 @@ fun HostInfoScreen(
                     Text("取消")
                 }
             }
+        )
+    }
+
+    installConfirmTask?.let { task ->
+        ConfirmDialog(
+            title = "未下载整合包",
+            message = "未下载此地图的整合包，是否立即下载？",
+            onConfirm = {
+                installConfirmTask = null
+                if (onOpenTask != null) {
+                    onOpenTask(task)
+                } else {
+                    errorMessage = "暂不支持在此页面下载"
+                }
+            },
+            onDismiss = { installConfirmTask = null }
         )
     }
 

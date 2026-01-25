@@ -231,7 +231,12 @@ object ModpackService {
         return true
     }
 
-    suspend fun Host.DetailVo.startPlay(): McPlayArgs {
+    sealed class StartPlayResult {
+        data class Ready(val args: McPlayArgs) : StartPlayResult()
+        data class NeedInstall(val task: Task) : StartPlayResult()
+    }
+
+    suspend fun Host.DetailVo.startPlay(): StartPlayResult {
         val statusResp = server.makeRequest<HostStatus>("host/${_id}/status")
         val status = statusResp.data ?: throw RequestError("获取地图状态失败: ${statusResp.msg}")
 
@@ -242,7 +247,8 @@ object ModpackService {
             throw RequestError("未安装MC版本资源：${modpack.mcVer.mcVer}")
         }
         if (!isVersionInstalled(modpack.id, packVer)) {
-            throw RequestError("未下载此地图的整合包，无法游玩")
+            val task = version.startInstall(modpack.mcVer, modpack.modloader, modpack.name)
+            return StartPlayResult.NeedInstall(task)
         }
 
         when (status) {
@@ -268,11 +274,13 @@ object ModpackService {
             "-Drdi.host.name=${name}",
             "-Drdi.host.port=${port}"
         )
-        return McPlayArgs(
+        return StartPlayResult.Ready(
+            McPlayArgs(
             title = "游玩 $name",
             mcVer = modpack.mcVer,
             versionId = versionId,
             jvmArgs = args
+            )
         )
     }
 

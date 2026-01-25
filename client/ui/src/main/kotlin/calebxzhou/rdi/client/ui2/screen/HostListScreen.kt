@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import calebxzhou.rdi.client.Const
 import calebxzhou.rdi.client.auth.LocalCredentials
 import calebxzhou.rdi.client.net.server
+import calebxzhou.rdi.client.service.ModpackService.StartPlayResult
 import calebxzhou.rdi.client.service.ModpackService.startPlay
 import calebxzhou.rdi.client.ui2.McPlayArgs
 import calebxzhou.rdi.client.ui2.CircleIconButton
@@ -22,6 +23,7 @@ import calebxzhou.rdi.client.ui2.MainColumn
 import calebxzhou.rdi.client.ui2.TitleRow
 import calebxzhou.rdi.client.ui2.comp.HostCard
 import calebxzhou.rdi.common.model.Host
+import calebxzhou.rdi.common.model.Task
 import kotlinx.coroutines.launch
 import org.bson.types.ObjectId
 
@@ -35,13 +37,15 @@ fun HostListScreen(
     onOpenWorldList: (() -> Unit)? = null,
     onOpenHostInfo: ((String) -> Unit)? = null,
     onOpenModpackList: (() -> Unit)? = null,
-    onOpenMcPlay: ((McPlayArgs) -> Unit)? = null
+    onOpenMcPlay: ((McPlayArgs) -> Unit)? = null,
+    onOpenTask: ((Task) -> Unit)? = null
 ) {
     val scope = rememberCoroutineScope()
     var hosts by remember { mutableStateOf<List<Host.BriefVo>>(emptyList()) }
     var showMy by remember { mutableStateOf(false) }
     var showCarrierDialog by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var installConfirmTask by remember { mutableStateOf<Task?>(null) }
     val creds = remember { LocalCredentials.read() }
     var selectedCarrier by remember { mutableStateOf(creds.carrier) }
 
@@ -111,10 +115,17 @@ fun HostListScreen(
                                 errorMessage = e.message ?: "无法开始游玩"
                                 return@launch
                             }
-                            if (onOpenMcPlay != null) {
-                                onOpenMcPlay(args)
-                            } else {
-                                errorMessage = "暂不支持在此页面游玩"
+                            when (args) {
+                                is StartPlayResult.Ready -> {
+                                    if (onOpenMcPlay != null) {
+                                        onOpenMcPlay(args.args)
+                                    } else {
+                                        errorMessage = "暂不支持在此页面游玩"
+                                    }
+                                }
+                                is StartPlayResult.NeedInstall -> {
+                                    installConfirmTask = args.task
+                                }
                             }
                         }
                     }, onClick = {
@@ -145,6 +156,26 @@ fun HostListScreen(
                 creds.save()
             },
             onDismiss = { showCarrierDialog = false }
+        )
+    }
+    installConfirmTask?.let { task ->
+        AlertDialog(
+            onDismissRequest = { installConfirmTask = null },
+            title = { Text("未下载整合包") },
+            text = { Text("未下载此地图的整合包，是否立即下载？") },
+            confirmButton = {
+                TextButton(onClick = {
+                    installConfirmTask = null
+                    if (onOpenTask != null) {
+                        onOpenTask(task)
+                    } else {
+                        errorMessage = "暂不支持在此页面下载"
+                    }
+                }) { Text("下载") }
+            },
+            dismissButton = {
+                TextButton(onClick = { installConfirmTask = null }) { Text("取消") }
+            }
         )
     }
 }
