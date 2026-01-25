@@ -1,6 +1,7 @@
 package calebxzhou.rdi.mc.client.mixin;
 
 import calebxzhou.rdi.mc.common.JpegUtils;
+import calebxzhou.rdi.mc.common.RDI;
 import com.mojang.blaze3d.platform.NativeImage;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -20,15 +21,15 @@ public class mJpgImage {
             at = @At(value = "INVOKE", target = "Lnet/minecraft/util/PngInfo;validateHeader(Ljava/nio/ByteBuffer;)V"))
     private static void RDI$AlsoValidateJpegHeader(ByteBuffer buffer) {
         //优先读png 失败了读jpg
-        try {
+        /*try {
             JpegUtils.validatePngHeader(buffer);
-        } catch (IOException e) {
+        } catch (Exception e) {
             // If JPEG validation fails, try PNG validation
             try {
                 JpegUtils.validateJpegHeader(buffer);
-            } catch (IOException pngException) {
-                throw new RuntimeException("Invalid image format: neither PNG nor JPEG", e);
+            } catch (Exception pngException) {
+                pngException.printStackTrace();
             }
-        }
+        }*/
     }
 }
