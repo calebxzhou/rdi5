@@ -3,7 +3,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 val ktorVersion = "3.3.3"
-val version = "5.10.2"
+val version = "5.10.3"
 project.version = version
 plugins {
     kotlin("jvm") version "2.2.21"
