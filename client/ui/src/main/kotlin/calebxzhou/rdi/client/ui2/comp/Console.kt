@@ -97,6 +97,10 @@ fun Console(
                 .align(Alignment.TopEnd)
                 .padding(8.dp)
         ) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalAlignment = Alignment.End
+            ) {
             CircleIconButton(
                 icon = "\uEF11",
                 tooltip = "导出日志",
@@ -111,6 +115,20 @@ fun Console(
                         showError = result.exceptionOrNull()?.message ?: "导出失败"
                     }
                 }
+            }
+            // go downmost
+            CircleIconButton(
+                icon = "\uF103",
+                tooltip = "翻到最下面",
+                bgColor = MaterialColor.PINK_900.color,
+                size = 32
+            ){
+                scope.launch {
+                    if (lineCount > 0) {
+                        listState.animateScrollToItem(lineCount - 1)
+                    }
+                }
+            }
             }
         }
     }
