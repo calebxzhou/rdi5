@@ -222,8 +222,12 @@ fun main() = application {
                         onOpenWardrobe = { navController.navigate(Wardrobe) },
                         onOpenHostList = { navController.navigate(HostList) },
                         onOpenMail = { navController.navigate(Mail) },
-                        onOpenModpackManage = { navController.navigate(ModpackManage) }
+                        onOpenModpackManage = { navController.navigate(ModpackManage) },
+                        onOpenSettings = { navController.navigate(Setting) }
                     )
+                }
+                composable<Setting> {
+                    SettingScreen({navController.navigate(Profile)})
                 }
                 composable<ModpackList> {
                     ModpackListScreen(

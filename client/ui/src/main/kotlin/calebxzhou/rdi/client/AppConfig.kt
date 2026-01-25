@@ -1,5 +1,6 @@
 package calebxzhou.rdi.client
 
+import calebxzhou.rdi.CONF
 import calebxzhou.rdi.lgr
 import kotlinx.serialization.Serializable
 import net.peanuuutz.tomlkt.Toml
@@ -10,7 +11,11 @@ import java.io.File
  */
 @Serializable
 data class AppConfig(
-    val useMirror: Boolean = true
+    val useMirror: Boolean = true,
+    //不限制
+    val maxMemory: Int=0,
+    val jre21Path: String?=null,
+    val jre8Path: String?=null,
 ){
     companion object {
         private val configFile = File("config.toml")
@@ -28,12 +33,14 @@ data class AppConfig(
             }
         }
 
-        private fun save(config: AppConfig) {
+        fun save(config: AppConfig) {
             try {
+                CONF = config
                 configFile.writeText(Toml.encodeToString(serializer(), config))
             } catch (e: Exception) {
                 lgr.warn(e) { "save config failed" }
             }
         }
+
     }
 }

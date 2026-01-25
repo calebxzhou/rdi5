@@ -34,6 +34,7 @@ fun ProfileScreen(
     onOpenHostList: (() -> Unit)? = null,
     onOpenMail: (() -> Unit)? = null,
     onOpenModpackManage: (() -> Unit)? = null,
+    onOpenSettings: (() -> Unit)? = null,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -45,7 +46,9 @@ fun ProfileScreen(
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                HeadButton(loggedAccount._id)
+                HeadButton(loggedAccount._id){
+                    showChangeDialog = true
+                }
                 ImageIconButton("grass_block","MC资源及整合包管理", ) {
                     onOpenModpackManage?.invoke()
                 }
@@ -64,10 +67,10 @@ fun ProfileScreen(
                 Spacer(Modifier.width(12.dp))
                 CircleIconButton(
                     "\uEB51",
-                    "账户信息设置",
+                    "设置",
                     bgColor = Color.Gray
                 ) {
-                    showChangeDialog = true
+                    onOpenSettings?.invoke()
                 }
                 Spacer(Modifier.width(12.dp))
                 CircleIconButton("\uEE1C","衣柜", bgColor = MaterialColor.PINK_900.color,contentPadding = PaddingValues(start = 1.dp)) {

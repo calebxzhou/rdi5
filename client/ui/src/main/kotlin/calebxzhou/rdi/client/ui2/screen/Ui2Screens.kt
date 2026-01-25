@@ -18,6 +18,7 @@ object Wardrobe
 @Serializable object ModpackUpload
 @Serializable object Login
 @Serializable object Profile
+@Serializable object Setting
 @Serializable object HostList
 @Serializable data class HostInfo(val hostId: String)
 @Serializable object Mail
