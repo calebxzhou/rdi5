@@ -1058,6 +1058,8 @@ object HostService {
 
         val requesterId = _id
         val visibleHosts = hosts.filter { host ->
+            if (this.isDav)
+                return@filter true
             //官服永远显示
             if (PlayerService.getName(host.ownerId) == "davickk")
                 return@filter true
