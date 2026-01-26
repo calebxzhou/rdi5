@@ -173,7 +173,7 @@ fun registerCopyTask(name: String, extraDestinations: List<String> = emptyList()
     }
 }
 registerCopyTask("出core2-local")
-registerCopyTask("出core2-release", listOf("\\\\rdi5\\rdi55\\ihq\\client-libs\\lib"))
+registerCopyTask("出core2-release", listOf("\\\\rdi\\rdi55\\ihq\\client-libs\\lib"))
 tasks.register<Exec>("makeShipPack") {
    // dependsOn(tasks.named("出core2-local"))
 
