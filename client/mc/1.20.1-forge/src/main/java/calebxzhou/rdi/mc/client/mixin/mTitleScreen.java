@@ -17,6 +17,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import static calebxzhou.rdi.mc.client.RDIMain.JOIN_BUTTON;
 import static calebxzhou.rdi.mc.common.RDI.*;
 
 /**
@@ -39,16 +40,7 @@ public class mTitleScreen extends Screen {
 
     @Inject(method = "createNormalMenuOptions", at = @At("HEAD"))
     private void RDI$AddMultiplayerButton(int y, int rowHeight, CallbackInfo ci) {
-         addRenderableWidget(Button.builder(Component.literal("进入主机：" + HOST_NAME),(btn)->{
-            HostAndPort hp = HostAndPort.fromString(GAME_IP);
-            ConnectScreen.startConnecting(
-                    new TitleScreen(),
-                    this.getMinecraft(),
-                    new ServerAddress(hp.getHost(), hp.getPort()),
-                    new ServerData("rdi", GAME_IP, false),
-                    false
-            );
-        }).bounds(0,0,width,100).build());
+         addRenderableWidget(JOIN_BUTTON);
     }
 
 }
