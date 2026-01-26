@@ -13,8 +13,10 @@ data class Mod(
     val fileId: String,
     val hash: String,
     var side: Side= Side.BOTH,
+    val downloadUrls: List<String> = emptyList(),
 ) {
-    val fileName = "${slug}_${platform}_${hash}.jar"
+    val fileName
+        get() = "${slug}_${platform}_${hash}.jar"
     val targetPath get() = DL_MOD_DIR.resolve(fileName).toPath()
 
     enum class Side{
