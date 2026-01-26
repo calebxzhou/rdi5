@@ -231,6 +231,7 @@ object ModpackService {
     internal var testDbcl: MongoCollection<Modpack>? = null
     val dbcl: MongoCollection<Modpack>
         get() = testDbcl ?: realDbcl
+
     //private val clientNeedDirs = listOf("config", "mods", "defaultconfigs", "kubejs", "global_packs", "resourcepacks")
     private val disallowedClientPaths = setOf("config/fancymenu")
     private val allowedQuestLangFiles = setOf("en_us.snbt", "zh_cn.snbt")
@@ -532,7 +533,7 @@ object ModpackService {
         val downloadedMods = CurseForgeApi.downloadMods(
             mods,
         ) { cfm, prog ->
-            onProgress("${cfm.slug} mod下载中 ${(prog.fraction*100f).toFixed(2)}%")
+            onProgress("${cfm.slug} mod下载中 ${(prog.fraction * 100f).toFixed(2)}%")
         }.getOrElse {
             if (it is CFDownloadModException) {
                 it.failed.forEach { (mod, ex) ->
@@ -602,11 +603,20 @@ object ModpackService {
         //移除备份有关的
         mods.removeIf { it.slug.contains("backup") }
         //移除fancymenu以及相关的
-        mods.removeIf { it.slug.contains("fancymenu") }
-        mods.removeIf { it.slug.contains("spiffyhud") }
-        mods.removeIf { it.slug.contains("drippy-loading-screen") }
-        mods.removeIf { it.slug.contains("tbs-main-menu-override") }
-        mods.removeIf { it.slug.contains("welcome-screen") }
+        mods.removeIf { it.slug == ("fancymenu") }
+        mods.removeIf { it.slug == ("reimagined-intro") }
+        mods.removeIf { it.slug == ("spiffyhud") }
+        mods.removeIf { it.slug == ("drippy-loading-screen") }
+        mods.removeIf { it.slug == ("tbs-main-menu-override") }
+        mods.removeIf { it.slug == ("welcome-screen") }
+        mods.removeIf { it.slug == ("fancymenu-resource-pack-updater-neoforge") }
+        mods.removeIf { it.slug == ("start-screen") }
+        mods.removeIf { it.slug == ("fancymenu-video") }
+        mods.removeIf { it.slug == ("fancymenu-logspam-fix") }
+        mods.removeIf { it.slug == ("video-extension-for-fancymenu-forge") }
+        mods.removeIf { it.slug == ("stargate-journey-loading-screen") }
+        mods.removeIf { it.slug == ("fancymenu-system-interactions-addon") }
+        mods.removeIf { it.slug == ("audio-extension-for-fancymenu-forge") }
         //移除powerful-dummy 不兼容
         mods.removeIf { it.slug == "powerful-dummy" }
         //国内用不了
@@ -616,6 +626,8 @@ object ModpackService {
         mods.find { it.slug == "loot-beams-refork" }?.side = Mod.Side.BOTH
         //仅客户端
         mods.find { it.slug == "status-effect-bars-reforged" }?.side = Mod.Side.CLIENT
+        mods.find { it.slug == "mafglib" }?.side = Mod.Side.CLIENT
+        mods.find { it.slug == "flighthud-reborn" }?.side = Mod.Side.CLIENT
         //这个粒子mod要求服务端装 不然找不到粒子
         mods.find { it.slug == "particular-reforged" }?.side = Mod.Side.BOTH
         //没有的话整理背包会卡服
@@ -659,7 +671,7 @@ object ModpackService {
                         it.targetPath
                     )
                 }) { cfmod, prog ->
-                onProgress("mod下载中：${cfmod.slug} ${(prog.fraction*100f).toFixed(2)}")
+                onProgress("mod下载中：${cfmod.slug} ${(prog.fraction * 100f).toFixed(2)}")
             }.getOrThrow()
             onProgress("所有mod下载完成 开始安装。。${downloadedMods.size}个mod")
             onProgress("构建客户端版。。")
@@ -694,6 +706,13 @@ object ModpackService {
                     }
                     //probeJS缓存 没有用
                     if (relativeLower.startsWith("kubejs/probe/")) {
+                        return@forEach
+                    }
+                    //不要缓存
+                    if (relativeLower.contains("cache")) {
+                        return@forEach
+                    }
+                    if (relativeLower.contains("yes_steve_model") || relativeLower.contains("史蒂夫模型")) {
                         return@forEach
                     }
                     //太大了 客户端不需要
