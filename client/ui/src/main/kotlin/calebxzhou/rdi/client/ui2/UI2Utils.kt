@@ -24,9 +24,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.ImageBitmap 
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.decodeToImageBitmap
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.SpanStyle
@@ -215,7 +217,6 @@ private fun IconButtonBase(
     val ringPadding = 4.dp
     val ringStroke = 3.dp
     val useLongPress = longPressDelay > 0L
-    val ringSize = if (useLongPress) (size.dp + ringPadding * 2) else size.dp
     val pressModifier = if (useLongPress) {
         Modifier.pointerInput(longPressDelay, enabled) {
             if (!enabled) return@pointerInput
@@ -236,7 +237,7 @@ private fun IconButtonBase(
                             onClick()
                         }
                     }
-                    val released = tryAwaitRelease()
+                    val released = tryAwaitRelease() 
                     if (released) {
                         job.cancel()
                         scope.launch { progress.snapTo(0f) }
@@ -248,29 +249,38 @@ private fun IconButtonBase(
         Modifier
     }
     val drawButton = @Composable {
-        Box(modifier = Modifier.size(ringSize)) {
-            if (useLongPress && progress.value > 0f) {
-                Canvas(modifier = Modifier.matchParentSize()) {
-                    val strokePx = ringStroke.toPx()
-                    val canvasSize = this.size
-                    val canvasMin = minOf(canvasSize.width, canvasSize.height)
-                    val diameter = canvasMin - strokePx
-                    val offset = (canvasMin - diameter) / 2f
-                    drawArc(
-                        color = bgColor,
-                        startAngle = -90f,
-                        sweepAngle = progress.value.coerceIn(0f, 1f) * 360f,
-                        useCenter = false,
-                        topLeft = Offset(offset, offset),
-                        size = Size(diameter, diameter),
-                        style = androidx.compose.ui.graphics.drawscope.Stroke(
-                            width = strokePx,
-                            cap = StrokeCap.Round
+        Box(
+            modifier = Modifier
+                .size(size.dp)
+                .graphicsLayer { clip = false }
+                .drawWithContent {
+                    // Draw ring behind content if long press is active
+                    if (useLongPress && progress.value > 0f) {
+                        val strokePx = ringStroke.toPx()
+                        val ringPaddingPx = ringPadding.toPx()
+                        val drawSize = this.size
+                        val minDim = minOf(drawSize.width, drawSize.height)
+                        val diameter = minDim + ringPaddingPx * 2 - strokePx
+                        val arcOffset = -ringPaddingPx + strokePx / 2
+                        drawArc(
+                            color = bgColor,
+                            startAngle = -90f,
+                            sweepAngle = progress.value.coerceIn(0f, 1f) * 360f,
+                            useCenter = false,
+                            topLeft = Offset(arcOffset, arcOffset),
+                            size = Size(diameter, diameter),
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(
+                                width = strokePx,
+                                cap = StrokeCap.Round
+                            )
                         )
-                    )
+                    }
+                    drawContent()
                 }
-            }
-            content(Modifier.align(Alignment.Center).size(size.dp).then(pressModifier))
+                .then(pressModifier),
+            contentAlignment = Alignment.Center
+        ) {
+            content(Modifier.size(size.dp))
         }
     }
     tooltip?.let { tip ->
@@ -300,21 +310,36 @@ fun ImageIconButton(
         longPressDelay = longPressDelay,
         onClick = onClick
     ) { modifier ->
-        TextButton(
-            onClick = if (longPressDelay > 0L) ({}) else onClick,
-            shape = CircleShape,
-            modifier = modifier,
-            contentPadding = contentPadding,
-            colors = ButtonDefaults.buttonColors(
-                backgroundColor = bgColor
-            ),
-            enabled = enabled
-        ) {
-            Image(
-                bitmap = iconBitmap(icon),
-                contentDescription = tooltip,
-                modifier = Modifier.size((size * 2 / 3).dp)
-            )
+        if (longPressDelay > 0L) {
+            // Use Box instead of TextButton for long press mode to avoid event consumption
+            Box(
+                modifier = modifier
+                    .background(bgColor, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    bitmap = iconBitmap(icon),
+                    contentDescription = tooltip,
+                    modifier = Modifier.size((size * 2 / 3).dp)
+                )
+            }
+        } else {
+            TextButton(
+                onClick = onClick,
+                shape = CircleShape,
+                modifier = modifier,
+                contentPadding = contentPadding,
+                colors = ButtonDefaults.buttonColors(
+                    backgroundColor = bgColor
+                ),
+                enabled = enabled
+            ) {
+                Image(
+                    bitmap = iconBitmap(icon),
+                    contentDescription = tooltip,
+                    modifier = Modifier.size((size * 2 / 3).dp)
+                )
+            }
         }
     }
 }
@@ -342,18 +367,33 @@ fun CircleIconButton(
         longPressDelay = longPressDelay,
         onClick = onClick
     ) { modifier ->
-        TextButton(
-            onClick = if (longPressDelay > 0L) ({}) else onClick,
-            shape = CircleShape,
-            modifier = modifier,
-            colors = ButtonDefaults.buttonColors(
-                backgroundColor = bgColor,
-                contentColor = iconColor
-            ),
-            contentPadding = contentPadding,
-            enabled = enabled
-        ) {
-            Text(text = icon.asIconText, fontSize = TextUnit(size * 0.5f, TextUnitType.Sp))
+        if (longPressDelay > 0L) {
+            // Use Box instead of TextButton for long press mode to avoid event consumption
+            Box(
+                modifier = modifier
+                    .background(bgColor, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = icon.asIconText,
+                    fontSize = TextUnit(size * 0.5f, TextUnitType.Sp),
+                    color = iconColor
+                )
+            }
+        } else {
+            TextButton(
+                onClick = onClick,
+                shape = CircleShape,
+                modifier = modifier,
+                colors = ButtonDefaults.buttonColors(
+                    backgroundColor = bgColor,
+                    contentColor = iconColor
+                ),
+                contentPadding = contentPadding,
+                enabled = enabled
+            ) {
+                Text(text = icon.asIconText, fontSize = TextUnit(size * 0.5f, TextUnitType.Sp))
+            }
         }
     }
 }
