@@ -4,8 +4,6 @@ import calebxzhou.rdi.common.exception.RequestError
 import calebxzhou.rdi.common.model.HostStatus
 import calebxzhou.rdi.common.model.Response
 import calebxzhou.rdi.common.net.ktorClient
-import com.sun.tools.javac.resources.ct
-import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.netty.bootstrap.Bootstrap
@@ -22,6 +20,11 @@ import io.netty.util.AttributeKey
 import io.netty.util.ReferenceCountUtil
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
+import java.io.File
+import java.net.InetSocketAddress
+import java.util.Base64
+import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Enhanced handler for frontend connections with simplified port-based routing
@@ -35,6 +38,32 @@ class DynamicProxyFrontendHandler(
 
     companion object {
         val ATTR_PROTOCOL_VER = AttributeKey.valueOf<Int>("protocolVer")
+        // Track all active client connections for status response
+        val activeConnections: MutableSet<Channel> = ConcurrentHashMap.newKeySet()
+        
+        // Cached favicon as base64 data URI (loaded once at startup)
+        val faviconDataUri: String? by lazy {
+            loadFavicon()
+        }
+        
+        private fun loadFavicon(): String? {
+            val faviconFile = File("favicon.png")
+            return if (faviconFile.exists() && faviconFile.isFile) {
+                try {
+                    val bytes = faviconFile.readBytes()
+                    val base64 = Base64.getEncoder().encodeToString(bytes)
+                    "data:image/png;base64,$base64".also {
+                        lgr.info { "Loaded favicon.png (${bytes.size} bytes)" }
+                    }
+                } catch (e: Exception) {
+                    lgr.warn { "Failed to load favicon.png: ${e.message}" }
+                    null
+                }
+            } else {
+                lgr.info { "No favicon.png found in working directory" }
+                null
+            }
+        }
     }
 
     private var backendChannel: Channel? = null
@@ -42,9 +71,11 @@ class DynamicProxyFrontendHandler(
     private var currentBackendPort: Int = defaultBackendPort
     private val pendingBuffer = mutableListOf<Any>()
     private var handshakeReceived = false
+    private var isStatusRequest = false
 
     override fun channelActive(ctx: ChannelHandlerContext) {
-        lgr.info { "Client connected, waiting for Minecraft handshake" }
+        activeConnections.add(ctx.channel())
+        lgr.info { "Client connected, waiting for Minecraft handshake. Active connections: ${activeConnections.size}" }
     }
 
     override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
@@ -61,7 +92,21 @@ class DynamicProxyFrontendHandler(
             return
         }
 
-        // After handshake, forward all data normally
+        // Handle status request packets locally
+        if (isStatusRequest) {
+            val buffer = msg as ByteBuf
+            try {
+                handleStatusPacket(ctx, buffer)
+            } catch (e: Exception) {
+                lgr.error(e) { "Error handling status packet" }
+                ctx.channel().close()
+            } finally {
+                ReferenceCountUtil.release(msg)
+            }
+            return
+        }
+
+        // After handshake (login), forward all data normally
         forwardToBackend(ctx, msg)
     }
 
@@ -101,11 +146,20 @@ class DynamicProxyFrontendHandler(
 
             // 5. Read Port (UShort)
             val port = parser.readUnsignedShort()
-
+            val nextState = readVarInt(parser)
             handshakeReceived = true
-            lgr.info { "Handshake received: Port $port Version $protocolVersion" }
+            ctx.channel().attr(ATTR_PROTOCOL_VER).set(protocolVersion)
+            lgr.info { "Handshake received: Port $port Version $protocolVersion NextState $nextState" }
 
-            // Determine backend based on port
+            // Handle status request (Server List Ping)
+            if (nextState == 1) {
+                isStatusRequest = true
+                lgr.info { "Status request detected, will respond locally" }
+                // Keep the frame decoder for status packets
+                return
+            }
+
+            // nextState == 2: Login flow - determine backend based on port
             if (port in 50000..59999 || port == 25565) {
                 val status = runBlocking {
                     getHostStatus(port).getOrElse {
@@ -128,7 +182,6 @@ class DynamicProxyFrontendHandler(
                 lgr.info { "Connecting to backend 127.0.0.1:$port " }
                 currentBackendHost = "127.0.0.1"
                 currentBackendPort = port
-                ctx.channel().attr(ATTR_PROTOCOL_VER).set(protocolVersion)
                 connectToBackend(ctx)
 
                 // Forward the handshake packet
@@ -264,6 +317,8 @@ class DynamicProxyFrontendHandler(
     }
 
     override fun channelInactive(ctx: ChannelHandlerContext) {
+        activeConnections.remove(ctx.channel())
+        lgr.info { "Client disconnected. Active connections: ${activeConnections.size}" }
         if (backendChannel?.isActive == true) {
             closeOnFlush(backendChannel!!)
         }
@@ -320,5 +375,115 @@ class DynamicProxyFrontendHandler(
         val bytes = value.toByteArray(Charsets.UTF_8)
         writeVarInt(bytes.size, buffer)
         buffer.writeBytes(bytes)
+    }
+
+    /**
+     * Handle status request packets (Server List Ping)
+     * Packet 0x00 = Status Request, Packet 0x01 = Ping Request
+     */
+    private fun handleStatusPacket(ctx: ChannelHandlerContext, buffer: ByteBuf) {
+        val parser = buffer.slice()
+        
+        // Read packet length (VarInt)
+        readVarInt(parser)
+        
+        // Read packet ID
+        val packetId = readVarInt(parser)
+        
+        when (packetId) {
+            0x00 -> {
+                // Status Request - respond with server status JSON
+                lgr.info { "Received status request, sending response" }
+                sendStatusResponse(ctx)
+            }
+            0x01 -> {
+                // Ping Request - echo back the payload
+                val payload = parser.readLong()
+                lgr.info { "Received ping request with payload $payload" }
+                sendPingResponse(ctx, payload)
+            }
+            else -> {
+                lgr.info { "Unknown status packet ID: $packetId" }
+                ctx.channel().close()
+            }
+        }
+    }
+
+    /**
+     * Send the server status response JSON
+     * Format: https://minecraft.wiki/w/Java_Edition_protocol/Server_List_Ping#Status_Response
+     */
+    private fun sendStatusResponse(ctx: ChannelHandlerContext) {
+        val protocolVersion = ctx.channel().attr(ATTR_PROTOCOL_VER).get() ?: 0
+        val onlinePlayers = activeConnections.size
+        
+        // Build player sample from active connections
+        val playerSamples = activeConnections.mapNotNull { channel ->
+            val remoteAddress = channel.remoteAddress()
+            if (remoteAddress is InetSocketAddress) {
+                val ip = remoteAddress.address.hostAddress
+                val port = remoteAddress.port
+                val maskedName = maskIpAddress(ip, port)
+                val uuid = UUID.nameUUIDFromBytes("$ip:$port".toByteArray(Charsets.UTF_8))
+                """{"name":"$maskedName","id":"$uuid"}"""
+            } else null
+        }.joinToString(",")
+        
+        // Build favicon field if available
+        val faviconField = faviconDataUri?.let { """"favicon":"$it",""" } ?: ""
+        
+        val statusJson = """{${faviconField}"version":{"name":"RDI Proxy","protocol":$protocolVersion},"players":{"max":88888,"online":$onlinePlayers,"sample":[$playerSamples]},"description":{"text":"RDI Proxy Server"}}"""
+        
+        lgr.info { "Sending status response: $statusJson" }
+        
+        val buffer = ctx.alloc().buffer()
+        val dataBuffer = ctx.alloc().buffer()
+        
+        try {
+            writeVarInt(0x00, dataBuffer)  // Packet ID for Status Response
+            writeString(statusJson, dataBuffer)
+            
+            writeVarInt(dataBuffer.readableBytes(), buffer)
+            buffer.writeBytes(dataBuffer)
+            
+            ctx.writeAndFlush(buffer.retain())
+        } finally {
+            dataBuffer.release()
+            buffer.release()
+        }
+    }
+
+    /**
+     * Mask IP address to show only first octet: 192.168.1.100:12345 -> 192.*.*.*:12345
+     */
+    private fun maskIpAddress(ip: String, port: Int): String {
+        val parts = ip.split(".")
+        return if (parts.size == 4) {
+            "${parts[0]}.*.*.*:$port"
+        } else {
+            // IPv6 or other format - just show first segment
+            val firstSegment = ip.split(":").firstOrNull() ?: ip
+            "$firstSegment:***:$port"
+        }
+    }
+
+    /**
+     * Send ping response with the same payload (echo)
+     */
+    private fun sendPingResponse(ctx: ChannelHandlerContext, payload: Long) {
+        val buffer = ctx.alloc().buffer()
+        val dataBuffer = ctx.alloc().buffer()
+        
+        try {
+            writeVarInt(0x01, dataBuffer)  // Packet ID for Ping Response
+            dataBuffer.writeLong(payload)
+            
+            writeVarInt(dataBuffer.readableBytes(), buffer)
+            buffer.writeBytes(dataBuffer)
+            
+            ctx.writeAndFlush(buffer).addListener(ChannelFutureListener.CLOSE)
+        } finally {
+            dataBuffer.release()
+        }
     }
 }
