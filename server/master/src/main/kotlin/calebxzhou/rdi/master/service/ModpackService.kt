@@ -602,21 +602,6 @@ object ModpackService {
     fun Modpack.Version.processMods(modpack: Modpack) {
         //移除备份有关的
         mods.removeIf { it.slug.contains("backup") }
-        //移除fancymenu以及相关的
-        mods.removeIf { it.slug == ("fancymenu") }
-        mods.removeIf { it.slug == ("reimagined-intro") }
-        mods.removeIf { it.slug == ("spiffyhud") }
-        mods.removeIf { it.slug == ("drippy-loading-screen") }
-        mods.removeIf { it.slug == ("tbs-main-menu-override") }
-        mods.removeIf { it.slug == ("welcome-screen") }
-        mods.removeIf { it.slug == ("fancymenu-resource-pack-updater-neoforge") }
-        mods.removeIf { it.slug == ("start-screen") }
-        mods.removeIf { it.slug == ("fancymenu-video") }
-        mods.removeIf { it.slug == ("fancymenu-logspam-fix") }
-        mods.removeIf { it.slug == ("video-extension-for-fancymenu-forge") }
-        mods.removeIf { it.slug == ("stargate-journey-loading-screen") }
-        mods.removeIf { it.slug == ("fancymenu-system-interactions-addon") }
-        mods.removeIf { it.slug == ("audio-extension-for-fancymenu-forge") }
         //移除powerful-dummy 不兼容
         mods.removeIf { it.slug == "powerful-dummy" }
         //国内用不了
