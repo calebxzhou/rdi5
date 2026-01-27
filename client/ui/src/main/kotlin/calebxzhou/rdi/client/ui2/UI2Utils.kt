@@ -421,7 +421,10 @@ fun Space8w() {
 fun Space8h() {
     Spacer(modifier = Modifier.height(8.dp))
 }
-
+@Composable
+fun RowScope.SpacerFullW(){
+    Spacer(Modifier.weight(1f))
+}
 fun iconBitmap(icon: String): ImageBitmap {
     RDIClient.jarResource("assets/icons/$icon.png").use {
         return it.readBytes().decodeToImageBitmap()
