@@ -53,14 +53,14 @@ class DynamicProxyFrontendHandler(
                     val bytes = faviconFile.readBytes()
                     val base64 = Base64.getEncoder().encodeToString(bytes)
                     "data:image/png;base64,$base64".also {
-                        lgr.info { "Loaded favicon.png (${bytes.size} bytes)" }
+                        lgr.debug { "Loaded favicon.png (${bytes.size} bytes)" }
                     }
                 } catch (e: Exception) {
                     lgr.warn { "Failed to load favicon.png: ${e.message}" }
                     null
                 }
             } else {
-                lgr.info { "No favicon.png found in working directory" }
+                lgr.debug { "No favicon.png found in working directory" }
                 null
             }
         }
@@ -432,9 +432,9 @@ class DynamicProxyFrontendHandler(
         // Build favicon field if available
         val faviconField = faviconDataUri?.let { """"favicon":"$it",""" } ?: ""
         
-        val statusJson = """{${faviconField}"version":{"name":"RDI Proxy","protocol":$protocolVersion},"players":{"max":88888,"online":$onlinePlayers,"sample":[$playerSamples]},"description":{"text":"RDI Proxy Server"}}"""
+        val statusJson = """{${faviconField}"version":{"name":"RDI Proxy","protocol":$protocolVersion},"players":{"max":88888,"online":$onlinePlayers,"sample":[$playerSamples]},"description":{"text":"RDI Universal Proxy Server"}}"""
         
-        lgr.info { "Sending status response: $statusJson" }
+        lgr.debug { "Sending status response: $statusJson" }
         
         val buffer = ctx.alloc().buffer()
         val dataBuffer = ctx.alloc().buffer()
