@@ -43,6 +43,7 @@ import java.awt.dnd.DropTargetAdapter
 import java.awt.dnd.DropTargetDragEvent
 import java.awt.dnd.DropTargetDropEvent
 import java.awt.datatransfer.DataFlavor
+import java.net.URI
 import java.nio.file.Files
 import java.nio.file.StandardOpenOption
 import java.util.zip.ZipFile
@@ -278,9 +279,10 @@ private fun installPackDropTarget(
     window: java.awt.Window,
     onOpenTask: (Task) -> Unit
 ) {
+    val uriListFlavor = runCatching { DataFlavor("text/uri-list;class=java.lang.String") }.getOrNull()
     val listener = object : DropTargetAdapter() {
         override fun dragEnter(dtde: DropTargetDragEvent) {
-            if (dtde.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
+            if (supportsFileDrop(dtde.currentDataFlavors, uriListFlavor)) {
                 dtde.acceptDrag(DnDConstants.ACTION_COPY)
             } else {
                 dtde.rejectDrag()
@@ -288,7 +290,7 @@ private fun installPackDropTarget(
         }
 
         override fun dragOver(dtde: DropTargetDragEvent) {
-            if (dtde.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
+            if (supportsFileDrop(dtde.currentDataFlavors, uriListFlavor)) {
                 dtde.acceptDrag(DnDConstants.ACTION_COPY)
             } else {
                 dtde.rejectDrag()
@@ -296,12 +298,35 @@ private fun installPackDropTarget(
         }
 
         override fun drop(dtde: DropTargetDropEvent) {
-            if (!dtde.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) return
-            dtde.acceptDrop(DnDConstants.ACTION_COPY)
-            val files = dtde.transferable.getTransferData(DataFlavor.javaFileListFlavor) as? List<*>
-                ?: return
+            val files = when {
+                dtde.isDataFlavorSupported(DataFlavor.javaFileListFlavor) -> {
+                    dtde.acceptDrop(DnDConstants.ACTION_COPY)
+                    dtde.transferable.getTransferData(DataFlavor.javaFileListFlavor) as? List<*>
+                }
+                uriListFlavor != null && dtde.isDataFlavorSupported(uriListFlavor) -> {
+                    dtde.acceptDrop(DnDConstants.ACTION_COPY)
+                    val data = dtde.transferable.getTransferData(uriListFlavor) as? String
+                    data?.lines()
+                        ?.map { it.trim() }
+                        ?.filter { it.isNotBlank() && !it.startsWith("#") }
+                        ?.mapNotNull { line ->
+                            runCatching { java.io.File(URI(line)) }.getOrNull()
+                        }
+                }
+                dtde.isDataFlavorSupported(DataFlavor.stringFlavor) -> {
+                    dtde.acceptDrop(DnDConstants.ACTION_COPY)
+                    val data = dtde.transferable.getTransferData(DataFlavor.stringFlavor) as? String
+                    data?.lines()
+                        ?.map { it.trim() }
+                        ?.filter { it.isNotBlank() && !it.startsWith("#") }
+                        ?.mapNotNull { line ->
+                            runCatching { java.io.File(URI(line)) }.getOrNull()
+                        }
+                }
+                else -> null
+            } ?: return
             val packFiles = files.filterIsInstance<java.io.File>()
-                .filter { it.name.endsWith(".mc.rdipack", ignoreCase = true) }
+                .filter { it.name.endsWith(".rdipack", ignoreCase = true) }
             if (packFiles.isEmpty()) return
             val task = if (packFiles.size == 1) {
                 buildImportPackTask(packFiles.first())
@@ -314,13 +339,24 @@ private fun installPackDropTarget(
             onOpenTask(task)
         }
     }
-    window.dropTarget = DropTarget(window, listener)
+    window.dropTarget = DropTarget(window, DnDConstants.ACTION_COPY, listener, true)
     (window as? java.awt.Container)?.let { container ->
         attachDropTargetRecursively(container, listener)
     }
     (window as? javax.swing.RootPaneContainer)?.let { root ->
         attachDropTargetRecursively(root.contentPane, listener)
         attachDropTargetRecursively(root.glassPane as? java.awt.Container, listener)
+    }
+}
+
+private fun supportsFileDrop(
+    flavors: Array<DataFlavor>,
+    uriListFlavor: DataFlavor?
+): Boolean {
+    return flavors.any { flavor ->
+        flavor == DataFlavor.javaFileListFlavor ||
+            (uriListFlavor != null && flavor == uriListFlavor) ||
+            flavor == DataFlavor.stringFlavor
     }
 }
 
