@@ -24,7 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap 
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.decodeToImageBitmap
 import androidx.compose.ui.draw.drawWithContent
@@ -36,9 +36,12 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.TextUnitType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import calebxzhou.mykotutils.std.jarResource
 import calebxzhou.rdi.RDIClient
 import calebxzhou.rdi.client.IconFontFamily
@@ -217,12 +220,15 @@ private fun IconButtonBase(
     val ringPadding = 4.dp
     val ringStroke = 3.dp
     val useLongPress = longPressDelay > 0L
+    var isPressing by remember { mutableStateOf(false) }
+    
     val pressModifier = if (useLongPress) {
         Modifier.pointerInput(longPressDelay, enabled) {
             if (!enabled) return@pointerInput
             detectTapGestures(
                 onPress = {
                     fired = false
+                    isPressing = true
                     val job = scope.launch {
                         progress.snapTo(0f)
                         progress.animateTo(
@@ -237,17 +243,34 @@ private fun IconButtonBase(
                             onClick()
                         }
                     }
-                    val released = tryAwaitRelease() 
+                    val released = tryAwaitRelease()
                     if (released) {
                         job.cancel()
                         scope.launch { progress.snapTo(0f) }
                     }
+                    isPressing = false
                 }
             )
         }
     } else {
         Modifier
     }
+    
+    // Calculate remaining seconds
+    val remainingSeconds = ((1f - progress.value) * longPressDelay / 1000f)
+    val remainingText = String.format("\uE641 %.1fs", remainingSeconds).asIconText
+    
+    // Determine popup alignment based on tooltipAnchorPosition
+    val popupAlignment = when (tooltipAnchorPosition) {
+        TooltipAnchorPosition.Above -> Alignment.TopCenter
+        else -> Alignment.BottomCenter
+    }
+    val popupOffset = when (tooltipAnchorPosition) {
+        TooltipAnchorPosition.Above -> IntOffset(0, -8)
+        TooltipAnchorPosition.Below -> IntOffset(0, 40)
+        else -> IntOffset(0, 8)
+    }
+    
     val drawButton = @Composable {
         Box(
             modifier = Modifier
@@ -281,8 +304,32 @@ private fun IconButtonBase(
             contentAlignment = Alignment.Center
         ) {
             content(Modifier.size(size.dp))
+            
+            // Show remaining time popup during long press
+            if (useLongPress && isPressing && progress.value > 0f) {
+                Popup(
+                    alignment = popupAlignment,
+                    offset = popupOffset,
+                    properties = PopupProperties(focusable = false)
+                ) {
+                    Surface(
+                        color = MaterialColor.GRAY_200.color,
+                        shape = RoundedCornerShape(4.dp),
+                        elevation = 2.dp
+                    ) {
+                        Text(
+                            text = remainingText,
+                            fontSize = TextUnit(12f, TextUnitType.Sp),
+                            color = Color.Black,
+                            modifier = Modifier.padding(horizontal = 2.dp)
+                        )
+                    }
+                }
+            }
         }
     }
+    
+    // Keep original tooltip for hover behavior
     tooltip?.let { tip ->
         SimpleTooltip(tip, tooltipAnchorPosition) { drawButton() }
     } ?: drawButton()
