@@ -125,8 +125,7 @@ fun main() = application {
                 "mail" -> Mail
                 "hl" -> HostList
                 "wl" -> WorldList
-                "ml" -> ModpackList
-                "mm" -> ModpackManage
+                "ml" -> ModpackList 
                 else -> Login
             }
             NavHost(navController = navController, startDestination = startDestination) {
@@ -230,12 +229,17 @@ fun main() = application {
                         onOpenWardrobe = { navController.navigate(Wardrobe) },
                         onOpenHostList = { navController.navigate(HostList) },
                         onOpenMail = { navController.navigate(Mail) },
-                        onOpenModpackManage = { navController.navigate(ModpackManage) },
                         onOpenSettings = { navController.navigate(Setting) }
                     )
                 }
                 composable<Setting> {
-                    SettingScreen({navController.navigate(Profile)})
+                    SettingScreen(
+                        onBack = { navController.navigate(HostList) },
+                        onOpenTask = { task ->
+                            TaskStore.current = task
+                            navController.navigate(TaskView)
+                        }
+                    )
                 }
                 composable<ModpackList> {
                     ModpackListScreen(
@@ -270,20 +274,6 @@ fun main() = application {
                         onOpenTask = { task ->
                             TaskStore.current = task
                             navController.navigate(TaskView)
-                        }
-                    )
-                }
-                composable<ModpackManage> {
-                    ModpackManageScreen(
-                        onBack = { navController.navigate(Profile) },
-                        onOpenModpackList = { navController.navigate(ModpackList) },
-                        onOpenTask = { task ->
-                            TaskStore.current = task
-                            navController.navigate(TaskView)
-                        },
-                        onOpenMcPlay = { args ->
-                            McPlayStore.current = args
-                            navController.navigate(McPlayView)
                         }
                     )
                 }

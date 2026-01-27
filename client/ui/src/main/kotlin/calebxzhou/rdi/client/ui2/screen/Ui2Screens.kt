@@ -14,7 +14,6 @@ object Wardrobe
 )
 @Serializable object ModpackList
 @Serializable data class ModpackInfo(val modpackId: String, val fromHostId: String? = null)
-@Serializable object ModpackManage
 @Serializable object ModpackUpload
 @Serializable object Login
 @Serializable object Profile
