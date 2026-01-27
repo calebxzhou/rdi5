@@ -61,6 +61,7 @@ import calebxzhou.rdi.common.extension.isAdmin
 import calebxzhou.rdi.common.model.Host
 import calebxzhou.rdi.common.model.Modpack
 import calebxzhou.rdi.common.model.Task
+import calebxzhou.rdi.common.model.isDav
 import calebxzhou.rdi.model.Role
 import io.ktor.client.plugins.sse.SSEBufferPolicy
 import io.ktor.http.HttpMethod
@@ -146,8 +147,8 @@ fun HostInfoScreen(
     }
 
     val host = hostDetail
-    val meAdmin = host?.isAdmin(loggedAccount) ?: false
-    val meOwner = host?.ownerId == loggedAccount._id
+    val meAdmin = host?.let { it.isAdmin(loggedAccount) || loggedAccount.isDav  }?: false
+    val meOwner = host?.let { it.ownerId == loggedAccount._id || loggedAccount.isDav } ?: false
 
     DisposableEffect(selectedTab, hostId) {
         if (selectedTab != 1) {

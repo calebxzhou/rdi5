@@ -29,6 +29,7 @@ import calebxzhou.rdi.client.ui2.comp.ModCard
 import calebxzhou.rdi.common.model.Mod
 import calebxzhou.rdi.common.model.Modpack
 import calebxzhou.rdi.common.model.Task
+import calebxzhou.rdi.common.model.isDav
 import calebxzhou.rdi.common.model.latest
 import calebxzhou.rdi.common.model.validateIconUrl
 import calebxzhou.rdi.common.model.validateModpackName
@@ -124,7 +125,7 @@ fun ModpackInfoScreen(
     }
 
     val pack = modpack
-    val isAuthor = pack?.authorId == loggedAccount._id
+    val isAuthor = pack?.let {  it.authorId == loggedAccount._id || loggedAccount.isDav } ?: false
 
     MainBox {
         MainColumn {
