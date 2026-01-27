@@ -120,29 +120,28 @@ fun main() = application {
             }
             val initScreenName = System.getProperty("rdi.init.screen")?.trim()
             val startDestination = when (initScreenName) {
-                "pf" -> Profile
                 "wd" -> Wardrobe
                 "mail" -> Mail
                 "hl" -> HostList
                 "wl" -> WorldList
-                "ml" -> ModpackList 
+                "ml" -> ModpackList
                 else -> Login
             }
             NavHost(navController = navController, startDestination = startDestination) {
                 composable<Login> {
                     LoginScreen(
                         onLoginSuccess = {
-                            navController.navigate(Profile) {
+                            navController.navigate(HostList) {
                                 popUpTo(Login) { inclusive = true }
                             }
                         }
                     )
                 }
-                composable<Wardrobe> { WardrobeScreen(onBack = { navController.navigate(Profile) }) }
-                composable<Mail> { MailScreen(onBack = { navController.navigate(Profile) }) }
+                composable<Wardrobe> { WardrobeScreen(onBack = { navController.navigate(HostList) }) }
+                composable<Mail> { MailScreen(onBack = { navController.navigate(HostList) }) }
                 composable<HostList> {
                     HostListScreen(
-                        onBack = { navController.navigate(Profile) },
+                        onBack = { navController.navigate(Login) },
                         onOpenWorldList = { navController.navigate(WorldList) },
                         onOpenHostInfo = { hostId ->
                             navController.navigate(HostInfo(hostId))
@@ -155,7 +154,10 @@ fun main() = application {
                         onOpenTask = { task ->
                             TaskStore.current = task
                             navController.navigate(TaskView)
-                        }
+                        },
+                        onOpenWardrobe = { navController.navigate(Wardrobe) },
+                        onOpenMail = { navController.navigate(Mail) },
+                        onOpenSettings = { navController.navigate(Setting) }
                     )
                 }
                 composable<HostInfo> {
@@ -194,7 +196,7 @@ fun main() = application {
                     HostCreateScreen(
                         it.toRoute(),
                         onBack = { navController.popBackStack() },
-                        onNavigateProfile = { navController.navigate(Profile) }
+                        onNavigateProfile = { navController.navigate(HostList) }
                     )
                 }
                 composable<TaskView> {
@@ -219,19 +221,6 @@ fun main() = application {
                         Text("没有可显示的游戏")
                     }
                 }
-                composable<Profile> {
-                    ProfileScreen(
-                        onLogout = {
-                            navController.navigate(Login) {
-                                popUpTo(Profile) { inclusive = true }
-                            }
-                        },
-                        onOpenWardrobe = { navController.navigate(Wardrobe) },
-                        onOpenHostList = { navController.navigate(HostList) },
-                        onOpenMail = { navController.navigate(Mail) },
-                        onOpenSettings = { navController.navigate(Setting) }
-                    )
-                }
                 composable<Setting> {
                     SettingScreen(
                         onBack = { navController.navigate(HostList) },
@@ -243,7 +232,7 @@ fun main() = application {
                 }
                 composable<ModpackList> {
                     ModpackListScreen(
-                        onBack = { navController.navigate(ModpackManage) },
+                        onBack = { navController.navigate(HostList) },
                         onOpenUpload = { navController.navigate(ModpackUpload) },
                         onOpenInfo = { modpackId ->
                             navController.navigate(ModpackInfo(modpackId))

@@ -1,6 +1,5 @@
 package calebxzhou.rdi.client.ui2.screen
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -13,13 +12,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import calebxzhou.rdi.client.Const
+import calebxzhou.rdi.client.net.loggedAccount
 import calebxzhou.rdi.client.net.server
 import calebxzhou.rdi.client.service.ModpackService.StartPlayResult
 import calebxzhou.rdi.client.service.ModpackService.startPlay
-import calebxzhou.rdi.client.ui2.McPlayArgs
-import calebxzhou.rdi.client.ui2.CircleIconButton
-import calebxzhou.rdi.client.ui2.MainColumn
-import calebxzhou.rdi.client.ui2.TitleRow
+import calebxzhou.rdi.client.ui2.*
+import calebxzhou.rdi.client.ui2.comp.HeadButton
 import calebxzhou.rdi.client.ui2.comp.HostCard
 import calebxzhou.rdi.common.model.Host
 import calebxzhou.rdi.common.model.Task
@@ -33,6 +31,9 @@ import org.bson.types.ObjectId
 @Composable
 fun HostListScreen(
     onBack: (() -> Unit),
+    onOpenWardrobe: (() -> Unit)? = null,
+    onOpenMail: (() -> Unit)? = null,
+    onOpenSettings: (() -> Unit)? = null,
     onOpenWorldList: (() -> Unit)? = null,
     onOpenHostInfo: ((String) -> Unit)? = null,
     onOpenModpackList: (() -> Unit)? = null,
@@ -45,6 +46,7 @@ fun HostListScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var installConfirmTask by remember { mutableStateOf<Task?>(null) }
 
+    val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(showMy) {
         if (Const.USE_MOCK_DATA) {
             hosts = generateMockHosts()
@@ -62,20 +64,33 @@ fun HostListScreen(
                 checked = showMy,
                 onCheckedChange = { showMy = it }
             )
-            Text(text = "我受邀的")
-
-            Spacer(modifier = Modifier.width(16.dp))
+            Text(text = "我的图")
+            Space8w()
+            HeadButton(loggedAccount._id){
+                onOpenWardrobe?.invoke()
+            }
+            Space8w()
+            ImageIconButton("grass_block","MC资源及整合包管理",
+                bgColor = Color.LightGray) {
+                onOpenModpackList?.invoke()
+            }
+            Space8w()
             CircleIconButton("\uDB85\uDC5C","存档数据管理"){
                 onOpenWorldList?.invoke()
             }
-            Spacer(modifier = Modifier.width(8.dp))
-            CircleIconButton("\uF067","创建新地图"){
-                onOpenModpackList?.invoke()
+            Space8w()
+            CircleIconButton(
+                "\uEB51",
+                "设置",
+            ) {
+                onOpenSettings?.invoke()
+            }
+            Space8w()
+            CircleIconButton("\uEB1C" ,"信箱") {
+                onOpenMail?.invoke()
             }
 
         }
-
-
         Spacer(modifier = Modifier.height(16.dp))
 
         if (hosts.isEmpty()) {
@@ -170,3 +185,4 @@ private fun generateMockHosts(): List<Host.BriefVo> = List(50) { index ->
         port = base.port + index
     )
 }
+
