@@ -625,6 +625,7 @@ object HostService {
 
 
     }
+
     private fun startCreateHost(
         host: Host,
         modpack: Modpack,
@@ -657,21 +658,6 @@ object HostService {
             }
         }
     }
-
-    /*suspend fun HostContext.changeModpack(modpackId: ObjectId, verName: String) {
-        if (host.status != HostStatus.STOPPED)
-            throw RequestError("请先停止主机")
-        val modpack = ModpackService.getById(modpackId) ?: throw RequestError("无此整合包")
-        val version = modpack.getVersion(verName) ?: throw RequestError("无此版本")
-        DockerService.deleteContainer(host._id.str)
-        host.makeContainer(host.worldId, modpack, version)
-        dbcl.updateOne(
-            eq("_id", host._id), combine(
-                set(Host::modpackId.name, modpackId),
-                set(Host::packVer.name, verName),
-            )
-        )
-    }*/
 
     private fun Host.makeContainer(
         worldId: ObjectId?,
@@ -793,6 +779,7 @@ object HostService {
             false -> {
                 updates += set(Host::worldId.name, null)
             }
+
             true -> {
                 payload.worldId?.let {
                     updates += set(Host::worldId.name, it)
@@ -917,13 +904,6 @@ object HostService {
         ).toList()
     }
 
-    // Get logs by range: [startLine, endLine), 0 means newest line
-    /*suspend fun HostContext.getLog(startLine: Int = 0, needLines: Int): String {
-        if (needLines > 200) throw RequestError("行数太多")
-        val hostId = host._id
-        return DockerService.getLog(hostId.str, startLine, startLine + needLines)
-    }*/
-
     // ---------- Streaming Helper (still needs ApplicationCall for SSE) ----------
     suspend fun HostContext.listenLogs(session: ServerSSESession) {
         val hostId = host._id
@@ -999,8 +979,8 @@ object HostService {
             //"已取消载入日志"
         } catch (t: Throwable) {
             val ignore = t is io.ktor.utils.io.ClosedWriteChannelException ||
-                t is io.ktor.util.cio.ChannelWriteException ||
-                t.message?.contains("Cannot write to channel", ignoreCase = true) == true
+                    t is io.ktor.util.cio.ChannelWriteException ||
+                    t.message?.contains("Cannot write to channel", ignoreCase = true) == true
             if (!ignore) {
                 runCatching { session.send(ServerSentEvent(event = "error", data = t.message ?: "unknown")) }
             }
@@ -1134,26 +1114,6 @@ object HostService {
             onlinePlayerIds = onlinePlayers
         )
     }
-    /*
-
-        suspend fun remountWorld(host: Host, newWorldId: ObjectId?) {
-            val containerName = host._id.str
-            val wasRunning = DockerService.isStarted(containerName)
-            if (wasRunning) {
-                try {
-                    DockerService.stop(containerName)
-                } catch (_: Throwable) {
-                }
-            }
-            DockerService.deleteContainer(containerName)
-            DockerService.createContainer(host.port, containerName, newWorldId?.str, host.imageRef(),host.containerEnv)
-            dbcl.updateOne(eq("_id", host._id), set(Host::worldId.name, newWorldId))
-            if (newWorldId != null && wasRunning) {
-                DockerService.start(containerName)
-            }
-            clearShutFlag(host._id)
-        }
-    */
 
     suspend fun stopIdleHosts() {
         runIdleMonitorTick(forceStop = true)
@@ -1233,7 +1193,6 @@ object HostService {
                 )
             )
         )
-
     }
 }
 
