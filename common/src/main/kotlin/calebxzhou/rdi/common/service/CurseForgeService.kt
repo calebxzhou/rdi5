@@ -44,7 +44,7 @@ object CurseForgeService {
 
 
     //从完整的cf mod信息取得card vo
-    private fun CurseForgeModInfo.toBriefVo(modFile: File? = null): Mod.CardVo {
+    private fun CurseForgeModInfo.toCardVo(modFile: File? = null): Mod.CardVo {
         val briefInfo = slugBriefInfo[slug]
         val icons = buildList {
             briefInfo?.logoUrl?.let { add(it) }
@@ -137,7 +137,7 @@ object CurseForgeService {
                     ).apply {
                     file = record.file
                     vo = slugBriefInfo[meta.normalizedSlug]?.toVo(record.file)
-                        ?: meta.mod.toBriefVo(record.file)
+                        ?: meta.mod.toCardVo(record.file)
                 }
             }
         }
@@ -159,7 +159,7 @@ object CurseForgeService {
         // Batch fetch mod info for all mods needing vo
         val projectIdToMod = modsNeedingVo.associateBy { it.projectId.toInt() }
         val modInfos = getModsInfo(projectIdToMod.keys.toList())
-        val projectIdToVo = modInfos.associate { it.id to it.toBriefVo() }
+        val projectIdToVo = modInfos.associate { it.id to it.toCardVo() }
         forEach { mod ->
             if (mod.vo == null && mod.platform == "cf") {
                 mod.apply { vo = projectIdToVo[mod.projectId.toInt()] }
@@ -213,7 +213,7 @@ object CurseForgeService {
                 hash = fileInfo.fileFingerprint.toString(),
                 side = side
             ).apply {
-                vo = modInfo.toBriefVo()
+                vo = modInfo.toCardVo()
             }
         }.also { mod ->
 
