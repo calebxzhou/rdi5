@@ -1,19 +1,35 @@
 package calebxzhou.rdi.common.service
 
+import calebxzhou.mykotutils.curseforge.CurseForgeApi
+import calebxzhou.mykotutils.curseforge.CurseForgeFile
+import calebxzhou.mykotutils.ktor.DEFAULT_RANGE_PARALLELISM
+import calebxzhou.mykotutils.ktor.DownloadProgress
+import calebxzhou.mykotutils.ktor.downloadFileFrom
 import calebxzhou.mykotutils.log.Loggers
+import calebxzhou.mykotutils.std.murmur2
+import calebxzhou.mykotutils.std.sha1
 import calebxzhou.rdi.common.DL_MOD_DIR
-import calebxzhou.rdi.common.RDI
 import calebxzhou.rdi.common.model.Mod
 import calebxzhou.rdi.common.model.ModBriefInfo
 import calebxzhou.rdi.common.serdesJson
 import com.electronwill.nightconfig.core.CommentedConfig
 import com.electronwill.nightconfig.core.Config
 import com.electronwill.nightconfig.toml.TomlFormat
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.InputStream
+import java.nio.file.Path
 import java.util.jar.JarFile
 import java.util.jar.JarInputStream
+import kotlin.io.path.exists
+import kotlin.math.max
+import kotlin.math.min
 
 
 object ModService {
@@ -271,6 +287,248 @@ object ModService {
         return map
     }
 
+    suspend fun downloadMods(mods: List<Mod>, onProgress: (Mod, DownloadProgress) -> Unit): Result<List<Mod>> {
+        if (mods.isEmpty()) return Result.success(emptyList())
 
+        val cfMods = mods.filter { it.platform == "cf" }
+        val mrMods = mods.filter { it.platform == "mr" }
+
+        val failures = mutableListOf<Pair<String, Throwable>>()
+
+        // Download both CF and MR mods concurrently
+        coroutineScope {
+            val cfJob = async { downloadCFMods(cfMods, onProgress) }
+            val mrJob = async { downloadMRMods(mrMods, onProgress) }
+
+            // Wait for both to complete and collect failures
+            cfJob.await().onFailure { failures += "CurseForge" to it }
+            mrJob.await().onFailure { failures += "Modrinth" to it }
+        }
+
+        return if (failures.isEmpty()) {
+            Result.success(mods)
+        } else {
+            val combinedMessage = failures.joinToString("; ") { (platform, err) ->
+                "$platform: ${err.message}"
+            }
+            Result.failure(IllegalStateException("Download failed: $combinedMessage", failures.first().second))
+        }
+    }
+
+    private suspend fun downloadCFMods(mods: List<Mod>, onProgress: (Mod, DownloadProgress) -> Unit): Result<Unit> {
+        if (mods.isEmpty()) return Result.success(Unit)
+
+        // Query file infos in batch
+        val fileIds = mods.map { it.fileId.toInt() }
+        val fileInfos = CurseForgeApi.getModFilesInfo(fileIds)
+        val fileInfoMap = fileInfos.associateBy { it.id }
+
+        // Pair mods with their file info
+        val modsWithFileInfo = mods.mapNotNull { mod ->
+            val fileId = mod.fileId.toInt()
+            val fileInfo = fileInfoMap[fileId]
+            if (fileInfo == null) {
+                lgr.warn { "File info not found for mod ${mod.slug} (fileId=$fileId)" }
+                return@mapNotNull null
+            }
+            mod to fileInfo
+        }
+
+        if (modsWithFileInfo.isEmpty()) return Result.success(Unit)
+
+        // Use CPU core amount as parallelism
+        val cpuCores = Runtime.getRuntime().availableProcessors()
+        val parallelism = min(cpuCores, modsWithFileInfo.size)
+        val semaphore = Semaphore(parallelism)
+        val perDownloadRange = max(1, DEFAULT_RANGE_PARALLELISM / parallelism)
+
+        val failures = mutableListOf<Pair<Mod, Throwable>>()
+
+        coroutineScope {
+            modsWithFileInfo.map { (mod, fileInfo) ->
+                async(Dispatchers.IO) {
+                    semaphore.withPermit {
+                        mod to downloadSingleCFMod(mod, fileInfo, perDownloadRange) { progress ->
+                            onProgress(mod, progress)
+                        }
+                    }
+                }
+            }.awaitAll().forEach { (mod, result) ->
+                result.onFailure { failures += mod to it }
+            }
+        }
+
+        return if (failures.isEmpty()) {
+            Result.success(Unit)
+        } else {
+            val failedMods = failures.joinToString(", ") { it.first.slug }
+            Result.failure(IllegalStateException("Failed to download CF mods: $failedMods", failures.first().second))
+        }
+    }
+
+    private suspend fun downloadSingleCFMod(
+        mod: Mod,
+        fileInfo: CurseForgeFile,
+        rangeParallelism: Int,
+        onProgress: (DownloadProgress) -> Unit
+    ): Result<Path> {
+        val targetPath = mod.targetPath
+        val expectedFingerprint = fileInfo.fileFingerprint
+
+        // Check if file already exists with correct fingerprint
+        if (targetPath.exists() && targetPath.murmur2 == expectedFingerprint) {
+            lgr.debug { "Mod file already exists and fingerprint matches: $targetPath" }
+            return Result.success(targetPath)
+        }
+
+        val officialUrl = fileInfo.realDownloadUrl
+        val useMirror = CurseForgeApi.useMirror
+        val mirrorUrl = if (useMirror) {
+            officialUrl
+                .replace("edge.forgecdn.net", "mod.mcimirror.top")
+                .replace("mediafilez.forgecdn.net", "mod.mcimirror.top")
+                .replace("media.forgecdn.net", "mod.mcimirror.top")
+        } else {
+            officialUrl
+        }
+
+        suspend fun attemptDownload(url: String, label: String): Result<Path> = runCatching {
+            val downloadedPath = targetPath.downloadFileFrom(
+                url,
+                rangeParallelism = rangeParallelism,
+                onProgress = onProgress
+            ).getOrElse { throw it }
+
+            // Verify fingerprint after download
+            if (downloadedPath.murmur2 != expectedFingerprint) {
+                throw IllegalStateException(
+                    "Downloaded mod ${mod.slug} fingerprint mismatch: expected $expectedFingerprint, got ${downloadedPath.murmur2}"
+                )
+            }
+            downloadedPath
+        }.onFailure { err ->
+            if (label == "mirror") {
+                lgr.warn(err) { "Mirror download failed for ${mod.slug}, will retry official" }
+            }
+        }
+
+        // Try mirror first if enabled, then fall back to official
+        val mirrorResult = if (useMirror) attemptDownload(mirrorUrl, "mirror") else null
+        val finalResult = when {
+            mirrorResult == null -> attemptDownload(officialUrl, "official")
+            mirrorResult.isSuccess -> mirrorResult
+            else -> attemptDownload(officialUrl, "official")
+        }
+
+        finalResult.onFailure { err ->
+            lgr.error(err) { "Failed to download mod ${mod.slug}" }
+        }
+
+        return finalResult
+    }
+
+    private suspend fun downloadMRMods(mods: List<Mod>, onProgress: (Mod, DownloadProgress) -> Unit): Result<Unit> {
+        if (mods.isEmpty()) return Result.success(Unit)
+
+        // Filter out mods with no download URLs
+        val modsWithUrls = mods.filter { it.downloadUrls.isNotEmpty() }
+        if (modsWithUrls.isEmpty()) {
+            lgr.warn { "No Modrinth mods have download URLs" }
+            return Result.success(Unit)
+        }
+
+        // Use CPU core amount as parallelism
+        val cpuCores = Runtime.getRuntime().availableProcessors()
+        val parallelism = min(cpuCores, modsWithUrls.size)
+        val semaphore = Semaphore(parallelism)
+        val perDownloadRange = max(1, DEFAULT_RANGE_PARALLELISM / parallelism)
+
+        val failures = mutableListOf<Pair<Mod, Throwable>>()
+
+        coroutineScope {
+            modsWithUrls.map { mod ->
+                async(Dispatchers.IO) {
+                    semaphore.withPermit {
+                        mod to downloadSingleMRMod(mod, perDownloadRange) { progress ->
+                            onProgress(mod, progress)
+                        }
+                    }
+                }
+            }.awaitAll().forEach { (mod, result) ->
+                result.onFailure { failures += mod to it }
+            }
+        }
+
+        return if (failures.isEmpty()) {
+            Result.success(Unit)
+        } else {
+            val failedMods = failures.joinToString(", ") { it.first.slug }
+            Result.failure(IllegalStateException("Failed to download MR mods: $failedMods", failures.first().second))
+        }
+    }
+
+    private suspend fun downloadSingleMRMod(
+        mod: Mod,
+        rangeParallelism: Int,
+        onProgress: (DownloadProgress) -> Unit
+    ): Result<Path> {
+        val targetPath = mod.targetPath
+
+        // Check if file already exists with correct hash
+        if (targetPath.exists()) {
+            // For MR mods, we use the hash from the mod object
+            val expectedHash = mod.hash
+            if (expectedHash.isNotBlank()) {
+                val actualHash = targetPath.sha1
+                if (actualHash == expectedHash) {
+                    lgr.debug { "Mod file already exists and hash matches: $targetPath" }
+                    return Result.success(targetPath)
+                }
+            }
+        }
+
+        val urls = mod.downloadUrls
+        val expectedHash = mod.hash
+        var lastError: Throwable? = null
+
+        // Try each URL in order until one succeeds
+        for ((index, url) in urls.withIndex()) {
+            val result = runCatching {
+                val downloadedPath = targetPath.downloadFileFrom(
+                    url,
+                    rangeParallelism = rangeParallelism,
+                    onProgress = onProgress
+                ).getOrElse { throw it }
+
+                // Verify SHA1 hash after download
+                if (expectedHash.isNotBlank()) {
+                    val actualHash = downloadedPath.sha1
+                    if (actualHash != expectedHash) {
+                        throw IllegalStateException(
+                            "Downloaded mod ${mod.slug} SHA1 mismatch: expected $expectedHash, got $actualHash"
+                        )
+                    }
+                }
+                downloadedPath
+            }
+
+            if (result.isSuccess) {
+                lgr.debug { "Successfully downloaded ${mod.slug} from URL #${index + 1}" }
+                return result
+            }
+
+            lastError = result.exceptionOrNull()
+            lgr.warn(lastError) { "Download failed for ${mod.slug} from URL #${index + 1}: $url" }
+
+            // If there are more URLs to try, continue
+            if (index < urls.lastIndex) {
+                lgr.info { "Trying next URL for ${mod.slug}..." }
+            }
+        }
+
+        // All URLs failed
+        lgr.error(lastError) { "Failed to download mod ${mod.slug} from all ${urls.size} URLs" }
+        return Result.failure(lastError ?: IllegalStateException("No download URLs available"))
+    }
 }
 
