@@ -404,7 +404,11 @@ private fun createShortcut(): Result<Unit> {
             .replace("__WORKDIR__", esc(baseDir.absolutePath))
             .replace("__ICON__", esc(iconFile.absolutePath))
         val scriptFile = File(resourcesDir, "shortcut_maker.ps1")
-        scriptFile.writeText(script)
+        // PowerShell on Windows expects UTF-16LE (or UTF-8 BOM). Use UTF-16LE to avoid garbled paths.
+        scriptFile.outputStream().use { output ->
+            output.write(byteArrayOf(0xFF.toByte(), 0xFE.toByte()))
+            output.write(script.toByteArray(Charsets.UTF_16LE))
+        }
 
         val psCommands = listOf("powershell", "pwsh")
         val proc = psCommands.firstNotNullOfOrNull { cmd ->
