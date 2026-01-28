@@ -1,14 +1,21 @@
 package calebxzhou.rdi.common.service
 
+import calebxzhou.mykotutils.modrinth.ModrinthApi
+import calebxzhou.mykotutils.modrinth.ModrinthProject
 import calebxzhou.rdi.common.model.ModBriefInfo
 import calebxzhou.rdi.common.model.ModrinthModpackIndex
 import calebxzhou.rdi.common.service.ModService.briefInfo
 import calebxzhou.mykotutils.std.openChineseZip
 import calebxzhou.rdi.common.exception.ModpackException
 import calebxzhou.rdi.common.model.McVersion
+import calebxzhou.rdi.common.model.Mod
 import calebxzhou.rdi.common.model.ModLoader
 import calebxzhou.rdi.common.serdesJson
+import calebxzhou.rdi.common.service.ModService.modDescription
+import calebxzhou.rdi.common.service.ModService.modLogo
+import calebxzhou.rdi.common.service.ModService.readNeoForgeConfig
 import java.io.File
+import java.util.jar.JarFile
 
 object ModrinthService {
     val slugBriefInfo: Map<String, ModBriefInfo> by lazy { ModService.buildSlugMap(briefInfo) { it.modrinthSlugs } }
@@ -61,5 +68,45 @@ object ModrinthService {
         }
 
         return Result.success(index to modpackFile)
+    }
+    fun ModrinthProject.toCardVo(modFile: File? = null): Mod.CardVo {
+        val briefInfo = slugBriefInfo[slug.trim().lowercase()]
+        val icons = buildList {
+            briefInfo?.logoUrl?.takeIf { it.isNotBlank() }?.let { add(it) }
+            iconUrl?.takeIf { it.isNotBlank() }?.let { add(it) }
+        }
+        val resolvedName = (title ?: slug).ifBlank { slug }
+        val iconBytes = modFile?.let {
+            runCatching { JarFile(it).use { jar -> jar.modLogo } }.getOrNull()
+        }
+        val introText = description?.takeIf { it.isNotBlank() }?.trim()
+            ?: modFile?.let { JarFile(it).readNeoForgeConfig()?.modDescription }
+            ?: "暂无介绍"
+
+        return Mod.CardVo(
+            name = resolvedName,
+            nameCn = briefInfo?.nameCn,
+            intro = briefInfo?.intro ?: introText,
+            iconData = iconBytes,
+            iconUrls = icons
+        )
+    }
+
+    suspend fun List<Mod>.fillModrinthVo(): List<Mod> {
+        val modsNeedingVo = filter { it.vo == null && it.platform == "mr" }
+        if (modsNeedingVo.isEmpty()) return this
+
+        val projectIds = modsNeedingVo.map { it.projectId }.distinct()
+        val projects = ModrinthApi.getMultipleProjects(projectIds)
+        val projectMap = projects.associateBy { it.id }
+
+        forEach { mod ->
+            if (mod.vo == null && mod.platform == "mr") {
+                projectMap[mod.projectId]?.let { project ->
+                    mod.vo = project.toCardVo(mod.file)
+                }
+            }
+        }
+        return this
     }
 }
