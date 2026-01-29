@@ -36,6 +36,7 @@ data class Mod(
         val iconData: ByteArray?=null,
         //curseforge的icon&mc百科的icon  哪个能用用哪个
         val iconUrls: List<String> =emptyList(),
+        val side: Side = Side.BOTH,
     ) {
     }
 }
