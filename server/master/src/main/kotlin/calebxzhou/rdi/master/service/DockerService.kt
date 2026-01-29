@@ -137,6 +137,18 @@ object DockerService {
 
     }
 
+    fun forceStop(containerName: String) {
+        // Check if container exists first
+        val container = findContainer(containerName) ?: throw RequestError("找不到此容器")
+        // Only stop if the container is actually running
+        if (container.state.equals("running", ignoreCase = true)) {
+            client.killContainerCmd(container.id).exec()
+        } else {
+            throw RequestError("早就停了")
+        }
+
+    }
+
     fun restart(containerName: String) {
         // Check if container exists first
         val container = findContainer(containerName) ?: throw RequestError("找不到此容器")
