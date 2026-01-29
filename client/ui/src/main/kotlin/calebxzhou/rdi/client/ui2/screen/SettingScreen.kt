@@ -1,42 +1,20 @@
 package calebxzhou.rdi.client.ui2.screen
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.Checkbox
-import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.OutlinedTextField
-import androidx.compose.material.RadioButton
-import androidx.compose.material.Surface
-import androidx.compose.material.Text
-import androidx.compose.material.TextButton
-import androidx.compose.material.rememberScaffoldState
+import androidx.compose.material.*
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toComposeImageBitmap
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import calebxzhou.mykotutils.std.jarResource
-import calebxzhou.mykotutils.std.deleteRecursivelyNoSymlink
-import calebxzhou.rdi.RDIClient
 import calebxzhou.rdi.client.AppConfig
 import calebxzhou.rdi.client.net.loggedAccount
 import calebxzhou.rdi.client.net.server
@@ -45,38 +23,27 @@ import calebxzhou.rdi.client.service.ModpackService
 import calebxzhou.rdi.client.service.ModpackService.startInstall
 import calebxzhou.rdi.client.service.PlayerInfoCache
 import calebxzhou.rdi.client.service.PlayerService
-import calebxzhou.rdi.client.model.firstLoader
-import calebxzhou.rdi.client.model.metadata
-import calebxzhou.rdi.client.ui2.BottomSnakebar
-import calebxzhou.rdi.client.ui2.CircleIconButton
-import calebxzhou.rdi.client.ui2.MainBox
-import calebxzhou.rdi.client.ui2.MainColumn
-import calebxzhou.rdi.client.ui2.MaterialColor
-import calebxzhou.rdi.client.ui2.McPlayStore
-import calebxzhou.rdi.client.ui2.Space8h
-import calebxzhou.rdi.client.ui2.SpacerFullW
-import calebxzhou.rdi.client.ui2.TitleRow
-import calebxzhou.rdi.client.ui2.asIconText
+import calebxzhou.rdi.client.ui2.*
+import calebxzhou.rdi.client.ui2.comp.McVersionCard
 import calebxzhou.rdi.client.ui2.comp.ModpackManageCard
 import calebxzhou.rdi.client.ui2.comp.PasswordField
 import calebxzhou.rdi.common.model.McVersion
 import calebxzhou.rdi.common.model.Modpack
 import calebxzhou.rdi.common.model.Task
 import calebxzhou.rdi.common.model.TaskProgress
-import io.ktor.http.HttpMethod
+import io.ktor.http.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
-import java.lang.management.ManagementFactory
-import org.jetbrains.skia.Image
 import java.awt.Desktop
+import java.io.File
 import java.io.FileOutputStream
-import java.util.zip.ZipEntry
-import java.util.zip.ZipOutputStream
+import java.lang.management.ManagementFactory
 import java.nio.file.Files
 import java.nio.file.StandardOpenOption
+import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
+import java.util.zip.ZipOutputStream
 import javax.swing.JFileChooser
 import javax.swing.filechooser.FileNameExtensionFilter
 
@@ -614,89 +581,6 @@ private fun NetworkSettings(
             selected = carrier,
             onSelect = onCarrierChange
         )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun McVersionCard(
-    mcver: McVersion,
-    onOpenTask: ((Task) -> Unit)? = null
-) {
-    val iconBitmap = remember(mcver) {
-        RDIClient.jarResource(mcver.icon).use { stream ->
-            Image.makeFromEncoded(stream.readBytes()).toComposeImageBitmap()
-        }
-    }
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = Color(0xFFF9F9FB),
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-        elevation = 1.dp
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(64.dp)
-                    .background(MaterialColor.GRAY_200.color, androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
-                    .padding(4.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    bitmap = iconBitmap,
-                    contentDescription = "MC ${mcver.mcVer}",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = "MC ${mcver.mcVer}",
-                        style = MaterialTheme.typography.subtitle1,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialColor.GRAY_900.color
-                    )
-                    Text(
-                        text = mcver.loaderVersions.keys.joinToString(" / ") { it.name.lowercase() },
-                        style = MaterialTheme.typography.body2,
-                        color = MaterialColor.GRAY_700.color
-                    )
-                }
-                Row(
-                    modifier = Modifier.horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    CircleIconButton("\uF019", "下载全部所需文件") {
-                        onOpenTask?.invoke(GameService.downloadVersion(mcver, mcver.firstLoader))
-                    }
-                    CircleIconButton("\uF305", "仅下载MC核心", bgColor = Color.Gray) {
-                        onOpenTask?.invoke(GameService.downloadClient(mcver.metadata))
-                    }
-                    CircleIconButton("\uDB84\uDE5F", "仅下载运行库", bgColor = Color.Gray) {
-                        onOpenTask?.invoke(GameService.downloadLibraries(mcver.metadata.libraries))
-                    }
-                    CircleIconButton("\uF001", "仅下载音频资源", bgColor = Color.Gray) {
-                        onOpenTask?.invoke(GameService.downloadAssets(mcver.metadata))
-                    }
-                    mcver.loaderVersions.forEach { (loader, _) ->
-                        CircleIconButton("\uEEFF", "安装${loader.name.lowercase()}", bgColor = Color.Gray) {
-                            onOpenTask?.invoke(GameService.downloadLoader(mcver, loader))
-                        }
-                    }
-                }
-            }
-        }
     }
 }
 
