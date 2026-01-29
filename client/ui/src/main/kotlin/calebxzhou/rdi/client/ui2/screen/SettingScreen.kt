@@ -3,9 +3,7 @@ package calebxzhou.rdi.client.ui2.screen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
@@ -14,7 +12,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import calebxzhou.mykotutils.hwspec.HwSpec
+import calebxzhou.mykotutils.std.humanFileSize
 import calebxzhou.rdi.client.AppConfig
 import calebxzhou.rdi.client.net.loggedAccount
 import calebxzhou.rdi.client.net.server
@@ -35,9 +36,8 @@ import java.lang.management.ManagementFactory
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingScreen(
-    onBack: () -> Unit,
-    onOpenTask: ((Task) -> Unit)? = null
-){
+    onBack: () -> Unit
+) {
     val scope = rememberCoroutineScope()
     val scaffoldState = rememberScaffoldState()
     val config = remember { AppConfig.load() }
@@ -54,7 +54,7 @@ fun SettingScreen(
 
     MainBox {
         MainColumn {
-            TitleRow("设置",onBack){
+            TitleRow("设置", onBack) {
                 CircleIconButton(
                     icon = "\uF0C7",
                     tooltip = "保存",
@@ -133,6 +133,7 @@ fun SettingScreen(
                                     onChangeProfile = { showChangeProfile = true }
                                 )
                             }
+
                             SettingCategory.Java -> {
                                 JavaSettings(
                                     totalMemoryMb = totalMemoryMb,
@@ -212,13 +213,23 @@ private fun SettingNav(
                     modifier = Modifier
                         .width(4.dp)
                         .height(20.dp)
-                        .background(if (isSelected) MaterialColor.BLUE_500.color else Color.Transparent)
+                        .background(if (isSelected) MaterialTheme.colors.primary else Color.Transparent)
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+                Space8w()
                 Text(
-                    text = category.label.asIconText,
-                    color = if (isSelected) MaterialColor.BLUE_500.color else Color.Unspecified,
-                    style = if (isSelected) MaterialTheme.typography.h6 else MaterialTheme.typography.body1
+                    text = category.icon.asIconText,
+                    color = if (isSelected) MaterialTheme.colors.primary else Color.Unspecified,
+                    style = when(category){
+                        //java图标比较小 放大一些
+                        SettingCategory.Java -> MaterialTheme.typography.h5
+                        else -> MaterialTheme.typography.subtitle1
+                    }
+
+                )
+                Space8w()
+                Text(
+                    text = category.label,
+                    color = if (isSelected) MaterialTheme.colors.primary else Color.Unspecified,
                 )
             }
         }
@@ -252,18 +263,40 @@ private fun JavaSettings(
     onJre8Change: (String) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        OutlinedTextField(
-            label = { Text("限制MC可用内存 (MB，0 或空为不限制)") },
-            value = maxMemoryText,
-            onValueChange = onMaxMemoryChange,
-            singleLine = true,
-            modifier = Modifier.width(260.dp)
-        )
-        if (totalMemoryMb > 0) {
-            Text("总内存 ${totalMemoryMb}MB", style = MaterialTheme.typography.caption)
+        Text("内存信息 总可用 ${totalMemoryMb}MB")
+        Space8h()
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(end = 16.dp)) {
+                OutlinedTextField(
+                    label = { Text("限制MC可用内存 (MB，0 或空为不限制)") },
+                    value = maxMemoryText,
+                    onValueChange = onMaxMemoryChange,
+                    singleLine = true,
+                    modifier = Modifier.width(260.dp)
+                )
+            }
+            FlowRow(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.End,
+                verticalArrangement = Arrangement.Top,
+                maxItemsInEachRow = 2
+            ) {
+                HwSpec.NOW.mems.forEach { mem ->
+                    Row(
+                        modifier = Modifier
+                            .padding(start = 12.dp, bottom = 6.dp)
+                            .widthIn(min = 160.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("\uEFC5".asIconText)
+                        Space8w()
+                        Text("${mem.size.humanFileSize}  ${mem.type}  ${mem.speed / 1024 / 1024}MHz")
+                    }
+                }
+            }
         }
         Space8h()
-        OutlinedTextField(
+        OutlinedTextField( 
             label = { Text("Java21主程序路径（可选 留空自带）") },
             value = jre21Path,
             onValueChange = onJre21Change,
