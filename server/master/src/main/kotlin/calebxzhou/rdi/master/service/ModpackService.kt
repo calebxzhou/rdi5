@@ -1,16 +1,13 @@
 package calebxzhou.rdi.master.service
 
-import calebxzhou.mykotutils.curseforge.CFDownloadMod
-import calebxzhou.mykotutils.curseforge.CFDownloadModException
-import calebxzhou.mykotutils.curseforge.CurseForgeApi
 import calebxzhou.mykotutils.log.Loggers
 import calebxzhou.mykotutils.std.deleteRecursivelyNoSymlink
 import calebxzhou.mykotutils.std.sha1
 import calebxzhou.mykotutils.std.toFixed
 import calebxzhou.rdi.common.model.*
-import calebxzhou.rdi.common.model.validateIconUrl
-import calebxzhou.rdi.common.model.validateModpackName
 import calebxzhou.rdi.common.serdesJson
+import calebxzhou.rdi.common.service.ModService
+import calebxzhou.rdi.common.service.ServerTaskRunner
 import calebxzhou.rdi.common.util.ioScope
 import calebxzhou.rdi.common.util.str
 import calebxzhou.rdi.master.DB
@@ -68,7 +65,6 @@ import java.util.zip.ZipOutputStream
 import javax.imageio.IIOImage
 import javax.imageio.ImageIO
 import javax.imageio.ImageWriteParam
-import kotlin.io.path.name
 
 val Modpack.dir
     get() = MODPACK_DATA_DIR.resolve(_id.str)
@@ -527,28 +523,9 @@ object ModpackService {
         if (i18nUpdateMod.exists()) {
             i18nUpdateMod.delete()
         }
-        onProgress("解压成功 开始下载mod")
-        val mods = version.mods.filter { it.side != Mod.Side.CLIENT }
-            .map { CFDownloadMod(it.projectId.toInt(), it.fileId.toInt(), it.slug, it.targetPath) }
-        val downloadedMods = CurseForgeApi.downloadMods(
-            mods,
-        ) { cfm, prog ->
-            onProgress("${cfm.slug} mod下载中 ${(prog.fraction * 100f).toFixed(2)}%")
-        }.getOrElse {
-            if (it is CFDownloadModException) {
-                it.failed.forEach { (mod, ex) ->
-                    onProgress("Mod $mod 下载失败:${ex.message}，安装终止")
-                    ex.printStackTrace()
-                }
-            } else {
-                it.printStackTrace()
-                onProgress("未知错误:${it.message}，安装终止")
-
-            }
-            lgr.error { "Mod installation failed for host ${host.name} (${host._id}). Aborting installation but NOT throwing exception (Logic Error Tracing)." }
-            return
-        }
-        val libsSource = libsDir.canonicalFile.also {
+        onProgress("解压成功")
+        //todo make sure mods are downloaded
+        libsDir.canonicalFile.also {
             if (!it.exists() || !it.isDirectory) {
                 throw RequestError("整合包依赖目录缺失: $it")
             }
@@ -647,18 +624,18 @@ object ModpackService {
             version.dir.mkdirs()
             onProgress("解压整合包文件..")
             unzipOverrides(version.zip, version.dir)
-            val downloadedMods = CurseForgeApi.downloadMods(version.mods.filter { it.side != Mod.Side.CLIENT }
-                .map {
-                    CFDownloadMod(
-                        it.projectId.toInt(),
-                        it.fileId.toInt(),
-                        it.slug,
-                        it.targetPath
-                    )
-                }) { cfmod, prog ->
-                onProgress("mod下载中：${cfmod.slug} ${(prog.fraction * 100f).toFixed(2)}")
-            }.getOrThrow()
-            onProgress("所有mod下载完成 开始安装。。${downloadedMods.size}个mod")
+            val serverMods = version.mods.filter { it.side != Mod.Side.CLIENT }
+            val modDownloadTask = ModService.downloadModsTask(serverMods)
+            with(ServerTaskRunner) {
+                modDownloadTask.start { progress ->
+                    val msg = progress.fraction?.let { frac ->
+                        val pct = (frac * 100f).toFixed(2)
+                        "${progress.message} $pct%"
+                    } ?: progress.message
+                    onProgress("mod下载中：$msg")
+                }
+            }
+            onProgress("所有mod下载完成 开始安装。。${serverMods.size}个mod")
             onProgress("构建客户端版。。")
             buildClientPack(version)
             onProgress("客户端版本构建完成")
