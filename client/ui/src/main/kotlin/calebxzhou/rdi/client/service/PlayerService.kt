@@ -75,7 +75,7 @@ object PlayerService {
 
     suspend fun login(usr: String, pwd: String): Result<RAccount> = runCatching {
         val creds = LocalCredentials.read()
-        val spec = serdesJson.encodeToString<HwSpec>(HwSpec.get())
+        val spec = serdesJson.encodeToString<HwSpec>(HwSpec.NOW)
 
         val resp = server.createRequest(
             path = "player/login",
