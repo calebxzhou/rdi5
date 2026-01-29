@@ -19,9 +19,6 @@ import java.util.jar.JarFile
 
 object ModrinthService {
     val slugBriefInfo: Map<String, ModBriefInfo> by lazy { ModService.buildSlugMap(briefInfo) { it.modrinthSlugs } }
-    const val BASE_URL = "https://mod.mcimirror.top/modrinth/v2"
-    const val OFFICIAL_URL = "https://api.modrinth.com/v2"
-
     //mr - cf slug, 没查到就返回自身
     val String.mr2CfSlug: String
         get() {
@@ -30,7 +27,15 @@ object ModrinthService {
             return info.curseforgeSlugs.firstOrNull { it.isNotBlank() }?.trim() ?: this
         }
 
-    fun loadModpack(modpackFile: File): Result<Pair<ModrinthModpackIndex, File>> {
+    data class LoadedModpack(
+        val index: ModrinthModpackIndex,
+        val file: File,
+        val mods: List<Mod>,
+        val mcVersion: McVersion,
+        val modloader: ModLoader
+    )
+
+    suspend fun loadModpack(modpackFile: File): Result<LoadedModpack> {
         if (!modpackFile.exists() || !modpackFile.isFile) {
             throw ModpackException("找不到整合包文件: ${modpackFile.path}")
         }
@@ -56,18 +61,58 @@ object ModrinthService {
         if (mcVersion.isBlank()) {
             throw ModpackException("整合包缺少 minecraft 版本")
         }
-        if (McVersion.from(mcVersion) == null) {
+        val parsedMcVersion = McVersion.from(mcVersion)
+        if (parsedMcVersion == null) {
             throw ModpackException("不支持的MC版本: $mcVersion")
         }
         val loaderKey = index.dependencies.keys.firstOrNull { ModLoader.from(it) != null }
         if (loaderKey == null) {
             throw ModpackException("不支持的Mod加载器: 未知")
         }
-        if (ModLoader.from(loaderKey) == null) {
+        val parsedModloader = ModLoader.from(loaderKey)
+        if (parsedModloader == null) {
             throw ModpackException("不支持的Mod加载器: $loaderKey")
         }
+        val hashVersions = ModrinthApi.getVersionsFromHashes(index.files.map { it.hashes.sha1 })
+        val projectIds = hashVersions.values.map { it.projectId }.distinct()
+        val projects = ModrinthApi.getMultipleProjects(projectIds)
+        val projectMap = projects.associateBy { it.id }
+        val fileEntries = index.files.associateBy { it.hashes.sha1 }
+        val mods = fileEntries.mapNotNull { (sha1, entry) ->
+            val version = hashVersions[sha1] ?: return@mapNotNull null
+            val project = projectMap[version.projectId]
+            val slug = project?.slug?.takeIf { it.isNotBlank() }
+                ?: entry.path.substringAfterLast('/').substringBeforeLast('.')
+                    .ifBlank { version.projectId }
+            val side = project?.run {
+                if (serverSide == "unsupported") {
+                    return@run Mod.Side.CLIENT
+                }
+                if (clientSide == "unsupported") {
+                    return@run Mod.Side.SERVER
+                }
+                Mod.Side.BOTH
+            } ?: Mod.Side.BOTH
+            Mod(
+                platform = "mr",
+                projectId = version.projectId,
+                slug = slug,
+                fileId = version.id,
+                hash = entry.hashes.sha1,
+                side = side,
+                downloadUrls = entry.downloads
+            )
+        }.fillModrinthVo()
 
-        return Result.success(index to modpackFile)
+        return Result.success(
+            LoadedModpack(
+                index = index,
+                file = modpackFile,
+                mods = mods,
+                mcVersion = parsedMcVersion,
+                modloader = parsedModloader
+            )
+        )
     }
     fun ModrinthProject.toCardVo(modFile: File? = null): Mod.CardVo {
         val briefInfo = slugBriefInfo[slug.trim().lowercase()]
@@ -83,14 +128,15 @@ object ModrinthService {
             ?: modFile?.let { JarFile(it).readNeoForgeConfig()?.modDescription }
             ?: "暂无介绍"
 
-        return Mod.CardVo(
-            name = resolvedName,
-            nameCn = briefInfo?.nameCn,
-            intro = briefInfo?.intro ?: introText,
-            iconData = iconBytes,
-            iconUrls = icons
-        )
-    }
+    return Mod.CardVo(
+        name = resolvedName,
+        nameCn = briefInfo?.nameCn,
+        intro = briefInfo?.intro ?: introText,
+        iconData = iconBytes,
+        iconUrls = icons,
+        side = Mod.Side.BOTH
+    )
+}
 
     suspend fun List<Mod>.fillModrinthVo(): List<Mod> {
         val modsNeedingVo = filter { it.vo == null && it.platform == "mr" }
@@ -103,7 +149,7 @@ object ModrinthService {
         forEach { mod ->
             if (mod.vo == null && mod.platform == "mr") {
                 projectMap[mod.projectId]?.let { project ->
-                    mod.vo = project.toCardVo(mod.file)
+                    mod.vo = project.toCardVo(mod.file).copy(side = mod.side)
                 }
             }
         }

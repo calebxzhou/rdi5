@@ -64,7 +64,8 @@ object CurseForgeService {
             nameCn = briefInfo?.nameCn,
             intro = briefInfo?.intro ?: introText,
             iconData = iconBytes,
-            iconUrls = icons
+            iconUrls = icons,
+            side = Mod.Side.BOTH
         )
     }
 
@@ -136,8 +137,8 @@ object CurseForgeService {
 
                     ).apply {
                     file = record.file
-                    vo = slugBriefInfo[meta.normalizedSlug]?.toVo(record.file)
-                        ?: meta.mod.toCardVo(record.file)
+                    vo = (slugBriefInfo[meta.normalizedSlug]?.toVo(record.file)
+                        ?: meta.mod.toCardVo(record.file)).copy(side = side)
                 }
             }
         }
@@ -162,7 +163,7 @@ object CurseForgeService {
         val projectIdToVo = modInfos.associate { it.id to it.toCardVo() }
         forEach { mod ->
             if (mod.vo == null && mod.platform == "cf") {
-                mod.apply { vo = projectIdToVo[mod.projectId.toInt()] }
+                mod.apply { vo = projectIdToVo[mod.projectId.toInt()]?.copy(side = side) }
             }
         }
         return this
@@ -188,7 +189,6 @@ object CurseForgeService {
                 return@mapNotNull null
             }
             val cfSlug = modInfo.slug
-            //todo 删掉rgp client 删掉fancymenu及其dependents
             val fileInfo = fileInfoMap[curseFile.fileId] ?: let {
                 lgr.error("mod ${curseFile.projectId}/${curseFile.fileId} file info map没有信息")
                 return@mapNotNull null
