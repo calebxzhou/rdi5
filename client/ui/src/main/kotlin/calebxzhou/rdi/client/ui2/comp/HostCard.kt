@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.input.pointer.pointerMoveFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -35,7 +36,8 @@ fun Host.BriefVo.HostCard(
     onClickPlay: ((Host.BriefVo) -> Unit)? = null,
     onClick: ((Host.BriefVo) -> Unit)? = null
 ) {
-    val cardModifier = if (onClick != null) {
+    val isClickable = playable && onClick != null
+    val cardModifier = if (isClickable) {
         modifier.clickable { onClick(this) }
     } else {
         modifier
@@ -53,7 +55,7 @@ fun Host.BriefVo.HostCard(
                 .fillMaxWidth()
                 .pointerMoveFilter(
                     onEnter = {
-                        isHovered = true
+                        if (isClickable) isHovered = true
                         false
                     },
                     onExit = {
@@ -62,6 +64,7 @@ fun Host.BriefVo.HostCard(
                     }
                 )
                 .background(Color.Transparent)
+                .alpha(if (playable) 1f else 0.45f)
                 .padding(12.dp)
         ) {
             Row(
@@ -130,7 +133,7 @@ fun Host.BriefVo.HostCard(
                 }
             }
 
-            if (isHovered && onClickPlay != null) {
+            if (isHovered && onClickPlay != null && playable) {
                 Box(modifier = Modifier.align(Alignment.TopEnd)) {
                     SimpleTooltip("启动MC 玩这个地图") {
                         TextButton(
