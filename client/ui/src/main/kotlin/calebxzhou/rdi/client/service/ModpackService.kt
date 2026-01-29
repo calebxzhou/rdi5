@@ -1,8 +1,5 @@
 package calebxzhou.rdi.client.service
 
-import calebxzhou.mykotutils.curseforge.CFDownloadMod
-import calebxzhou.mykotutils.curseforge.CFDownloadModException
-import calebxzhou.mykotutils.curseforge.CurseForgeApi
 import calebxzhou.mykotutils.std.humanFileSize
 import calebxzhou.mykotutils.std.openChineseZip
 import calebxzhou.mykotutils.std.sha1
@@ -13,6 +10,7 @@ import calebxzhou.rdi.client.model.firstLoaderDir
 import calebxzhou.rdi.client.net.server
 import calebxzhou.rdi.client.ui2.McPlayArgs
 import calebxzhou.rdi.common.DL_MOD_DIR
+import calebxzhou.rdi.common.service.ModService
 import calebxzhou.rdi.common.exception.RequestError
 import calebxzhou.rdi.common.model.*
 import calebxzhou.rdi.common.util.str
@@ -22,7 +20,6 @@ import org.bson.types.ObjectId
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.*
 import kotlin.io.path.name
 
 
@@ -62,40 +59,10 @@ object ModpackService {
         verName: String,
         mods: List<Mod>
     ): Task {
-        val downloadedMods = Collections.synchronizedList(mutableListOf<CFDownloadMod>())
         var clientPackFile: File? = null
         val versionDir = getVersionDir(modpackId, verName)
 
-        val downloadModsTask = Task.Group(
-            name = "下载Mod",
-            subTasks = mods.map { mod ->
-                Task.Leaf("mod ${mod.slug}") { ctx ->
-                    val target = CFDownloadMod(
-                        mod.projectId.toInt(),
-                        mod.fileId.toInt(),
-                        mod.slug,
-                        DL_MOD_DIR.resolve(mod.fileName).toPath()
-                    )
-                    val result = CurseForgeApi.downloadMods(listOf(target)) { cfmod, prog ->
-                        val fraction = if (prog.fraction > 1f) prog.fraction / 100f else prog.fraction
-                        ctx.emitProgress(TaskProgress("下载中 ${cfmod.slug} ${prog.fraction.toFixed(2)}%", fraction))
-                    }
-                    val downloaded = result.getOrElse { err ->
-                        if (err is CFDownloadModException) {
-                            err.failed.forEach { (_, ex) ->
-                                ex.printStackTrace()
-                            }
-                            throw IllegalStateException("Mod下载失败: ${err.failed.toMap().keys.joinToString(", ") { it.slug }}")
-                        } else {
-                            err.printStackTrace()
-                            throw IllegalStateException("Mod下载失败: ${err.message}")
-                        }
-                    }
-                    downloadedMods += downloaded
-                    ctx.emitProgress(TaskProgress("下载完成", 1f))
-                }
-            }
-        )
+        val downloadModsTask = ModService.downloadModsTask(mods)
 
         val downloadClientPackTask = Task.Leaf("下载客户端整合包") { ctx ->
             val file = DL_PACKS_DIR.resolve("${modpackId}_$verName.zip")
@@ -166,10 +133,17 @@ object ModpackService {
                 }
             }
 
-            downloadedMods.forEachIndexed { index, dlmod ->
-                linkOrFail(dlmod.path, modsDir.resolve(dlmod.path.fileName.name).toPath())
-                val fraction = (index + 1).toFloat() / downloadedMods.size.coerceAtLeast(1)
-                ctx.emitProgress(TaskProgress("已链接 ${index + 1}/${downloadedMods.size}", fraction))
+            val modFiles = mods.map { mod ->
+                val file = DL_MOD_DIR.resolve(mod.fileName)
+                if (!file.exists()) {
+                    throw IllegalStateException("缺少Mod文件: ${file.absolutePath}")
+                }
+                file.toPath()
+            }
+            modFiles.forEachIndexed { index, modPath ->
+                linkOrFail(modPath, modsDir.resolve(modPath.fileName.name).toPath())
+                val fraction = (index + 1).toFloat() / modFiles.size.coerceAtLeast(1)
+                ctx.emitProgress(TaskProgress("已链接 ${index + 1}/${modFiles.size}", fraction))
             }
 
             val mcSlug = "${mcVersion.mcVer}-${modLoader.name.lowercase()}"

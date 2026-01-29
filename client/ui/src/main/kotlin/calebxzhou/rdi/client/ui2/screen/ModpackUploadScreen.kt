@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.unit.dp
 import calebxzhou.mykotutils.std.humanFileSize
 import calebxzhou.mykotutils.std.humanSpeed
+import calebxzhou.mykotutils.std.openChineseZip
 import calebxzhou.mykotutils.std.urlEncoded
 import calebxzhou.rdi.client.net.server
 import calebxzhou.rdi.client.ui2.*
@@ -21,6 +22,7 @@ import calebxzhou.rdi.common.model.*
 import calebxzhou.rdi.common.serdesJson
 import calebxzhou.rdi.common.service.CurseForgeService
 import calebxzhou.rdi.common.service.CurseForgeService.mapMods
+import calebxzhou.rdi.common.service.ModrinthService
 import io.ktor.client.plugins.*
 import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
@@ -73,15 +75,16 @@ fun ModpackUploadScreen(
                         scope.launch(Dispatchers.IO) {
                             selectModpackFile(
                                 onProgress = { progressText = it },
-                                onError = { errorText = it },
-                                onLoaded = { data, mods ->
-                                    val name = updateModpackName ?: data.manifest.name
-                                    step = UploadStep.Confirm(data, mods, name = name)
+                                onError = { errorText = it; progressText = it },
+                                onLoaded = { payload, mods ->
+                                    val name = updateModpackName ?: payload.sourceName
+                                    step = UploadStep.Confirm(payload, mods, name = name)
                                 }
                             )
                         }
                     }
                 }
+
                 is UploadStep.Confirm -> {
                     CircleIconButton("\uF058", "确认上传") {
                         val current = step as UploadStep.Confirm
@@ -96,9 +99,9 @@ fun ModpackUploadScreen(
                             return@CircleIconButton
                         }
                         scope.launch(Dispatchers.IO) {
-                            step = UploadStep.Uploading(current.data, current.mods, name, version)
+                            step = UploadStep.Uploading(current.payload, current.mods, name, version)
                             uploadModpack(
-                                data = current.data,
+                                payload = current.payload,
                                 mods = current.mods,
                                 modpackName = name,
                                 versionName = version,
@@ -112,9 +115,11 @@ fun ModpackUploadScreen(
                         }
                     }
                 }
+
                 is UploadStep.Uploading -> {
                     // no actions while uploading
                 }
+
                 is UploadStep.Done -> {
                     CircleIconButton("\uF00C", "完成") {
                         onBack()
@@ -133,6 +138,7 @@ fun ModpackUploadScreen(
                     Text(progressText)
                 }
             }
+
             is UploadStep.Confirm -> {
                 Row {
 
@@ -167,6 +173,7 @@ fun ModpackUploadScreen(
                     }
                 }
             }
+
             is UploadStep.Uploading -> {
                 Text("正在上传整合包，请耐心等待...")
                 Space8h()
@@ -174,6 +181,7 @@ fun ModpackUploadScreen(
                     Text(progressText)
                 }
             }
+
             is UploadStep.Done -> {
                 Text(current.summary)
             }
@@ -184,30 +192,32 @@ fun ModpackUploadScreen(
 private sealed class UploadStep {
     data object Select : UploadStep()
     data class Confirm(
-        val data: CurseForgeModpackData,
+        val payload: UploadPayload,
         val mods: List<Mod>,
-        val name: String = data.manifest.name,
-        val version: String = data.manifest.version
+        val name: String = payload.sourceName,
+        val version: String = payload.sourceVersion
     ) : UploadStep()
+
     data class Uploading(
-        val data: CurseForgeModpackData,
+        val payload: UploadPayload,
         val mods: List<Mod>,
         val name: String,
         val version: String
     ) : UploadStep()
+
     data class Done(val summary: String) : UploadStep()
 }
 
 private suspend fun selectModpackFile(
     onProgress: (String) -> Unit,
     onError: (String) -> Unit,
-    onLoaded: (CurseForgeModpackData, List<Mod>) -> Unit
+    onLoaded: (UploadPayload, List<Mod>) -> Unit
 ) {
     val chooser = JFileChooser().apply {
-        dialogTitle = "选择整合包 (ZIP)"
+        dialogTitle = "选择整合包 (ZIP / MRPACK)"
         fileSelectionMode = JFileChooser.FILES_ONLY
         currentDirectory = File("C:/Users/${System.getProperty("user.name")}/Downloads")
-        fileFilter = FileNameExtensionFilter("CurseForge整合包 (*.zip)", "zip")
+        fileFilter = FileNameExtensionFilter("整合包 (*.zip, *.mrpack)", "zip", "mrpack")
     }
     val result = chooser.showOpenDialog(null)
     if (result != JFileChooser.APPROVE_OPTION) return
@@ -215,11 +225,42 @@ private suspend fun selectModpackFile(
     val file = chooser.selectedFile
     if (!file.exists() || !file.isFile) {
         onError("未找到所选文件")
-        onProgress("未找到所选文件")
         return
     }
 
     onProgress("已选择文件: ${file.name}。正在读取，请稍等几秒...")
+    val packType = detectPackType(file)
+    if (packType == PackType.MODRINTH) {
+        val loaded = try {
+            ModrinthService.loadModpack(file).getOrThrow()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            onError(e.message ?: "解析整合包失败")
+            return
+        }
+        val mcVersion = loaded.mcVersion
+        val modloader = loaded.modloader
+        val versionName = loaded.index.versionId.ifBlank { "1.0" }
+        val mods = loaded.mods
+        onLoaded(
+            UploadPayload(
+                file = loaded.file,
+                mods = mods,
+                mcVersion = mcVersion,
+                modloader = modloader,
+                sourceName = loaded.index.name,
+                sourceVersion = versionName
+            ),
+            mods
+        )
+        return
+    }
+
+    if (packType != PackType.CURSEFORGE) {
+        onError("无效的整合包文件：缺少 manifest.json 或 modrinth.index.json")
+        onProgress("无效的整合包文件：缺少 manifest.json 或 modrinth.index.json")
+        return
+    }
     val modpackData = try {
         CurseForgeService.loadModpack(file.absolutePath)
     } catch (e: Exception) {
@@ -230,7 +271,29 @@ private suspend fun selectModpackFile(
 
     try {
         val mods = modpackData.manifest.files.mapMods()
-        onLoaded(modpackData, mods)
+        val mcVersion = McVersion.from(modpackData.manifest.minecraft.version)
+        if (mcVersion == null) {
+            onError("不支持的MC版本: ${modpackData.manifest.minecraft.version}")
+            onProgress("不支持的MC版本: ${modpackData.manifest.minecraft.version}")
+            return
+        }
+        val modloader = ModLoader.from(modpackData.manifest.minecraft.modLoaders.firstOrNull()?.id.orEmpty())
+        if (modloader == null) {
+            onError("不支持的Mod加载器: ${modpackData.manifest.minecraft.modLoaders.firstOrNull()?.id.orEmpty()}")
+            onProgress("不支持的Mod加载器: ${modpackData.manifest.minecraft.modLoaders.firstOrNull()?.id.orEmpty()}")
+            return
+        }
+        onLoaded(
+            UploadPayload(
+                file = modpackData.file,
+                mods = mods,
+                mcVersion = mcVersion,
+                modloader = modloader,
+                sourceName = modpackData.manifest.name,
+                sourceVersion = modpackData.manifest.version.ifBlank { "1.0" }
+            ),
+            mods
+        )
     } catch (e: Exception) {
         onError("解析整合包失败: ${e.message}")
         onProgress("解析整合包失败: ${e.message}")
@@ -238,7 +301,7 @@ private suspend fun selectModpackFile(
 }
 
 private suspend fun uploadModpack(
-    data: CurseForgeModpackData,
+    payload: UploadPayload,
     mods: List<Mod>,
     modpackName: String,
     versionName: String,
@@ -247,7 +310,7 @@ private suspend fun uploadModpack(
     onError: (String) -> Unit,
     onDone: (String) -> Unit
 ) {
-    val modpack = getOrCreateModpack(data, modpackName, updateModpackId, onProgress, onError) ?: return
+    val modpack = getOrCreateModpack(payload, modpackName, updateModpackId, onProgress, onError) ?: return
 
     if (modpack.versions.any { it.name.equals(versionName, ignoreCase = true) }) {
         onError("${modpack.name}包已经有$versionName 这个版本了")
@@ -259,7 +322,7 @@ private suspend fun uploadModpack(
 
     onProgress("创建版本 ${versionName}...")
 
-    val totalBytes = data.file.length()
+    val totalBytes = payload.file.length()
     val startTime = System.nanoTime()
     var lastProgressUpdate = 0L
     val modsJson = serdesJson.encodeToString(mods)
@@ -275,25 +338,30 @@ private suspend fun uploadModpack(
             )
             append(
                 key = "file",
-                value = InputProvider { data.file.inputStream().asInput().buffered() },
+                value = InputProvider { payload.file.inputStream().asInput().buffered() },
                 headers = Headers.build {
                     append(HttpHeaders.ContentType, ContentType.Application.Zip.toString())
-                    append(HttpHeaders.ContentDisposition, "filename=\"${data.file.name}\"")
+                    append(HttpHeaders.ContentDisposition, "filename=\"${payload.file.name}\"")
                 }
             )
         },
         boundary = boundary
     )
+    //install locally first
 
     val createVersionResp = server.makeRequest<Unit>(
         path = "modpack/$modpackId/version/$versionEncoded",
         method = HttpMethod.Post,
     ) {
+        timeout {
+            requestTimeoutMillis = 60 * 60 * 1000L
+            socketTimeoutMillis = 60 * 60 * 1000L
+        }
         setBody(multipartContent)
         onUpload { bytesSentTotal, contentLength ->
             val now = System.nanoTime()
             val shouldUpdate = contentLength != null && bytesSentTotal == contentLength ||
-                now - lastProgressUpdate > 75_000_000L
+                    now - lastProgressUpdate > 75_000_000L
             if (shouldUpdate) {
                 lastProgressUpdate = now
                 val elapsedSeconds = (now - startTime) / 1_000_000_000.0
@@ -303,7 +371,14 @@ private suspend fun uploadModpack(
                 onProgress(
                     buildString {
                         appendLine("正在上传版本 ${versionName}...")
-                        appendLine("进度：${percent.coerceIn(0, 100)}% (${bytesSentTotal.humanFileSize}/${total.humanFileSize})")
+                        appendLine(
+                            "进度：${
+                                percent.coerceIn(
+                                    0,
+                                    100
+                                )
+                            }% (${bytesSentTotal.humanFileSize}/${total.humanFileSize})"
+                        )
                         appendLine("速度：${speed.humanSpeed}")
                     }
                 )
@@ -329,7 +404,7 @@ private suspend fun uploadModpack(
 }
 
 private suspend fun getOrCreateModpack(
-    data: CurseForgeModpackData,
+    payload: UploadPayload,
     name: String,
     targetModpackId: ObjectId?,
     onProgress: (String) -> Unit,
@@ -375,14 +450,8 @@ private suspend fun getOrCreateModpack(
         return null
     }
     onProgress("创建整合包 ${name}...")
-    val mcVersion = McVersion.from(data.manifest.minecraft.version) ?: run {
-        onError("不支持的MC版本: ${data.manifest.minecraft.version}")
-        return null
-    }
-    val modloader = ModLoader.from(data.manifest.minecraft.modLoaders.firstOrNull()?.id ?: "") ?: run {
-        onError("不支持的Mod加载器: ${data.manifest.minecraft.modLoaders.firstOrNull()?.id ?: ""}")
-        return null
-    }
+    val mcVersion = payload.mcVersion
+    val modloader = payload.modloader
     val createResp = server.makeRequest<Modpack>(
         path = "modpack",
         method = HttpMethod.Post,
@@ -397,4 +466,46 @@ private suspend fun getOrCreateModpack(
         return null
     }
     return createResp.data
+}
+
+private data class UploadPayload(
+    val file: File,
+    val mods: List<Mod>,
+    val mcVersion: McVersion,
+    val modloader: ModLoader,
+    val sourceName: String,
+    val sourceVersion: String
+)
+
+private fun parseModrinthIds(downloads: List<String>): Pair<String, String>? {
+    val url = downloads.firstOrNull { it.contains("modrinth.com/data/") } ?: return null
+    val parts = url.substringAfter("modrinth.com/data/").split('/')
+    val projectId = parts.getOrNull(0)?.takeIf { it.isNotBlank() } ?: return null
+    val versionId = parts.getOrNull(2)?.takeIf { it.isNotBlank() } ?: return null
+    return projectId to versionId
+}
+
+private enum class PackType { MODRINTH, CURSEFORGE, UNKNOWN }
+
+private fun detectPackType(file: File): PackType {
+    return runCatching {
+        file.openChineseZip().use { zip ->
+            var hasMrIndex = false
+            var hasCfManifest = false
+            val entries = zip.entries().asSequence()
+            for (entry in entries) {
+                if (entry.isDirectory) continue
+                when (entry.name.substringAfterLast('/')) {
+                    "modrinth.index.json" -> hasMrIndex = true
+                    "manifest.json" -> hasCfManifest = true
+                }
+                if (hasMrIndex || hasCfManifest) break
+            }
+            when {
+                hasMrIndex -> PackType.MODRINTH
+                hasCfManifest -> PackType.CURSEFORGE
+                else -> PackType.UNKNOWN
+            }
+        }
+    }.getOrElse { PackType.UNKNOWN }
 }
