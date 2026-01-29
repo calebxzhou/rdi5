@@ -30,6 +30,7 @@ import calebxzhou.rdi.client.service.PlayerService
 import calebxzhou.rdi.client.ui2.McPlayStore
 import calebxzhou.rdi.client.ui2.TaskStore
 import calebxzhou.rdi.client.ui2.screen.*
+import calebxzhou.rdi.common.model.McVersion
 import calebxzhou.rdi.common.model.RAccount
 import calebxzhou.rdi.common.model.Task
 import calebxzhou.rdi.common.model.TaskProgress
@@ -225,16 +226,13 @@ fun main() = application {
                 composable<Setting> {
                     SettingScreen(
                         onBack = { navController.navigate(HostList) },
-                        onOpenTask = { task ->
-                            TaskStore.current = task
-                            navController.navigate(TaskView)
-                        }
                     )
                 }
                 composable<ModpackList> {
                     ModpackListScreen(
                         onBack = { navController.navigate(HostList) },
                         onOpenUpload = { navController.navigate(ModpackUpload) },
+                        onOpenMcVersions = {navController.navigate(RMcVersion)},
                         onOpenInfo = { modpackId ->
                             navController.navigate(ModpackInfo(modpackId))
                         }
@@ -269,6 +267,12 @@ fun main() = application {
                 }
                 composable<ModpackUpload> {
                     ModpackUploadScreen(onBack = { navController.navigate(ModpackList) })
+                }
+                composable<RMcVersion> {
+                    McVersionScreen(onBack = { navController.navigate(ModpackList) },onOpenTask = { task ->
+                        TaskStore.current = task
+                        navController.navigate(TaskView)
+                    },)
                 }
             }
         }

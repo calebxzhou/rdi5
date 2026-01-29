@@ -23,3 +23,4 @@ object Wardrobe
 @Serializable object WorldList
 @Serializable object TaskView
 @Serializable object McPlayView
+@Serializable object RMcVersion

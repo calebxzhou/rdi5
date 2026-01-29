@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import calebxzhou.rdi.client.net.loggedAccount
 import calebxzhou.rdi.client.net.rdiRequest
 import calebxzhou.rdi.client.ui2.CircleIconButton
+import calebxzhou.rdi.client.ui2.ImageIconButton
 import calebxzhou.rdi.client.ui2.MainColumn
 import calebxzhou.rdi.client.ui2.Space8h
 import calebxzhou.rdi.client.ui2.Space8w
@@ -34,6 +35,7 @@ import calebxzhou.rdi.common.model.Modpack
 fun ModpackListScreen(
     onBack: (() -> Unit) = {},
     onOpenUpload: (() -> Unit) = {},
+    onOpenMcVersions: (() -> Unit) = {},
     onOpenInfo: ((String) -> Unit) = {}
 ) {
     var modpacks by remember { mutableStateOf<List<Modpack.BriefVo>>(emptyList()) }
@@ -66,7 +68,12 @@ fun ModpackListScreen(
             )
             Text("只看我的包")
             Space8w()
-            CircleIconButton("\uDB80\uDFD5", "上传新包") {
+            ImageIconButton("bookshelf","MC版本资源管理",
+                bgColor = Color.LightGray) {
+                onOpenMcVersions.invoke()
+            }
+            Space8w()
+            CircleIconButton("\uDB80\uDFD5", "导入新包") {
                 onOpenUpload.invoke()
             }
         }
