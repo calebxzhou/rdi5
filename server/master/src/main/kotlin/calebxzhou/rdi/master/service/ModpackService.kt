@@ -229,7 +229,7 @@ object ModpackService {
         get() = testDbcl ?: realDbcl
 
     //private val clientNeedDirs = listOf("config", "mods", "defaultconfigs", "kubejs", "global_packs", "resourcepacks")
-    private val disallowedClientPaths = setOf("config/fancymenu")
+    private val disallowedClientPaths = setOf("shaderpacks")
     private val allowedQuestLangFiles = setOf("en_us.snbt", "zh_cn.snbt")
     private const val QUEST_LANG_PREFIX = "config/ftbquests/quests/lang/"
     private const val RESOURCEPACK_MAX_SIZE_BYTES = 1024L * 1024
