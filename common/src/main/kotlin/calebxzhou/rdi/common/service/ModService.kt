@@ -9,6 +9,8 @@ import calebxzhou.mykotutils.log.Loggers
 import calebxzhou.mykotutils.std.murmur2
 import calebxzhou.mykotutils.std.sha1
 import calebxzhou.rdi.common.DL_MOD_DIR
+import calebxzhou.rdi.common.model.Task
+import calebxzhou.rdi.common.model.TaskProgress
 import calebxzhou.rdi.common.model.Mod
 import calebxzhou.rdi.common.model.ModBriefInfo
 import calebxzhou.rdi.common.serdesJson
@@ -33,13 +35,14 @@ import kotlin.math.min
 
 
 object ModService {
+    var useMirror = true
     val briefInfo: List<ModBriefInfo> by lazy { loadBriefInfo() }
     const val NEOFORGE_CONFIG_PATH = "META-INF/neoforge.mods.toml"
     const val FABRIC_CONFIG_PATH = "fabric.mod.json"
     const val FORGE_CONFIG_PATH = "META-INF/mods.toml"
     private val lgr by Loggers
 
-    val downloadedMods =DL_MOD_DIR.listFiles { it.extension == "jar" }?.toMutableList() ?: mutableListOf()
+    val downloadedMods = DL_MOD_DIR.listFiles { it.extension == "jar" }?.toMutableList() ?: mutableListOf()
     var installedMods = DL_MOD_DIR.listFiles { it.extension == "jar" }?.toMutableList() ?: mutableListOf()
     fun JarFile.readNeoForgeConfig(): CommentedConfig? {
         return getJarEntry(NEOFORGE_CONFIG_PATH)?.let { modsTomlEntry ->
@@ -75,7 +78,8 @@ object ModService {
             iconData = iconBytes,
             iconUrls = buildList {
                 if (logoUrl.isNotBlank()) add(logoUrl)
-            }
+            },
+            side = Mod.Side.BOTH
         )
     }
 
@@ -98,11 +102,14 @@ object ModService {
                 }
             }
         }.toMutableList()
+
     data class UnmatchedDependencies(
         val modId: String,
-        val missing: List<Missing>) {
+        val missing: List<Missing>
+    ) {
         data class Missing(val modId: String, val version: String? = null)
     }
+
     fun List<File>.checkDependencies(): List<UnmatchedDependencies> {
         val installedModIds = mutableSetOf<String>()
         this.forEach { file ->
@@ -129,7 +136,8 @@ object ModService {
                         val dependencies = config.get(dependencyKey) as? List<Config> ?: return@forEach
 
                         val missingDependencies = dependencies.mapNotNull { dependency ->
-                            val dependencyModId = dependency.get<String>("modId")?.trim()?.lowercase() ?: return@mapNotNull null
+                            val dependencyModId =
+                                dependency.get<String>("modId")?.trim()?.lowercase() ?: return@mapNotNull null
                             if (dependencyModId.isEmpty() || builtinDependencyIds.contains(dependencyModId)) return@mapNotNull null
 
                             val side = dependency.get<String>("side")?.trim()?.uppercase()
@@ -159,9 +167,11 @@ object ModService {
                             .distinctBy { it.modId }
                         if (missingDependencies.isNotEmpty()) {
                             lgr.warn(
-                                "Mod '$modId' is missing dependencies: ${missingDependencies.joinToString(", ") { missing ->
-                                    missing.version?.let { ver -> "${missing.modId} ($ver)" } ?: missing.modId
-                                }}"
+                                "Mod '$modId' is missing dependencies: ${
+                                    missingDependencies.joinToString(", ") { missing ->
+                                        missing.version?.let { ver -> "${missing.modId} ($ver)" } ?: missing.modId
+                                    }
+                                }"
                             )
                             unmatched += UnmatchedDependencies(modId, missingDependencies)
                         }
@@ -192,7 +202,7 @@ object ModService {
                     collectModIdsFromNestedJar(nestedInput, installedModIds)
                 }
             }.onFailure { err ->
-                lgr.warn  ( "Failed to inspect nested jar '$name' inside ${jar.name}" )
+                lgr.warn("Failed to inspect nested jar '$name' inside ${jar.name}")
                 err.printStackTrace()
             }
         }
@@ -230,7 +240,7 @@ object ModService {
         return runCatching {
             TomlFormat.instance().createParser().parse(raw)
         }.onFailure { err ->
-            lgr.debug("Failed to parse nested neoforge config",err, )
+            lgr.debug("Failed to parse nested neoforge config", err)
         }.getOrNull()
     }
 
@@ -245,7 +255,14 @@ object ModService {
     }
 
 
-
+    val String.ofMirrorUrl
+        get() = this.replace("edge.forgecdn.net", "mod.mcimirror.top")
+            .replace("mediafilez.forgecdn.net", "mod.mcimirror.top")
+            .replace("media.forgecdn.net", "mod.mcimirror.top")
+            .replace("api.modrinth.com", "mod.mcimirror.top/modrinth")
+            .replace("staging-api.modrinth.com", "mod.mcimirror.top/modrinth")
+            .replace("cdn.modrinth.com", "mod.mcimirror.top")
+            .replace("api.curseforge.com", "mod.mcimirror.top/curseforge")
 
     fun loadBriefInfo(): List<ModBriefInfo> {
         val resourcePath = "mod_brief_info.json"
@@ -287,83 +304,62 @@ object ModService {
         return map
     }
 
-    suspend fun downloadMods(mods: List<Mod>, onProgress: (Mod, DownloadProgress) -> Unit): Result<List<Mod>> {
-        if (mods.isEmpty()) return Result.success(emptyList())
-
+    fun downloadModsTask(mods: List<Mod>): Task {
+        if (mods.isEmpty()) return Task.Group("下载Mod", emptyList())
         val cfMods = mods.filter { it.platform == "cf" }
         val mrMods = mods.filter { it.platform == "mr" }
-
-        val failures = mutableListOf<Pair<String, Throwable>>()
-
-        // Download both CF and MR mods concurrently
-        coroutineScope {
-            val cfJob = async { downloadCFMods(cfMods, onProgress) }
-            val mrJob = async { downloadMRMods(mrMods, onProgress) }
-
-            // Wait for both to complete and collect failures
-            cfJob.await().onFailure { failures += "CurseForge" to it }
-            mrJob.await().onFailure { failures += "Modrinth" to it }
+        val tasks = buildList {
+            add(downloadCFModsTask(cfMods))
+            add(downloadMRModsTask(mrMods))
         }
-
-        return if (failures.isEmpty()) {
-            Result.success(mods)
-        } else {
-            val combinedMessage = failures.joinToString("; ") { (platform, err) ->
-                "$platform: ${err.message}"
-            }
-            Result.failure(IllegalStateException("Download failed: $combinedMessage", failures.first().second))
-        }
+        return Task.Sequence("下载Mod", tasks)
     }
 
-    private suspend fun downloadCFMods(mods: List<Mod>, onProgress: (Mod, DownloadProgress) -> Unit): Result<Unit> {
-        if (mods.isEmpty()) return Result.success(Unit)
-
-        // Query file infos in batch
+    fun downloadCFModsTask(mods: List<Mod>): Task {
+        if (mods.isEmpty()) return Task.Group("下载CurseForge Mod", emptyList())
         val fileIds = mods.map { it.fileId.toInt() }
-        val fileInfos = CurseForgeApi.getModFilesInfo(fileIds)
-        val fileInfoMap = fileInfos.associateBy { it.id }
-
-        // Pair mods with their file info
-        val modsWithFileInfo = mods.mapNotNull { mod ->
-            val fileId = mod.fileId.toInt()
-            val fileInfo = fileInfoMap[fileId]
-            if (fileInfo == null) {
-                lgr.warn { "File info not found for mod ${mod.slug} (fileId=$fileId)" }
-                return@mapNotNull null
-            }
-            mod to fileInfo
+        val fileInfoMap = mutableMapOf<Int, CurseForgeFile>()
+        val prepareTask = Task.Leaf("获取CurseForge文件信息") { ctx ->
+            val fileInfos = CurseForgeApi.getModFilesInfo(fileIds)
+            fileInfoMap.clear()
+            fileInfoMap.putAll(fileInfos.associateBy { it.id })
+            ctx.emitProgress(TaskProgress("获取完成", 1f))
         }
-
-        if (modsWithFileInfo.isEmpty()) return Result.success(Unit)
-
-        // Use CPU core amount as parallelism
-        val cpuCores = Runtime.getRuntime().availableProcessors()
-        val parallelism = min(cpuCores, modsWithFileInfo.size)
-        val semaphore = Semaphore(parallelism)
-        val perDownloadRange = max(1, DEFAULT_RANGE_PARALLELISM / parallelism)
-
-        val failures = mutableListOf<Pair<Mod, Throwable>>()
-
-        coroutineScope {
-            modsWithFileInfo.map { (mod, fileInfo) ->
-                async(Dispatchers.IO) {
-                    semaphore.withPermit {
-                        mod to downloadSingleCFMod(mod, fileInfo, perDownloadRange) { progress ->
-                            onProgress(mod, progress)
-                        }
-                    }
+        val tasks = mods.map { mod ->
+            Task.Leaf("下载 ${mod.slug}") { ctx ->
+                val fileInfo = fileInfoMap[mod.fileId.toInt()]
+                    ?: throw IllegalStateException("未找到文件信息: ${mod.slug}")
+                val result = downloadSingleCFMod(mod, fileInfo, DEFAULT_RANGE_PARALLELISM) { progress ->
+                    ctx.emitProgress(
+                        TaskProgress(
+                            "下载中 ${mod.slug}",
+                            progress.fraction.coerceIn(0f, 1f)
+                        )
+                    )
                 }
-            }.awaitAll().forEach { (mod, result) ->
-                result.onFailure { failures += mod to it }
+                result.getOrElse { throw it }
             }
         }
+        return Task.Sequence("下载CurseForge Mod", listOf(prepareTask, Task.Group("下载CurseForge Mod", tasks)))
+    }
 
-        return if (failures.isEmpty()) {
-            Result.success(Unit)
-        } else {
-            val failedMods = failures.joinToString(", ") { it.first.slug }
-            Result.failure(IllegalStateException("Failed to download CF mods: $failedMods", failures.first().second))
+    fun downloadMRModsTask(mods: List<Mod>): Task {
+        if (mods.isEmpty()) return Task.Group("下载Modrinth Mod", emptyList())
+        val modsWithUrls = mods.filter { it.downloadUrls.isNotEmpty() }
+        val tasks = modsWithUrls.map { mod ->
+            Task.Leaf("下载 ${mod.slug}") { ctx ->
+                val result = downloadSingleMRMod(mod, DEFAULT_RANGE_PARALLELISM) { progress ->
+                    ctx.emitProgress(
+                        TaskProgress(
+                            "下载中 ${mod.slug}",
+                            progress.fraction.coerceIn(0f, 1f)
+                        )
+                    )
+                }
+                result.getOrElse { throw it }
+            }
         }
+        return Task.Group("下载Modrinth Mod", tasks)
     }
 
     private suspend fun downloadSingleCFMod(
@@ -382,12 +378,8 @@ object ModService {
         }
 
         val officialUrl = fileInfo.realDownloadUrl
-        val useMirror = CurseForgeApi.useMirror
         val mirrorUrl = if (useMirror) {
-            officialUrl
-                .replace("edge.forgecdn.net", "mod.mcimirror.top")
-                .replace("mediafilez.forgecdn.net", "mod.mcimirror.top")
-                .replace("media.forgecdn.net", "mod.mcimirror.top")
+            officialUrl.ofMirrorUrl
         } else {
             officialUrl
         }
@@ -427,46 +419,6 @@ object ModService {
         return finalResult
     }
 
-    private suspend fun downloadMRMods(mods: List<Mod>, onProgress: (Mod, DownloadProgress) -> Unit): Result<Unit> {
-        if (mods.isEmpty()) return Result.success(Unit)
-
-        // Filter out mods with no download URLs
-        val modsWithUrls = mods.filter { it.downloadUrls.isNotEmpty() }
-        if (modsWithUrls.isEmpty()) {
-            lgr.warn { "No Modrinth mods have download URLs" }
-            return Result.success(Unit)
-        }
-
-        // Use CPU core amount as parallelism
-        val cpuCores = Runtime.getRuntime().availableProcessors()
-        val parallelism = min(cpuCores, modsWithUrls.size)
-        val semaphore = Semaphore(parallelism)
-        val perDownloadRange = max(1, DEFAULT_RANGE_PARALLELISM / parallelism)
-
-        val failures = mutableListOf<Pair<Mod, Throwable>>()
-
-        coroutineScope {
-            modsWithUrls.map { mod ->
-                async(Dispatchers.IO) {
-                    semaphore.withPermit {
-                        mod to downloadSingleMRMod(mod, perDownloadRange) { progress ->
-                            onProgress(mod, progress)
-                        }
-                    }
-                }
-            }.awaitAll().forEach { (mod, result) ->
-                result.onFailure { failures += mod to it }
-            }
-        }
-
-        return if (failures.isEmpty()) {
-            Result.success(Unit)
-        } else {
-            val failedMods = failures.joinToString(", ") { it.first.slug }
-            Result.failure(IllegalStateException("Failed to download MR mods: $failedMods", failures.first().second))
-        }
-    }
-
     private suspend fun downloadSingleMRMod(
         mod: Mod,
         rangeParallelism: Int,
@@ -495,7 +447,7 @@ object ModService {
         for ((index, url) in urls.withIndex()) {
             val result = runCatching {
                 val downloadedPath = targetPath.downloadFileFrom(
-                    url,
+                    if(useMirror) url.ofMirrorUrl else url,
                     rangeParallelism = rangeParallelism,
                     onProgress = onProgress
                 ).getOrElse { throw it }
