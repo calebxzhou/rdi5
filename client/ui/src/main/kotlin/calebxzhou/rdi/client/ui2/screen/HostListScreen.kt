@@ -70,7 +70,7 @@ fun HostListScreen(
                 onOpenWardrobe?.invoke()
             }
             Space8w()
-            ImageIconButton("grass_block","MC资源及整合包管理",
+            ImageIconButton("grass_block","大家的整合包",
                 bgColor = Color.LightGray) {
                 onOpenModpackList?.invoke()
             }
