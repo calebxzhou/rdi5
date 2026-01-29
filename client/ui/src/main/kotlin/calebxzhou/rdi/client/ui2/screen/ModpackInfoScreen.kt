@@ -35,6 +35,7 @@ import calebxzhou.rdi.common.model.validateIconUrl
 import calebxzhou.rdi.common.model.validateModpackName
 import calebxzhou.rdi.common.serdesJson
 import calebxzhou.rdi.common.service.CurseForgeService.fillCurseForgeVo
+import calebxzhou.rdi.common.service.ModrinthService.fillModrinthVo
 import io.ktor.http.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -87,7 +88,10 @@ fun ModpackInfoScreen(
                     mods = emptyList()
                     scope.launch {
                         val loaded = withContext(Dispatchers.IO) {
-                            runCatching { latest.mods.fillCurseForgeVo() }.getOrElse {
+                            runCatching {
+                                latest.mods.fillCurseForgeVo()
+                                latest.mods.fillModrinthVo()
+                            }.getOrElse {
                                 it.printStackTrace();
                                 emptyList()
                             }
@@ -211,6 +215,7 @@ fun ModpackInfoScreen(
                                             ?: mod.slug
                                     }
                                 )
+
                             }
                             LazyVerticalGrid(
                                 columns = GridCells.Adaptive(320.dp),
