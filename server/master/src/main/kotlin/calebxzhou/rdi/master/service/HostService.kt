@@ -252,13 +252,11 @@ object HostService {
     }
 
     private const val PORT_START = 50000
-    const val SERVER_RDI_CORE_FILENAME = "rdi-5-server.jar"
     private const val PORT_END_EXCLUSIVE = 60000
     private const val SHUTDOWN_THRESHOLD = 10
-    private const val HOSTS_PER_PAGE = 20
+    private const val HOSTS_PER_PAGE = 24
 
     private val idleMonitorScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val modDownloadScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var idleMonitorJob: Job? = null
 
     private data class HostState(
@@ -1038,22 +1036,13 @@ object HostService {
 
         val requesterId = _id
         val visibleHosts = hosts.filter { host ->
-            if (this.isDav)
-                return@filter true
-            //官服永远显示
-            if (PlayerService.getName(host.ownerId) == "davickk")
-                return@filter true
-
             val isMember = host.ownerId == requesterId || host.members.any { it.id == requesterId }
             //只显示受邀时
             if (onlyShowMy) {
                 return@filter isMember
             }
-            if (isMember) return@filter true
-            host.status == HostStatus.PLAYABLE
+            return@filter true
         }
-
-        if (visibleHosts.isEmpty()) return emptyList()
 
 
         return coroutineScope {
@@ -1061,6 +1050,12 @@ object HostService {
                 async {
                     val modpack = ModpackService.getById(host.modpackId)
                     val onlinePlayers = host.getOnlinePlayers()
+                    val isMember = host.ownerId == requesterId || host.members.any { it.id == requesterId }
+                    val playable = when {
+                        isMember -> true
+                        host.status == HostStatus.PLAYABLE && !host.whitelist -> true
+                        else -> false
+                    }
                     Host.BriefVo(
                         _id = host._id,
                         intro = host.intro,
@@ -1070,6 +1065,7 @@ object HostService {
                         iconUrl = modpack?.iconUrl,
                         packVer = host.packVer,
                         port = host.port,
+                        playable = playable,
                         onlinePlayerIds = onlinePlayers
                     )
                 }

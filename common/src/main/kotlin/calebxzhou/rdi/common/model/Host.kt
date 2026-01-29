@@ -55,6 +55,7 @@ data class Host(
         val modpackName: String,
         val packVer: String,
         var port: Int,
+        val playable: Boolean=true,
         val onlinePlayerIds: List<@Contextual ObjectId> = arrayListOf(),
     ){
         companion object{
