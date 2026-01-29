@@ -16,6 +16,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import calebxzhou.rdi.client.ui2.MaterialColor
+import calebxzhou.rdi.client.ui2.asIconText
 import calebxzhou.rdi.common.model.Mod
 
 /**
@@ -23,11 +24,6 @@ import calebxzhou.rdi.common.model.Mod
  */
 @Composable
 fun Mod.CardVo.ModCard(modifier: Modifier = Modifier) {
-    /*
-                nameCn      name
-        icon
-                intro
-                */
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -55,14 +51,30 @@ fun Mod.CardVo.ModCard(modifier: Modifier = Modifier) {
             val hasChineseName = !nameCn.isNullOrBlank()
             val primaryText = if (hasChineseName) nameCn!!.trim() else name.trim()
 
-            Text(
-                text = primaryText.ifBlank { name.trim() },
-                color = MaterialColor.GRAY_900.color,
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = primaryText.ifBlank { name.trim() },
+                    color = MaterialColor.GRAY_900.color,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                val sideIcon = when (side) {
+                    Mod.Side.CLIENT -> "\uF108"
+                    Mod.Side.SERVER -> "\uF233"
+                    Mod.Side.BOTH -> "\uF108 \uF233"
+                }
+                Text(
+                    text = sideIcon.asIconText,
+                    color = MaterialColor.GRAY_600.color,
+                    fontSize = 14.sp
+                )
+            }
 
             if (hasChineseName) {
                 val secondaryTrimmed = name.trim()
