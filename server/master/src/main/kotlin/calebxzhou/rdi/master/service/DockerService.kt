@@ -163,7 +163,7 @@ object DockerService {
                 val logs = mutableListOf<String>()
 
                 override fun onNext(frame: Frame) {
-                    val logLine = String(frame.payload).trim()
+                    val logLine = String(frame.payload, Charsets.UTF_8).trim()
                     if (logLine.isNotEmpty()) {
                         logs.add(logLine)
                     }
@@ -208,7 +208,7 @@ object DockerService {
     ): Closeable {
         val callback = object : Adapter<Frame>() {
             override fun onNext(frame: Frame) {
-                val logLine = String(frame.payload).trim()
+                val logLine = String(frame.payload, Charsets.UTF_8).trim()
                 if (logLine.isNotEmpty()) {
                     try {
                         onLine(logLine)
