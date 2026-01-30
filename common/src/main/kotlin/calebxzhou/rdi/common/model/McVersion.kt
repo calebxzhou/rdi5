@@ -25,6 +25,14 @@ enum class McVersion(
             ModLoader.forge to ModLoader.Version("1.20.1-forge-47.4.13","https://maven.minecraftforge.net/net/minecraftforge/forge/1.20.1-47.4.13/forge-1.20.1-47.4.13-installer.jar","790949ee0cb4671175a806befa370d69008b4b4e")
         )
     ),
+    V192(
+        "1.19.2",
+        "assets/icons/frog.png",21,
+        mapOf(
+            ModLoader.forge to ModLoader.Version("1.19.2-forge-43.5.2","https://maven.minecraftforge.net/net/minecraftforge/forge/1.19.2-43.5.2/forge-1.19.2-43.5.2-installer.jar","d242b6786039d4acb9ea7579624772b6809bda91")
+        )
+
+    ),
     V182(
         "1.18.2",
         "assets/icons/copper.png",21,
