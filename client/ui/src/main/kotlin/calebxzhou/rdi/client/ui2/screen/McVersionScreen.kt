@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import calebxzhou.mykotutils.std.deleteRecursivelyNoSymlink
 import calebxzhou.rdi.client.service.GameService
 import calebxzhou.rdi.client.service.ModpackService
 import calebxzhou.rdi.client.service.ModpackService.startInstall
@@ -138,7 +139,17 @@ fun McVersionScreen(
                         ModpackManageCard(
                             packdir = packdir,
                             isRunning = isRunning,
-                            onDelete = { confirmDelete = packdir },
+                            onDelete = {
+                                scope.launch {
+                                    val result = withContext(Dispatchers.IO) {
+                                        runCatching { packdir.dir.deleteRecursivelyNoSymlink() }
+                                    }
+                                    if (result.isFailure) {
+                                        errorMessage = "删除失败: ${result.exceptionOrNull()?.message}"
+                                    }
+                                    reload()
+                                }
+                            },
                             onReinstall = {
                                 scope.launch {
                                     val version = server.makeRequest<Modpack.Version>(
