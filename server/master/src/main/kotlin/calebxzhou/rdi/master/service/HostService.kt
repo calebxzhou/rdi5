@@ -1179,7 +1179,7 @@ object HostService {
             return
         }
         val buffer = ArrayDeque<String>(maxLines)
-        logFile.useLines { lines ->
+        logFile.useLines(Charsets.UTF_8) { lines ->
             lines.forEach { line ->
                 if (buffer.size == maxLines) {
                     buffer.removeFirst()
