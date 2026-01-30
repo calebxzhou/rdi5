@@ -9,9 +9,12 @@ enum class ModLoader {
         }
     }
     class Version(
+        val loader: ModLoader,
         //version目录的名字
-        val id: String,
+        val dirName: String,
         val installerUrl: String,
         val installerSha1: String
-    )
+    ){
+        val id get() = dirName.replace("${loader.name}-","")
+    }
 }

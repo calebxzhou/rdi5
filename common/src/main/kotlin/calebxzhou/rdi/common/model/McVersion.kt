@@ -15,7 +15,12 @@ enum class McVersion(
         21,
         // "https://piston-meta.mojang.com/v1/packages/a56257b4bc475ecac33571b51b68b33ac046fc72/1.21.1.json",
         mapOf(
-            ModLoader.neoforge to ModLoader.Version("neoforge-21.1.219","https://maven.neoforged.net/releases/net/neoforged/neoforge/21.1.219/neoforge-21.1.219-installer.jar","832c9404c9305da6096829729bc8a94c0da60087")
+            ModLoader.neoforge to ModLoader.Version(
+                ModLoader.neoforge,
+                "neoforge-21.1.219",
+                "https://maven.neoforged.net/releases/net/neoforged/neoforge/21.1.219/neoforge-21.1.219-installer.jar",
+                "832c9404c9305da6096829729bc8a94c0da60087"
+            )
         )
     ),
     V201(
@@ -23,14 +28,24 @@ enum class McVersion(
         "assets/icons/brush.png",21,
         // "https://piston-meta.mojang.com/v1/packages/9318a951bbc903b54a21463a7eb8c4d451f7b132/1.20.1.json",
         mapOf(
-            ModLoader.forge to ModLoader.Version("1.20.1-forge-47.4.13","https://maven.minecraftforge.net/net/minecraftforge/forge/1.20.1-47.4.13/forge-1.20.1-47.4.13-installer.jar","790949ee0cb4671175a806befa370d69008b4b4e")
+            ModLoader.forge to ModLoader.Version(
+                ModLoader.forge,
+                "1.20.1-forge-47.4.13",
+                "https://maven.minecraftforge.net/net/minecraftforge/forge/1.20.1-47.4.13/forge-1.20.1-47.4.13-installer.jar",
+                "790949ee0cb4671175a806befa370d69008b4b4e"
+            )
         )
     ),
     V192(
         "1.19.2",
         "assets/icons/frog.png",21,
         mapOf(
-            ModLoader.forge to ModLoader.Version("1.19.2-forge-43.5.2","https://maven.minecraftforge.net/net/minecraftforge/forge/1.19.2-43.5.2/forge-1.19.2-43.5.2-installer.jar","d242b6786039d4acb9ea7579624772b6809bda91")
+            ModLoader.forge to ModLoader.Version(
+                ModLoader.forge,
+                "1.19.2-forge-43.5.2",
+                "https://maven.minecraftforge.net/net/minecraftforge/forge/1.19.2-43.5.2/forge-1.19.2-43.5.2-installer.jar",
+                "d242b6786039d4acb9ea7579624772b6809bda91"
+            )
         )
 
     ),
@@ -39,7 +54,12 @@ enum class McVersion(
         "assets/icons/copper.png",21,
         //https://piston-meta.mojang.com/v1/packages/334b33fcba3c9be4b7514624c965256535bd7eba/1.18.2.json
         mapOf(
-            ModLoader.forge to ModLoader.Version("1.18.2-forge-40.3.12","https://maven.minecraftforge.net/net/minecraftforge/forge/1.18.2-40.3.12/forge-1.18.2-40.3.12-installer.jar","d7f759dec5b52ddb342c3e12511da1674d0401bf")
+            ModLoader.forge to ModLoader.Version(
+                ModLoader.forge,
+                "1.18.2-forge-40.3.12",
+                "https://maven.minecraftforge.net/net/minecraftforge/forge/1.18.2-40.3.12/forge-1.18.2-40.3.12-installer.jar",
+                "d7f759dec5b52ddb342c3e12511da1674d0401bf"
+            )
         )
     )
     ;

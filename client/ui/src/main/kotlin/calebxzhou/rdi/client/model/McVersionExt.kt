@@ -13,9 +13,9 @@ val McVersion.baseDir get() = GameService.versionListDir.resolve(mcVer)
 val McVersion.nativesDir get() = baseDir.resolve("natives")
 val McVersion.firstLoader get() = loaderVersions.keys.first()
 val McVersion.firstLoaderVersion get() = loaderVersions.values.first()
-val McVersion.firstLoaderDir get() = loaderVersions.values.first().let { GameService.versionListDir.resolve(it.id) }
+val McVersion.firstLoaderDir get() = loaderVersions.values.first().let { GameService.versionListDir.resolve(it.dirName) }
 val McVersion.manifest: MojangVersionManifest get() = metadata//GameService.versionListDir.resolve(mcVer).resolve("$mcVer.json").let { serdesJson.decodeFromString(it.readText()) }
 val McVersion.loaderManifest: MojangVersionManifest
-    get() = GameService.versionListDir.resolve(firstLoaderVersion.id).resolve(firstLoaderVersion.id + ".json")
+    get() = GameService.versionListDir.resolve(firstLoaderVersion.dirName).resolve(firstLoaderVersion.dirName + ".json")
         .let { serdesJson.decodeFromString(it.readText()) }
 
