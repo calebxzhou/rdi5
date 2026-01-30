@@ -270,20 +270,16 @@ object HostService {
 
 
     private val Host.containerEnv
-        get() = { mcVer: McVersion, mods: List<Mod>, gameRules: Map<String, String> ->
+        get() = { loaderVersion: ModLoader.Version ->
+            val loaderArgPath = when(loaderVersion.loader){
+                ModLoader.neoforge -> "@libraries/net/neoforged/neoforge/"
+                ModLoader.forge -> "@libraries/net/minecraftforge/forge/"
+            }+"${loaderVersion.id}/unix_args.txt"
             mutableListOf(
                 "HOST_ID=${_id.str}",
                 "GAME_PORT=${port}",
-                "MOD_LIST=${mods.joinToString("\n") { mod -> mod.fileName }}",
                 "ALL_OP=${if (allowCheats) "true" else "false"}",
-                "START_PARAMS=-Xmx8G ${
-                    when (mcVer) {
-                        //以后会支持其他mod loader 暂时只支持forge/neoforge
-                        McVersion.V211 -> "@libraries/net/neoforged/neoforge/21.1.219/unix_args.txt"
-                        McVersion.V201 -> "@libraries/net/minecraftforge/forge/1.20.1-47.4.13/unix_args.txt"
-                        McVersion.V182 -> "@libraries/net/minecraftforge/forge/1.18.2-40.3.12/unix_args.txt"
-                    }
-                } --universe /data --nogui"
+                "START_PARAMS=-Xmx8G $loaderArgPath --universe /data --nogui"
             ).apply {
                 gameRules.forEach { id, value ->
                     this += "GAME_RULE_${id}=${value}"
@@ -895,18 +891,16 @@ object HostService {
                     .withTmpfsOptions(TmpfsOptions().withSizeBytes(512 * 1024 * 1024))
             }
         }
-        val image = when (modpack.mcVer) {
-            McVersion.V211, McVersion.V201, McVersion.V182 -> "rdi:j21"
-            // V165 V122 V071 -> "rdi:j8"
-            else -> throw RequestError("不支持的MC版本")
-        }
-        DockerService.createContainer(
-            port,
-            this._id.str,
-            mounts,
-            image,
-            containerEnv(modpack.mcVer, version.mods, gameRules)
-        )
+        val image = "rdi:j${modpack.mcVer.jreVer}"
+        modpack.mcVer.loaderVersions[modpack.modloader]?.let { modLoaderVersion ->
+            DockerService.createContainer(
+                port,
+                this._id.str,
+                mounts,
+                image,
+                containerEnv(modLoaderVersion)
+            )
+        }?: throw RequestError("不支持的mod加载器")
     }
 
     suspend fun HostContext.delete() {
