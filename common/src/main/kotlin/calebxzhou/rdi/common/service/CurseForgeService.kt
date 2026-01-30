@@ -1,24 +1,32 @@
 package calebxzhou.rdi.common.service
 
-import calebxzhou.mykotutils.curseforge.CurseForgeApi
-import calebxzhou.mykotutils.curseforge.CurseForgeApi.getModsInfo
-import calebxzhou.mykotutils.curseforge.CurseForgeFingerprintData
-import calebxzhou.mykotutils.curseforge.CurseForgeModInfo
+import calebxzhou.mykotutils.ktor.json
 import calebxzhou.mykotutils.log.Loggers
-import calebxzhou.mykotutils.modrinth.ModrinthApi.mapModrinthProjects
 import calebxzhou.mykotutils.std.murmur2
 import calebxzhou.mykotutils.std.openChineseZip
 import calebxzhou.rdi.common.exception.ModpackException
 import calebxzhou.rdi.common.model.*
+import calebxzhou.rdi.common.net.ktorClient
 import calebxzhou.rdi.common.serdesJson
 import calebxzhou.rdi.common.service.ModService.briefInfo
 import calebxzhou.rdi.common.service.ModService.modDescription
 import calebxzhou.rdi.common.service.ModService.modLogo
+import calebxzhou.rdi.common.service.ModService.ofMirrorUrl
 import calebxzhou.rdi.common.service.ModService.readNeoForgeConfig
 import calebxzhou.rdi.common.service.ModService.toVo
+import calebxzhou.rdi.common.service.ModrinthService.mapModrinthProjects
 import calebxzhou.rdi.common.service.ModrinthService.mr2CfSlug
+import io.ktor.client.call.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import io.ktor.http.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.io.files.FileNotFoundException
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.Json
+import org.jetbrains.annotations.VisibleForTesting
 import java.io.File
 import java.util.jar.JarFile
 
@@ -26,17 +34,14 @@ import java.util.jar.JarFile
 object CurseForgeService {
     val slugBriefInfo: Map<String, ModBriefInfo> by lazy { ModService.buildSlugMap(briefInfo) { it.curseforgeSlugs } }
     private val lgr by Loggers
-
-    //镜像源可能会缺mod  比如McJtyLib - 1.21-9.0.14
-    const val MIRROR_URL = "https://mod.mcimirror.top/curseforge/v1"
     const val OFFICIAL_URL = "https://api.curseforge.com/v1"
-
+    //镜像源可能会缺mod  比如McJtyLib - 1.21-9.0.14
 
 
     suspend fun List<File>.loadInfoCurseForge(): CurseForgeLocalResult {
         val hashToFile = this.associateBy { it.murmur2 }
         val hashes = hashToFile.keys.toList()
-        val fingerprintData = CurseForgeApi.matchFingerprintData(hashes)
+        val fingerprintData = matchFingerprintData(hashes)
         val result = getInfosFromHash(hashToFile, fingerprintData)
         //cache loaded info
         return result
@@ -179,7 +184,7 @@ object CurseForgeService {
             cfInfo.slug.cf2MrSlug
         }.mapModrinthProjects().associateBy { it.slug.mr2CfSlug }
 
-        val fileInfoMap = CurseForgeApi.getModFilesInfo(map { it.fileId })
+        val fileInfoMap = getModFilesInfo(map { it.fileId })
             .associateBy { it.id }
         val libraryModSlugs = arrayListOf<String>()
         // Join the data by matching projectId and fileId
@@ -217,10 +222,10 @@ object CurseForgeService {
             }
         }.also { mod ->
 
-            lgr.info("lib mod: ${libraryModSlugs.joinToString(",")}")
-            lgr.info("server mod：${mod.filter { it.side == Mod.Side.SERVER }.map { it.slug }}")
-            lgr.info("client mod：${mod.filter { it.side == Mod.Side.CLIENT }.map { it.slug }}")
-            lgr.info("both  mod：${mod.filter { it.side == Mod.Side.BOTH }.map { it.slug }}")
+            lgr.info { "lib mod: ${libraryModSlugs.joinToString(",")}" }
+            lgr.info { "server mod：${mod.filter { it.side == Mod.Side.SERVER }.map { it.slug }}" }
+            lgr.info { "client mod：${mod.filter { it.side == Mod.Side.CLIENT }.map { it.slug }}" }
+            lgr.info { "both  mod：${mod.filter { it.side == Mod.Side.BOTH }.map { it.slug }}" }
         }
     }
 
@@ -289,7 +294,7 @@ object CurseForgeService {
 
             var versionName = manifest.version.trim()
             if (versionName.isEmpty()) {
-                lgr.warn ("manifest.json 中缺少版本号")
+                lgr.warn { "manifest.json 中缺少版本号" }
                 versionName = "1.0"
             }
 
@@ -317,6 +322,140 @@ object CurseForgeService {
             return info.modrinthSlugs.firstOrNull { it.isNotBlank() }?.trim() ?: this
         }
 
+    @VisibleForTesting
+    private suspend fun makeRequest(
+        path: String,
+        method: HttpMethod = HttpMethod.Get,
+        body: Any? = null,
+        ignoreMirror: Boolean = false
+    ): HttpResponse {
+        suspend fun doRequest(base: String) = ktorClient.request {
+            url("${base}/${path}")
+            json()
+            header(
+                "x-api-key", byteArrayOf(
+                    36, 50, 97, 36, 49, 48, 36, 55, 87, 87, 86, 49, 87, 69, 76, 99, 119, 88, 56, 88,
+                    112, 55, 100, 54, 56, 77, 72, 115, 46, 53, 103, 114, 84, 121, 90, 86, 97, 54,
+                    83, 121, 110, 121, 101, 83, 121, 77, 104, 49, 114, 115, 69, 56, 57, 110, 73,
+                    97, 48, 57, 122, 79
+                ).let { String(it) })
+            body?.let { setBody(it) }
+            this.method = method
+        }
+        if (ignoreMirror || !ModService.useMirror) {
+            return doRequest(OFFICIAL_URL)
+        }
 
+        val mirrorResult = runCatching { doRequest(OFFICIAL_URL.ofMirrorUrl) }
+        mirrorResult.getOrNull()?.let { response ->
+            if (response.status.isSuccess()) return response
+
+            val body = response.bodyAsText()
+            lgr.warn { "CurseForge mirror request failed, falling back to official API: $body" }
+        }
+
+        mirrorResult.exceptionOrNull()?.let { ex ->
+            lgr.warn(ex) { "CurseForge mirror request with exception, falling back to official API: ${ex.message}" }
+        }
+
+        return doRequest(OFFICIAL_URL)
+    }
+
+    /**
+     * matches a list of murmur2 fingerprints against CurseForge's database
+     * @param hashes List of Long fingerprints in murmur2 format
+     * @return CurseForgeFingerprintData containing exact matches, partial matches, and unmatched fingerprints
+     */
+    suspend fun matchFingerprintData(hashes: List<Long>): CurseForgeFingerprintData {
+        @Serializable
+        data class CurseForgeFingerprintRequest(val fingerprints: List<Long>)
+
+        val response = makeRequest(
+            //432 for minecraft
+            "fingerprints/432",
+            HttpMethod.Post,
+            CurseForgeFingerprintRequest(fingerprints = hashes)
+        ).body<CurseForgeFingerprintResponse>()
+        val data = response.data ?: CurseForgeFingerprintData()
+        lgr.debug {
+            "CurseForge: ${data.exactMatches.size} exact matches, ${data.partialMatches.size} partial matches, ${data.unmatchedFingerprints.size} unmatched"
+        }
+
+        return data
+    }
+
+    private suspend fun requestModFiles(fileIds: List<Int>, official: Boolean = false): List<CurseForgeFile> {
+        @Serializable
+        data class CFFileIdsRequest(val fileIds: List<Int>)
+
+        return makeRequest(
+            "mods/files",
+            HttpMethod.Post,
+            CFFileIdsRequest(fileIds),
+            ignoreMirror = official,
+        ).body<CurseForgeFileListResponse>().data
+    }
+
+    private suspend fun requestMods(modIds: List<Int>, official: Boolean = false): List<CurseForgeModInfo> {
+        @Serializable
+        data class CFModsRequest(val modIds: List<Int>, val filterPcOnly: Boolean = true)
+
+        @Serializable
+        data class CFModsResponse(val data: List<CurseForgeModInfo>? = null)
+        return makeRequest(
+            "mods",
+            HttpMethod.Post,
+            CFModsRequest(modIds),
+            official
+        ).body<CFModsResponse>().data!!.filter { it.isMod }
+
+    }
+
+    //从mod project id列表获取cf mod信息
+    suspend fun getModsInfo(modIds: List<Int>): List<CurseForgeModInfo> {
+
+        if (modIds.isEmpty()) return emptyList()
+
+        val mods = requestMods(modIds).toMutableList()
+        val foundIds = mods.mapTo(mutableSetOf()) { it.id }
+        val missingIds = modIds.filterNot { foundIds.contains(it) }
+        if (missingIds.isNotEmpty()) {
+            lgr.warn { "not found ids：${missingIds}, retry official api" }
+            mods += requestMods(missingIds, true)
+        }
+
+        return mods
+    }
+
+    suspend fun getModFileInfo(modId: Int, fileId: Int): CurseForgeFile? {
+        return makeRequest("mods/${modId}/files/${fileId}").body<CurseForgeFileResponse>().data
+    }
+
+    suspend fun getModFilesInfo(fileIds: List<Int>): List<CurseForgeFile> {
+        if (fileIds.isEmpty()) return emptyList()
+
+        val files = requestModFiles(fileIds).toMutableList()
+        val foundIds = files.mapTo(mutableSetOf()) { it.id }
+        val missingIds = fileIds.filterNot { foundIds.contains(it) }
+        if (missingIds.isNotEmpty()) {
+            lgr.warn { "not found ids：${missingIds}, retry official api" }
+            files += requestModFiles(missingIds, true)
+        }
+        return files
+    }
+
+    fun parseModpack(zipFile: File): Result<CurseForgePackManifest> {
+        zipFile.openChineseZip().use { zip ->
+            val manifestEntry = zip.getEntry("manifest.json")
+                ?: throw FileNotFoundException("Invalid modpack zip: manifest.json not found")
+            val manifestJson = zip.getInputStream(manifestEntry).bufferedReader(Charsets.UTF_8).use { it.readText() }
+            val manifest = runCatching {
+                Json.decodeFromString<CurseForgePackManifest>(manifestJson)
+            }.getOrElse {
+                throw SerializationException("manifest.json parse failed: ${it.message}", it)
+            }
+            return Result.success(manifest)
+        }
+    }
 }
 

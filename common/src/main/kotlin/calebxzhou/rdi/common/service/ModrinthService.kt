@@ -1,23 +1,29 @@
 package calebxzhou.rdi.common.service
 
-import calebxzhou.mykotutils.modrinth.ModrinthApi
-import calebxzhou.mykotutils.modrinth.ModrinthProject
-import calebxzhou.rdi.common.model.ModBriefInfo
-import calebxzhou.rdi.common.model.ModrinthModpackIndex
-import calebxzhou.rdi.common.service.ModService.briefInfo
+import calebxzhou.mykotutils.ktor.json
+import calebxzhou.mykotutils.log.Loggers
 import calebxzhou.mykotutils.std.openChineseZip
+import calebxzhou.mykotutils.std.sha1
 import calebxzhou.rdi.common.exception.ModpackException
-import calebxzhou.rdi.common.model.McVersion
-import calebxzhou.rdi.common.model.Mod
-import calebxzhou.rdi.common.model.ModLoader
+import calebxzhou.rdi.common.model.*
+import calebxzhou.rdi.common.net.ktorClient
 import calebxzhou.rdi.common.serdesJson
+import calebxzhou.rdi.common.service.ModService.briefInfo
 import calebxzhou.rdi.common.service.ModService.modDescription
 import calebxzhou.rdi.common.service.ModService.modLogo
+import calebxzhou.rdi.common.service.ModService.ofMirrorUrl
 import calebxzhou.rdi.common.service.ModService.readNeoForgeConfig
+import io.ktor.client.call.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import io.ktor.http.*
+import kotlinx.serialization.json.Json
 import java.io.File
 import java.util.jar.JarFile
 
 object ModrinthService {
+    private val lgr by Loggers
+    const val OFFICIAL_URL = "https://api.modrinth.com/v2"
     val slugBriefInfo: Map<String, ModBriefInfo> by lazy { ModService.buildSlugMap(briefInfo) { it.modrinthSlugs } }
     //mr - cf slug, 没查到就返回自身
     val String.mr2CfSlug: String
@@ -73,9 +79,9 @@ object ModrinthService {
         if (parsedModloader == null) {
             throw ModpackException("不支持的Mod加载器: $loaderKey")
         }
-        val hashVersions = ModrinthApi.getVersionsFromHashes(index.files.map { it.hashes.sha1 })
+        val hashVersions = getVersionsFromHashes(index.files.map { it.hashes.sha1 })
         val projectIds = hashVersions.values.map { it.projectId }.distinct()
-        val projects = ModrinthApi.getMultipleProjects(projectIds)
+        val projects = getMultipleProjects(projectIds)
         val projectMap = projects.associateBy { it.id }
         val fileEntries = index.files.associateBy { it.hashes.sha1 }
         val mods = fileEntries.mapNotNull { (sha1, entry) ->
@@ -143,7 +149,7 @@ object ModrinthService {
         if (modsNeedingVo.isEmpty()) return this
 
         val projectIds = modsNeedingVo.map { it.projectId }.distinct()
-        val projects = ModrinthApi.getMultipleProjects(projectIds)
+        val projects = getMultipleProjects(projectIds)
         val projectMap = projects.associateBy { it.id }
 
         forEach { mod ->
@@ -154,5 +160,122 @@ object ModrinthService {
             }
         }
         return this
+    }
+    suspend fun mrreq(
+        path: String,
+        method: HttpMethod = HttpMethod.Get,
+        params: Map<String, Any>? = null,
+        body: Any? = null
+    ): HttpResponse {
+        suspend fun doRequest(base: String) = ktorClient.request {
+            url("${base}/${path}")
+            json()
+            body?.let { setBody(it) }
+            params?.forEach { parameter(it.key, it.value) }
+            this.method = method
+        }
+
+        val mirrorResult = runCatching<HttpResponse> { doRequest(OFFICIAL_URL.ofMirrorUrl) }
+        val mirrorResponse = mirrorResult.getOrNull()
+        if (mirrorResponse != null && mirrorResponse.status.isSuccess()) {
+            return mirrorResponse
+        } else {
+            lgr.warn( "Modrinth mirror fail，${mirrorResponse?.status},${mirrorResponse?.bodyAsText()}" )
+        }
+
+        mirrorResult.exceptionOrNull()?.let {
+            lgr.warn("Modrinth mirror request failed, falling back to official API: ${it.message}")
+        }
+        val officialResponse = doRequest(OFFICIAL_URL)
+        return officialResponse
+    }
+    //ID / slugs
+    suspend fun List<String>.mapModrinthProjects(): List<ModrinthProject> {
+        val normalizedIds = asSequence()
+            .distinct()
+            .toList()
+
+        val chunkSize = 50
+        val projects = mutableListOf<ModrinthProject>()
+
+        normalizedIds.chunked(chunkSize).forEach { chunk ->
+            val response = mrreq("projects", params = mapOf("ids" to Json.encodeToString(chunk)))
+                .body<List<ModrinthProject>>()
+            projects += response
+
+            if (response.size != chunk.size) {
+                val missing = chunk.toSet() - response.map { it.id }.toSet() - response.map { it.slug }.toSet()
+                if (missing.isNotEmpty()) {
+                    lgr.debug { "Modrinth: ${missing.size} ids from chunk unmatched: ${missing.joinToString()}" }
+                }
+            }
+        }
+
+        lgr.info { "Modrinth: fetched ${projects.size} projects for ${normalizedIds.size} requested ids" }
+
+        return projects
+    }
+    suspend fun getMultipleProjects(idSlugs: List<String>): List<ModrinthProject> {
+        val normalizedIds = idSlugs.asSequence()
+            .distinct()
+            .toList()
+
+        val chunkSize = 100
+        val projects = mutableListOf<ModrinthProject>()
+
+        normalizedIds.chunked(chunkSize).forEach { chunk ->
+            val response = mrreq("projects", params = mapOf("ids" to Json.encodeToString(chunk)))
+                .body<List<ModrinthProject>>()
+            projects += response
+
+            if (response.size != chunk.size) {
+                val missing = chunk.toSet() - response.map { it.id }.toSet() - response.map { it.slug }.toSet()
+                if (missing.isNotEmpty()) {
+                    lgr.debug { "Modrinth: ${missing.size} ids from chunk unmatched: ${missing.joinToString()}" }
+                }
+            }
+        }
+
+        lgr.info { "Modrinth: fetched ${projects.size} projects for ${normalizedIds.size} requested ids" }
+
+        return projects
+    }
+    suspend fun List<File>.mapModrinthVersions(): Map<String, ModrinthVersionInfo> {
+        val hashes = map { it.sha1 }
+        val response = mrreq(
+            "version_files",
+            method = HttpMethod.Post,
+            body = ModrinthVersionLookupRequest(hashes = hashes, algorithm = "sha1")
+        )
+            .body<Map<String, ModrinthVersionInfo>>()
+
+        val missing = hashes.filter { it !in response }
+        if (missing.isNotEmpty()) {
+            lgr.info("Modrinth: ${response.size} matches, ${missing.size} hashes unmatched")
+        } else {
+            lgr.info("Modrinth: matched all ${response.size} hashes")
+        }
+
+        return response
+    }
+    suspend fun getVersionsFromHashes(
+        hashes: List<String>,
+        algorithm: String = "sha1"
+    ): Map<String, ModrinthVersionInfo> {
+        val response = mrreq(
+            "version_files",
+            method = HttpMethod.Post,
+            body = ModrinthVersionLookupRequest(hashes = hashes, algorithm = algorithm)
+        )
+            .body<Map<String, ModrinthVersionInfo>>()
+
+        val missing = hashes.filter { it !in response }
+        if (missing.isNotEmpty()) {
+            lgr.info { "Modrinth: ${response.size} matches, ${missing.size} hashes unmatched" }
+        } else {
+            lgr.info { "Modrinth: matched all ${response.size} hashes" }
+        }
+
+        return response
     }
 }
