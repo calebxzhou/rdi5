@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import calebxzhou.rdi.client.service.ModpackService
 import calebxzhou.rdi.client.ui2.CircleIconButton
@@ -108,10 +109,13 @@ fun ModpackManageCard(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            text = packdir.vo.name ,
+                            text = packdir.vo.name,
                             style = MaterialTheme.typography.subtitle1,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color.Black
+                            color = Color.Black,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
                         )
                         Text(
                             text = packdir.verName,
@@ -123,10 +127,11 @@ fun ModpackManageCard(
                         modifier = Modifier.horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
+                        val size = 32
                         CircleIconButton(
                             "\uEA81",
                             "删除",
-                            size=32,
+                            size=size,
                             bgColor = MaterialColor.RED_900.color,
                             longPressDelay = 5000L
                         ) {
@@ -135,7 +140,7 @@ fun ModpackManageCard(
                         CircleIconButton(
                             "\uDB81\uDC53",
                             "重装",
-                            size=32,
+                            size=size,
                             bgColor = MaterialColor.PINK_900.color,
                         ) {
                             onReinstall()
@@ -143,7 +148,7 @@ fun ModpackManageCard(
                         CircleIconButton(
                             "\uEAED",
                             "打开文件夹",
-                            size=32,
+                            size=size,
 
                         ) {
                             onOpenFolder ()
@@ -151,7 +156,7 @@ fun ModpackManageCard(
                         CircleIconButton(
                             "\uEF11",
                             "导出日志",
-                            size=32,
+                            size=size,
                             bgColor = MaterialColor.GRAY_900.color,
                         ) {
                             onExportLogs()
@@ -160,7 +165,7 @@ fun ModpackManageCard(
                             CircleIconButton(
                                 "\uDB80\uDD8D",
                                 "控制台",
-                                size=32,
+                                size=size,
                                 bgColor = MaterialColor.BLUE_800.color,
                             ) {
                                 onOpenMcPlay()
