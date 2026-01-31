@@ -4,10 +4,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.*
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -15,7 +17,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.VerticalScrollbar
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.rememberScrollbarAdapter
 import calebxzhou.mykotutils.std.humanFileSize
 import calebxzhou.mykotutils.std.millisToHumanDateTime
 import calebxzhou.rdi.client.net.loggedAccount
@@ -73,6 +80,7 @@ fun ModpackInfoScreen(
     var editInfo by remember { mutableStateOf("") }
     var editSourceUrl by remember { mutableStateOf("") }
     var selectedTab by remember { mutableStateOf(0) }
+    var modSearch by remember { mutableStateOf("") }
 
     fun reload() {
         loading = true
@@ -207,6 +215,24 @@ fun ModpackInfoScreen(
                                 Text("正在载入${pack.modCount}个Mod的详细信息...")
                             }
                             Space8h()
+                            OutlinedTextField(
+                                value = modSearch,
+                                onValueChange = { modSearch = it },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 8.dp),
+                                label = { Text("搜索 Mod 名称") },
+                                singleLine = true,
+                                maxLines = 1,
+                                placeholder = { Text("输入 Mod 名称或英文名...") },
+                                trailingIcon = {
+                                    if (modSearch.isNotBlank()) {
+                                        IconButton(onClick = { modSearch = "" }) {
+                                            Text("✕")
+                                        }
+                                    }
+                                }
+                            )
                             val sortedMods = remember(mods) {
                                 mods.sortedWith(
                                     compareBy(
@@ -217,20 +243,37 @@ fun ModpackInfoScreen(
                                 )
 
                             }
-                            LazyVerticalGrid(
-                                columns = GridCells.Adaptive(320.dp),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalArrangement = Arrangement.spacedBy(12.dp),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                items(sortedMods, key = { it.hash }) { mod ->
-                                    val card = mod.vo
-                                    if (card != null) {
-                                        card.ModCard()
-                                    } else {
-                                        Text(mod.slug)
+                            val filteredMods = remember(sortedMods, modSearch) {
+                                val query = modSearch.trim()
+                                if (query.isBlank()) sortedMods
+                                else sortedMods.filter { mod ->
+                                    val name = mod.vo?.name ?: ""
+                                    val nameCn = mod.vo?.nameCn ?: ""
+                                    name.contains(query, true) || nameCn.contains(query, true) || mod.slug.contains(query, true)
+                                }
+                            }
+                            val gridState = rememberLazyGridState()
+                            Box(modifier = Modifier.fillMaxWidth()) {
+                                LazyVerticalGrid(
+                                    state = gridState,
+                                    columns = GridCells.Adaptive(320.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    items(filteredMods, key = { it.hash }) { mod ->
+                                        val card = mod.vo
+                                        if (card != null) {
+                                            card.ModCard()
+                                        } else {
+                                            Text(mod.slug, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        }
                                     }
                                 }
+                                VerticalScrollbar(
+                                    adapter = rememberScrollbarAdapter(gridState),
+                                    modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight()
+                                )
                             }
                         }
                     }
