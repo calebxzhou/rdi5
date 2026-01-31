@@ -609,7 +609,9 @@ object ModpackService {
         mods.find { it.slug == "modern-ui" }?.side = Mod.Side.CLIENT
         //1.18.2跑不起来
         mods.removeIf { it.slug == "skybox-loader-forge" }
-
+        //玻璃纹理需要
+        //todo 如果both side mod deps on client side lib 那么设定lib's side=BOTH
+        mods.find { it.slug == "fusion-connected-textures" }?.side = Mod.Side.BOTH
     }
 
     suspend fun Modpack.buildVersion(version: Modpack.Version, onProgress: (String) -> Unit) {
