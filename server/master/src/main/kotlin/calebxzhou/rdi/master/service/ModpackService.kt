@@ -466,6 +466,7 @@ object ModpackService {
         if (modpack.versions.any { it.name == verName }) {
             throw RequestError("版本已存在")
         }
+        mods.sortBy { it.slug.lowercase() }
 
         val version = Modpack.Version(
             modpackId = modpack._id,
