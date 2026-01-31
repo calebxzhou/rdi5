@@ -1,6 +1,7 @@
 package calebxzhou.rdi.client
 
 import calebxzhou.rdi.CONF
+import calebxzhou.rdi.common.service.ModService
 import calebxzhou.rdi.lgr
 import kotlinx.serialization.Serializable
 import net.peanuuutz.tomlkt.Toml
@@ -24,6 +25,7 @@ data class AppConfig(
             return if (configFile.exists()) {
                 try {
                     Toml.decodeFromString(serializer(), configFile.readText())
+
                 } catch (e: Exception) {
                     lgr.warn { "read config failed, use default and save" }
                     e.printStackTrace()
@@ -31,12 +33,15 @@ data class AppConfig(
                 }
             } else {
                 AppConfig().also { save(it) }
+            }.also {
+                ModService.useMirror = it.useMirror
             }
         }
 
         fun save(config: AppConfig) {
             try {
                 CONF = config
+                ModService.useMirror = config.useMirror
                 configFile.writeText(Toml.encodeToString(serializer(), config))
             } catch (e: Exception) {
                 lgr.warn(e) { "save config failed" }
