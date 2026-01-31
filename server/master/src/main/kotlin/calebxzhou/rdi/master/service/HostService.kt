@@ -271,10 +271,10 @@ object HostService {
 
     private val Host.containerEnv
         get() = { loaderVersion: ModLoader.Version ->
-            val loaderArgPath = when(loaderVersion.loader){
+            val loaderArgPath = when (loaderVersion.loader) {
                 ModLoader.neoforge -> "@libraries/net/neoforged/neoforge/"
                 ModLoader.forge -> "@libraries/net/minecraftforge/forge/"
-            }+"${loaderVersion.id}/unix_args.txt"
+            } + "${loaderVersion.id}/unix_args.txt"
             mutableListOf(
                 "HOST_ID=${_id.str}",
                 "GAME_PORT=${port}",
@@ -431,6 +431,7 @@ object HostService {
             }
         }
     }
+
     suspend fun Host.analyzeCrashReport(): Boolean {
         val crashDir = dir.resolve("crash-reports")
         val crashFile = crashDir.listFiles()
@@ -540,8 +541,8 @@ object HostService {
             val slugMatch = modIds.contains(mod.slug.lowercase())
             val fileMatch = modFiles.any {
                 it.equals(mod.fileName, true) ||
-                    it.contains(mod.slug, true) ||
-                    it.contains(mod.hash, true)
+                        it.contains(mod.slug, true) ||
+                        it.contains(mod.hash, true)
             }
             val hashMatch = modHashes.contains(mod.hash.lowercase())
             if ((slugMatch || fileMatch || hashMatch) && mod.side != Mod.Side.CLIENT) {
@@ -591,7 +592,10 @@ object HostService {
         listenerHolder[0] = DockerService.listenLog(
             _id.str,
             onLine = { line ->
-                if (!triggered.get() && (line.contains("Preparing crash report")||line.contains("Failed to start the minecraft server"))) {
+                if (!triggered.get() && (line.contains("Preparing crash report")
+                            || line.contains("Failed to start the minecraft server")
+                            || line.contains("Minecraft Crash Report")
+                        )) {
                     if (triggered.compareAndSet(false, true)) {
                         closeListener()
                         ioScope.launch {
@@ -617,6 +621,7 @@ object HostService {
             }
         )
     }
+
     // Pick a port in [50000, 60000) that isn't used by any existing room
     private suspend fun allocateRoomPort(): Int {
         val used = dbcl.find().map { it.port }.toList().toSet()
@@ -900,7 +905,7 @@ object HostService {
                 image,
                 containerEnv(modLoaderVersion)
             )
-        }?: throw RequestError("不支持的mod加载器")
+        } ?: throw RequestError("不支持的mod加载器")
     }
 
     suspend fun HostContext.delete() {
