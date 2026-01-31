@@ -1,28 +1,16 @@
-package calebxzhou.rdi.common.service
-
-import calebxzhou.mykotutils.curseforge.CurseForgeApi
-import calebxzhou.mykotutils.curseforge.CurseForgeFile
-import calebxzhou.mykotutils.ktor.DEFAULT_RANGE_PARALLELISM
-import calebxzhou.mykotutils.ktor.DownloadProgress
+ package calebxzhou.rdi.common.service
+ 
+ import calebxzhou.mykotutils.ktor.DownloadProgress
 import calebxzhou.mykotutils.ktor.downloadFileFrom
 import calebxzhou.mykotutils.log.Loggers
 import calebxzhou.mykotutils.std.murmur2
 import calebxzhou.mykotutils.std.sha1
 import calebxzhou.rdi.common.DL_MOD_DIR
-import calebxzhou.rdi.common.model.Task
-import calebxzhou.rdi.common.model.TaskProgress
-import calebxzhou.rdi.common.model.Mod
-import calebxzhou.rdi.common.model.ModBriefInfo
+import calebxzhou.rdi.common.model.*
 import calebxzhou.rdi.common.serdesJson
 import com.electronwill.nightconfig.core.CommentedConfig
 import com.electronwill.nightconfig.core.Config
 import com.electronwill.nightconfig.toml.TomlFormat
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.InputStream
@@ -30,8 +18,6 @@ import java.nio.file.Path
 import java.util.jar.JarFile
 import java.util.jar.JarInputStream
 import kotlin.io.path.exists
-import kotlin.math.max
-import kotlin.math.min
 
 
 object ModService {
@@ -320,7 +306,7 @@ object ModService {
         val fileIds = mods.map { it.fileId.toInt() }
         val fileInfoMap = mutableMapOf<Int, CurseForgeFile>()
         val prepareTask = Task.Leaf("获取CurseForge文件信息") { ctx ->
-            val fileInfos = CurseForgeApi.getModFilesInfo(fileIds)
+            val fileInfos = CurseForgeService.getModFilesInfo(fileIds)
             fileInfoMap.clear()
             fileInfoMap.putAll(fileInfos.associateBy { it.id })
             ctx.emitProgress(TaskProgress("获取完成", 1f))
@@ -329,7 +315,7 @@ object ModService {
             Task.Leaf("下载 ${mod.slug}") { ctx ->
                 val fileInfo = fileInfoMap[mod.fileId.toInt()]
                     ?: throw IllegalStateException("未找到文件信息: ${mod.slug}")
-                val result = downloadSingleCFMod(mod, fileInfo, DEFAULT_RANGE_PARALLELISM) { progress ->
+                val result = downloadSingleCFMod(mod, fileInfo, 1) { progress ->
                     ctx.emitProgress(
                         TaskProgress(
                             "下载中 ${mod.slug}",
@@ -348,7 +334,7 @@ object ModService {
         val modsWithUrls = mods.filter { it.downloadUrls.isNotEmpty() }
         val tasks = modsWithUrls.map { mod ->
             Task.Leaf("下载 ${mod.slug}") { ctx ->
-                val result = downloadSingleMRMod(mod, DEFAULT_RANGE_PARALLELISM) { progress ->
+                val result = downloadSingleMRMod(mod, 1) { progress ->
                     ctx.emitProgress(
                         TaskProgress(
                             "下载中 ${mod.slug}",
