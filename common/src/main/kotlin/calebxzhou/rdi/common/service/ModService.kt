@@ -315,7 +315,7 @@ object ModService {
             Task.Leaf("下载 ${mod.slug}") { ctx ->
                 val fileInfo = fileInfoMap[mod.fileId.toInt()]
                     ?: throw IllegalStateException("未找到文件信息: ${mod.slug}")
-                val result = downloadSingleCFMod(mod, fileInfo, 1) { progress ->
+                val result = downloadSingleCFMod(mod, fileInfo, 4) { progress ->
                     ctx.emitProgress(
                         TaskProgress(
                             "下载中 ${mod.slug}",
@@ -334,7 +334,7 @@ object ModService {
         val modsWithUrls = mods.filter { it.downloadUrls.isNotEmpty() }
         val tasks = modsWithUrls.map { mod ->
             Task.Leaf("下载 ${mod.slug}") { ctx ->
-                val result = downloadSingleMRMod(mod, 1) { progress ->
+                val result = downloadSingleMRMod(mod, 4) { progress ->
                     ctx.emitProgress(
                         TaskProgress(
                             "下载中 ${mod.slug}",
