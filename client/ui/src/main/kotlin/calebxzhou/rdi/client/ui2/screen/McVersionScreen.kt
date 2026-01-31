@@ -15,10 +15,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import calebxzhou.mykotutils.std.deleteRecursivelyNoSymlink
+import calebxzhou.rdi.client.net.server
 import calebxzhou.rdi.client.service.GameService
 import calebxzhou.rdi.client.service.ModpackService
 import calebxzhou.rdi.client.service.ModpackService.startInstall
-import calebxzhou.rdi.client.net.server
 import calebxzhou.rdi.client.ui2.*
 import calebxzhou.rdi.client.ui2.comp.McVersionCard
 import calebxzhou.rdi.client.ui2.comp.ModpackManageCard
@@ -32,6 +32,7 @@ import kotlinx.coroutines.withContext
 import java.awt.Desktop
 import java.io.File
 import java.io.FileOutputStream
+import java.net.URI
 import java.nio.file.Files
 import java.nio.file.StandardOpenOption
 import java.util.zip.ZipEntry
@@ -47,6 +48,7 @@ import javax.swing.filechooser.FileNameExtensionFilter
 @Composable
 fun McVersionScreen(
     onBack: () -> Unit,
+    requiredMcVer: McVersion? = null,
     onOpenTask: ((Task) -> Unit)? = null
 ) {
     val scope = rememberCoroutineScope()
@@ -78,6 +80,20 @@ fun McVersionScreen(
     MainBox {
         MainColumn {
             TitleRow("MC资源管理", onBack) {
+                Text("若下载不成功，可尝试从网盘下载，然后手动导入。")
+                CircleIconButton("\uDB85\uDC03","从网盘下载"){
+                    val url = "https://www.123865.com/s/iWSWvd-Zrtdd"
+                    runCatching {
+                        if (Desktop.isDesktopSupported()) {
+                            Desktop.getDesktop().browse(URI(url))
+                        } else {
+                            ProcessBuilder("explorer", url).start()
+                        }
+                    }.onFailure {
+                        errorMessage = "无法打开浏览器: ${it.message}"
+                    }
+                }
+                Space8w()
                 CircleIconButton("\uEE38", "导入MC运行资源包") {
                     val files = selectRdiPackFiles() ?: return@CircleIconButton
                     val task = if (files.size == 1) {
@@ -97,7 +113,13 @@ fun McVersionScreen(
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
             ) {
-                Text("MC版本资源管理", style = MaterialTheme.typography.subtitle1)
+                if (requiredMcVer != null) {
+                    Text(
+                        text = "请先下载所需版本：${requiredMcVer.mcVer}",
+                        color = MaterialTheme.colors.error
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                }
                 Spacer(modifier = Modifier.height(8.dp))
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(300.dp),
@@ -108,6 +130,7 @@ fun McVersionScreen(
                     items(McVersion.entries) { mcver ->
                         McVersionCard(
                             mcver = mcver,
+                            highlight = requiredMcVer == mcver,
                             onOpenTask = onOpenTask
                         )
                     }
@@ -124,7 +147,7 @@ fun McVersionScreen(
                     }
                 }
                 if (!loading && localDirs.isEmpty()) {
-                    Text("尚未安装整合包。点击右上角\uDB86\uDDD5按钮下载想玩的包。".asIconText, color = Color.Black)
+                    Text("尚未安装整合包。".asIconText, color = Color.Black)
                 }
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(280.dp),

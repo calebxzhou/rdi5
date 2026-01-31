@@ -228,6 +228,7 @@ object ModpackService {
 
     sealed class StartPlayResult {
         data class Ready(val args: McPlayArgs) : StartPlayResult()
+        data class NeedMc(val ver: McVersion) : StartPlayResult()
         data class NeedInstall(val task: Task) : StartPlayResult()
     }
 
@@ -239,7 +240,7 @@ object ModpackService {
         val version = versionResp.data ?: throw RequestError("获取整合包版本信息失败: ${versionResp.msg}")
 
         if (!(modpack.mcVer.firstLoaderDir.exists())) {
-            throw RequestError("未安装MC版本资源：${modpack.mcVer.mcVer}")
+            return StartPlayResult.NeedMc(modpack.mcVer)
         }
         if (!isVersionInstalled(modpack.id, packVer)) {
             val task = version.startInstall(modpack.mcVer, modpack.modloader, modpack.name)

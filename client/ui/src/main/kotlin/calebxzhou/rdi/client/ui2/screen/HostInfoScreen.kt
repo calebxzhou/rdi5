@@ -59,6 +59,7 @@ import calebxzhou.rdi.client.ui2.comp.HeadButton
 import calebxzhou.rdi.client.ui2.comp.ModpackCard
 import calebxzhou.rdi.common.extension.isAdmin
 import calebxzhou.rdi.common.model.Host
+import calebxzhou.rdi.common.model.McVersion
 import calebxzhou.rdi.common.model.Modpack
 import calebxzhou.rdi.common.model.Task
 import calebxzhou.rdi.common.model.isDav
@@ -79,6 +80,7 @@ fun HostInfoScreen(
     onBack: () -> Unit = {},
     onOpenModpackInfo: ((String) -> Unit)? = null,
     onOpenMcPlay: ((McPlayArgs) -> Unit)? = null,
+    onOpenMcVersions: ((McVersion?) -> Unit)? = null,
     onOpenHostEdit: ((Host.DetailVo) -> Unit)? = null,
     onOpenTask: ((Task) -> Unit)? = null
 ) {
@@ -227,6 +229,10 @@ fun HostInfoScreen(
                                 }
                                 is StartPlayResult.NeedInstall -> {
                                     installConfirmTask = args.task
+                                }
+                                is StartPlayResult.NeedMc -> {
+                                    errorMessage = "未安装MC版本资源：${args.ver.mcVer}，请先下载"
+                                    onOpenMcVersions?.invoke(args.ver)
                                 }
                             }
                         }

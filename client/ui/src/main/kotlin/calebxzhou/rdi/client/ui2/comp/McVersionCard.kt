@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
@@ -27,6 +29,7 @@ import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.draw.shadow
 import calebxzhou.mykotutils.std.jarResource
 import calebxzhou.rdi.RDIClient
 import calebxzhou.rdi.client.model.firstLoader
@@ -48,6 +51,7 @@ import kotlin.collections.component2
 @Composable
 fun McVersionCard(
     mcver: McVersion,
+    highlight: Boolean = false,
     onOpenTask: ((Task) -> Unit)? = null
 ) {
     val iconBitmap = remember(mcver) {
@@ -55,10 +59,21 @@ fun McVersionCard(
             Image.makeFromEncoded(stream.readBytes()).toComposeImageBitmap()
         }
     }
+    val shape = RoundedCornerShape(16.dp)
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (highlight) {
+                    Modifier
+                        .shadow(8.dp, shape, clip = false)
+                        .border(2.dp, MaterialColor.PURPLE_500.color, shape)
+                } else {
+                    Modifier
+                }
+            ),
         color = Color(0xFFF9F9FB),
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+        shape = shape,
         elevation = 1.dp
     ) {
         Row(

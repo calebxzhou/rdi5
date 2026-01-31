@@ -20,6 +20,7 @@ import calebxzhou.rdi.client.ui2.*
 import calebxzhou.rdi.client.ui2.comp.HeadButton
 import calebxzhou.rdi.client.ui2.comp.HostCard
 import calebxzhou.rdi.common.model.Host
+import calebxzhou.rdi.common.model.McVersion
 import calebxzhou.rdi.common.model.Task
 import kotlinx.coroutines.launch
 import org.bson.types.ObjectId
@@ -37,6 +38,7 @@ fun HostListScreen(
     onOpenWorldList: (() -> Unit)? = null,
     onOpenHostInfo: ((String) -> Unit)? = null,
     onOpenModpackList: (() -> Unit)? = null,
+    onOpenMcVersions: ((McVersion?) -> Unit)? = null,
     onOpenMcPlay: ((McPlayArgs) -> Unit)? = null,
     onOpenTask: ((Task) -> Unit)? = null
 ) {
@@ -133,6 +135,10 @@ fun HostListScreen(
                                 }
                                 is StartPlayResult.NeedInstall -> {
                                     installConfirmTask = args.task
+                                }
+                                is StartPlayResult.NeedMc -> {
+                                    errorMessage = "未安装MC版本资源：${args.ver.mcVer}，请先下载"
+                                    onOpenMcVersions?.invoke(args.ver)
                                 }
                             }
                         }

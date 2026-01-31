@@ -153,6 +153,9 @@ fun main() = application {
                             McPlayStore.current = args
                             navController.navigate(McPlayView)
                         },
+                        onOpenMcVersions = { mcVer ->
+                            navController.navigate(RMcVersion(mcVer?.mcVer))
+                        },
                         onOpenTask = { task ->
                             TaskStore.current = task
                             navController.navigate(TaskView)
@@ -173,6 +176,9 @@ fun main() = application {
                         onOpenMcPlay = { args ->
                             McPlayStore.current = args
                             navController.navigate(McPlayView)
+                        },
+                        onOpenMcVersions = { mcVer ->
+                            navController.navigate(RMcVersion(mcVer?.mcVer))
                         },
                         onOpenTask = { task ->
                             TaskStore.current = task
@@ -232,7 +238,7 @@ fun main() = application {
                     ModpackListScreen(
                         onBack = { navController.navigate(HostList) },
                         onOpenUpload = { navController.navigate(ModpackUpload) },
-                        onOpenMcVersions = {navController.navigate(RMcVersion)},
+                        onOpenMcVersions = { navController.navigate(RMcVersion(null)) },
                         onOpenInfo = { modpackId ->
                             navController.navigate(ModpackInfo(modpackId))
                         }
@@ -269,10 +275,16 @@ fun main() = application {
                     ModpackUploadScreen(onBack = { navController.navigate(ModpackList) })
                 }
                 composable<RMcVersion> {
-                    McVersionScreen(onBack = { navController.navigate(ModpackList) },onOpenTask = { task ->
-                        TaskStore.current = task
-                        navController.navigate(TaskView)
-                    },)
+                    val route = it.toRoute<RMcVersion>()
+                    val required = route.mcVer?.let { ver -> McVersion.from(ver) }
+                    McVersionScreen(
+                        requiredMcVer = required,
+                        onBack = { navController.navigate(ModpackList) },
+                        onOpenTask = { task ->
+                            TaskStore.current = task
+                            navController.navigate(TaskView)
+                        },
+                    )
                 }
             }
         }
