@@ -65,6 +65,7 @@ import kotlin.concurrent.withLock
 @Composable
 fun TaskScreen(
     task: Task,
+    autoClose: Boolean = false,
     onBack: () -> Unit = {}
 ) {
     var currentName by remember { mutableStateOf(task.name) }
@@ -124,6 +125,7 @@ fun TaskScreen(
             done = true
             currentMessage = "完成"
             currentFraction = 1f
+            if(autoClose) onBack()
         }.onFailure { error ->
             error.printStackTrace()
             if (error is CancellationException) throw error
