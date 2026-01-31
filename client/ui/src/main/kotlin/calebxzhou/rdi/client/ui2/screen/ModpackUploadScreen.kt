@@ -201,16 +201,17 @@ private suspend fun selectModpackFile(
     onLoaded: (UploadPayload, List<Mod>) -> Unit
 ) {
     val chooser = JFileChooser().apply {
-        dialogTitle = "选择整合包 (ZIP / MRPACK)"
-        fileSelectionMode = JFileChooser.FILES_ONLY
+        dialogTitle = "选择整合包 (ZIP / MRPACK / 已解压目录)"
+        fileSelectionMode = JFileChooser.FILES_AND_DIRECTORIES
         currentDirectory = File("C:/Users/${System.getProperty("user.name")}/Downloads")
         fileFilter = FileNameExtensionFilter("整合包 (*.zip, *.mrpack)", "zip", "mrpack")
+        isAcceptAllFileFilterUsed = true
     }
     val result = chooser.showOpenDialog(null)
     if (result != JFileChooser.APPROVE_OPTION) return
 
     val file = chooser.selectedFile
-    if (!file.exists() || !file.isFile) {
+    if (!file.exists() || !(file.isFile || file.isDirectory)) {
         onError("未找到所选文件")
         return
     }
