@@ -711,20 +711,13 @@ object ModpackService {
                         output.closeEntry()
                         entriesCopied++
                     } else {
-                        //png压缩jpg
                         ensureZipParents(relative, output, addedDirs)
                         val clientEntry = ZipEntry(relative).apply { time = entry.time }
                         output.putNextEntry(clientEntry)
-                        val isPng = relativeLower.endsWith(".png")
-                        if (isPng) {
-                            val bytes = source.getInputStream(entry).use { it.readBytes() }
-                            val processed = compressPngIfNeeded(bytes)
-                            output.write(processed)
-                        } else {
-                            source.getInputStream(entry).use { input ->
-                                input.copyTo(output)
-                            }
+                        source.getInputStream(entry).use { input ->
+                            input.copyTo(output)
                         }
+
                         output.closeEntry()
                         entriesCopied++
                     }
