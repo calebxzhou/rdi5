@@ -591,7 +591,7 @@ object HostService {
         listenerHolder[0] = DockerService.listenLog(
             _id.str,
             onLine = { line ->
-                if (!triggered.get() && line.contains("Preparing crash report")) {
+                if (!triggered.get() && (line.contains("Preparing crash report")||line.contains("Failed to start the minecraft server"))) {
                     if (triggered.compareAndSet(false, true)) {
                         closeListener()
                         ioScope.launch {
