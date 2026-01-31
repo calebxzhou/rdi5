@@ -600,6 +600,8 @@ object ModpackService {
         mods.find { it.slug == "i18nupdatemod" }?.side = Mod.Side.CLIENT
         //gto/gtl
         mods.find { it.slug == "just-enough-resources-jer" }?.side = Mod.Side.BOTH
+        //愚者 modrinth说是client-only 实际 some mods deps on it 导致服务端不启动
+        mods.find { it.slug == "radiant-gear" }?.side = Mod.Side.BOTH
         //会自动还原服务端配置
         //已实现 如果这个mod存在，并且包里有default-server.properties，覆盖对应选项到server.properties模板（5.10以后）
         mods.removeIf { it.slug == "default-server-properties" }
@@ -607,6 +609,7 @@ object ModpackService {
         mods.find { it.slug == "modern-ui" }?.side = Mod.Side.CLIENT
         //1.18.2跑不起来
         mods.removeIf { it.slug == "skybox-loader-forge" }
+
     }
 
     suspend fun Modpack.buildVersion(version: Modpack.Version, onProgress: (String) -> Unit) {
