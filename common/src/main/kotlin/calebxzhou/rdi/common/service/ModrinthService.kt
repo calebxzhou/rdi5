@@ -8,6 +8,7 @@ import calebxzhou.rdi.common.exception.ModpackException
 import calebxzhou.rdi.common.model.*
 import calebxzhou.rdi.common.net.ktorClient
 import calebxzhou.rdi.common.serdesJson
+import calebxzhou.rdi.common.service.CurseForgeService.fillCurseForgeVo
 import calebxzhou.rdi.common.service.ModService.briefInfo
 import calebxzhou.rdi.common.service.ModService.modDescription
 import calebxzhou.rdi.common.service.ModService.modLogo
@@ -25,6 +26,7 @@ object ModrinthService {
     private val lgr by Loggers
     const val OFFICIAL_URL = "https://api.modrinth.com/v2"
     val slugBriefInfo: Map<String, ModBriefInfo> by lazy { ModService.buildSlugMap(briefInfo) { it.modrinthSlugs } }
+
     //mr - cf slug, 没查到就返回自身
     val String.mr2CfSlug: String
         get() {
@@ -42,18 +44,30 @@ object ModrinthService {
     )
 
     suspend fun loadModpack(modpackFile: File): Result<LoadedModpack> {
-        if (!modpackFile.exists() || !modpackFile.isFile) {
+        if (!modpackFile.exists()) {
             throw ModpackException("找不到整合包文件: ${modpackFile.path}")
         }
-        val index = modpackFile.openChineseZip().use { zip ->
-            val indexEntry = zip.entries().asSequence().firstOrNull {
-                !it.isDirectory && it.name.substringAfterLast('/') == "modrinth.index.json"
-            } ?: throw ModpackException("整合包缺少文件：modrinth.index.json")
-            val indexJson = zip.getInputStream(indexEntry).bufferedReader(Charsets.UTF_8).use { it.readText() }
+        val index = if (modpackFile.isDirectory) {
+            val indexFile = modpackFile.walkTopDown()
+                .firstOrNull { it.isFile && it.name == "modrinth.index.json" }
+                ?: throw ModpackException("整合包缺少文件：modrinth.index.json")
+            val indexJson = indexFile.readText(Charsets.UTF_8)
             runCatching {
                 serdesJson.decodeFromString<ModrinthModpackIndex>(indexJson)
             }.getOrElse { err ->
                 throw ModpackException("modrinth.index.json 解析失败: ${err.message}")
+            }
+        } else {
+            modpackFile.openChineseZip().use { zip ->
+                val indexEntry = zip.entries().asSequence().firstOrNull {
+                    !it.isDirectory && it.name.substringAfterLast('/') == "modrinth.index.json"
+                } ?: throw ModpackException("整合包缺少文件：modrinth.index.json")
+                val indexJson = zip.getInputStream(indexEntry).bufferedReader(Charsets.UTF_8).use { it.readText() }
+                runCatching {
+                    serdesJson.decodeFromString<ModrinthModpackIndex>(indexJson)
+                }.getOrElse { err ->
+                    throw ModpackException("modrinth.index.json 解析失败: ${err.message}")
+                }
             }
         }
 
@@ -79,12 +93,13 @@ object ModrinthService {
         if (parsedModloader == null) {
             throw ModpackException("不支持的Mod加载器: $loaderKey")
         }
-        val hashVersions = getVersionsFromHashes(index.files.map { it.hashes.sha1 })
+        val fileEntries = index.files.associateBy { it.hashes.sha1 }
+        val hashVersions = getVersionsFromHashes(fileEntries.keys.toList())
         val projectIds = hashVersions.values.map { it.projectId }.distinct()
         val projects = getMultipleProjects(projectIds)
         val projectMap = projects.associateBy { it.id }
-        val fileEntries = index.files.associateBy { it.hashes.sha1 }
-        val mods = fileEntries.mapNotNull { (sha1, entry) ->
+
+        val matchedMrMods = fileEntries.mapNotNull { (sha1, entry) ->
             val version = hashVersions[sha1] ?: return@mapNotNull null
             val project = projectMap[version.projectId]
             val slug = project?.slug?.takeIf { it.isNotBlank() }
@@ -110,6 +125,37 @@ object ModrinthService {
             )
         }.fillModrinthVo()
 
+        val unmatchedEntries = fileEntries.filterKeys { it !in hashVersions.keys }
+        val cfFileIdByHash = unmatchedEntries.mapNotNull { (sha1, entry) ->
+            val fileId = entry.downloads.firstNotNullOfOrNull { parseCurseForgeFileId(it) }
+            if (fileId == null) null else sha1 to fileId
+        }.toMap()
+        val cfFiles = CurseForgeService.getModFilesInfo(cfFileIdByHash.values.distinct())
+        val cfFileMap = cfFiles.associateBy { it.id }
+        val cfModIds = cfFiles.map { it.modId }.distinct()
+        val cfModInfos = CurseForgeService.getModsInfo(cfModIds)
+        val cfModInfoMap = cfModInfos.associateBy { it.id }
+        val matchedCfMods = cfFileIdByHash.mapNotNull { (sha1, fileId) ->
+            val entry = unmatchedEntries[sha1] ?: return@mapNotNull null
+            val cfFile = cfFileMap[fileId] ?: return@mapNotNull null
+            val modInfo = cfModInfoMap[cfFile.modId]
+            val slug = modInfo?.slug ?: let {
+                lgr.warn { "找不到cf mod信息：${cfFile.id} ${cfFile.displayName}" }
+                return@mapNotNull null
+            }
+            Mod(
+                platform = "cf",
+                projectId = modInfo.id.toString(),
+                slug = slug,
+                fileId = cfFile.id.toString(),
+                hash = cfFile.fileFingerprint.toString(),
+                side = Mod.Side.BOTH,
+                downloadUrls = entry.downloads
+            )
+        }.fillCurseForgeVo()
+
+        val mods = matchedMrMods + matchedCfMods
+
         return Result.success(
             LoadedModpack(
                 index = index,
@@ -120,6 +166,15 @@ object ModrinthService {
             )
         )
     }
+
+    private fun parseCurseForgeFileId(url: String): Int? {
+        val match = Regex("/files/(\\d+)/(\\d+)/").find(url) ?: return null
+        val idPart1 = match.groupValues.getOrNull(1) ?: return null
+        val idPart2 = match.groupValues.getOrNull(2) ?: return null
+        val paddedPart2 = idPart2.padStart(3, '0')
+        return (idPart1 + paddedPart2).toIntOrNull()
+    }
+
     fun ModrinthProject.toCardVo(modFile: File? = null): Mod.CardVo {
         val briefInfo = slugBriefInfo[slug.trim().lowercase()]
         val icons = buildList {
@@ -134,15 +189,15 @@ object ModrinthService {
             ?: modFile?.let { JarFile(it).readNeoForgeConfig()?.modDescription }
             ?: "暂无介绍"
 
-    return Mod.CardVo(
-        name = resolvedName,
-        nameCn = briefInfo?.nameCn,
-        intro = briefInfo?.intro ?: introText,
-        iconData = iconBytes,
-        iconUrls = icons,
-        side = Mod.Side.BOTH
-    )
-}
+        return Mod.CardVo(
+            name = resolvedName,
+            nameCn = briefInfo?.nameCn,
+            intro = briefInfo?.intro ?: introText,
+            iconData = iconBytes,
+            iconUrls = icons,
+            side = Mod.Side.BOTH
+        )
+    }
 
     suspend fun List<Mod>.fillModrinthVo(): List<Mod> {
         val modsNeedingVo = filter { it.vo == null && it.platform == "mr" }
@@ -161,6 +216,7 @@ object ModrinthService {
         }
         return this
     }
+
     suspend fun mrreq(
         path: String,
         method: HttpMethod = HttpMethod.Get,
@@ -180,7 +236,7 @@ object ModrinthService {
         if (mirrorResponse != null && mirrorResponse.status.isSuccess()) {
             return mirrorResponse
         } else {
-            lgr.warn( "Modrinth mirror fail，${mirrorResponse?.status},${mirrorResponse?.bodyAsText()}" )
+            lgr.warn("Modrinth mirror fail，${mirrorResponse?.status},${mirrorResponse?.bodyAsText()}")
         }
 
         mirrorResult.exceptionOrNull()?.let {
@@ -189,6 +245,7 @@ object ModrinthService {
         val officialResponse = doRequest(OFFICIAL_URL)
         return officialResponse
     }
+
     //ID / slugs
     suspend fun List<String>.mapModrinthProjects(): List<ModrinthProject> {
         val normalizedIds = asSequence()
@@ -215,6 +272,7 @@ object ModrinthService {
 
         return projects
     }
+
     suspend fun getMultipleProjects(idSlugs: List<String>): List<ModrinthProject> {
         val normalizedIds = idSlugs.asSequence()
             .distinct()
@@ -240,6 +298,7 @@ object ModrinthService {
 
         return projects
     }
+
     suspend fun List<File>.mapModrinthVersions(): Map<String, ModrinthVersionInfo> {
         val hashes = map { it.sha1 }
         val response = mrreq(
@@ -258,6 +317,7 @@ object ModrinthService {
 
         return response
     }
+
     suspend fun getVersionsFromHashes(
         hashes: List<String>,
         algorithm: String = "sha1"
