@@ -178,6 +178,10 @@ fun Route.modpackRoutes() {
                     }
 
                     val payload = zipBytes ?: throw ParamError("缺少文件")
+                    val maxSize = 256L * 1024 * 1024
+                    if (payload.size > maxSize) {
+                        throw RequestError("整合包版本文件过大，最大允许 256MB")
+                    }
                     val modList = mods ?: arrayListOf()
 
                     ctx.requireAuthor().createVersion(verName, payload, modList)
@@ -607,6 +611,7 @@ object ModpackService {
         mods.removeIf { it.slug == "default-server-properties" }
         //客户端才用
         mods.find { it.slug == "modern-ui" }?.side = Mod.Side.CLIENT
+        mods.find { it.slug == "controllable" }?.side = Mod.Side.CLIENT
         //1.18.2跑不起来
         mods.removeIf { it.slug == "skybox-loader-forge" }
         //玻璃纹理需要
