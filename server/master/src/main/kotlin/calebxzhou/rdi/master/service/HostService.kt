@@ -257,6 +257,7 @@ object HostService {
     private const val PORT_END_EXCLUSIVE = 60000
     private const val SHUTDOWN_THRESHOLD = 10
     private const val HOSTS_PER_PAGE = 24
+    private const val HOST_WORKDIR_LIMIT_BYTES: Long = 1L * 1024 * 1024 * 1024
 
     private val idleMonitorScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var idleMonitorJob: Job? = null
@@ -349,6 +350,17 @@ object HostService {
                 }
             }
             serverPropsFile.outputStream().use { serverProps.store(it, null) }
+        }
+    }
+
+    private fun Host.ensureWorkdirQuota() {
+        if (!dir.exists()) return
+        val totalSize = dir.walkTopDown()
+            .filter { it.isFile && !Files.isSymbolicLink(it.toPath()) }
+            .sumOf { it.length() }
+        if (totalSize > HOST_WORKDIR_LIMIT_BYTES) {
+            val sizeMb = totalSize / (1024 * 1024)
+            throw RequestError("地图目录超过 1GB (${sizeMb}MB)，请删除不必要文件后再启动")
         }
     }
 
