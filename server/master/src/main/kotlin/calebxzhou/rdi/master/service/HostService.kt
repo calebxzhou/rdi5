@@ -26,10 +26,12 @@ import calebxzhou.rdi.master.service.HostService.delete
 import calebxzhou.rdi.master.service.HostService.forceStop
 import calebxzhou.rdi.master.service.HostService.graceStop
 import calebxzhou.rdi.master.service.HostService.hostContext
-import calebxzhou.rdi.master.service.HostService.listHostLobby
+import calebxzhou.rdi.master.service.HostService.listAllHosts
+import calebxzhou.rdi.master.service.HostService.listHostLobbyLegacy
 import calebxzhou.rdi.master.service.HostService.listenLogs
 import calebxzhou.rdi.master.service.HostService.needAdmin
 import calebxzhou.rdi.master.service.HostService.needOwner
+import calebxzhou.rdi.master.service.HostService.quit
 import calebxzhou.rdi.master.service.HostService.restart
 import calebxzhou.rdi.master.service.HostService.sendCommand
 import calebxzhou.rdi.master.service.HostService.setRole
@@ -69,6 +71,7 @@ import org.bson.conversions.Bson
 import org.bson.types.ObjectId
 import java.io.Closeable
 import java.io.File
+import java.nio.file.Files
 import java.util.*
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.ConcurrentHashMap
@@ -178,6 +181,10 @@ fun Route.hostRoutes() = route("/host") {
                 ctx.listenLogs(this)
 
             }
+        }
+        put("/quit"){
+            call.hostContext().quit()
+            ok()
         }
         route("/member/{uid2}") {
             put("/role/{role}") {
@@ -888,6 +895,7 @@ object HostService {
         version: Modpack.Version
     ) {
         DockerService.deleteContainer(_id.str)
+        ensureWorkdirQuota()
 
         val sharedLibsDir = modpack.libsDir.canonicalFile.also { it.mkdirs() }
 
@@ -1443,6 +1451,10 @@ object HostService {
         if (host.hasMember(target._id)) {
             throw RequestError("该用户已是成员")
         }
+        val joinedCount = dbcl.countDocuments(eq("${Host::members.name}.${Host.Member::id.name}", target._id))
+        if (joinedCount >= 9) {
+            throw RequestError("该用户已加入 9 张地图，无法继续加入")
+        }
         dbcl.updateOne(
             eq("_id", host._id),
             Updates.push(Host::members.name, Host.Member(target._id, Role.MEMBER))
@@ -1469,6 +1481,19 @@ object HostService {
                     Document("elem.id", targetMember.id),
                 )
             )
+        )
+    }
+
+    suspend fun HostContext.quit() {
+        if (!host.hasMember(player._id)) {
+            throw RequestError("你不是此地图成员")
+        }
+        if (host.ownerId == player._id) {
+            throw RequestError("拥有者无法退出地图")
+        }
+        dbcl.updateOne(
+            eq("_id", host._id),
+            Updates.pull(Host::members.name, Document(Host.Member::id.name, player._id))
         )
     }
 }
