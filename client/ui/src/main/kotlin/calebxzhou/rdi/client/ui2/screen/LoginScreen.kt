@@ -24,6 +24,7 @@ import calebxzhou.rdi.client.ui2.BottomSnakebar
 import calebxzhou.rdi.client.ui2.MainBox
 import calebxzhou.rdi.client.ui2.comp.PasswordField
 import calebxzhou.rdi.common.exception.RequestError
+import calebxzhou.rdi.lgr
 import io.ktor.http.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -96,8 +97,8 @@ fun LoginScreen(
             updateDetail = ""
         } else {
             UpdateService.startUpdateFlow(
-                onStatus = { updateStatus = it },
-                onDetail = { updateDetail = it },
+                onStatus = { updateStatus = it; lgr.info { it } },
+                onDetail = { updateDetail = it; lgr.info { it } },
                 onRestart = {
                     updateStatus = "更新完成，客户端将在 5 秒关闭..."
                     for (i in 5 downTo 1) {
