@@ -505,6 +505,11 @@ fun Space8w() {
 }
 
 @Composable
+fun Space24w() {
+    Spacer(modifier = Modifier.width(24.dp))
+}
+
+@Composable
 fun Space8h() {
     Spacer(modifier = Modifier.height(8.dp))
 }
