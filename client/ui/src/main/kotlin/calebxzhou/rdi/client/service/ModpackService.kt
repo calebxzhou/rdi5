@@ -506,7 +506,7 @@ object ModpackService {
         onProgress("Modrinth匹配完成：${mrResult.mods.size} 个，开始匹配CurseForge")
         val cfResult = runCatching { matchEmbeddedModsCF(remaining) }
             .getOrDefault(EmbeddedMatchResult(emptyList(), emptySet()))
-        onProgress("匹配完成：MR ${mrResult.mods.size} 个，CF ${cfResult.mods.size} 个")
+        onProgress("匹配完成：MR ${mrResult.mods.size} 个，CF ${cfResult.mods.size} 个，处理结果中，请等一分钟...")
         val mergedMods = (mrResult.mods + cfResult.mods)
             .distinctBy { "${it.platform}:${it.projectId}:${it.fileId}:${it.hash}" }
         val removeFiles = mrResult.removeFiles + cfResult.removeFiles
