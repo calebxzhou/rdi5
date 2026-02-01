@@ -84,18 +84,24 @@ fun Route.hostRoutes() = route("/host") {
             call.player().createHost(call.receive())
             ok()
         }
-
+        //前版本兼容
         get("/lobby/{page?}") {
-            val hosts = call.player().listHostLobby(paramNull("page")?.toInt() ?: 0)
+            val hosts = call.player().listHostLobbyLegacy(paramNull("page")?.toInt() ?: 0)
+            response(data = hosts)
+        }
+        get("/my/{page?}") {
+            response(data = call.player().listAllHosts(paramNull("page")?.toInt() ?: 0, myOnly = true))
+        }
+        //新
+        get("/list/{page?}") {
+            val hosts = call.player().listAllHosts(paramNull("page")?.toInt() ?: 0, myOnly = false)
             response(data = hosts)
         }
         get("/search/modpack/{modpackId}/{verName}") {
             val hosts = HostService.findByModpackVersion(idParam("modpackId"), param("verName"))
             response(data = hosts)
         }
-        get("/my/{page?}") {
-            response(data = call.player().listHostLobby(paramNull("page")?.toInt() ?: 0, onlyShowMy = true))
-        }
+
     }
     route("/{hostId}") {
         get("/status") {
@@ -1237,7 +1243,7 @@ object HostService {
     suspend fun RAccount.ownHosts() = HostService.getByOwner(_id)
 
 
-    suspend fun RAccount.listHostLobby(
+    suspend fun RAccount.listHostLobbyLegacy(
         page: Int,
         pageSize: Int = HOSTS_PER_PAGE,
         onlyShowMy: Boolean = false
@@ -1284,6 +1290,63 @@ object HostService {
                         packVer = host.packVer,
                         port = host.port,
                         playable = playable,
+                        isMember = isMember,
+                        onlinePlayerIds = onlinePlayers
+                    )
+                }
+            }.awaitAll()
+        }
+    }
+
+    suspend fun RAccount.listAllHosts(
+        page: Int,
+        myOnly: Boolean,
+        pageSize: Int = HOSTS_PER_PAGE
+    ): List<Host.BriefVo> {
+        val safePage = page.coerceAtLeast(0)
+        val safeSize = pageSize.coerceIn(1, 100)
+        val hosts = dbcl.find()
+            .sort(com.mongodb.client.model.Sorts.descending("_id"))
+            .skip(safePage * safeSize)
+            .limit(safeSize)
+            .toList()
+
+        if (hosts.isEmpty()) return emptyList()
+
+        val requesterId = _id
+        val visibleHosts = if (myOnly) {
+            hosts.filter { host ->
+                host.ownerId == requesterId || host.members.any { it.id == requesterId }
+            }
+        } else {
+            val (memberHosts, otherHosts) = hosts.partition { host ->
+                host.ownerId == requesterId || host.members.any { it.id == requesterId }
+            }
+            memberHosts + otherHosts
+        }
+
+        return coroutineScope {
+            visibleHosts.map { host ->
+                async {
+                    val modpack = ModpackService.getById(host.modpackId)
+                    val onlinePlayers = host.getOnlinePlayers()
+                    val isMember = host.ownerId == requesterId || host.members.any { it.id == requesterId }
+                    val playable = when {
+                        isMember -> true
+                        host.status == HostStatus.PLAYABLE && !host.whitelist -> true
+                        else -> false
+                    }
+                    Host.BriefVo(
+                        _id = host._id,
+                        intro = host.intro,
+                        name = host.name,
+                        ownerId = host.ownerId,
+                        modpackName = modpack?.name ?: "未知整合包",
+                        iconUrl = modpack?.iconUrl,
+                        packVer = host.packVer,
+                        port = host.port,
+                        playable = playable,
+                        isMember = isMember,
                         onlinePlayerIds = onlinePlayers
                     )
                 }
