@@ -79,7 +79,7 @@ private suspend fun fetch(url: String): HttpImageState {
             return HttpImageState(null, "图片加载失败", false)
         }
         val bytes = response.bodyAsBytes()
-        val bitmap = Image.makeFromEncoded(bytes).toComposeImageBitmap()
+        val bitmap = Image.makeFromEncoded(bytes).use { it.toComposeImageBitmap() }
         HttpImageState(bitmap, null, false)
     }.getOrElse {
         HttpImageState(null, "图片加载失败", false)
