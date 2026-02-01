@@ -96,6 +96,7 @@ fun HostInfoScreen(
     var roleChangeConfirm by remember { mutableStateOf<RoleChange?>(null) }
     var transferConfirm by remember { mutableStateOf<ObjectId?>(null) }
     var kickConfirm by remember { mutableStateOf<ObjectId?>(null) }
+    var quitConfirm by remember { mutableStateOf(false) }
     var stopConfirm by remember { mutableStateOf(false) }
     var restartConfirm by remember { mutableStateOf(false) }
     var forceStopConfirm by remember { mutableStateOf(false) }
@@ -327,6 +328,7 @@ fun HostInfoScreen(
 
                         when (selectedTab) {
                             0 -> {
+                                val meMember = host.members.any { it.id == loggedAccount._id }
                                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                     host.members.forEach { member ->
                                         val memberColor = when (member.role) {
@@ -386,9 +388,16 @@ fun HostInfoScreen(
                                             }
                                         }
                                     }
-                                    if (meAdmin) {
-                                        TextButton(onClick = { showInviteDialog = true }) {
-                                            Text("+ 邀请成员")
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        if (meMember && !meOwner) {
+                                            TextButton(onClick = { quitConfirm = true }) {
+                                                Text("退出地图", color = MaterialColor.RED_900.color)
+                                            }
+                                        }
+                                        if (meAdmin) {
+                                            TextButton(onClick = { showInviteDialog = true }) {
+                                                Text("+ 邀请成员")
+                                            }
                                         }
                                     }
                                 }
@@ -487,7 +496,7 @@ fun HostInfoScreen(
     if (showDeleteConfirm) {
         ConfirmDialog(
             title = "确认删除",
-            message = "确认删除地图吗？\n（仅删除成员列表。\n存档数据不会被删除，可导出或重复利用）",
+            message = "确认删除地图吗？\n（仅删除成员列表。\n区块数据不会被删除，可导出或重复利用）",
             onConfirm = {
                 scope.rdiRequestU(
                     path = "host/$hostId",
@@ -694,6 +703,26 @@ fun HostInfoScreen(
                 forceStopConfirm = false
             },
             onDismiss = { forceStopConfirm = false }
+        )
+    }
+
+    if (quitConfirm) {
+        ConfirmDialog(
+            title = "退出地图",
+            message = "确定退出该地图吗？",
+            onConfirm = {
+                scope.rdiRequestU(
+                    path = "host/$hostId/quit",
+                    method = HttpMethod.Put,
+                    onOk = {
+                        okMessage = "已退出地图"
+                        reload()
+                    },
+                    onErr = { errorMessage = it.message ?: "退出失败" }
+                )
+                quitConfirm = false
+            },
+            onDismiss = { quitConfirm = false }
         )
     }
 }
