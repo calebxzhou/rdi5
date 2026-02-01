@@ -1,9 +1,7 @@
 package calebxzhou.rdi.client.ui2.screen
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.material.*
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
@@ -44,40 +42,68 @@ fun HostListScreen(
 ) {
     val scope = rememberCoroutineScope()
     var hosts by remember { mutableStateOf<List<Host.BriefVo>>(emptyList()) }
-    var showMy by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var installConfirmTask by remember { mutableStateOf<Task?>(null) }
+    var page by remember { mutableStateOf(0) }
+    var loadingMore by remember { mutableStateOf(false) }
+    var reachedEnd by remember { mutableStateOf(false) }
+    val gridState = rememberLazyGridState()
 
     val snackbarHostState = remember { SnackbarHostState() }
-    LaunchedEffect(showMy) {
+    fun resetList() {
+        page = 0
+        reachedEnd = false
+        hosts = emptyList()
+    }
+
+    suspend fun loadPage(pageIndex: Int) {
+        if (loadingMore || reachedEnd) return
+        loadingMore = true
+        val endpoint = "host/list/$pageIndex"
+        val response = server.makeRequest<List<Host.BriefVo>>(endpoint)
+        val data = response.data ?: emptyList()
+        if (data.isEmpty()) {
+            reachedEnd = true
+        } else {
+            hosts = hosts + data
+        }
+        loadingMore = false
+    }
+
+    LaunchedEffect(Unit) {
         if (Const.USE_MOCK_DATA) {
             hosts = generateMockHosts()
         } else {
-            val endpoint = if (showMy) "host/my" else "host/lobby/0"
-            val response = server.makeRequest<List<Host.BriefVo>>(endpoint)
-            hosts = response.data ?: emptyList()
+            resetList()
+            loadPage(0)
         }
     }
-    MainColumn{
+
+    LaunchedEffect(gridState, hosts) {
+        if (Const.USE_MOCK_DATA) return@LaunchedEffect
+        val lastIndex = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: return@LaunchedEffect
+        if (!loadingMore && !reachedEnd && lastIndex >= hosts.size - 4) {
+            page += 1
+            loadPage(page)
+        }
+    }
+    MainColumn {
         // Header / Toolbar
-        TitleRow("地图大厅", onBack = onBack){
+        TitleRow("地图大厅", onBack = onBack) {
             errorMessage?.let { Text(it, color = MaterialTheme.colors.error) }
-            Checkbox(
-                checked = showMy,
-                onCheckedChange = { showMy = it }
-            )
-            Text(text = "我的图")
             Space8w()
-            HeadButton(loggedAccount._id){
+            HeadButton(loggedAccount._id) {
                 onOpenWardrobe?.invoke()
             }
             Space8w()
-            ImageIconButton("grass_block","大家的整合包",
-                bgColor = Color.LightGray) {
+            ImageIconButton(
+                "grass_block", "大家的整合包",
+                bgColor = Color.LightGray
+            ) {
                 onOpenModpackList?.invoke()
             }
             Space8w()
-            CircleIconButton("\uDB85\uDC5C","存档数据管理"){
+            CircleIconButton("\uDB85\uDC5C", "区块数据管理") {
                 onOpenWorldList?.invoke()
             }
             Space8w()
@@ -88,7 +114,7 @@ fun HostListScreen(
                 onOpenSettings?.invoke()
             }
             Space8w()
-            CircleIconButton("\uEB1C" ,"信箱") {
+            CircleIconButton("\uEB1C", "信箱") {
                 onOpenMail?.invoke()
             }
 
@@ -104,47 +130,77 @@ fun HostListScreen(
                 )
             }
         } else {
+            val playableHosts = remember(hosts) { hosts.filter { it.playable } }
+            val nonPlayableHosts = remember(hosts) { hosts.filter { !it.playable } }
+            @Composable
+            fun renderHostCard(host: Host.BriefVo) {
+                host.HostCard(onClickPlay = {
+                    scope.launch {
+                        val res = server.makeRequest<Host.DetailVo>("host/${host._id}/detail")
+                        val detail = res.data
+                            ?: run {
+                                errorMessage = "获取地图信息失败: ${res.msg}"
+                                return@launch
+                            }
+                        val args = try {
+                            detail.startPlay()
+                        } catch (e: Exception) {
+                            errorMessage = e.message ?: "无法开始游玩"
+                            return@launch
+                        }
+                        when (args) {
+                            is StartPlayResult.Ready -> {
+                                if (onOpenMcPlay != null) {
+                                    onOpenMcPlay(args.args)
+                                } else {
+                                    errorMessage = "暂不支持在此页面游玩"
+                                }
+                            }
+
+                            is StartPlayResult.NeedInstall -> {
+                                installConfirmTask = args.task
+                            }
+
+                            is StartPlayResult.NeedMc -> {
+                                errorMessage = "未安装MC版本资源：${args.ver.mcVer}，请先下载"
+                                onOpenMcVersions?.invoke(args.ver)
+                            }
+                        }
+                    }
+                }, onClick = {
+                    onOpenHostInfo?.invoke(host._id.toHexString())
+                })
+            }
+
             LazyVerticalGrid(
+                state = gridState,
                 columns = GridCells.Adaptive(minSize = 300.dp),
                 contentPadding = PaddingValues(8.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                items(hosts) { host ->
-                    host.HostCard(onClickPlay = {
-                        scope.launch {
-                            val res = server.makeRequest<Host.DetailVo>("host/${host._id}/detail")
-                            val detail = res.data
-                                ?: run {
-                                    errorMessage = "获取地图信息失败: ${res.msg}"
-                                    return@launch
-                                }
-                            val args = try {
-                                detail.startPlay()
-                            } catch (e: Exception) {
-                                errorMessage = e.message ?: "无法开始游玩"
-                                return@launch
-                            }
-                            when (args) {
-                                is StartPlayResult.Ready -> {
-                                    if (onOpenMcPlay != null) {
-                                        onOpenMcPlay(args.args)
-                                    } else {
-                                        errorMessage = "暂不支持在此页面游玩"
-                                    }
-                                }
-                                is StartPlayResult.NeedInstall -> {
-                                    installConfirmTask = args.task
-                                }
-                                is StartPlayResult.NeedMc -> {
-                                    errorMessage = "未安装MC版本资源：${args.ver.mcVer}，请先下载"
-                                    onOpenMcVersions?.invoke(args.ver)
-                                }
-                            }
-                        }
-                    }, onClick = {
-                        onOpenHostInfo?.invoke(host._id.toHexString())
-                    })
+                if (playableHosts.isNotEmpty()) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        Text("能玩的图", style = MaterialTheme.typography.subtitle1)
+                    }
+                    items(playableHosts) { host ->
+                        renderHostCard(host)
+                    }
+                } else {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        Text("暂无可游玩的地图", color = Color.Gray)
+                    }
+                }
+
+                if (nonPlayableHosts.isNotEmpty()) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        Text("以下地图由于不在线，无法游玩", style = MaterialTheme.typography.subtitle1, color = Color.Gray)
+                    }
+                    items(nonPlayableHosts) { host ->
+                        renderHostCard(host)
+                    }
+                }
+
                     /*calebxzhou.rdi.client.ui.component.HostCard(
                         host = host,
                         onClick = {
@@ -157,6 +213,18 @@ fun HostListScreen(
                             }
                         }
                     )*/
+
+                if (loadingMore) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
                 }
             }
         }
@@ -191,4 +259,3 @@ private fun generateMockHosts(): List<Host.BriefVo> = List(50) { index ->
         port = base.port + index
     )
 }
-
