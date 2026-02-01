@@ -465,10 +465,13 @@ object HostService {
             Regex("""invalid dist\s+DEDICATED_SERVER""", RegexOption.IGNORE_CASE)
         val distCleanerRegex =
             Regex("""RuntimeDistCleaner""", RegexOption.IGNORE_CASE)
+        val modLoadingFailedRegex =
+            Regex("""Mod Loading has failed|Mod loading error has occurred""", RegexOption.IGNORE_CASE)
         if (
             !clientClassRegex.containsMatchIn(content) &&
             !invalidDistRegex.containsMatchIn(content) &&
-            !distCleanerRegex.containsMatchIn(content)
+            !distCleanerRegex.containsMatchIn(content) &&
+            !modLoadingFailedRegex.containsMatchIn(content)
         ) {
             lgr.info { "Host ${_id} crash 报告未发现客户端侧加载错误, 跳过处理" }
             return false
@@ -477,8 +480,9 @@ object HostService {
         val modIds = linkedSetOf<String>()
         val modFiles = linkedSetOf<String>()
         val modHashes = linkedSetOf<String>()
+        val requiredModSlugs = linkedSetOf<String>()
         val lines = content.lines()
-        lines.forEach { line ->
+        lines.forEachIndexed { index, line ->
             val trimmed = line.trim()
             if (trimmed.startsWith("-- MOD ")) {
                 val slug = trimmed.removePrefix("-- MOD ").removeSuffix(" --").trim()
@@ -497,6 +501,14 @@ object HostService {
             if (trimmed.startsWith("-- Mod loading issue for:")) {
                 val slug = trimmed.removePrefix("-- Mod loading issue for:").trim()
                 if (slug.isNotBlank()) modIds += slug.lowercase()
+            }
+            if (trimmed.startsWith("Failure message:", ignoreCase = true)) {
+                val nextLine = lines.getOrNull(index + 1)?.trim().orEmpty()
+                Regex("""Currently,\s*([^\s]+)\s+is\s+not\s+installed""", RegexOption.IGNORE_CASE)
+                    .find(nextLine)
+                    ?.groupValues
+                    ?.getOrNull(1)
+                    ?.let { slug -> requiredModSlugs += slug.lowercase() }
             }
         }
 
@@ -534,7 +546,7 @@ object HostService {
             }
         }
 
-        if (modIds.isEmpty() && modFiles.isEmpty() && modHashes.isEmpty()) {
+        if (modIds.isEmpty() && modFiles.isEmpty() && modHashes.isEmpty() && requiredModSlugs.isEmpty()) {
             lgr.info { "Host ${_id} crash 报告未解析出 mod 信息, 跳过处理" }
             return false
         }
@@ -557,9 +569,14 @@ object HostService {
                         it.contains(mod.hash, true)
             }
             val hashMatch = modHashes.contains(mod.hash.lowercase())
+            val requireBoth = requiredModSlugs.contains(mod.slug.lowercase())
             if ((slugMatch || fileMatch || hashMatch) && mod.side != Mod.Side.CLIENT) {
                 lgr.info { "Host ${_id} 标记客户端专用 mod: ${mod.slug}" }
                 mod.side = Mod.Side.CLIENT
+                updated = true
+            } else if (requireBoth && mod.side == Mod.Side.CLIENT) {
+                lgr.info { "Host ${_id} 修复依赖缺失，将 ${mod.slug} 设为 BOTH" }
+                mod.side = Mod.Side.BOTH
                 updated = true
             }
         }
@@ -607,6 +624,7 @@ object HostService {
                 if (!triggered.get() && (line.contains("Preparing crash report")
                             || line.contains("Failed to start the minecraft server")
                             || line.contains("Minecraft Crash Report")
+                            || line.contains("Missing or unsupported mandatory dependencies")
                         )) {
                     if (triggered.compareAndSet(false, true)) {
                         closeListener()
