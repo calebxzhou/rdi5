@@ -1,6 +1,7 @@
 package calebxzhou.rdi.client.service
 
 import calebxzhou.mykotutils.ktor.downloadFileFrom
+import calebxzhou.mykotutils.log.Loggers
 import calebxzhou.mykotutils.std.humanFileSize
 import calebxzhou.mykotutils.std.sha1
 import calebxzhou.rdi.client.net.server
@@ -15,6 +16,46 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 
 object UpdateService {
+    private val lgr by Loggers
+    /**
+     * Force delete a file even if it's locked by another process.
+     * Tries multiple strategies: normal delete, retry with delay, truncate to 0 bytes,
+     * Windows force delete command, and finally deleteOnExit.
+     */
+    /**
+     * Force delete a file. Returns Pair<immediatelyDeleted, markedForDeletion>
+     */
+    private fun forceDelete(file: File): Pair<Boolean, Boolean> {
+        // Strategy 1: Normal delete with retries
+        repeat(3) {
+            if (!file.exists()) return true to false
+            if (file.delete()) return true to false
+            Thread.sleep(50)
+        }
+        
+        // Strategy 2: Try Windows force delete command
+        if (System.getProperty("os.name").lowercase().contains("win")) {
+            runCatching {
+                val process = ProcessBuilder("cmd", "/c", "del", "/f", "/q", file.absolutePath)
+                    .redirectErrorStream(true)
+                    .start()
+                process.waitFor(3, java.util.concurrent.TimeUnit.SECONDS)
+                process.destroyForcibly()
+            }
+            if (!file.exists()) return true to false
+        }
+        
+        // Strategy 3: Truncate file to 0 bytes (makes it useless even if can't delete)
+        val truncated = runCatching {
+            FileOutputStream(file).use { it.channel.truncate(0) }
+            true
+        }.getOrElse { false }
+        
+        // Strategy 4: Mark for deletion on JVM exit
+        file.deleteOnExit()
+        return false to true // Not deleted immediately, but marked for deletion
+    }
+
     suspend fun startUpdateFlow(
         onStatus: (String) -> Unit,
         onDetail: (String) -> Unit,
@@ -213,13 +254,36 @@ object UpdateService {
         }
 
         val serverNames = serverEntries.keys
-        libDir.listFiles()
+        lgr.info { "服务器库列表: $serverNames" }
+        val allLocalFiles = libDir.listFiles()?.filter { it.isFile }?.map { it.name } ?: emptyList()
+        lgr.info { "本地库列表: $allLocalFiles" }
+        val extraFiles = libDir.listFiles()
             ?.filter { it.isFile && it.name !in serverNames }
-            ?.forEach { extra ->
-                if (!extra.delete()) {
-                    extra.deleteOnExit()
+            ?: emptyList()
+        lgr.info { "需要删除的库: ${extraFiles.map { it.name }}" }
+        
+        if (extraFiles.isNotEmpty()) {
+            onStatus("正在清理多余的库文件...")
+            var deletedNow = 0
+            var markedForLater = 0
+            extraFiles.forEach { extra ->
+                onDetail("删除: ${extra.name}")
+                val (immediate, marked) = forceDelete(extra)
+                if (immediate) {
+                    deletedNow++
+                } else if (marked) {
+                    markedForLater++
+                    onDetail("${extra.name} 将在重启后删除")
                 }
             }
+            val msg = when {
+                deletedNow > 0 && markedForLater > 0 -> "已删除 $deletedNow 个，$markedForLater 个将在重启后删除"
+                deletedNow > 0 -> "已清理 $deletedNow 个多余的库文件"
+                markedForLater > 0 -> "$markedForLater 个库文件将在重启后删除"
+                else -> "清理完成"
+            }
+            onStatus(msg)
+        }
 
         return true to updated
     }
