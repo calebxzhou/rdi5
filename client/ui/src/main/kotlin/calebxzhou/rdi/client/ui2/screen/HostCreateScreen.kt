@@ -1,11 +1,20 @@
 package calebxzhou.rdi.client.ui2.screen
 
+import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import calebxzhou.mykotutils.std.secondsToHumanDateTime
 import calebxzhou.rdi.client.net.loggedAccount
@@ -13,6 +22,8 @@ import calebxzhou.rdi.client.net.rdiRequest
 import calebxzhou.rdi.client.net.rdiRequestU
 import calebxzhou.rdi.client.ui2.*
 import calebxzhou.rdi.client.ui2.comp.GameRuleModal
+import calebxzhou.rdi.client.ui2.comp.ImageCard
+import calebxzhou.rdi.client.ui2.comp.WorldCard
 import calebxzhou.rdi.common.model.Host
 import calebxzhou.rdi.common.model.World
 import calebxzhou.rdi.common.serdesJson
@@ -34,12 +45,12 @@ fun HostCreateScreen(
     var hostName by remember { mutableStateOf("${loggedAccount.name}的世界${Random.nextInt(1000)}") }
     var modpackIdText by remember { mutableStateOf(arg.modpackId) }
     var packVerText by remember { mutableStateOf(arg.packVer) }
-    var worlds by remember { mutableStateOf<List<World>>(emptyList()) }
+    var worlds by remember { mutableStateOf<List<World.Vo>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var statusMessage by remember { mutableStateOf<String?>(null) }
     var showRules by remember { mutableStateOf(false) }
-    var showNoSaveWarn by remember { mutableStateOf(false) }
+    var noSave by remember { mutableStateOf(false) }
     var showResult by remember { mutableStateOf<String?>(null) }
     var submitting by remember { mutableStateOf(false) }
     var editHostId by remember { mutableStateOf<ObjectId?>(null) }
@@ -53,7 +64,7 @@ fun HostCreateScreen(
     var levelChoice by remember { mutableStateOf(if (arg.skyblock) 2 else 0) }
     var whitelist by remember { mutableStateOf(false) }
     var allowCheats by remember { mutableStateOf(false) }
-
+    fun isEditMode() = editHostId != null
     LaunchedEffect(arg.hostId) {
         val rawHostId = arg.hostId?.trim()
         if (rawHostId.isNullOrBlank() || !ObjectId.isValid(rawHostId)) return@LaunchedEffect
@@ -63,7 +74,7 @@ fun HostCreateScreen(
             path = "host/$rawHostId/detail",
             onOk = { resp ->
                 val detail = resp.data ?: return@rdiRequest
-                title = "编辑地图 ${detail.name}"
+                title = "地图设置 · ${detail.name}"
                 hostName = detail.name
                 modpackIdText = detail.modpack.id.toHexString()
                 packVerText = detail.packVer
@@ -86,9 +97,9 @@ fun HostCreateScreen(
     }
     LaunchedEffect(Unit) {
         loading = true
-        scope.rdiRequest<List<World>>(
+        scope.rdiRequest<List<World.Vo>>(
             "world",
-            onErr = { "无法载入存档数据: ${it.message}" },
+            onErr = { "无法载入区块数据: ${it.message}" },
             onOk = { resp ->
                 worlds = resp.data ?: emptyList()
             },
@@ -103,9 +114,8 @@ fun HostCreateScreen(
                 add(HostWorldOption(index, label, world))
             }
             if (worlds.size < 5) {
-                add(HostWorldOption(HOST_CREATE_NEW_SAVE_ID, "创建新存档", null))
+                add(HostWorldOption(HOST_CREATE_NEW_SAVE_ID, "创建一份新的区块数据", null))
             }
-            add(HostWorldOption(HOST_NO_SAVE_ID, "不存档", null))
         }
     }
 
@@ -116,20 +126,20 @@ fun HostCreateScreen(
         val targetWorldId = editWorldId
         if (targetWorldId != null) {
             selectedWorldId = worldOptions.firstOrNull { it.world?._id == targetWorldId }?.id
-                ?: HOST_NO_SAVE_ID
+                ?: worldOptions.firstOrNull()?.id ?: 0
             editWorldId = null
         }
         if (editPreferNoSave) {
-            selectedWorldId = HOST_NO_SAVE_ID
+            noSave = true
             editPreferNoSave = false
         }
     }
-    fun submit(){
+    fun submit() {
         if (submitting) return
         statusMessage = null
         val trimmedName = hostName.trim()
         if (trimmedName.isEmpty()) {
-            statusMessage = "请输入主机名称"
+            statusMessage = "请输入地图名称"
             return
         }
         val trimmedModpackId = modpackIdText.trim()
@@ -143,10 +153,11 @@ fun HostCreateScreen(
                 statusMessage = "请输入整合包版本"
                 return
             }
+
         }
         submitting = true
         val selectedWorld = worldOptions.firstOrNull { it.id == selectedWorldId }?.world
-        val saveWorld = selectedWorldId != HOST_NO_SAVE_ID
+        val saveWorld = !noSave
         val worldId = when {
             selectedWorld != null -> selectedWorld._id
             selectedWorldId == HOST_CREATE_NEW_SAVE_ID -> null
@@ -200,125 +211,245 @@ fun HostCreateScreen(
         }
     }
     MainColumn {
-        TitleRow(title,onBack){
-            CircleIconButton("\uDB82\uDE50", bgColor = MaterialColor.GREEN_900.color){
-                submit()
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+        ) {
+            TitleRow(title, onBack) {
+                statusMessage?.let {
+                    Text(it, color = MaterialTheme.colors.error)
+                }
+                errorMessage?.let {
+                    Text(it, color = MaterialTheme.colors.error)
+                }
+                if (loading) {
+                    CircularProgressIndicator()
+                }
+                CircleIconButton("\uDB82\uDE50", bgColor = MaterialColor.GREEN_900.color) {
+                    submit()
+                }
             }
-        }
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(
-                label = {Text("主机名称")},
-                value = hostName,
-                onValueChange = { hostName = it },
-                singleLine = true,
-                modifier = 300.wM
-            )
-        }
-        if (loading) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
+            Space8h()
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentWidth(Alignment.CenterHorizontally)
+                    .widthIn(max = 1100.dp)
             ) {
-                CircularProgressIndicator()
-            }
-        }
-
-        errorMessage?.let {
-            Text(it, color = MaterialTheme.colors.error)
-        }
-        Row(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.weight(0.5f)) {
-                Text("选择存档数据")
-                worldOptions.forEach { option ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        RadioButton(
-                            selected = option.id == selectedWorldId,
-                            onClick = {
-                                selectedWorldId = option.id
-                                if (option.id == HOST_NO_SAVE_ID) {
-                                    showNoSaveWarn = true
-                                }
-                            }
+                Row {
+                    Column {
+                        Row {
+                            Text("地图名称", fontWeight = FontWeight.Bold)
+                            Space24w()
+                            Text("将会在地图大厅界面显示。立刻生效", color = MaterialColor.GRAY_500.color)
+                        }
+                        Space8h()
+                        OutlinedTextField(
+                            label = { Text("地图名称") },
+                            value = hostName,
+                            onValueChange = { hostName = it },
+                            singleLine = true,
                         )
-                        Text(option.label)
                     }
-                }
-                if (showNoSaveWarn) {
-                    Text(
-                        "不保留任何存档数据，仅供测试使用！",
-                        color = MaterialColor.YELLOW_900.color
-                    )
-                }
-            }
-            Column(modifier = Modifier.weight(0.5f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("难度")
-                    DifficultyOption("和平", 0, difficulty) { difficulty = it }
-                    DifficultyOption("简单", 1, difficulty) { difficulty = it }
-                    DifficultyOption("普通", 2, difficulty) { difficulty = it }
-                    DifficultyOption("困难", 3, difficulty) { difficulty = it }
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("模式")
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        DifficultyOption("生存", 0, gameMode) { gameMode = it }
-                        DifficultyOption("创造", 1, gameMode) { gameMode = it }
-                        DifficultyOption("冒险", 2, gameMode) { gameMode = it }
-                    }
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("地形")
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        if (arg.skyblock) {
-                            DifficultyOption("空岛", 2, levelChoice) {
-                                levelChoice = it
-                                levelType = "skyblockbuilder:skyblock"
-                            }
-                        } else {
-                            DifficultyOption("普通", 0, levelChoice) {
-                                levelChoice = it
-                                levelType = "minecraft:normal"
-                            }
-                            DifficultyOption("超平坦", 1, levelChoice) {
-                                levelChoice = it
-                                levelType = "minecraft:flat"
+                    Space24w()
+                    Space24w()
+                    Column {
+                        Row {
+                            Text("其他设置", fontWeight = FontWeight.Bold)
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(whitelist, { whitelist = it })
+                            Text("白名单制")
+                            Space24w()
+                            Text("只有受邀玩家允许游玩", color = MaterialColor.GRAY_500.color)
+                            Space24w()
+                            Checkbox(noSave, { noSave = it })
+                            Text("不保存任何区块数据")
+                            Space24w()
+                            Text("仅限测试时使用", color = MaterialColor.GRAY_500.color)
+                        }
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(allowCheats, { allowCheats = it })
+                            Text("允许作弊")
+                            Space24w()
+                            Button(onClick = { showRules = true }) {
+                                Text("设置游戏规则  (已改${overrideRules.size}项)")
                             }
                         }
                     }
                 }
-                //whitelist
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(whitelist, { whitelist = it })
-                    Text("白名单 · 只有受邀成员能够游玩")
-                }
 
-                //cheat
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(allowCheats, { allowCheats = it })
-                    Text("允许作弊")
+                Space8h()
+                Text("难度", fontWeight = FontWeight.Bold)
+                Space8h()
+                Row(
+                    modifier = Modifier
+                        .horizontalScroll(rememberScrollState())
+                        .padding(horizontal = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    ImageCard(
+                        title = "和平",
+                        desc = "无敌对生物 仅有部分中立生物",
+                        iconPath = "assets/icons/difficulty_peaceful.png",
+                        selected = difficulty == 0,
+                        onClick = { difficulty = 0 }
+                    )
+                    ImageCard(
+                        title = "简单",
+                        desc = "有敌对生物 伤害较低",
+                        iconPath = "assets/icons/difficulty_easy.png",
+                        selected = difficulty == 1,
+                        onClick = { difficulty = 1 }
+                    )
+                    ImageCard(
+                        title = "普通",
+                        desc = "有敌对生物 中等伤害",
+                        iconPath = "assets/icons/difficulty_normal.png",
+                        selected = difficulty == 2,
+                        onClick = { difficulty = 2 }
+                    )
+                    ImageCard(
+                        title = "困难",
+                        desc = "有敌对生物 更高伤害",
+                        iconPath = "assets/icons/difficulty_hard.png",
+                        selected = difficulty == 3,
+                        onClick = { difficulty = 3 }
+                    )
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Button(onClick = { showRules = true }) {
-                        Text("设置游戏规则")
+                Space8h()
+
+                Row(
+                    modifier = Modifier
+                        .horizontalScroll(rememberScrollState())
+                        .padding(horizontal = 8.dp)
+                ) {
+                    Column {
+                        Text("模式", fontWeight = FontWeight.Bold)
+                        Space8h()
+                        Row() {
+                            ImageCard(
+                                title = "生存模式",
+                                desc = "探索一个神秘的世界，在这里你可以建造、收集、制作，并与怪物战斗。",
+                                iconPath = "assets/icons/gamemode_survival.png",
+                                selected = gameMode == 0,
+                                onClick = { gameMode = 0 }
+                            )
+                            ImageCard(
+                                title = "创造模式",
+                                desc = "无限制地建造和探索。你可以飞行，拥有无限材料，并且不会受到怪物伤害。",
+                                iconPath = "assets/icons/gamemode_creative.png",
+                                selected = gameMode == 1,
+                                onClick = { gameMode = 1 }
+                            )
+                        }
                     }
-                    if (overrideRules.isNotEmpty()) {
-                        Text("已修改 ${overrideRules.size} 项", style = MaterialTheme.typography.caption)
+                    Column {
+                        Text("地形", fontWeight = FontWeight.Bold)
+                        Space8h()
+                        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                            if (arg.skyblock) {
+                                ImageCard(
+                                    title = "空岛",
+                                    desc = "漂浮小岛 开局资源稀少",
+                                    iconPath = "assets/icons/worldtype_skyblock.jpg",
+                                    selected = levelChoice == 2,
+                                    onClick = {
+                                        levelChoice = 2
+                                        levelType = "skyblockbuilder:skyblock"
+                                    }
+                                )
+                            } else {
+                                ImageCard(
+                                    title = "普通",
+                                    desc = "拥有最多生物群系、方块和生物的维度，也是大多数玩家最经常玩的地方。",
+                                    iconPath = "assets/icons/worldtype_normal.png",
+                                    selected = levelChoice == 0,
+                                    onClick = {
+                                        levelChoice = 0
+                                        levelType = "minecraft:normal"
+                                    }
+                                )
+                                ImageCard(
+                                    title = "超平坦",
+                                    desc = "一种原版世界预设，用完全平坦的表面取代了主世界的正常地形。",
+                                    iconPath = "assets/icons/worldtype_flat.png",
+                                    selected = levelChoice == 1,
+                                    onClick = {
+                                        levelChoice = 1
+                                        levelType = "minecraft:flat"
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.weight(0.5f)) {
+                        Text("选择要使用的区块数据", fontWeight = FontWeight.Bold)
+                        Space8h()
+                        val worldItems = worldOptions.filter { it.world != null }
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(3),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 420.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(worldItems) { option ->
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .border(
+                                            width = if (option.id == selectedWorldId) 2.dp else 1.dp,
+                                            color = if (option.id == selectedWorldId) {
+                                                MaterialColor.PURPLE_500.color
+                                            } else {
+                                                MaterialColor.GRAY_200.color
+                                            },
+                                            shape = RoundedCornerShape(16.dp)
+                                        )
+                                        .padding(2.dp)
+                                ) {
+                                    option.world!!.WorldCard(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        onClick = { selectedWorldId = option.id }
+                                    )
+                                }
+                            }
+                        }
+                        val newWorldOption = worldOptions.firstOrNull { it.id == HOST_CREATE_NEW_SAVE_ID }
+                        if (newWorldOption != null) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                RadioButton(
+                                    selected = newWorldOption.id == selectedWorldId,
+                                    onClick = { selectedWorldId = newWorldOption.id }
+                                )
+                                Text(newWorldOption.label)
+                            }
+                        }
+                        if (noSave) {
+                            Text(
+                                "不保留任何数据，仅供测试使用！",
+                                color = MaterialColor.YELLOW_900.color
+                            )
+                        }
                     }
                 }
             }
+
+
+
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+
         }
-
-
-
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        statusMessage?.let {
-            Text(it, color = MaterialTheme.colors.error)
-        }
-
     }
 
     if (showRules) {
@@ -353,28 +484,11 @@ fun HostCreateScreen(
 
 }
 
-@Composable
-private fun DifficultyOption(
-    label: String,
-    value: Int,
-    selectedValue: Int,
-    onSelected: (Int) -> Unit
-) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        RadioButton(
-            selected = value == selectedValue,
-            onClick = { onSelected(value) }
-        )
-        Text(label)
-    }
-}
 
 const val HOST_CREATE_NEW_SAVE_ID = 100
-const val HOST_NO_SAVE_ID = 101
 
 data class HostWorldOption(
     val id: Int,
     val label: String,
-    val world: World?
+    val world: World.Vo?
 )
-
