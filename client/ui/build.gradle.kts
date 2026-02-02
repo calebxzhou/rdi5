@@ -100,8 +100,6 @@ dependencies {
     implementation("calebxzhou.mykotutils:log:0.1")
     implementation("calebxzhou.mykotutils:ktor:0.1")
     implementation("calebxzhou.mykotutils:hwspec:0.1")
-    implementation("calebxzhou.mykotutils:curseforge:0.1")
-    implementation("calebxzhou.mykotutils:modrinth:0.1")
     implementation("calebxzhou.mykotutils:mojang:0.1")
 
     // Expanded mcLibs dependencies
@@ -161,12 +159,24 @@ fun registerCopyTask(name: String, extraDestinations: List<String> = emptyList()
             if (!srcDir.exists()) {
                 throw GradleException("未找到目录: $srcDir")
             }
+            val srcFileNames = srcDir.listFiles()?.map { it.name }?.toSet() ?: emptySet()
             destinationDirs.forEach { target ->
                 val targetDir = target.asFile
                 targetDir.mkdirs()
                 copy {
                     from(srcDir)
                     into(targetDir)
+                }
+                // Delete unused libraries in target
+                targetDir.listFiles()?.forEach { file ->
+                    if (file.name !in srcFileNames) {
+                        val deleted = file.deleteRecursively()
+                        if (deleted) {
+                            println("Deleted unused library: ${file.name}")
+                        } else {
+                            println("Failed to delete: ${file.name}")
+                        }
+                    }
                 }
             }
         }
