@@ -53,20 +53,25 @@ val DB = MongoClient.create(
             )
         )
         .build()).getDatabase(CONF.database.name)
-val CRASH_REPORT_DIR = File("crash-report")
-val DOWNLOAD_MODS_DIR = File("dl-mods")
-val MODPACK_DATA_DIR = File("modpack")
-val HOSTS_DIR = File("hosts")
-val GAME_LIBS_DIR = File("game-libs")
-val WORLDS_DIR = File("worlds")
+private fun storageDir(path: String?, defaultName: String): File {
+    val trimmed = path?.trim().orEmpty()
+    return if (trimmed.isBlank()) File(defaultName) else File(trimmed)
+}
+
+val CRASH_REPORT_DIR = storageDir(CONF.storage.crashReportDir, "crash-report")
+val MODPACK_DATA_DIR = storageDir(CONF.storage.modpackDir, "modpack")
+val HOSTS_DIR = storageDir(CONF.storage.hostsDir, "hosts")
+val GAME_LIBS_DIR = storageDir(CONF.storage.gameLibsDir, "game-libs")
+val WORLDS_DIR = storageDir(CONF.storage.worldsDir, "worlds")
 class RDI {}
 fun main(): Unit =runBlocking {
-    CRASH_REPORT_DIR.mkdir()
-    DOWNLOAD_MODS_DIR.mkdir()
-    MODPACK_DATA_DIR.mkdir()
-    HOSTS_DIR.mkdir()
-    GAME_LIBS_DIR.mkdir()
-    WORLDS_DIR.mkdir()
+    CONF.storage.dlModsDir?.let { System.setProperty("rdi.modDir",it) }
+
+    CRASH_REPORT_DIR.mkdirs()
+    MODPACK_DATA_DIR.mkdirs()
+    HOSTS_DIR.mkdirs()
+    GAME_LIBS_DIR.mkdirs()
+    WORLDS_DIR.mkdirs()
         lgr.info { "init db" }
 
         accountCol.createIndex(Indexes.ascending("qq"), IndexOptions().unique(true))

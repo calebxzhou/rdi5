@@ -48,6 +48,16 @@ data class ApiKeyConfig(
     val curseforge: String = "",
 
 )
+
+@Serializable
+data class StorageConfig(
+    val dlModsDir: String? = null,
+    val modpackDir: String? = null,
+    val hostsDir: String? = null,
+    val worldsDir: String? = null,
+    val gameLibsDir: String? = null,
+    val crashReportDir: String? = null
+)
 @Serializable
 data class AppConfig(
     val database: DatabaseConfig = DatabaseConfig(),
@@ -56,6 +66,7 @@ data class AppConfig(
     val docker: DockerConfig = DockerConfig(),
     val apiKey: ApiKeyConfig = ApiKeyConfig(),
     val jwt: JwtConfig = JwtConfig(),
+    val storage: StorageConfig = StorageConfig(),
 ) {
     companion object {
         private val configFile = File("config.toml")
