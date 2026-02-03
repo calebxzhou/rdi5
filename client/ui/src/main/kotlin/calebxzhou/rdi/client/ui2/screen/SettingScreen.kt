@@ -3,7 +3,6 @@ package calebxzhou.rdi.client.ui2.screen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
@@ -12,7 +11,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import calebxzhou.mykotutils.hwspec.HwSpec
 import calebxzhou.mykotutils.std.humanFileSize
@@ -183,11 +181,12 @@ fun SettingScreen(
 }
 
 
-private enum class SettingCategory(val icon: String,val label: String,) {
+private enum class SettingCategory(val icon: String, val label: String) {
     Account("\uEB99", "账号"),
     Java("\uE738", "Java"),
     Network("\uEF09", "网络")
 }
+
 @Composable
 private fun SettingNav(
     selected: SettingCategory,
@@ -219,7 +218,7 @@ private fun SettingNav(
                 Text(
                     text = category.icon.asIconText,
                     color = if (isSelected) MaterialTheme.colors.primary else Color.Unspecified,
-                    style = when(category){
+                    style = when (category) {
                         //java图标比较小 放大一些
                         SettingCategory.Java -> MaterialTheme.typography.h5
                         else -> MaterialTheme.typography.subtitle1
@@ -296,7 +295,7 @@ private fun JavaSettings(
             }
         }
         Space8h()
-        OutlinedTextField( 
+        OutlinedTextField(
             label = { Text("Java21主程序路径（可选 留空自带）") },
             value = jre21Path,
             onValueChange = onJre21Change,
@@ -407,14 +406,14 @@ private fun CarrierSelector(
     val carriers = listOf("电信", "移动", "联通", "教育网", "广电")
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text("运营商节点")
-        carriers.forEachIndexed { index, name ->
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onSelect(index) }
-                    .padding(vertical = 4.dp)
-            ) {
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp)
+        ) {
+            carriers.forEachIndexed { index, name ->
                 RadioButton(
                     selected = selected == index,
                     onClick = { onSelect(index) }
@@ -488,7 +487,9 @@ private fun ChangeProfileDialog(
                     scope.launch {
                         runCatching {
                             server.makeRequest<Unit>("player/profile", HttpMethod.Put, params)
-                            loggedAccount = PlayerService.login(account.qq, pwd).getOrThrow()
+                            if (pwd.isNotEmpty()) {
+                                loggedAccount = PlayerService.login(account._id.toHexString(), pwd).getOrThrow()
+                            }
                             PlayerInfoCache -= loggedAccount._id
                         }.getOrElse {
                             errorMessage = "修改失败: ${it.message}"
