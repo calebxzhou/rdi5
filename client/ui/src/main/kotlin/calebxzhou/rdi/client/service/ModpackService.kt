@@ -600,7 +600,7 @@ object ModpackService {
                 if (relativeLower.startsWith("kubejs/probe/")) return@forEach
                 if (relativeLower.contains("cache")) return@forEach
                 if (relativeLower.contains("yes_steve_model") || relativeLower.contains("史蒂夫模型")) return@forEach
-                if (relativeLower.endsWith(".ogg")) return@forEach
+                if (relativeLower.endsWith(".ogg") && file.length() > OGG_MAX_SIZE_BYTES) return@forEach
                 if (relativeLower.endsWith(".mca") && relativeLower.contains("/saves/")) return@forEach
                 if (isQuestLangEntryDisallowed(relativeLower, file.isDirectory)) return@forEach
 
@@ -653,7 +653,7 @@ object ModpackService {
                         if (relativeLower.startsWith("kubejs/probe/")) return@forEach
                         if (relativeLower.contains("cache")) return@forEach
                         if (relativeLower.contains("yes_steve_model") || relativeLower.contains("史蒂夫模型")) return@forEach
-                        if (relativeLower.endsWith(".ogg")) return@forEach
+                        if (relativeLower.endsWith(".ogg") && entry.size != -1L && entry.size > OGG_MAX_SIZE_BYTES) return@forEach
                         if (relativeLower.endsWith(".mca") && relativeLower.contains("/saves/")) return@forEach
                         if (isQuestLangEntryDisallowed(relativeLower, entry.isDirectory)) return@forEach
 
@@ -681,6 +681,16 @@ object ModpackService {
                             val bytes = zip.getInputStream(entry).use { it.readBytes() }
                             val processed = compressPngIfNeeded(bytes)
                             out.write(processed)
+                        } else if (relativeLower.endsWith(".ogg")) {
+                            val size = entry.size
+                            if (size != -1L) {
+                                if (size > OGG_MAX_SIZE_BYTES) return@forEach
+                                zip.getInputStream(entry).use { input -> input.copyTo(out) }
+                            } else {
+                                val bytes = zip.getInputStream(entry).use { it.readBytes() }
+                                if (bytes.size > OGG_MAX_SIZE_BYTES) return@forEach
+                                out.write(bytes)
+                            }
                         } else {
                             zip.getInputStream(entry).use { input -> input.copyTo(out) }
                         }
@@ -704,6 +714,7 @@ object ModpackService {
                 else -> input.readNBytes(entry.size.toInt())
             }
         }
+        if (relativeLower.endsWith(".ogg") && rawBytes.size > OGG_MAX_SIZE_BYTES) return null
         val processed = if (relativeLower.endsWith(".png")) compressPngIfNeeded(rawBytes) else rawBytes
         if (processed.size > RESOURCEPACK_MAX_SIZE_BYTES) return null
         return processed
@@ -713,6 +724,7 @@ object ModpackService {
     private val allowedQuestLangFiles = setOf("en_us.snbt", "zh_cn.snbt")
     private const val QUEST_LANG_PREFIX = "config/ftbquests/quests/lang/"
     private const val RESOURCEPACK_MAX_SIZE_BYTES = 1024L * 1024
+    private const val OGG_MAX_SIZE_BYTES = 128L * 1024
     private const val PNG_COMPRESSION_THRESHOLD_BYTES = 50 * 1024
     private const val PNG_COMPRESSION_JPEG_QUALITY = 0.5f
 
@@ -727,6 +739,7 @@ object ModpackService {
 
     private fun readResourcepackFile(file: File, relativeLower: String): ByteArray? {
         if (file.length() > RESOURCEPACK_MAX_SIZE_BYTES) return null
+        if (relativeLower.endsWith(".ogg") && file.length() > OGG_MAX_SIZE_BYTES) return null
         val rawBytes = file.inputStream().use { input ->
             when {
                 file.length() > Int.MAX_VALUE -> return null
