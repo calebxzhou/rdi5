@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.material.*
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,7 +28,7 @@ import org.bson.types.ObjectId
 /**
  * calebxzhou @ 2026-01-15 14:15
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun HostListScreen(
     onBack: (() -> Unit),
@@ -45,6 +47,9 @@ fun HostListScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var installConfirmTask by remember { mutableStateOf<Task?>(null) }
     var page by remember { mutableStateOf(0) }
+    val onlinePlayers = remember(hosts) {
+        hosts.flatMap { it.onlinePlayerIds }.distinct()
+    }
     var loadingMore by remember { mutableStateOf(false) }
     var reachedEnd by remember { mutableStateOf(false) }
     val gridState = rememberLazyGridState()
@@ -59,8 +64,7 @@ fun HostListScreen(
     suspend fun loadPage(pageIndex: Int) {
         if (loadingMore || reachedEnd) return
         loadingMore = true
-        val endpoint = "host/list/$pageIndex"
-        val response = server.makeRequest<List<Host.BriefVo>>(endpoint)
+        val response = server.makeRequest<List<Host.BriefVo>>("host/list/$pageIndex")
         val data = response.data ?: emptyList()
         if (data.isEmpty()) {
             reachedEnd = true
@@ -79,18 +83,30 @@ fun HostListScreen(
         }
     }
 
-    LaunchedEffect(gridState, hosts) {
+    LaunchedEffect(gridState, hosts.size) {
         if (Const.USE_MOCK_DATA) return@LaunchedEffect
-        val lastIndex = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: return@LaunchedEffect
-        if (!loadingMore && !reachedEnd && lastIndex >= hosts.size - 4) {
-            page += 1
-            loadPage(page)
-        }
+        snapshotFlow { gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
+            .collect { lastIndex ->
+                val index = lastIndex ?: return@collect
+                if (!loadingMore && !reachedEnd && index >= hosts.size - 4) {
+                    page += 1
+                    loadPage(page)
+                }
+            }
     }
     MainColumn {
         // Header / Toolbar
-        TitleRow("地图大厅", onBack = onBack) {
+        TitleRow("地图大厅 · ${onlinePlayers.size}人在线", onBack = onBack) {
             errorMessage?.let { Text(it, color = MaterialTheme.colors.error) }
+            if (onlinePlayers.isNotEmpty()) {
+                Column(modifier = Modifier.widthIn(max = 600.dp)) {
+                    FlowRow {
+                        onlinePlayers.forEach {
+                            HeadButton(it, showName = false, avatarSize = 12.dp)
+                        }
+                    }
+                }
+            }
             Space8w()
             HeadButton(loggedAccount._id) {
                 onOpenWardrobe?.invoke()
@@ -194,7 +210,7 @@ fun HostListScreen(
 
                 if (nonPlayableHosts.isNotEmpty()) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
-                        Text("以下地图由于不在线，无法游玩", style = MaterialTheme.typography.subtitle1, color = Color.Gray)
+                        Text("以下地图由于不在线或已启用白名单，无法游玩", style = MaterialTheme.typography.subtitle1, color = Color.Gray)
                     }
                     items(nonPlayableHosts) { host ->
                         renderHostCard(host)
