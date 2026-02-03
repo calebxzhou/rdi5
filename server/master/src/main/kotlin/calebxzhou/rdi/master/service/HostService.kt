@@ -270,7 +270,7 @@ object HostService {
     private const val PORT_START = 50000
     private const val PORT_END_EXCLUSIVE = 60000
     private const val SHUTDOWN_THRESHOLD = 10
-    private const val HOSTS_PER_PAGE = 24
+    private const val HOSTS_PER_PAGE = 48
     private const val HOST_WORKDIR_LIMIT_BYTES: Long = 1L * 1024 * 1024 * 1024
 
     private val idleMonitorScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -846,7 +846,7 @@ object HostService {
         val version = modpack.getVersion(host.packVer) ?: throw RequestError("无此版本")
         val port = allocateRoomPort()
         val host = Host(
-            name = "${name}的世界-" + (ownHosts().size + 1),
+            name = host.name,
             ownerId = playerId,
             modpackId = host.modpackId,
             packVer = host.packVer,
