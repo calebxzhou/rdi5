@@ -745,7 +745,7 @@ object HostService {
                 host.getOnlinePlayers()
             } catch (cancel: CancellationException) {
                 throw cancel
-            }
+            }.filter { PlayerService.has(it) }
 
             if (onlinePlayers.isEmpty()) {
                 if (forceStop) {
