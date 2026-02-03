@@ -1,19 +1,21 @@
 package calebxzhou.rdi.client.ui2.screen
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import calebxzhou.mykotutils.std.secondsToHumanDateTime
 import calebxzhou.rdi.client.net.rdiRequest
 import calebxzhou.rdi.client.net.rdiRequestU
 import calebxzhou.rdi.client.ui2.*
+import calebxzhou.rdi.client.ui2.comp.WorldCard
 import calebxzhou.rdi.common.model.World
 import io.ktor.http.*
 
@@ -26,17 +28,18 @@ fun WorldListScreen(
     onBack: (() -> Unit)? = null
 ) {
     val scope = rememberCoroutineScope()
-    var worlds by remember { mutableStateOf<List<World>>(emptyList()) }
+    var worlds by remember { mutableStateOf<List<World.Vo>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    var confirmDelete by remember { mutableStateOf<World?>(null) }
-    var confirmCopy by remember { mutableStateOf<World?>(null) }
+    var confirmDelete by remember { mutableStateOf<World.Vo?>(null) }
+    var confirmCopy by remember { mutableStateOf<World.Vo?>(null) }
+    var selectedWorld by remember { mutableStateOf<World.Vo?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     var okMessage by remember { mutableStateOf<String?>(null) }
     fun reload() {
         loading = true
         errorMessage = null
-        scope.rdiRequest<List<World>>(
+        scope.rdiRequest<List<World.Vo>>(
             "world",
             onDone = {
                 loading=false
@@ -63,6 +66,24 @@ fun WorldListScreen(
         MainColumn {
             TitleRow("区块管理", onBack = { onBack?.invoke() ?: Unit }) {
                 errorMessage?.let { Text(it, color = MaterialTheme.colors.error) }
+                val canOperate = selectedWorld != null
+                CircleIconButton(
+                    icon = "\uF0C5",
+                    tooltip = "复制",
+                    bgColor = if (canOperate) MaterialColor.GRAY_200.color else MaterialColor.GRAY_100.color,
+                    iconColor = if (canOperate) MaterialColor.GRAY_900.color else MaterialColor.GRAY_400.color
+                ) {
+                    selectedWorld?.let { confirmCopy = it }
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                CircleIconButton(
+                    icon = "\uEA81",
+                    tooltip = "删除",
+                    bgColor = if (canOperate) MaterialColor.RED_900.color else MaterialColor.GRAY_100.color,
+                    iconColor = if (canOperate) MaterialColor.WHITE.color else MaterialColor.GRAY_400.color
+                ) {
+                    selectedWorld?.let { confirmDelete = it }
+                }
             }
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -81,35 +102,31 @@ fun WorldListScreen(
                 Text("没有区块数据。", color = Color.Gray)
             }
 
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(worlds, key = { it._id.toHexString() }) { world ->
-                    Row(
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(3),
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(worlds, key = { it.id.toHexString() }) { world ->
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            .border(
+                                width = if (selectedWorld?.id == world.id) 2.dp else 1.dp,
+                                color = if (selectedWorld?.id == world.id) {
+                                    MaterialColor.PURPLE_500.color
+                                } else {
+                                    MaterialColor.GRAY_200.color
+                                },
+                                shape = RoundedCornerShape(16.dp)
+                            )
+                            .padding(2.dp)
                     ) {
-                        Text(
-                            text = "\uD83D\uDCBE ${world.name}",
-                            style = MaterialTheme.typography.subtitle1
+                        world.WorldCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            onClick = { selectedWorld = world }
                         )
-                        Spacer(modifier = Modifier.weight(1f))
-                        Text(
-                            text = "\uDB81\uDF52 \uE383  ${world._id.timestamp.secondsToHumanDateTime}".asIconText
-                        )
-                        Spacer(8.wM)
-                        CircleIconButton(
-                            icon = "\uF0C5",
-                            tooltip = "复制",
-                            bgColor = MaterialColor.GRAY_200.color,
-                            iconColor = MaterialColor.GRAY_900.color
-                        ) { confirmCopy = world }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        CircleIconButton(
-                            icon = "\uEA81",
-                            tooltip = "删除",
-                            bgColor = MaterialColor.RED_900.color
-                        ) { confirmDelete = world }
                     }
                 }
             }
@@ -126,7 +143,7 @@ fun WorldListScreen(
                 TextButton(onClick = {
                     confirmCopy = null
                     scope.rdiRequestU(
-                        "world/${world._id}/copy",
+                        "world/${world.id}/copy",
                         method = HttpMethod.Post,
                         onOk = {
                             okMessage = "已复制"
@@ -157,7 +174,7 @@ fun WorldListScreen(
                 TextButton(onClick = {
                     confirmDelete = null
                     scope.rdiRequestU(
-                        "world/${world._id}",
+                        "world/${world.id}",
                         method = HttpMethod.Delete,
                         onOk = {
                             okMessage = "已删除"
