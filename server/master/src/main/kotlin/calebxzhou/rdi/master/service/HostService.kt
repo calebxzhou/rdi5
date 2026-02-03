@@ -814,26 +814,34 @@ object HostService {
         }
     }
 
+    private suspend fun RAccount.resolveWorld(
+        saveWorld: Boolean,
+        worldId: ObjectId?,
+        modpackId: ObjectId,
+        currentHostId: ObjectId? = null
+    ): World? {
+        if (!saveWorld) return null
+        if (worldId == null) {
+            return createWorld(_id, null, modpackId)
+        }
+        val occupyHost = findByWorld(worldId)
+        if (occupyHost != null && occupyHost._id != currentHostId) {
+            throw RequestError("此存档数据已被地图“${occupyHost.name}”占用")
+        }
+        val world = WorldService.getById(worldId) ?: throw RequestError("无此存档")
+        if (world.ownerId != _id) {
+            throw RequestError("不是你的存档")
+        }
+        return world
+    }
+
     suspend fun RAccount.createHost(host: Host.CreateDto) {
         host.name.validateName()
         val playerId = _id
         if (getByOwner(playerId).size > 3 && !this.isDav) {
             throw RequestError("最多只可创建3张地图")
         }
-        val world = host.worldId?.let {
-            val occupyHost = findByWorld(it)
-            if (occupyHost != null)
-                throw RequestError("此存档数据已被地图“${occupyHost.name}”占用")
-            WorldService.getById(it)?.also { world ->
-                if (world.ownerId != playerId) throw RequestError("不是你的存档")
-            } ?: throw RequestError("无此存档")
-        } ?: let {
-            if (host.saveWorld) {
-                createWorld(playerId, null, host.modpackId)
-            } else {
-                null
-            }
-        }
+        val world = resolveWorld(host.saveWorld, host.worldId, host.modpackId)
         val modpack = ModpackService.getById(host.modpackId) ?: throw RequestError("无此包")
         val version = modpack.getVersion(host.packVer) ?: throw RequestError("无此版本")
         val port = allocateRoomPort()
@@ -1015,12 +1023,13 @@ object HostService {
             }
 
             true -> {
-                payload.worldId?.let {
-                    updates += set(Host::worldId.name, it)
-                } ?: run {
-                    val world = createWorld(player._id, null, host.modpackId)
-                    updates += set(Host::worldId.name, world._id)
-                }
+                val resolvedWorld = player.resolveWorld(
+                    saveWorld = true,
+                    worldId = payload.worldId,
+                    modpackId = host.modpackId,
+                    currentHostId = host._id
+                )
+                updates += set(Host::worldId.name, resolvedWorld?._id)
             }
             //保持现状
             null -> {
