@@ -391,7 +391,7 @@ fun HostInfoScreen(
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         if (meMember && !meOwner) {
                                             TextButton(onClick = { quitConfirm = true }) {
-                                                Text("退出地图", color = MaterialColor.RED_900.color)
+                                                Text("退出受邀成员列表", color = MaterialColor.RED_900.color)
                                             }
                                         }
                                         if (meAdmin) {
