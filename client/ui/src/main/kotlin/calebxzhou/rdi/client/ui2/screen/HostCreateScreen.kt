@@ -57,7 +57,7 @@ fun HostCreateScreen(
     var editWorldId by remember { mutableStateOf<ObjectId?>(null) }
     var editPreferNoSave by remember { mutableStateOf(false) }
 
-    var selectedWorldId by remember { mutableStateOf(0) }
+    var selectedWorldId by remember { mutableStateOf<ObjectId?>(null) }
     var difficulty by remember { mutableStateOf(2) }
     var gameMode by remember { mutableStateOf(0) }
     var levelType by remember { mutableStateOf(if (arg.skyblock) "skyblockbuilder:skyblock" else "minecraft:normal") }
@@ -107,30 +107,15 @@ fun HostCreateScreen(
         )
     }
 
-    val worldOptions = remember(worlds) {
-        buildList {
-            worlds.forEachIndexed { index, world ->
-                val label = "${world.name} (${(world._id.timestamp).secondsToHumanDateTime})"
-                add(HostWorldOption(index, label, world))
-            }
-            if (worlds.size < 5) {
-                add(HostWorldOption(HOST_CREATE_NEW_SAVE_ID, "创建一份新的区块数据", null))
-            }
-        }
-    }
-
-    LaunchedEffect(worldOptions, editWorldId, editPreferNoSave) {
-        if (worldOptions.isNotEmpty() && worldOptions.none { it.id == selectedWorldId }) {
-            selectedWorldId = worldOptions.first().id
-        }
+    LaunchedEffect(worlds, editWorldId, editPreferNoSave) {
         val targetWorldId = editWorldId
         if (targetWorldId != null) {
-            selectedWorldId = worldOptions.firstOrNull { it.world?._id == targetWorldId }?.id
-                ?: worldOptions.firstOrNull()?.id ?: 0
+            selectedWorldId = worlds.firstOrNull { it.id == targetWorldId }?.id
             editWorldId = null
         }
         if (editPreferNoSave) {
             noSave = true
+            selectedWorldId = null
             editPreferNoSave = false
         }
     }
@@ -156,11 +141,10 @@ fun HostCreateScreen(
 
         }
         submitting = true
-        val selectedWorld = worldOptions.firstOrNull { it.id == selectedWorldId }?.world
+        val selectedWorld = selectedWorldId?.let { id -> worlds.firstOrNull { it.id == id } }
         val saveWorld = !noSave
         val worldId = when {
-            selectedWorld != null -> selectedWorld._id
-            selectedWorldId == HOST_CREATE_NEW_SAVE_ID -> null
+            !noSave && selectedWorld != null -> selectedWorld.id
             else -> null
         }
         val hostId = editHostId
@@ -235,7 +219,6 @@ fun HostCreateScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .wrapContentWidth(Alignment.CenterHorizontally)
-                    .widthIn(max = 1100.dp)
             ) {
                 Row {
                     Column {
@@ -263,11 +246,6 @@ fun HostCreateScreen(
                             Text("白名单制")
                             Space24w()
                             Text("只有受邀玩家允许游玩", color = MaterialColor.GRAY_500.color)
-                            Space24w()
-                            Checkbox(noSave, { noSave = it })
-                            Text("不保存任何区块数据")
-                            Space24w()
-                            Text("仅限测试时使用", color = MaterialColor.GRAY_500.color)
                         }
 
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -282,64 +260,60 @@ fun HostCreateScreen(
                 }
 
                 Space8h()
-                Text("难度", fontWeight = FontWeight.Bold)
-                Space8h()
-                Row(
-                    modifier = Modifier
-                        .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    ImageCard(
-                        title = "和平",
-                        desc = "无敌对生物 仅有部分中立生物",
-                        iconPath = "assets/icons/difficulty_peaceful.png",
-                        selected = difficulty == 0,
-                        onClick = { difficulty = 0 }
-                    )
-                    ImageCard(
-                        title = "简单",
-                        desc = "有敌对生物 伤害较低",
-                        iconPath = "assets/icons/difficulty_easy.png",
-                        selected = difficulty == 1,
-                        onClick = { difficulty = 1 }
-                    )
-                    ImageCard(
-                        title = "普通",
-                        desc = "有敌对生物 中等伤害",
-                        iconPath = "assets/icons/difficulty_normal.png",
-                        selected = difficulty == 2,
-                        onClick = { difficulty = 2 }
-                    )
-                    ImageCard(
-                        title = "困难",
-                        desc = "有敌对生物 更高伤害",
-                        iconPath = "assets/icons/difficulty_hard.png",
-                        selected = difficulty == 3,
-                        onClick = { difficulty = 3 }
-                    )
-                }
-                Space8h()
-
-                Row(
-                    modifier = Modifier
-                        .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 8.dp)
-                ) {
+                Row {
+                    Column {
+                        Text("难度", fontWeight = FontWeight.Bold)
+                        Space8h()
+                        Row(
+                            modifier = Modifier
+                                .horizontalScroll(rememberScrollState())
+                                .padding(horizontal = 2.dp),
+                            horizontalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            ImageCard(
+                                title = "和平",
+                                desc = "无敌对生物",
+                                iconPath = "assets/icons/difficulty_peaceful.png",
+                                selected = difficulty == 0,
+                                onClick = { difficulty = 0 }
+                            )
+                            ImageCard(
+                                title = "简单",
+                                desc = "有敌对生物 伤害较低",
+                                iconPath = "assets/icons/difficulty_easy.png",
+                                selected = difficulty == 1,
+                                onClick = { difficulty = 1 }
+                            )
+                            ImageCard(
+                                title = "普通",
+                                desc = "有敌对生物 中等伤害",
+                                iconPath = "assets/icons/difficulty_normal.png",
+                                selected = difficulty == 2,
+                                onClick = { difficulty = 2 }
+                            )
+                            ImageCard(
+                                title = "困难",
+                                desc = "有敌对生物 更高伤害",
+                                iconPath = "assets/icons/difficulty_hard.png",
+                                selected = difficulty == 3,
+                                onClick = { difficulty = 3 }
+                            )
+                        }
+                    }
                     Column {
                         Text("模式", fontWeight = FontWeight.Bold)
                         Space8h()
                         Row() {
                             ImageCard(
                                 title = "生存模式",
-                                desc = "探索一个神秘的世界，在这里你可以建造、收集、制作，并与怪物战斗。",
+                                desc = "探索一个神秘的世界",
                                 iconPath = "assets/icons/gamemode_survival.png",
                                 selected = gameMode == 0,
                                 onClick = { gameMode = 0 }
                             )
                             ImageCard(
                                 title = "创造模式",
-                                desc = "无限制地建造和探索。你可以飞行，拥有无限材料，并且不会受到怪物伤害。",
+                                desc = "无限制地建造和探索",
                                 iconPath = "assets/icons/gamemode_creative.png",
                                 selected = gameMode == 1,
                                 onClick = { gameMode = 1 }
@@ -364,7 +338,7 @@ fun HostCreateScreen(
                             } else {
                                 ImageCard(
                                     title = "普通",
-                                    desc = "拥有最多生物群系、方块和生物的维度，也是大多数玩家最经常玩的地方。",
+                                    desc = "最多生物群系的维度",
                                     iconPath = "assets/icons/worldtype_normal.png",
                                     selected = levelChoice == 0,
                                     onClick = {
@@ -374,7 +348,7 @@ fun HostCreateScreen(
                                 )
                                 ImageCard(
                                     title = "超平坦",
-                                    desc = "一种原版世界预设，用完全平坦的表面取代了主世界的正常地形。",
+                                    desc = "完全平坦的表面",
                                     iconPath = "assets/icons/worldtype_flat.png",
                                     selected = levelChoice == 1,
                                     onClick = {
@@ -386,26 +360,52 @@ fun HostCreateScreen(
                         }
                     }
                 }
-                Row(modifier = Modifier.fillMaxWidth()) {
+
+                Row {
                     Column(modifier = Modifier.weight(0.5f)) {
-                        Text("选择要使用的区块数据", fontWeight = FontWeight.Bold)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("选择要使用的区块数据", fontWeight = FontWeight.Bold)
+                            Space24w()
+                            if (worlds.size < 5) {
+                                RadioButton(
+                                    selected = selectedWorldId == null && !noSave,
+                                    onClick = {
+                                        noSave = false
+                                        selectedWorldId = null
+                                    }
+                                )
+                                Text("创建一份新的区块数据")
+                            }
+                            RadioButton(
+                                selected = selectedWorldId == null && noSave,
+                                onClick = {
+                                    selectedWorldId = null
+                                    noSave = true
+                                }
+                            )
+                            Text("不保存任何区块数据")
+                            Space24w()
+                            if (noSave) {
+                                Text("仅限测试整合包使用 谨慎选择", color = MaterialColor.RED_900.color)
+                            }
+                        }
                         Space8h()
-                        val worldItems = worldOptions.filter { it.world != null }
+                        val worldItems = worlds
                         LazyVerticalGrid(
-                            columns = GridCells.Fixed(3),
+                            columns = GridCells.Adaptive(minSize = 260.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .heightIn(max = 420.dp),
+                                .heightIn(max = 520.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            items(worldItems) { option ->
+                            items(worldItems) { world ->
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .border(
-                                            width = if (option.id == selectedWorldId) 2.dp else 1.dp,
-                                            color = if (option.id == selectedWorldId) {
+                                            width = if (world.id == selectedWorldId) 2.dp else 1.dp,
+                                            color = if (world.id == selectedWorldId) {
                                                 MaterialColor.PURPLE_500.color
                                             } else {
                                                 MaterialColor.GRAY_200.color
@@ -414,40 +414,22 @@ fun HostCreateScreen(
                                         )
                                         .padding(2.dp)
                                 ) {
-                                    option.world!!.WorldCard(
+                                    world.WorldCard(
                                         modifier = Modifier.fillMaxWidth(),
-                                        onClick = { selectedWorldId = option.id }
+                                        onClick = {
+                                            selectedWorldId = world.id
+                                            noSave = false
+                                        }
                                     )
                                 }
                             }
                         }
-                        val newWorldOption = worldOptions.firstOrNull { it.id == HOST_CREATE_NEW_SAVE_ID }
-                        if (newWorldOption != null) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                RadioButton(
-                                    selected = newWorldOption.id == selectedWorldId,
-                                    onClick = { selectedWorldId = newWorldOption.id }
-                                )
-                                Text(newWorldOption.label)
-                            }
-                        }
-                        if (noSave) {
-                            Text(
-                                "不保留任何数据，仅供测试使用！",
-                                color = MaterialColor.YELLOW_900.color
-                            )
-                        }
+
                     }
+
                 }
             }
-
-
-
-
-            Spacer(modifier = Modifier.height(12.dp))
-
+            Space8h()
 
         }
     }
@@ -483,12 +465,3 @@ fun HostCreateScreen(
     }
 
 }
-
-
-const val HOST_CREATE_NEW_SAVE_ID = 100
-
-data class HostWorldOption(
-    val id: Int,
-    val label: String,
-    val world: World.Vo?
-)
