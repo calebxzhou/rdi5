@@ -10,16 +10,20 @@ import calebxzhou.rdi.master.service.WorldService.createWorld
 import calebxzhou.mykotutils.log.Loggers
 import calebxzhou.mykotutils.std.deleteRecursivelyNoSymlink
 import calebxzhou.rdi.common.model.isDav
+import calebxzhou.rdi.common.util.validateName
 import calebxzhou.rdi.master.WORLDS_DIR
+import calebxzhou.rdi.master.service.WorldService.toVo
 import com.mongodb.client.model.Filters.eq
+import com.mongodb.client.model.Updates.set
 import io.ktor.server.routing.*
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.toList
 import org.bson.types.ObjectId
+import java.nio.file.Files
 
 fun Route.worldRoutes() = route("/world") {
     get {
-        response(data = WorldService.listByOwner(uid))
+        response(data = WorldService.listByOwnerVo(uid))
     }
     post {
         val modpackId = ObjectId(param("modpackId"))
@@ -30,7 +34,7 @@ fun Route.worldRoutes() = route("/world") {
             val sourceId = ObjectId(param("worldId"))
             val name = paramNull("name")
             val world = WorldService.duplicate(uid, sourceId, name)
-            response(data = world)
+            response(data = world.toVo())
         }
         delete {
             val worldId = ObjectId(param("worldId"))
@@ -55,6 +59,35 @@ object WorldService {
     suspend fun listByOwner(ownerId: ObjectId): List<World> =
         dbcl.find(eq("ownerId", ownerId)).toList()
 
+    suspend fun listByOwnerVo(ownerId: ObjectId): List<World.Vo> =
+        listByOwner(ownerId).map { it.toVo() }
+
+    suspend fun World.toVo(): World.Vo {
+        val modpack = ModpackService.getById(modpackId)
+        return World.Vo(
+            id = _id,
+            name = name,
+            ownerId = ownerId,
+            size = size,
+            modpackId = modpackId,
+            modpackName = modpack?.name ?: "未知整合包",
+            modpackIconUrl = modpack?.iconUrl
+        )
+    }
+
+    suspend fun updateWorldSize(worldId: ObjectId): Long {
+        val worldDir = getDir(worldId)
+        val totalSize = if (worldDir.exists()) {
+            worldDir.walkTopDown()
+                .filter { it.isFile && !Files.isSymbolicLink(it.toPath()) }
+                .sumOf { it.length() }
+        } else {
+            0L
+        }
+        dbcl.updateOne(eq("_id", worldId), set(World::size.name, totalSize))
+        return totalSize
+    }
+
     suspend fun RAccount.ownWorlds() = WorldService.listByOwner(_id)
 
     private suspend fun ensureCapacity(ownerId: ObjectId) {
@@ -66,8 +99,8 @@ object WorldService {
 
     suspend fun createWorld(uid: ObjectId,name: String?, packId: ObjectId): World {
         val modpack = ModpackService.getById(packId)?:throw RequestError("整合包不存在")
-        val name = name ?: "存档${listByOwner(uid).size + 1}-${modpack.name}"
-        if (name.displayLength > 48) throw RequestError("存档名称过长 (最大48个字符)")
+        val name = name ?: "存档${listByOwner(uid).size + 1}"
+        name.validateName()
         ensureCapacity(uid)
         val world = World(name = name, ownerId = uid, modpackId = packId)
         world.dir.mkdir()
@@ -95,7 +128,7 @@ object WorldService {
     suspend fun delete(uid: ObjectId, worldId: ObjectId) {
         val world = getById(worldId) ?: throw RequestError("存档不存在")
         if(world.ownerId != uid) throw RequestError("无权限")
-        HostService.findByWorld(worldId)?.let { throw RequestError("地图“${it.name}”正在使用此存档数据。要删除数据，须先关闭此地图。") }
+        HostService.findByWorld(worldId)?.let { throw RequestError("须先删除地图“${it.name}”，再删除此区块数据") }
         dbcl.deleteOne(eq("_id", worldId))
         val dir = world.dir
         if (dir.exists()) {

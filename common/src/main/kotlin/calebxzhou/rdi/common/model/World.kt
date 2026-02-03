@@ -14,6 +14,21 @@ data class World(
     //如果mount不同的modpack  警告用户可能坏档
     @Contextual
     val modpackId: ObjectId,
+    val size: Long=0,
 ){
-
+    @Serializable
+    data class Vo(
+        @Contextual val id: ObjectId = ObjectId(),
+        val name: String,
+        //所属玩家
+        @Contextual
+        val ownerId: ObjectId,
+        //bytes max 2GB
+        val size: Long,
+        //如果mount不同的modpack  警告用户可能坏档
+        @Contextual
+        val modpackId: ObjectId,
+        val modpackName: String,
+        val modpackIconUrl: String?,
+    )
 }

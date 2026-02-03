@@ -43,6 +43,7 @@ import calebxzhou.rdi.master.service.ModpackService.getVersion
 import calebxzhou.rdi.master.service.ModpackService.installToHost
 import calebxzhou.rdi.master.service.ModpackService.toBriefVo
 import calebxzhou.rdi.master.service.WorldService.createWorld
+import calebxzhou.rdi.master.service.WorldService.updateWorldSize
 import calebxzhou.rdi.model.Role
 import com.github.dockerjava.api.exception.NotFoundException
 import com.github.dockerjava.api.model.Mount
@@ -281,6 +282,7 @@ object HostService {
     )
 
     private val hostStates = ConcurrentHashMap<ObjectId, HostState>()
+    private val skipWorldSizeUpdate = ConcurrentHashMap.newKeySet<ObjectId>()
 
 
     private val Host.containerEnv
@@ -444,6 +446,7 @@ object HostService {
                     runCatching { DockerService.stop(hostId.str) }
                         .onSuccess {
                             lgr.info { "Host $hostId 容器因通道断开已停止" }
+                            getById(hostId)?.refreshWorldSizeAfterStop(waitForStop = false)
                         }
                         .onFailure { error ->
                             if (error is RequestError && error.message == "早就停了") {
@@ -648,6 +651,7 @@ object HostService {
                             }
                             if (!ok) {
                                 lgr.warn { "Host ${_id} 崩溃分析未能修复，强制停止" }
+                                markSkipWorldSizeUpdate(_id)
                                 runCatching { DockerService.forceStop(_id.str) }
                                     .onFailure { err ->
                                         lgr.warn(err) { "Host ${_id} 强制停止失败" }
@@ -787,6 +791,7 @@ object HostService {
         runCatching {
             DockerService.stop(_id.str)
             lgr.info { "Stopped host $name ($reason)" }
+            refreshWorldSizeAfterStop(waitForStop = false)
         }.onFailure {
             lgr.warn(it) { "Failed to stop host ${name}: ${it.message}" }
         }
@@ -1053,11 +1058,13 @@ object HostService {
     suspend fun HostContext.graceStop() {
         sendCommand("stop")
         clearShutFlag(host._id)
+        host.refreshWorldSizeAfterStop(waitForStop = true)
     }
 
     suspend fun HostContext.forceStop() {
         clearShutFlag(host._id)
         DockerService.forceStop(host._id.str)
+        host.refreshWorldSizeAfterStop(waitForStop = false)
     }
 
     suspend fun HostContext.restart() {
@@ -1406,6 +1413,35 @@ object HostService {
 
 
     private fun Host.overlayRootDir(): File = HOSTS_DIR.resolve(_id.str)
+
+    private fun markSkipWorldSizeUpdate(hostId: ObjectId) {
+        skipWorldSizeUpdate.add(hostId)
+    }
+
+    private fun Host.refreshWorldSizeAfterStop(waitForStop: Boolean) {
+        val worldId = worldId ?: return
+        ioScope.launch {
+            if (skipWorldSizeUpdate.remove(_id)) {
+                lgr.info { "Host ${_id} 跳过崩溃后的存档大小刷新" }
+                return@launch
+            }
+            if (waitForStop) {
+                repeat(60) {
+                    if (!DockerService.isStarted(_id.str)) return@repeat
+                    delay(2.seconds)
+                }
+            }
+            if (!DockerService.isStarted(_id.str)) {
+                runCatching { updateWorldSize(worldId) }
+                    .onSuccess { size ->
+                        lgr.info { "Host ${_id} world size updated: ${size} bytes" }
+                    }
+                    .onFailure { err ->
+                        lgr.warn(err) { "Host ${_id} 更新存档大小失败: ${err.message}" }
+                    }
+            }
+        }
+    }
 
 
     suspend fun HostContext.delMember() {
