@@ -1293,7 +1293,7 @@ object HostService {
         }
 
 
-        return coroutineScope {
+        val results = coroutineScope {
             visibleHosts.map { host ->
                 async {
                     val modpack = ModpackService.getById(host.modpackId)
@@ -1320,6 +1320,7 @@ object HostService {
                 }
             }.awaitAll()
         }
+        return results.sortedByDescending { it.onlinePlayerIds.size }
     }
 
     suspend fun RAccount.listAllHosts(
