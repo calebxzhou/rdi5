@@ -53,7 +53,7 @@ fun ImageCard(
     Box(modifier = Modifier.padding(6.dp)) {
         Surface(
             modifier = Modifier
-                .width(260.dp)
+                .width(140.dp)
                 .then(
                     if (selected) {
                         Modifier.shadow(6.dp, shape, clip = false)
@@ -71,7 +71,7 @@ fun ImageCard(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(140.dp)
+                        .height(70.dp)
                         .clip(shape)
                         .background(Color(0xFF1E1E1E), shape)
                 ) {

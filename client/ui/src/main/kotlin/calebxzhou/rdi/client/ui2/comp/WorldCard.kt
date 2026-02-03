@@ -24,7 +24,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import calebxzhou.mykotutils.std.humanFileSize
 import calebxzhou.mykotutils.std.secondsToHumanDateTime
 import calebxzhou.rdi.client.CodeFontFamily
@@ -96,7 +95,7 @@ fun World.Vo.WorldCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = size.toLong().humanFileSize +" · "+ _id.timestamp.secondsToHumanDateTime,
+                        text = "${if(size>0) size.humanFileSize else "未知"} · ${id.timestamp.secondsToHumanDateTime}",
                         fontFamily = CodeFontFamily,
                         style = MaterialTheme.typography.body2,
                         color = MaterialColor.GRAY_900.color
