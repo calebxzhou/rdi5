@@ -151,8 +151,6 @@ fun HostCreateScreen(
         if (hostId != null) {
             val optionsDto = Host.OptionsDto(
                 name = trimmedName,
-                saveWorld = saveWorld,
-                worldId = worldId,
                 difficulty = difficulty,
                 gameMode = gameMode,
                 levelType = levelType,
@@ -360,73 +358,75 @@ fun HostCreateScreen(
                         }
                     }
                 }
-
-                Row {
-                    Column(modifier = Modifier.weight(0.5f)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("选择要使用的区块数据", fontWeight = FontWeight.Bold)
-                            Space24w()
-                            if (worlds.size < 5) {
-                                RadioButton(
-                                    selected = selectedWorldId == null && !noSave,
-                                    onClick = {
-                                        noSave = false
-                                        selectedWorldId = null
-                                    }
-                                )
-                                Text("创建一份新的区块数据")
-                            }
-                            RadioButton(
-                                selected = selectedWorldId == null && noSave,
-                                onClick = {
-                                    selectedWorldId = null
-                                    noSave = true
-                                }
-                            )
-                            Text("不保存任何区块数据")
-                            Space24w()
-                            if (noSave) {
-                                Text("仅限测试整合包使用 谨慎选择", color = MaterialColor.RED_900.color)
-                            }
-                        }
-                        Space8h()
-                        val worldItems = worlds
-                        LazyVerticalGrid(
-                            columns = GridCells.Adaptive(minSize = 260.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(max = 520.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(worldItems) { world ->
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .border(
-                                            width = if (world.id == selectedWorldId) 2.dp else 1.dp,
-                                            color = if (world.id == selectedWorldId) {
-                                                MaterialColor.PURPLE_500.color
-                                            } else {
-                                                MaterialColor.GRAY_200.color
-                                            },
-                                            shape = RoundedCornerShape(16.dp)
-                                        )
-                                        .padding(2.dp)
-                                ) {
-                                    world.WorldCard(
-                                        modifier = Modifier.fillMaxWidth(),
+                //非编辑模式允许改区块
+                if(editHostId==null){
+                    Row {
+                        Column(modifier = Modifier.weight(0.5f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("选择要使用的区块数据", fontWeight = FontWeight.Bold)
+                                Space24w()
+                                if (worlds.size < 5) {
+                                    RadioButton(
+                                        selected = selectedWorldId == null && !noSave,
                                         onClick = {
-                                            selectedWorldId = world.id
                                             noSave = false
+                                            selectedWorldId = null
                                         }
                                     )
+                                    Text("创建一份新的区块数据")
+                                }
+                                RadioButton(
+                                    selected = selectedWorldId == null && noSave,
+                                    onClick = {
+                                        selectedWorldId = null
+                                        noSave = true
+                                    }
+                                )
+                                Text("不保存任何区块数据")
+                                Space24w()
+                                if (noSave) {
+                                    Text("仅限测试整合包使用 谨慎选择", color = MaterialColor.RED_900.color)
                                 }
                             }
+                            Space8h()
+                            val worldItems = worlds
+                            LazyVerticalGrid(
+                                columns = GridCells.Adaptive(minSize = 260.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 520.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                items(worldItems) { world ->
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .border(
+                                                width = if (world.id == selectedWorldId) 2.dp else 1.dp,
+                                                color = if (world.id == selectedWorldId) {
+                                                    MaterialColor.PURPLE_500.color
+                                                } else {
+                                                    MaterialColor.GRAY_200.color
+                                                },
+                                                shape = RoundedCornerShape(16.dp)
+                                            )
+                                            .padding(2.dp)
+                                    ) {
+                                        world.WorldCard(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            onClick = {
+                                                selectedWorldId = world.id
+                                                noSave = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+
                         }
 
                     }
-
                 }
             }
             Space8h()

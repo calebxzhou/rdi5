@@ -125,9 +125,6 @@ data class Host(
         @Contextual
         val modpackId: ObjectId? = null,
         val packVer: String? = null,
-        val saveWorld: Boolean? = null,
-        @Contextual
-        val worldId: ObjectId? = null,
         val difficulty: Int? = null,
         val gameMode: Int? = null,
         val levelType: String? = null,

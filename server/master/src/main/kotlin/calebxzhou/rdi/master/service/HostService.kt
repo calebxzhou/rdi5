@@ -1017,25 +1017,6 @@ object HostService {
             updates += set(Host::name.name, it)
         }
         payload.packVer?.let { updates += set(Host::packVer.name, it) }
-        when (payload.saveWorld) {
-            false -> {
-                updates += set(Host::worldId.name, null)
-            }
-
-            true -> {
-                val resolvedWorld = player.resolveWorld(
-                    saveWorld = true,
-                    worldId = payload.worldId,
-                    modpackId = host.modpackId,
-                    currentHostId = host._id
-                )
-                updates += set(Host::worldId.name, resolvedWorld?._id)
-            }
-            //保持现状
-            null -> {
-                // no-op when saveWorld is not specified
-            }
-        }
         payload.difficulty?.let { updates += set(Host::difficulty.name, it) }
         payload.gameMode?.let { updates += set(Host::gameMode.name, it) }
         payload.levelType?.takeIf { it.isNotBlank() }?.let { updates += set(Host::levelType.name, it) }
