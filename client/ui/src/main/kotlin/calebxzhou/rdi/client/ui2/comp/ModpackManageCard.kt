@@ -1,18 +1,9 @@
 package calebxzhou.rdi.client.ui2.comp
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
@@ -25,8 +16,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import calebxzhou.mykotutils.std.humanFileSize
+import calebxzhou.mykotutils.std.millisToHumanDateTime
 import calebxzhou.rdi.client.service.ModpackService
-import calebxzhou.rdi.client.ui2.CircleIconButton
 import calebxzhou.rdi.client.ui2.DEFAULT_MODPACK_ICON
 import calebxzhou.rdi.client.ui2.MaterialColor
 import kotlinx.coroutines.Dispatchers
@@ -46,17 +38,14 @@ import javax.swing.filechooser.FileNameExtensionFilter
 fun ModpackManageCard(
     packdir: ModpackService.LocalDir,
     isRunning: Boolean = false,
-    onDelete: () -> Unit,
-    onReinstall: () -> Unit,
-    onOpenFolder: () -> Unit,
-    onExportLogs: () -> Unit,
-    onOpenMcPlay: (() -> Unit)? = null
+    selected: Boolean = false,
+    onClick: (() -> Unit)? = null
 ) {
 
-    val cardShape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+    val cardShape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp)
     val glowModifier = if (isRunning) {
         Modifier
-            .background(Color(0xFFE9D5FF), cardShape)
+            .background(MaterialColor.ORANGE_900.color, cardShape)
             .padding(2.dp)
     } else {
         Modifier
@@ -67,9 +56,18 @@ fun ModpackManageCard(
             .then(glowModifier)
     ) {
         Surface(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .let { base ->
+                    if (onClick != null) {
+                        base.clickable(onClick = onClick)
+                    } else {
+                        base
+                    }
+                },
             color = Color(0xFFF9F9FB),
             shape = cardShape,
+            border = if (selected) BorderStroke(2.dp, MaterialColor.PURPLE_500.color) else null,
             elevation = 1.dp
         ) {
             Row(
@@ -123,55 +121,11 @@ fun ModpackManageCard(
                             color = MaterialColor.GRAY_700.color
                         )
                     }
-                    Row(
-                        modifier = Modifier.horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        val size = 32
-                        CircleIconButton(
-                            "\uEA81",
-                            "删除",
-                            size=size,
-                            bgColor = MaterialColor.RED_900.color,
-                            longPressDelay = 5000L
-                        ) {
-                            onDelete()
-                        }
-                        CircleIconButton(
-                            "\uDB81\uDC53",
-                            "重装",
-                            size=size,
-                            bgColor = MaterialColor.PINK_900.color,
-                        ) {
-                            onReinstall()
-                        }
-                        CircleIconButton(
-                            "\uEAED",
-                            "打开文件夹",
-                            size=size,
-
-                        ) {
-                            onOpenFolder ()
-                        }
-                        CircleIconButton(
-                            "\uEF11",
-                            "导出日志",
-                            size=size,
-                            bgColor = MaterialColor.GRAY_900.color,
-                        ) {
-                            onExportLogs()
-                        }
-                        if (isRunning && onOpenMcPlay != null) {
-                            CircleIconButton(
-                                "\uDB80\uDD8D",
-                                "控制台",
-                                size=size,
-                                bgColor = MaterialColor.BLUE_800.color,
-                            ) {
-                                onOpenMcPlay()
-                            }
-                        }
-                    }
+                    Text(
+                        text = "${packdir.sizeBytes.humanFileSize} · ${packdir.createTime.millisToHumanDateTime}",
+                        style = MaterialTheme.typography.body2,
+                        color = MaterialColor.GRAY_700.color
+                    )
                 }
             }
         }

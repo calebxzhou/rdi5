@@ -283,7 +283,9 @@ object ModpackService {
     data class LocalDir(
         val dir: File,
         val verName: String,
-        val vo: Modpack.BriefVo
+        val vo: Modpack.BriefVo,
+        val createTime: Long,
+        val sizeBytes: Long
     ){
         val versionId = dir.name
     }
@@ -293,13 +295,23 @@ object ModpackService {
             ?.filter { it.isDirectory }
             ?.toList()
             ?: return@coroutineScope emptyList()
-
         val deferred = dirs.mapNotNull { dir ->
             val match = pattern.matchEntire(dir.name) ?: return@mapNotNull null
             val (idStr, verName) = match.destructured
             async {
                 val vo = server.makeRequest<Modpack.BriefVo>("modpack/${idStr}/brief").data ?: Modpack.BriefVo()
-                LocalDir(dir,verName, vo)
+                val createTime = runCatching {
+                    java.nio.file.Files.readAttributes(
+                        dir.toPath(),
+                        java.nio.file.attribute.BasicFileAttributes::class.java
+                    ).creationTime().toMillis()
+                }.getOrElse { dir.lastModified() }
+                val sizeBytes = runCatching {
+                    dir.walkTopDown()
+                        .filter { it.isFile }
+                        .sumOf { it.length() }
+                }.getOrElse { 0L }
+                LocalDir(dir,verName, vo, createTime, sizeBytes)
             }
         }
 
