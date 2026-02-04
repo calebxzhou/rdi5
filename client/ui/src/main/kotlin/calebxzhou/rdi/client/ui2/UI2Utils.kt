@@ -418,7 +418,7 @@ fun CircleIconButton(
             // Use Box instead of TextButton for long press mode to avoid event consumption
             Box(
                 modifier = modifier
-                    .background(bgColor, CircleShape),
+                    .background( if(enabled) bgColor else MaterialColor.GRAY_200.color, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
