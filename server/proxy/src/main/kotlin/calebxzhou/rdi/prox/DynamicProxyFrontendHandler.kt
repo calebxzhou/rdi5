@@ -119,10 +119,10 @@ class DynamicProxyFrontendHandler(
             ktorClient.get("$MASTER_URL/host/status?port=$port").body<Response<HostStatus?>>().run {
                 data ?: run {
                     lgr.info { "host $port status fail: ${msg}" }
-                    throw RequestError("无法获取主机状态：$msg")
+                    throw RequestError("无法获取地图状态：$msg")
                 }
             }
-        } ?: throw RequestError("无法获取主机状态：请求超时")
+        } ?: throw RequestError("无法获取地图状态：请求超时")
     }
 
     private fun handleHandshake(ctx: ChannelHandlerContext, buffer: ByteBuf) {
@@ -172,9 +172,9 @@ class DynamicProxyFrontendHandler(
                 if (status != HostStatus.PLAYABLE) {
                     disconnectPlayerWithReason(
                         ctx.channel(), when (status) {
-                            HostStatus.STOPPED -> "主机未启动，请先启动主机"
-                            HostStatus.STARTED -> "主机尚未准备好，请稍等一会"
-                            else -> "无法连接主机，请稍后再试"
+                            HostStatus.STOPPED -> "地图未启动，请先启动地图"
+                            HostStatus.STARTED -> "地图尚未准备好，请稍等一会"
+                            else -> "无法连接地图，请稍后再试"
                         }
                     )
                     return
