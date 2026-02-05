@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import calebxzhou.mykotutils.hwspec.HwSpec
 import calebxzhou.mykotutils.std.humanFileSize
 import calebxzhou.rdi.client.AppConfig
+import calebxzhou.rdi.client.ProxyConfig
 import calebxzhou.rdi.client.net.loggedAccount
 import calebxzhou.rdi.client.net.server
 import calebxzhou.rdi.client.service.PlayerInfoCache
@@ -46,6 +47,12 @@ fun SettingScreen(
     var jre21Path by remember { mutableStateOf(config.jre21Path.orEmpty()) }
     var jre8Path by remember { mutableStateOf(config.jre8Path.orEmpty()) }
     var carrier by remember { mutableStateOf(config.carrier) }
+    var proxyEnabled by remember { mutableStateOf(config.proxyConfig?.enabled ?: false) }
+    var proxySystem by remember { mutableStateOf(config.proxyConfig?.systemProxy ?: false) }
+    var proxyHost by remember { mutableStateOf(config.proxyConfig?.host ?: "127.0.0.1") }
+    var proxyPortText by remember { mutableStateOf((config.proxyConfig?.port ?: 10808).toString()) }
+    var proxyUsr by remember { mutableStateOf(config.proxyConfig?.usr.orEmpty()) }
+    var proxyPwd by remember { mutableStateOf(config.proxyConfig?.pwd.orEmpty()) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var saving by remember { mutableStateOf(false) }
     var showChangeProfile by remember { mutableStateOf(false) }
@@ -82,6 +89,12 @@ fun SettingScreen(
                         }
                         val jre21 = jre21Path.trim().takeIf { it.isNotEmpty() }
                         val jre8 = jre8Path.trim().takeIf { it.isNotEmpty() }
+                        val proxyPort = proxyPortText.trim().takeIf { it.isNotEmpty() }?.toIntOrNull()
+                        if (proxyPortText.isNotBlank() && proxyPort == null) {
+                            errorMessage = "代理端口格式不正确"
+                            saving = false
+                            return@launch
+                        }
                         val java21Ok = withContext(Dispatchers.IO) {
                             jre21?.let { validateJavaPath(it, 21) } ?: Result.success(Unit)
                         }
@@ -103,7 +116,15 @@ fun SettingScreen(
                             maxMemory = memoryValue ?: 0,
                             jre21Path = jre21,
                             jre8Path = jre8,
-                            carrier = carrier
+                            carrier = carrier,
+                            proxyConfig = ProxyConfig(
+                                enabled = proxyEnabled,
+                                systemProxy = proxySystem,
+                                host = proxyHost,
+                                port = proxyPort ?: 10808,
+                                usr = proxyUsr.takeIf { it.isNotBlank() },
+                                pwd = proxyPwd.takeIf { it.isNotBlank() }
+                            )
                         )
                         AppConfig.save(next)
                         errorMessage = null
@@ -149,7 +170,19 @@ fun SettingScreen(
                                     useMirror = useMirror,
                                     onUseMirrorChange = { useMirror = it },
                                     carrier = carrier,
-                                    onCarrierChange = { carrier = it }
+                                    onCarrierChange = { carrier = it },
+                                    proxyEnabled = proxyEnabled,
+                                    proxySystem = proxySystem,
+                                    proxyHost = proxyHost,
+                                    proxyPort = proxyPortText,
+                                    proxyUsr = proxyUsr,
+                                    proxyPwd = proxyPwd,
+                                    onProxyEnabledChange = { proxyEnabled = it },
+                                    onProxySystemChange = { proxySystem = it },
+                                    onProxyHostChange = { proxyHost = it },
+                                    onProxyPortChange = { proxyPortText = it },
+                                    onProxyUsrChange = { proxyUsr = it },
+                                    onProxyPwdChange = { proxyPwd = it }
                                 )
                             }
                         }
@@ -319,7 +352,19 @@ private fun NetworkSettings(
     useMirror: Boolean,
     onUseMirrorChange: (Boolean) -> Unit,
     carrier: Int,
-    onCarrierChange: (Int) -> Unit
+    onCarrierChange: (Int) -> Unit,
+    proxyEnabled: Boolean,
+    proxySystem: Boolean,
+    proxyHost: String,
+    proxyPort: String,
+    proxyUsr: String,
+    proxyPwd: String,
+    onProxyEnabledChange: (Boolean) -> Unit,
+    onProxySystemChange: (Boolean) -> Unit,
+    onProxyHostChange: (String) -> Unit,
+    onProxyPortChange: (String) -> Unit,
+    onProxyUsrChange: (String) -> Unit,
+    onProxyPwdChange: (String) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -327,10 +372,78 @@ private fun NetworkSettings(
             Text("使用镜像源（下载更快）")
         }
         Space8h()
+//proxy settings
         CarrierSelector(
             selected = carrier,
             onSelect = onCarrierChange
         )
+
+        Space8h()
+        Text("代理设置")
+        val mode = when {
+            !proxyEnabled -> 0
+            proxySystem -> 1
+            else -> 2
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                RadioButton(selected = mode == 0, onClick = {
+                    onProxyEnabledChange(false)
+                    onProxySystemChange(false)
+                })
+                Text("不使用代理")
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                RadioButton(selected = mode == 1, onClick = {
+                    onProxyEnabledChange(true)
+                    onProxySystemChange(true)
+                })
+                Text("使用系统代理")
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                RadioButton(selected = mode == 2, onClick = {
+                    onProxyEnabledChange(true)
+                    onProxySystemChange(false)
+                })
+                Text("使用自定义代理")
+            }
+        }
+
+        if (mode == 2) {
+            Space8h()
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    label = { Text("代理主机") },
+                    value = proxyHost,
+                    onValueChange = onProxyHostChange,
+                    singleLine = true,
+                    modifier = Modifier.weight(1f)
+                )
+                OutlinedTextField(
+                    label = { Text("端口") },
+                    value = proxyPort,
+                    onValueChange = onProxyPortChange,
+                    singleLine = true,
+                    modifier = Modifier.width(120.dp)
+                )
+            }
+            Space8h()
+            OutlinedTextField(
+                label = { Text("用户名（可选）") },
+                value = proxyUsr,
+                onValueChange = onProxyUsrChange,
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Space8h()
+            OutlinedTextField(
+                label = { Text("密码（可选）") },
+                value = proxyPwd,
+                onValueChange = onProxyPwdChange,
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
     }
 }
 
