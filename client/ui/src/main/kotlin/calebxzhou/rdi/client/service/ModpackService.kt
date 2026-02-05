@@ -33,6 +33,7 @@ import java.awt.image.BufferedImage
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.OutputStream
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.zip.ZipEntry
@@ -317,18 +318,6 @@ object ModpackService {
 
         deferred.awaitAll()
     }
-    fun readLocalModpack(modpackFile: File){
-        if(modpackFile.isDirectory){
-
-        }else{
-            runCatching {
-                val zip = modpackFile.openChineseZip()
-
-                zip
-            }
-        }
-    }
-
     data class UploadPayload(
         val sourceDir: File,
         val mods: List<Mod>,
@@ -608,45 +597,23 @@ object ModpackService {
                 val relative = file.relativeTo(rootDir).invariantSeparatorsPath
                 if (relative.isBlank()) return@forEach
                 val relativeLower = relative.lowercase()
-                if (disallowedClientPaths.any { relativeLower.startsWith(it) }) return@forEach
-                if (relativeLower.startsWith("kubejs/probe/")) return@forEach
-                if (relativeLower.contains("cache")) return@forEach
-                if (relativeLower.contains("yes_steve_model") || relativeLower.contains("史蒂夫模型")) return@forEach
-                if (relativeLower.endsWith(".ogg") && file.length() > OGG_MAX_SIZE_BYTES) return@forEach
-                if (relativeLower.endsWith(".mca") && relativeLower.contains("/saves/")) return@forEach
-                if (isQuestLangEntryDisallowed(relativeLower, file.isDirectory)) return@forEach
-
                 val topLevel = relative.substringBefore('/', relative)
-
-                if (file.isDirectory) {
-                    addDirectoryEntry(relative, out, addedDirs)
-                    return@forEach
-                }
-
-                if (topLevel == "resourcepacks") {
-                    val bytes = readResourcepackFile(file, relativeLower) ?: return@forEach
-                    ensureZipParents(relative, out, addedDirs)
-                    val entry = ZipEntry(relative).apply { time = file.lastModified() }
-                    out.putNextEntry(entry)
-                    out.write(bytes)
-                    out.closeEntry()
-                    return@forEach
-                }
-
-                ensureZipParents(relative, out, addedDirs)
-                val entry = ZipEntry(relative).apply { time = file.lastModified() }
-                out.putNextEntry(entry)
-                if (relativeLower.endsWith(".zip")) {
-                    val processedZip = processNestedZip(file)
-                    out.write(processedZip)
-                } else if (relativeLower.endsWith(".png")) {
-                    val bytes = file.readBytes()
-                    val processed = compressPngIfNeeded(bytes)
-                    out.write(processed)
-                } else {
-                    file.inputStream().use { input -> input.copyTo(out) }
-                }
-                out.closeEntry()
+                writeProcessedEntry(
+                    relative = relative,
+                    relativeLower = relativeLower,
+                    isDirectory = file.isDirectory,
+                    lastModified = file.lastModified(),
+                    size = file.length(),
+                    topLevel = topLevel,
+                    out = out,
+                    addedDirs = addedDirs,
+                    readAllBytes = { file.readBytes() },
+                    copyToOut = { output -> file.inputStream().use { it.copyTo(output) } },
+                    resourcepackBytes = { readResourcepackFile(file, relativeLower) },
+                    nestedZipBytes = if (relativeLower.endsWith(".zip") || relativeLower.endsWith(".jar")) {
+                        { processNestedZip(file) }
+                    } else null
+                )
             }
         }
         return target
@@ -661,57 +628,95 @@ object ModpackService {
                         val relative = entry.name.replace('\\', '/').trimStart('/')
                         if (relative.isBlank()) return@forEach
                         val relativeLower = relative.lowercase()
-                        if (disallowedClientPaths.any { relativeLower.startsWith(it) }) return@forEach
-                        if (relativeLower.startsWith("kubejs/probe/")) return@forEach
-                        if (relativeLower.contains("cache")) return@forEach
-                        if (relativeLower.contains("yes_steve_model") || relativeLower.contains("史蒂夫模型")) return@forEach
-                        if (relativeLower.endsWith(".ogg") && entry.size != -1L && entry.size > OGG_MAX_SIZE_BYTES) return@forEach
-                        if (relativeLower.endsWith(".mca") && relativeLower.contains("/saves/")) return@forEach
-                        if (isQuestLangEntryDisallowed(relativeLower, entry.isDirectory)) return@forEach
-
                         val topLevel = relative.substringBefore('/', relative)
-
-                        if (entry.isDirectory) {
-                            addDirectoryEntry(relative, out, addedDirs)
-                            return@forEach
-                        }
-
-                        if (topLevel == "resourcepacks") {
-                            val bytes = readResourcepackEntry(zip, entry, relativeLower) ?: return@forEach
-                            ensureZipParents(relative, out, addedDirs)
-                            val zipEntry = ZipEntry(relative).apply { time = entry.time }
-                            out.putNextEntry(zipEntry)
-                            out.write(bytes)
-                            out.closeEntry()
-                            return@forEach
-                        }
-
-                        ensureZipParents(relative, out, addedDirs)
-                        val zipEntry = ZipEntry(relative).apply { time = entry.time }
-                        out.putNextEntry(zipEntry)
-                        if (relativeLower.endsWith(".png")) {
-                            val bytes = zip.getInputStream(entry).use { it.readBytes() }
-                            val processed = compressPngIfNeeded(bytes)
-                            out.write(processed)
-                        } else if (relativeLower.endsWith(".ogg")) {
-                            val size = entry.size
-                            if (size != -1L) {
-                                if (size > OGG_MAX_SIZE_BYTES) return@forEach
-                                zip.getInputStream(entry).use { input -> input.copyTo(out) }
-                            } else {
-                                val bytes = zip.getInputStream(entry).use { it.readBytes() }
-                                if (bytes.size > OGG_MAX_SIZE_BYTES) return@forEach
-                                out.write(bytes)
-                            }
-                        } else {
-                            zip.getInputStream(entry).use { input -> input.copyTo(out) }
-                        }
-                        out.closeEntry()
+                        writeProcessedEntry(
+                            relative = relative,
+                            relativeLower = relativeLower,
+                            isDirectory = entry.isDirectory,
+                            lastModified = entry.time,
+                            size = entry.size.takeIf { it != -1L },
+                            topLevel = topLevel,
+                            out = out,
+                            addedDirs = addedDirs,
+                            readAllBytes = { zip.getInputStream(entry).use { it.readBytes() } },
+                            copyToOut = { output -> zip.getInputStream(entry).use { it.copyTo(output) } },
+                            resourcepackBytes = { readResourcepackEntry(zip, entry, relativeLower) },
+                            nestedZipBytes = null
+                        )
                     }
                 }
             }
             baos.toByteArray()
         }
+    }
+
+    private fun shouldSkipEntry(relativeLower: String, isDirectory: Boolean): Boolean {
+        if (disallowedClientPaths.any { relativeLower.startsWith(it) }) return true
+        if (relativeLower.startsWith("kubejs/probe/")) return true
+        if (relativeLower.contains("cache")) return true
+        if (relativeLower.contains("yes_steve_model") || relativeLower.contains("史蒂夫模型")) return true
+        if (relativeLower.endsWith(".mca") && relativeLower.contains("/saves/")) return true
+        if (isQuestLangEntryDisallowed(relativeLower, isDirectory)) return true
+        return false
+    }
+
+    private fun writeProcessedEntry(
+        relative: String,
+        relativeLower: String,
+        isDirectory: Boolean,
+        lastModified: Long,
+        size: Long?,
+        topLevel: String,
+        out: ZipOutputStream,
+        addedDirs: MutableSet<String>,
+        readAllBytes: () -> ByteArray,
+        copyToOut: (OutputStream) -> Unit,
+        resourcepackBytes: (() -> ByteArray?)?,
+        nestedZipBytes: (() -> ByteArray)?
+    ) {
+        if (shouldSkipEntry(relativeLower, isDirectory)) return
+        if (relativeLower.endsWith(".ogg") && size != null && size > OGG_MAX_SIZE_BYTES) return
+
+        if (isDirectory) {
+            addDirectoryEntry(relative, out, addedDirs)
+            return
+        }
+
+        if (topLevel == "resourcepacks") {
+            val bytes = resourcepackBytes?.invoke() ?: return
+            ensureZipParents(relative, out, addedDirs)
+            val entry = ZipEntry(relative).apply { time = lastModified }
+            out.putNextEntry(entry)
+            out.write(bytes)
+            out.closeEntry()
+            return
+        }
+
+        ensureZipParents(relative, out, addedDirs)
+        val entry = ZipEntry(relative).apply { time = lastModified }
+        out.putNextEntry(entry)
+        when {
+            nestedZipBytes != null -> {
+                out.write(nestedZipBytes())
+            }
+            relativeLower.endsWith(".png") -> {
+                val processed = compressPngIfNeeded(readAllBytes())
+                out.write(processed)
+            }
+            relativeLower.endsWith(".ogg") -> {
+                val bytes = if (size != null) {
+                    if (size > OGG_MAX_SIZE_BYTES) return
+                    readAllBytes()
+                } else {
+                    val raw = readAllBytes()
+                    if (raw.size > OGG_MAX_SIZE_BYTES) return
+                    raw
+                }
+                out.write(bytes)
+            }
+            else -> copyToOut(out)
+        }
+        out.closeEntry()
     }
 
     private fun readResourcepackEntry(source: java.util.zip.ZipFile, entry: ZipEntry, relativeLower: String): ByteArray? {
