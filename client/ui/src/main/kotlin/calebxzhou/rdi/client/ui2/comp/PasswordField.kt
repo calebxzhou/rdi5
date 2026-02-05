@@ -29,7 +29,7 @@ fun PasswordField(
     onValueChange: (String) -> Unit,
     label: String = "密码",
     enabled: Boolean = true,
-    showPassword: Boolean,
+    showPassword: Boolean = false,
     onToggleVisibility: () -> Unit,
     onEnter: () -> Unit
 ) {
