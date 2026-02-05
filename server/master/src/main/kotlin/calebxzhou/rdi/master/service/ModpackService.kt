@@ -225,7 +225,7 @@ class ModpackContext(
 
 object ModpackService {
     private val lgr by Loggers
-    private const val MAX_MODPACK_PER_USER = 5
+    private const val MAX_MODPACK_PER_USER = 10
     private val STEP_PROGRESS_REGEX = Regex("""^Step\s+(\d+)/(\d+)""")
     private val realDbcl = DB.getCollection<Modpack>("modpack")
     internal var testDbcl: MongoCollection<Modpack>? = null
@@ -362,7 +362,7 @@ object ModpackService {
         val modpackCount = dbcl.countDocuments(eq("authorId", uid)).toInt()
         val player = PlayerService.getById(uid)
         if (modpackCount >= MAX_MODPACK_PER_USER && player?.isDav == false) {
-            throw RequestError("一个人最多传5个包")
+            throw RequestError("一个人最多传${MAX_MODPACK_PER_USER}个包")
         }
         if (dbcl.countDocuments(eq(Modpack::name.name, name)) > 0) {
             throw RequestError("别人传过这个包了")
