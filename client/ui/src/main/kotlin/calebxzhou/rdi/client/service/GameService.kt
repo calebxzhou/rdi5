@@ -1,7 +1,5 @@
 package calebxzhou.rdi.client.service
 
-import calebxzhou.mykotutils.ktor.DownloadProgress
-import calebxzhou.mykotutils.ktor.downloadFileFrom
 import calebxzhou.mykotutils.log.Loggers
 import calebxzhou.mykotutils.std.*
 import calebxzhou.rdi.CONF
@@ -13,6 +11,8 @@ import calebxzhou.rdi.client.net.loggedAccount
 import calebxzhou.rdi.common.json
 import calebxzhou.rdi.common.model.*
 import calebxzhou.rdi.common.model.LibraryOsArch.Companion.detectHostOs
+import calebxzhou.rdi.common.net.DownloadProgress
+import calebxzhou.rdi.common.net.downloadFileFrom
 import calebxzhou.rdi.common.serdesJson
 import calebxzhou.rdi.common.util.toUUID
 import com.sun.management.OperatingSystemMXBean
@@ -23,6 +23,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import java.awt.GraphicsEnvironment
 import java.io.File
 import java.lang.management.ManagementFactory
 import java.nio.charset.StandardCharsets
@@ -31,7 +32,6 @@ import java.nio.file.StandardCopyOption
 import java.util.*
 import java.util.zip.ZipFile
 import kotlin.concurrent.thread
-import java.awt.GraphicsEnvironment
 
 object GameService {
     private val lgr by Loggers
@@ -57,8 +57,9 @@ object GameService {
         "http://launchermeta.mojang.com/mc/game/version_manifest_v2.json" to "https://bmclapi2.bangbang93.com/mc/game/version_manifest_v2.json",
         "https://launchermeta.mojang.com" to "https://bmclapi2.bangbang93.com",
         "https://launcher.mojang.com" to "https://bmclapi2.bangbang93.com",
-        "http://resources.download.minecraft.net" to "https://bmclapi2.bangbang93.com/assets",
+        "https://resources.download.minecraft.net" to "https://bmclapi2.bangbang93.com/assets",
         "https://libraries.minecraft.net" to "https://bmclapi2.bangbang93.com/maven",
+        "https://maven.minecraftforge.net" to "https://bmclapi2.bangbang93.com/maven",
     )
     private val bracketedLibraryRegex = Regex("^\\[(.+)]$")
     private val numberedAssetRegex = Regex("^(.+?)(\\d+)(\\.[^./]+)$")
@@ -165,6 +166,41 @@ object GameService {
         }
     }
 
+    suspend fun downloadServer(
+        holder: GameService.LoaderInstallHolder,
+        ctx: TaskContext
+    ) {
+        val mcVerStr = holder.version.mcVer
+        var server = holder.version.metadata.downloads?.server ?: run {
+            ctx.emitProgress(TaskProgress("缺少服务端下载信息", 0f))
+            return
+        }
+        if (CONF.useMirror) {
+            server = MojangDownloadArtifact(
+                url = "https://bmclapi2.bangbang93.com/version/${mcVerStr}/server",
+                sha1 = server.sha1,
+                size = server.size,
+                path = server.path
+            )
+        }
+        val serverTargetFile = holder.installProfile?.serverJarPath
+            ?.replace("{LIBRARY_DIR}", libsDir.absolutePath)
+            ?.replace("{MINECRAFT_VERSION}", mcVerStr)
+            ?.let { File(it).apply { mkdirs() } }
+            ?: DIR.resolve("minecraft_server.${mcVerStr}.jar")
+        ctx.emitProgress(TaskProgress("开始下载...", 0.1f))
+        downloadArtifact("服务端核心 $mcVerStr", server, serverTargetFile) { progress ->
+            ctx.emitProgress(
+                TaskProgress(
+                    "${progress.bytesDownloaded.humanFileSize}/${progress.totalBytes.humanFileSize}",
+                    progress.fraction
+                )
+            )
+        }.getOrThrow()
+        ctx.emitProgress(TaskProgress("下载完成", 1f))
+
+    }
+
     /*   private suspend fun loadBaseManifest(version: McVersion): MojangVersionManifest {
            val manifestFile = versionListDir.resolve(version.mcVer).resolve("${version.mcVer}.json")
            val localJson = runCatching { manifestFile.takeIf { it.exists() }?.readText() }.getOrNull()
@@ -217,7 +253,9 @@ object GameService {
                 return Result.success(target)
             }
         }
-
+        //net/minecraftforge/forge/1.16.5-36.2.42/forge-1.16.5-36.2.42.jar 下不了 跳过 universal已经有了
+        if (artifact.sha1 == "caca08d22543cbe101d64d171738e1ff6eef4de3")
+            return Result.success(target)
         target.parentFile?.mkdirs()
         val maxRetries = 4
         var attempt = 0
@@ -254,6 +292,30 @@ object GameService {
         }
     }
 
+    private fun resolveArtifactUrl(artifact: MojangDownloadArtifact): String {
+        val raw = artifact.url.trim()
+        if (raw.isNotEmpty()) return raw
+        val path = artifact.path?.trim().orEmpty()
+        if (path.isEmpty()) return raw
+        val base = when {
+            path.startsWith("net/minecraftforge/") -> "https://maven.minecraftforge.net"
+            path.startsWith("cpw/mods/") -> "https://maven.minecraftforge.net"
+            else -> "https://libraries.minecraft.net"
+        }
+        return "${base.trimEnd('/')}/${path.trimStart('/')}"
+    }
+
+    private fun forgeUniversalUrl(url: String): String? {
+        if (!url.contains("maven.minecraftforge.net/net/minecraftforge/forge/")) return null
+        if (url.contains("-universal.jar")) return null
+        val match = Regex("""(.*/forge-[^/]+)\.jar$""").find(url) ?: return null
+        return match.groupValues[1] + "-universal.jar"
+    }
+
+    private fun isNotFound(error: Throwable): Boolean {
+        val message = error.message ?: return false
+        return message.contains("404") || message.contains("Not Found", ignoreCase = true)
+    }
 
     fun downloadLibraries(libraries: List<MojangLibrary>): Task {
         val filtered = libraries.filter { it.shouldDownloadByArch() }
@@ -508,13 +570,15 @@ object GameService {
     }
 
     @Serializable
-    private data class LoaderInstallProfile(
+    data class LoaderInstallProfile(
+        //1.18+
+        val serverJarPath: String? = null,
         val libraries: List<MojangLibrary> = emptyList(),
         val data: Map<String, LoaderInstallData> = emptyMap(),
     )
 
     @Serializable
-    private data class LoaderInstallData(
+    data class LoaderInstallData(
         val client: String? = null,
         val server: String? = null,
     )
@@ -557,7 +621,7 @@ object GameService {
     }
 
     private fun buildAssetUrl(hash: String): String {
-        val base = "http://resources.download.minecraft.net".rewriteMirrorUrl
+        val base = "https://resources.download.minecraft.net".rewriteMirrorUrl
         val sub = hash.take(2)
         return "$base/$sub/$hash"
     }
@@ -614,6 +678,9 @@ object GameService {
                 Task.Leaf("解析安装器") { ctx ->
                     parseInstaller(holder, ctx)
                 },
+                Task.Leaf("下载${loader}服务端") { ctx ->
+                    downloadServer(holder, ctx)
+                },
                 Task.Leaf("下载$loader 依赖") { ctx ->
                     downloadLibrariesTask(holder.loaderLibraries, ctx)
                 },
@@ -622,18 +689,21 @@ object GameService {
                 },
                 Task.Leaf("运行安装器") { ctx ->
                     runInstallerBootstrapperTask(holder, ctx)
-                }
+                },
+                 Task.Leaf("运行安装器服务端") { ctx ->
+                     runServerInstallerBootstrapperTask(holder, ctx)
+                 }
             ),
         )
     }
 
 
-    private data class LoaderInstallHolder(
+    data class LoaderInstallHolder(
         val version: McVersion,
         val loader: ModLoader,
         var installer: File? = null,
         var installBooter: File? = null,
-        var loaderVersionManifest: MojangVersionManifest? = null,
+        var loaderVersionManifest: MojangVersionManifest=version.metadata,
         var installProfile: LoaderInstallProfile? = null,
         var loaderLibraries: List<MojangLibrary> = emptyList()
     )
@@ -769,15 +839,45 @@ object GameService {
         process.inputStream.bufferedReader(StandardCharsets.UTF_8).useLines { lines ->
             lines.forEach { line ->
                 if (line.isNotBlank()) {
+                    lgr.info { line }
                     ctx.emitProgress(TaskProgress(line, null))
                 }
             }
         }
         val exitCode = process.waitFor()
         if (exitCode != 0) {
-            throw IllegalStateException("Loader installation failed with code: $exitCode")
+            throw IllegalStateException("mod载入器安装失败: $exitCode")
         } else {
-            ctx.emitProgress(TaskProgress("Loader installed successfully!", 1f))
+            ctx.emitProgress(TaskProgress("安装成功", 1f))
+        }
+    }
+
+    private fun runServerInstallerBootstrapperTask(holder: LoaderInstallHolder, ctx: TaskContext) {
+        val installer = holder.installer ?: error("安装器未准备")
+        val command = listOf(
+            javaExePath,
+            "-jar",
+            installer.absolutePath,
+            "--installServer",
+            DIR.absolutePath,
+        )
+        val process = ProcessBuilder(command)
+            .directory(DIR)
+            .redirectErrorStream(true)
+            .start()
+        process.inputStream.bufferedReader(StandardCharsets.UTF_8).useLines { lines ->
+            lines.forEach { line ->
+                if (line.isNotBlank()) {
+                    lgr.info { line }
+                    ctx.emitProgress(TaskProgress(line, null))
+                }
+            }
+        }
+        val exitCode = process.waitFor()
+        if (exitCode != 0) {
+            throw IllegalStateException("mod载入器安装失败 $exitCode")
+        } else {
+            ctx.emitProgress(TaskProgress("安装成功r", 1f))
         }
     }
 
@@ -794,8 +894,13 @@ object GameService {
             }
         }
         target.parentFile?.mkdirs()
+        val resolvedUrl = resolveArtifactUrl(artifact)
+        if (resolvedUrl.isBlank()) {
+
+            throw IllegalStateException("$label 下载链接为空")
+        }
         target.toPath().downloadFileFrom(
-            url = artifact.url.rewriteMirrorUrl,
+            url = resolvedUrl.rewriteMirrorUrl,
             knownSize = artifact.size
         ) { progress ->
             onProgress(progress)
