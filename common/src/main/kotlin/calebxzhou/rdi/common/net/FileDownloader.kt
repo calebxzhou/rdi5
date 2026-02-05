@@ -15,7 +15,6 @@ import kotlinx.coroutines.sync.withPermit
 import okhttp3.ConnectionPool
 import okhttp3.Dispatcher
 import java.io.IOException
-import java.net.ProxySelector
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.file.Files
@@ -46,6 +45,7 @@ private const val MIN_PARALLEL_DOWNLOAD_SIZE = 5L * 1024 * 1024 // Increased to 
 private const val TARGET_RANGE_CHUNK_SIZE = 4L * 1024 * 1024 // 4MB per chunk
 val DEFAULT_RANGE_PARALLELISM = max(2, Runtime.getRuntime().availableProcessors())
 
+
 // BUG FIX 1: Use 'by lazy' or direct assignment. Do NOT use 'get() =' which creates a new client every call.
 val httpFileClient by lazy {
     HttpClient(OkHttp) {
@@ -64,9 +64,7 @@ val httpFileClient by lazy {
                     maxRequestsPerHost = 1024
                 })
                 connectionPool(ConnectionPool(1024, 1, TimeUnit.MINUTES))
-                ProxySelector.getDefault()?.let {
-                    proxySelector(it)
-                }
+                proxySelector(DynamicProxySelector())
             }
         }
         BrowserUserAgent()
@@ -87,6 +85,7 @@ suspend fun Path.downloadFileFrom(
     onProgress: (DownloadProgress) -> Unit
 ): Result<Path> {
     lgr.info { "Start download file: $url -> $this" }
+    if(url.isEmpty()) throw IllegalArgumentException("下载链接为空 无法下载到${this}")
     val targetPath = this
 
     // FIX 3: Optimization strategy
@@ -155,7 +154,7 @@ private suspend fun downloadSingleStream(
         header(HttpHeaders.AcceptEncoding, "identity") // Force no compression to get accurate byte counts
     }.execute { response ->
         if (!response.status.isSuccess()) {
-            throw IOException("Download failed: ${response.status}")
+            throw IOException("Download failed: ${response.status} for ${url}")
         }
 
         val totalBytes = if (expectedTotal > 0) expectedTotal else response.contentLength() ?: -1L

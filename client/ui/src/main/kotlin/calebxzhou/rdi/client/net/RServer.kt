@@ -1,14 +1,10 @@
 package calebxzhou.rdi.client.net
 
-import calebxzhou.mykotutils.ktor.DownloadProgress
-import calebxzhou.mykotutils.ktor.downloadFileFrom
 import calebxzhou.rdi.client.Const
 import calebxzhou.rdi.common.exception.RequestError
 import calebxzhou.rdi.common.model.RAccount
 import calebxzhou.rdi.common.model.Response
-import calebxzhou.rdi.common.net.httpRequest
-import calebxzhou.rdi.common.net.json
-import calebxzhou.rdi.common.net.ktorClient
+import calebxzhou.rdi.common.net.*
 import calebxzhou.rdi.common.serdesJson
 import calebxzhou.rdi.common.util.ioTask
 import calebxzhou.rdi.lgr

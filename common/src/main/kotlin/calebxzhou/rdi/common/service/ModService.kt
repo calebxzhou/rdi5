@@ -1,12 +1,12 @@
- package calebxzhou.rdi.common.service
- 
- import calebxzhou.mykotutils.ktor.DownloadProgress
-import calebxzhou.mykotutils.ktor.downloadFileFrom
+package calebxzhou.rdi.common.service
+
 import calebxzhou.mykotutils.log.Loggers
 import calebxzhou.mykotutils.std.murmur2
 import calebxzhou.mykotutils.std.sha1
 import calebxzhou.rdi.common.DL_MOD_DIR
 import calebxzhou.rdi.common.model.*
+import calebxzhou.rdi.common.net.DownloadProgress
+import calebxzhou.rdi.common.net.downloadFileFrom
 import calebxzhou.rdi.common.serdesJson
 import com.electronwill.nightconfig.core.CommentedConfig
 import com.electronwill.nightconfig.core.Config

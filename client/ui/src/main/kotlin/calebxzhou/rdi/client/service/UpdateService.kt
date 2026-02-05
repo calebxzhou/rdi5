@@ -1,6 +1,5 @@
 package calebxzhou.rdi.client.service
 
-import calebxzhou.mykotutils.ktor.downloadFileFrom
 import calebxzhou.mykotutils.log.Loggers
 import calebxzhou.mykotutils.std.humanFileSize
 import calebxzhou.mykotutils.std.sha1
@@ -8,6 +7,7 @@ import calebxzhou.rdi.client.net.server
 import calebxzhou.rdi.common.DL_MOD_DIR
 import calebxzhou.rdi.common.exception.RequestError
 import calebxzhou.rdi.common.model.McVersion
+import calebxzhou.rdi.common.net.downloadFileFrom
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream

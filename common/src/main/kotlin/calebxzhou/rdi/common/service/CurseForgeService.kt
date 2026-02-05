@@ -1,11 +1,11 @@
 package calebxzhou.rdi.common.service
 
-import calebxzhou.mykotutils.ktor.json
 import calebxzhou.mykotutils.log.Loggers
 import calebxzhou.mykotutils.std.murmur2
 import calebxzhou.mykotutils.std.openChineseZip
 import calebxzhou.rdi.common.exception.ModpackException
 import calebxzhou.rdi.common.model.*
+import calebxzhou.rdi.common.net.json
 import calebxzhou.rdi.common.net.ktorClient
 import calebxzhou.rdi.common.serdesJson
 import calebxzhou.rdi.common.service.ModService.briefInfo

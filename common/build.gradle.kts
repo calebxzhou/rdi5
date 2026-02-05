@@ -25,7 +25,6 @@ repositories {
 dependencies {
     implementation("calebxzhou.mykotutils:std:0.1")
     implementation("calebxzhou.mykotutils:log:0.1")
-    implementation("calebxzhou.mykotutils:ktor:0.1")
 
     implementation("org.jsoup:jsoup:1.19.1")
     implementation("org.mongodb:bson:5.1.0")

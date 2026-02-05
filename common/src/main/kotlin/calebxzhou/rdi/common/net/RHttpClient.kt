@@ -15,7 +15,12 @@ import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import okhttp3.Cache
+import java.net.InetSocketAddress
+import java.net.Proxy
 import java.net.ProxySelector
+import java.net.SocketAddress
+import java.net.URI
+import java.io.IOException
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.seconds
 
@@ -32,7 +37,7 @@ val ktorClient =
                     followRedirects(true)
                     connectTimeout(10, TimeUnit.SECONDS)
                     readTimeout(0, TimeUnit.SECONDS)
-                    ProxySelector.getDefault()?.let { proxySelector(it) }
+                    proxySelector(DynamicProxySelector())
                     cache(Cache(CACHE_DIR, HTTP_CACHE_SIZE_BYTES))
                 }
             }
@@ -54,8 +59,30 @@ val ktorClient =
                 gzip(0.9F)
             }
             install(HttpTimeout) {
-                requestTimeoutMillis = 60_000
+                requestTimeoutMillis = 20_000
                 connectTimeoutMillis = 10_000
                 socketTimeoutMillis = 60_000
             }
         }
+
+class DynamicProxySelector(
+    private val fallback: ProxySelector? = ProxySelector.getDefault()
+) : ProxySelector() {
+    override fun select(uri: URI): List<Proxy> {
+        val selector = ProxySelector.getDefault() ?: fallback ?: return listOf(Proxy.NO_PROXY)
+        val proxies = selector.select(uri) ?: return listOf(Proxy.NO_PROXY)
+        val filtered = proxies.filterNot { proxy ->
+            if (proxy.type() == Proxy.Type.DIRECT) return@filterNot false
+            val addr = proxy.address() as? InetSocketAddress ?: return@filterNot false
+            val isLoopback = addr.address?.isLoopbackAddress == true ||
+                addr.hostString.equals("localhost", ignoreCase = true)
+            isLoopback && addr.port == 80
+        }
+        return filtered.ifEmpty { listOf(Proxy.NO_PROXY) }
+    }
+
+    override fun connectFailed(uri: URI, sa: SocketAddress, ioe: IOException) {
+        val selector = ProxySelector.getDefault() ?: fallback
+        selector?.connectFailed(uri, sa, ioe)
+    }
+}
