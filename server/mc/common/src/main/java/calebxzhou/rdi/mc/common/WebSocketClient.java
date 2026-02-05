@@ -36,6 +36,7 @@ public class WebSocketClient {
 
     private static volatile WebSocket currentWebSocket;
     private static volatile boolean shuttingDown = false;
+    private static volatile boolean isConnecting = false;
     private static volatile String wsUrl;
     private static volatile WsMessageHandler handler;
 
@@ -80,15 +81,30 @@ public class WebSocketClient {
             return;
         }
 
+        // Check if there's already an active connection
+        WebSocket ws = currentWebSocket;
+        if (ws != null && ws.isOpen()) {
+            lgr.debug("WebSocket already connected, skipping connection attempt");
+            return;
+        }
+
+        // Check if a connection attempt is already in progress
+        if (isConnecting) {
+            lgr.debug("WebSocket connection already in progress, skipping");
+            return;
+        }
+
+        isConnecting = true;
         lgr.info("Attempting WebSocket connection to {}", wsUrl);
         try {
-            WebSocket ws = new WebSocketFactory()
+            WebSocket newWs = new WebSocketFactory()
                     .setConnectionTimeout(CONNECT_TIMEOUT_MS)
                     .createSocket(wsUrl)
                     .addListener(new Listener());
-            currentWebSocket = ws;
-            ws.connectAsynchronously();
+            currentWebSocket = newWs;
+            newWs.connectAsynchronously();
         } catch (IOException ex) {
+            isConnecting = false;
             lgr.error("Failed to connect WebSocket to {}", wsUrl, ex);
             scheduleReconnect();
         }
@@ -98,6 +114,14 @@ public class WebSocketClient {
         if (shuttingDown) {
             return;
         }
+
+        // Don't schedule reconnect if already connected
+        WebSocket ws = currentWebSocket;
+        if (ws != null && ws.isOpen()) {
+            lgr.debug("WebSocket already connected, skipping reconnect scheduling");
+            return;
+        }
+
         reconnectExecutor.schedule(WebSocketClient::attemptConnect, 5, TimeUnit.SECONDS);
         lgr.info("Scheduled WebSocket reconnect in 5s");
     }
@@ -105,8 +129,8 @@ public class WebSocketClient {
     private static class Listener extends WebSocketAdapter {
         @Override
         public void onConnected(WebSocket webSocket, Map<String, List<String>> headers) {
+            isConnecting = false;
             lgr.info("WebSocket connection opened: {}", wsUrl);
-
         }
 
         @Override
@@ -133,6 +157,7 @@ public class WebSocketClient {
 
         @Override
         public void onDisconnected(WebSocket webSocket, WebSocketFrame serverCloseFrame, WebSocketFrame clientCloseFrame, boolean closedByServer) {
+            isConnecting = false;
             String reason = serverCloseFrame != null ? serverCloseFrame.getCloseReason() : "unknown";
             int code = serverCloseFrame != null ? serverCloseFrame.getCloseCode() : -1;
             lgr.info("WebSocket closed: {} - {}", code, reason);
@@ -142,6 +167,7 @@ public class WebSocketClient {
 
         @Override
         public void onConnectError(WebSocket webSocket, WebSocketException exception) {
+            isConnecting = false;
             lgr.error("WebSocket connect error", exception);
             currentWebSocket = null;
             scheduleReconnect();
@@ -149,6 +175,7 @@ public class WebSocketClient {
 
         @Override
         public void onError(WebSocket webSocket, WebSocketException cause) {
+            isConnecting = false;
             lgr.error("WebSocket error", cause);
             currentWebSocket = null;
             scheduleReconnect();
