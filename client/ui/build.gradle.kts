@@ -23,6 +23,7 @@ repositories {
     mavenLocal()
     mavenCentral()
     google()
+    maven(url = "https://jitpack.io")
 }
 
 base {
@@ -88,6 +89,7 @@ dependencies {
     testImplementation(kotlin("test"))
     implementation("io.netty:netty-all:4.2.7.Final")
     implementation(project(":common"))
+    implementation("com.github.Towdium:PinIn:1.6.0")
 
     runtimeOnly("org.hotswapagent:hotswap-agent-core:2.0.1")
     implementation("com.github.oshi:oshi-core:6.9.1")
