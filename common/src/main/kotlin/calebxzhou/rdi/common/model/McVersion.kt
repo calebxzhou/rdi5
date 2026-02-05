@@ -61,7 +61,20 @@ enum class McVersion(
                 "d7f759dec5b52ddb342c3e12511da1674d0401bf"
             )
         )
-    )
+    ),
+    V165(
+        "1.16.5",
+        "assets/icons/zoglin.webp",8,
+        mapOf(
+            ModLoader.forge to ModLoader.Version(
+                ModLoader.forge,
+                "1.16.5-forge-36.2.42",
+                "https://maven.minecraftforge.net/net/minecraftforge/forge/1.16.5-36.2.42/forge-1.16.5-36.2.42-installer.jar",
+                "e09ecf910e4d5eae12fb3564d9b7de212c1958b2"
+            )
+        )
+    ),
+
     ;
 
     companion object{

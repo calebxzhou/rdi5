@@ -14,6 +14,11 @@ public class mGame {
     public boolean allowsMultiplayer() {
         return true;
     }
+
+    @Overwrite
+    public boolean allowsChat() {
+        return true;
+    }
     /*@Overwrite
     private UserApiService createUserApiService(YggdrasilAuthenticationService authenticationService, GameConfig gameConfig) {
         return UserApiService.OFFLINE;

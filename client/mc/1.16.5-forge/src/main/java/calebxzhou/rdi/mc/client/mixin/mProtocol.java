@@ -23,7 +23,7 @@ class mServerboundHelloPacket {
     @Shadow
     private GameProfile gameProfile;
 
-    @Inject(method = "write",at=@At("TAIL"))
+    @Inject(method = "write",at=@At("HEAD"))
     private void RDI$WriteUUIDPacket(PacketBuffer buffer, CallbackInfo ci){
         buffer.writeUUID(this.gameProfile.getId());
     }
