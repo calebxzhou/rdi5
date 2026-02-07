@@ -19,8 +19,8 @@ data class Mod(
         get() = "${slug}_${platform}_${hash}.jar"
     val targetPath get() = DL_MOD_DIR.resolve(fileName).toPath()
 
-    enum class Side{
-        CLIENT,SERVER,BOTH
+    enum class Side(val text:String){
+        CLIENT("客户端"),SERVER("服务端"),BOTH("客+服通用"),UNKNOWN("未知")
     }
     @Transient
     var vo: Mod.CardVo?=null
