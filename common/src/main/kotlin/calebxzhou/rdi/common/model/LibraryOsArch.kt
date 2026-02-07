@@ -13,6 +13,7 @@ enum class LibraryOsArch(val archSuffix: String,val ruleOsName: String) {
     LINUX_ARM64("-linux-aarch_64","linux"),
     ;
     val isWindows get()= this == WIN_X64 || this == WIN_ARM64
+    val isUnixLike get() = !isWindows
     companion object{
 
         fun detectHostOs(): LibraryOsArch {
