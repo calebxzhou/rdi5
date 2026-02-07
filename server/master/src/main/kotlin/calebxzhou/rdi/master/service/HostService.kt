@@ -288,16 +288,26 @@ object HostService {
 
 
     private val Host.containerEnv
-        get() = { loaderVersion: ModLoader.Version ->
-            val loaderArgPath = when (loaderVersion.loader) {
-                ModLoader.neoforge -> "@libraries/net/neoforged/neoforge/"
-                ModLoader.forge -> "@libraries/net/minecraftforge/forge/"
-            } + "${loaderVersion.id}/unix_args.txt"
+        get() = {mcv: McVersion, loaderVersion: ModLoader.Version ->
+            val serverArg = when(mcv){
+                McVersion.V182,
+                McVersion.V192,
+                McVersion.V201,
+                McVersion.V211 -> {
+                    loaderVersion.serverArgsPath(true)
+                }
+                McVersion.V165,
+                     //V122 V071
+                         -> {
+                    "-jar ${loaderVersion.serverJarName}"
+                }
+            }
+
             mutableListOf(
                 "HOST_ID=${_id.str}",
                 "GAME_PORT=${port}",
                 "ALL_OP=${if (allowCheats) "true" else "false"}",
-                "START_PARAMS=-Xmx8G $loaderArgPath --universe /data --nogui"
+                "START_PARAMS=-Xmx8G $serverArg --universe /data --nogui"
             ).apply {
                 gameRules.forEach { id, value ->
                     this += "GAME_RULE_${id}=${value}"
@@ -913,7 +923,7 @@ object HostService {
         ensureWorkdirQuota()
 
         val sharedLibsDir = modpack.libsDir.canonicalFile.also { it.mkdirs() }
-
+        val loaderVer = modpack.mcVer.loaderVersions[modpack.modloader]?: throw RequestError("找不到对应版本的运行库")
         val rdiCore = "rdi-5-mc-server-${modpack.mcVer.mcVer}-${modpack.modloader}.jar"
         val mounts = mutableListOf(
             Mount()
@@ -929,6 +939,7 @@ object HostService {
                 .withSource(sharedLibsDir.resolve("mods").resolve(rdiCore).absolutePath)
                 .withTarget("/opt/server/mods/${rdiCore}"),
         ).apply {
+            //装入mod
             version.mods
                 .filter { it.side != Mod.Side.CLIENT }
                 .forEach { mod ->
@@ -940,6 +951,15 @@ object HostService {
                             .withTarget("/opt/server/mods/${mod.fileName}")
                     }
                 }
+            //1.16.5以下装入核心
+            this += Mount()
+                .withType(MountType.BIND)
+                .withSource(sharedLibsDir.resolve(loaderVer.serverJarName).absolutePath)
+                .withTarget("/opt/server/${loaderVer.serverJarName}")
+            this += Mount()
+                .withType(MountType.BIND)
+                .withSource(sharedLibsDir.resolve(modpack.mcVer.serverJarName).absolutePath)
+                .withTarget("/opt/server/${modpack.mcVer.serverJarName}")
 
             if (worldId != null) {
                 //使用存档
@@ -962,7 +982,7 @@ object HostService {
                 this._id.str,
                 mounts,
                 image,
-                containerEnv(modLoaderVersion)
+                containerEnv(modpack.mcVer,modLoaderVersion)
             )
         } ?: throw RequestError("不支持的mod加载器")
     }
