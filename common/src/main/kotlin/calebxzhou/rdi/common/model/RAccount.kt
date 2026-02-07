@@ -58,7 +58,7 @@ data class RAccount(
 
     @Contextual
     val uuid get() = _id.toUUID()
-    val dto = Dto(_id, name, cloth)
+    val dto get() = Dto(_id, name, cloth)
 
 }
 val RAccount.isDav get() = name == "davickk"
