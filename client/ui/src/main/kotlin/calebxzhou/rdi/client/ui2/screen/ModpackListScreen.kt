@@ -18,14 +18,26 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import calebxzhou.rdi.client.net.loggedAccount
 import calebxzhou.rdi.client.net.rdiRequest
+import calebxzhou.rdi.client.service.ModpackService
+import calebxzhou.rdi.client.ui2.ModpackUploadStore
 import calebxzhou.rdi.client.ui2.CircleIconButton
+import calebxzhou.rdi.client.ui2.ConfirmDialog
 import calebxzhou.rdi.client.ui2.ImageIconButton
 import calebxzhou.rdi.client.ui2.MainColumn
 import calebxzhou.rdi.client.ui2.Space8h
 import calebxzhou.rdi.client.ui2.Space8w
 import calebxzhou.rdi.client.ui2.TitleRow
 import calebxzhou.rdi.client.ui2.comp.ModpackCard
+import calebxzhou.rdi.common.model.Mod
+import calebxzhou.rdi.common.model.Task
+import calebxzhou.rdi.common.service.ModService
+import calebxzhou.rdi.common.DL_MOD_DIR
 import calebxzhou.rdi.common.model.Modpack
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import java.io.File
+import javax.swing.JFileChooser
+import javax.swing.filechooser.FileNameExtensionFilter
 
 /**
  * calebxzhou @ 2026-01-13 18:27
@@ -35,13 +47,21 @@ import calebxzhou.rdi.common.model.Modpack
 fun ModpackListScreen(
     onBack: (() -> Unit) = {},
     onOpenUpload: (() -> Unit) = {},
+    onOpenTask: ((Task, Boolean, (() -> Unit)?) -> Unit) = { _, _, _ -> },
     onOpenMcVersions: (() -> Unit) = {},
     onOpenInfo: ((String) -> Unit) = {}
 ) {
+    data class PendingDownload(
+        val payload: ModpackService.UploadPayload,
+        val mods: List<Mod>
+    )
+    val scope = rememberCoroutineScope()
     var modpacks by remember { mutableStateOf<List<Modpack.BriefVo>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var onlyMine by remember { mutableStateOf(false) }
+    var uploadProgress by remember { mutableStateOf<String?>(null) }
+    var pendingDownload by remember { mutableStateOf<PendingDownload?>(null) }
 
     LaunchedEffect(Unit) {
         loading = true
@@ -73,8 +93,37 @@ fun ModpackListScreen(
                 onOpenMcVersions.invoke()
             }
             Space8w()
-            CircleIconButton("\uDB80\uDFD5", "导入新包") {
-                onOpenUpload.invoke()
+            CircleIconButton("\uDB80\uDFD5", "上传整合包") {
+                val file = pickModpackFile(
+                    onError = { msg -> errorMessage = msg }
+                ) ?: return@CircleIconButton
+                uploadProgress = "已选择文件: ${file.name}。正在读取，请稍等几秒..."
+                scope.launch(Dispatchers.IO) {
+                    val parsed = ModpackService.parseUploadPayload(
+                        file = file,
+                        onProgress = { msg ->
+                            scope.launch { uploadProgress = msg }
+                        },
+                        onError = { msg ->
+                            scope.launch { errorMessage = msg }
+                        }
+                    ) ?: return@launch
+                    val allModsExist = parsed.payload.mods.all { mod ->
+                        DL_MOD_DIR.resolve(mod.fileName).exists()
+                    }
+                    scope.launch {
+                        if (allModsExist) {
+                            ModpackUploadStore.preset = ModpackUploadStore.Preset(
+                                payload = parsed.payload,
+                                mods = parsed.payload.mods,
+                                requireDownload = false
+                            )
+                            onOpenUpload.invoke()
+                        } else {
+                            pendingDownload = PendingDownload(payload = parsed.payload, mods = parsed.payload.mods)
+                        }
+                    }
+                }
             }
         }
         Space8h()
@@ -91,6 +140,10 @@ fun ModpackListScreen(
         errorMessage?.let {
             Text(it, color = MaterialTheme.colors.error)
         }
+        uploadProgress?.takeIf { it.isNotBlank() }?.let {
+            Text(it)
+            Space8h()
+        }
 
         LazyVerticalGrid(
             columns = GridCells.Adaptive(280.dp),
@@ -102,5 +155,47 @@ fun ModpackListScreen(
                 modpack.ModpackCard(onClick = { onOpenInfo(modpack.id.toHexString()) })
             }
         }
+        pendingDownload?.let { pending ->
+            ConfirmDialog(
+                title = "需要下载Mod",
+                message = "必须先下载该整合包的${pending.mods.size}个Mod。现在下载吗？\n下载完成后，请重新选择此整合包。",
+                onConfirm = {
+                    pendingDownload = null
+                    val task = ModService.downloadModsTask(pending.mods)
+                    onOpenTask(task, true) {
+                        ModpackUploadStore.preset = ModpackUploadStore.Preset(
+                            payload = pending.payload,
+                            mods = pending.mods,
+                            requireDownload = false
+                        )
+                        onOpenUpload.invoke()
+                    }
+                },
+                onDismiss = {
+                    pendingDownload = null
+                    uploadProgress = null
+                }
+            )
+        }
     }
+}
+
+private fun pickModpackFile(
+    onError: (String) -> Unit
+): File? {
+    val chooser = JFileChooser().apply {
+        dialogTitle = "选择整合包 (ZIP / MRPACK / 已解压目录)"
+        fileSelectionMode = JFileChooser.FILES_AND_DIRECTORIES
+        currentDirectory = File("C:/Users/${System.getProperty("user.name")}/Downloads")
+        fileFilter = FileNameExtensionFilter("整合包 (*.zip, *.mrpack)", "zip", "mrpack")
+        isAcceptAllFileFilterUsed = true
+    }
+    val result = chooser.showOpenDialog(null)
+    if (result != JFileChooser.APPROVE_OPTION) return null
+    val file = chooser.selectedFile
+    if (!file.exists() || !(file.isFile || file.isDirectory)) {
+        onError("未找到所选文件")
+        return null
+    }
+    return file
 }

@@ -4,6 +4,7 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.material.Typography
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.decodeToImageBitmap
@@ -28,6 +29,7 @@ import calebxzhou.rdi.client.net.loggedAccount
 import calebxzhou.rdi.client.service.GameService
 import calebxzhou.rdi.client.service.PlayerService
 import calebxzhou.rdi.client.ui2.McPlayStore
+import calebxzhou.rdi.client.ui2.ModpackUploadStore
 import calebxzhou.rdi.client.ui2.TaskStore
 import calebxzhou.rdi.client.ui2.screen.*
 import calebxzhou.rdi.common.model.McVersion
@@ -110,10 +112,18 @@ fun main() = application {
     ) {
         MaterialTheme(typography = Typography(defaultFontFamily = UIFontFamily)) {
             val navController = rememberNavController()
+            val openTaskView: (Task, Boolean, (() -> Unit)?) -> Unit = { task, autoClose, onDone ->
+                TaskStore.current = task
+                TaskStore.autoClose = autoClose
+                TaskStore.onDone = onDone
+                navController.navigate(TaskView)
+            }
             val dropWindow = window
             DisposableEffect(dropWindow, navController) {
                 installPackDropTarget(dropWindow) { task ->
                     TaskStore.current = task
+                    TaskStore.autoClose = false
+                    TaskStore.onDone = null
                     SwingUtilities.invokeLater {
                         navController.navigate(TaskView)
                     }
@@ -157,8 +167,7 @@ fun main() = application {
                             navController.navigate(RMcVersion(mcVer?.mcVer))
                         },
                         onOpenTask = { task ->
-                            TaskStore.current = task
-                            navController.navigate(TaskView)
+                            openTaskView(task, false, null)
                         },
                         onOpenWardrobe = { navController.navigate(Wardrobe) },
                         onOpenMail = { navController.navigate(Mail) },
@@ -181,8 +190,7 @@ fun main() = application {
                             navController.navigate(RMcVersion(mcVer?.mcVer))
                         },
                         onOpenTask = { task ->
-                            TaskStore.current = task
-                            navController.navigate(TaskView)
+                            openTaskView(task, false, null)
                         },
                         onOpenHostEdit = { host ->
                             navController.navigate(
@@ -247,6 +255,9 @@ fun main() = application {
                     ModpackListScreen(
                         onBack = { navController.navigate(HostList) },
                         onOpenUpload = { navController.navigate(ModpackUpload) },
+                        onOpenTask = { task, autoClose, onDone ->
+                            openTaskView(task, autoClose, onDone)
+                        },
                         onOpenMcVersions = { navController.navigate(RMcVersion(null)) },
                         onOpenInfo = { modpackId ->
                             navController.navigate(ModpackInfo(modpackId))
@@ -275,13 +286,25 @@ fun main() = application {
                             )
                         },
                         onOpenTask = { task ->
-                            TaskStore.current = task
-                            navController.navigate(TaskView)
+                            openTaskView(task, false, null)
                         }
                     )
                 }
                 composable<ModpackUpload> {
-                    ModpackUploadScreen(onBack = { navController.navigate(ModpackList) })
+                    val preset = remember {
+                        ModpackUploadStore.preset.also { ModpackUploadStore.preset = null }
+                    }
+                    if (preset == null) {
+                        LaunchedEffect(Unit) {
+                            navController.navigate(ModpackList)
+                        }
+                        Text("缺少上传数据，正在返回整合包列表...")
+                    } else {
+                        ModpackUploadScreen(
+                            uploadPayload = preset.payload,
+                            onBack = { navController.navigate(ModpackList) }
+                        )
+                    }
                 }
                 composable<RMcVersion> {
                     val route = it.toRoute<RMcVersion>()
@@ -290,8 +313,7 @@ fun main() = application {
                         requiredMcVer = required,
                         onBack = { navController.navigate(ModpackList) },
                         onOpenTask = { task ->
-                            TaskStore.current = task
-                            navController.navigate(TaskView)
+                            openTaskView(task, false, null)
                         },
                     )
                 }

@@ -98,7 +98,7 @@ fun ModpackInfoScreen(
                         val loaded = withContext(Dispatchers.IO) {
                             runCatching {
                                 latest.mods.fillCurseForgeVo()
-                                latest.mods.fillModrinthVo()
+                                latest.mods.fillModrinthVo(null)
                             }.getOrElse {
                                 it.printStackTrace();
                                 emptyList()

@@ -3,7 +3,6 @@ package calebxzhou.rdi.client.ui2.comp
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -16,14 +15,19 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import calebxzhou.rdi.client.ui2.MaterialColor
-import calebxzhou.rdi.client.ui2.asIconText
+import calebxzhou.rdi.client.ui2.wM
 import calebxzhou.rdi.common.model.Mod
 
 /**
  * calebxzhou @ 2026-01-13 21:28
  */
 @Composable
-fun Mod.CardVo.ModCard(modifier: Modifier = Modifier) {
+fun Mod.CardVo.ModCard(
+    modifier: Modifier = Modifier,
+    currentSide: Mod.Side = side,
+    onSideChange: ((Mod.Side) -> Unit)? = null
+) {
+    val (clientEnabled, serverEnabled) = sideToFlags(currentSide)
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -64,15 +68,25 @@ fun Mod.CardVo.ModCard(modifier: Modifier = Modifier) {
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
                 )
-                val sideIcon = when (side) {
-                    Mod.Side.CLIENT -> "\uF108"
-                    Mod.Side.SERVER -> "\uF233"
-                    Mod.Side.BOTH -> "\uF108 \uF233"
-                }
-                Text(
-                    text = sideIcon.asIconText,
-                    color = MaterialColor.GRAY_600.color,
-                    fontSize = 14.sp
+                Spacer(8.wM)
+                ToggleButton(
+                    icon = "\uF108",
+                    checked = clientEnabled,
+                    onClick = onSideChange?.let {
+                        {
+                            it(flagsToSide(clientEnabled = !clientEnabled, serverEnabled = serverEnabled))
+                        }
+                    }
+                )
+                Spacer(6.wM)
+                ToggleButton(
+                    icon = "\uF233",
+                    checked = serverEnabled,
+                    onClick = onSideChange?.let {
+                        {
+                            it(flagsToSide(clientEnabled = clientEnabled, serverEnabled = !serverEnabled))
+                        }
+                    }
                 )
             }
 
@@ -89,7 +103,7 @@ fun Mod.CardVo.ModCard(modifier: Modifier = Modifier) {
                     )
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(6.dp))
 
             // Intro
@@ -103,4 +117,18 @@ fun Mod.CardVo.ModCard(modifier: Modifier = Modifier) {
             )
         }
     }
+}
+
+private fun sideToFlags(side: Mod.Side): Pair<Boolean, Boolean> = when (side) {
+    Mod.Side.CLIENT -> true to false
+    Mod.Side.SERVER -> false to true
+    Mod.Side.BOTH -> true to true
+    Mod.Side.UNKNOWN -> false to false
+}
+
+private fun flagsToSide(clientEnabled: Boolean, serverEnabled: Boolean): Mod.Side = when {
+    clientEnabled && serverEnabled -> Mod.Side.BOTH
+    clientEnabled -> Mod.Side.CLIENT
+    serverEnabled -> Mod.Side.SERVER
+    else -> Mod.Side.UNKNOWN
 }
