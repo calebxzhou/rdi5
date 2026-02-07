@@ -25,7 +25,7 @@ repositories {
 dependencies {
     implementation("calebxzhou.mykotutils:std:0.1")
     implementation("calebxzhou.mykotutils:log:0.1")
-
+    implementation("ch.qos.logback:logback-classic:1.5.21")
     implementation("org.jsoup:jsoup:1.19.1")
     implementation("org.mongodb:bson:5.1.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
