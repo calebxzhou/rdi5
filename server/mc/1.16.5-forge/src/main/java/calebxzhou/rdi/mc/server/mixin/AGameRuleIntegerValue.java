@@ -9,5 +9,5 @@ import org.spongepowered.asm.mixin.gen.Accessor;
  */
 @Mixin(GameRules.IntegerValue.class)
 public interface AGameRuleIntegerValue {
-    @Accessor void setValue(int value);
+    //@Accessor void setValue(int value);
 }

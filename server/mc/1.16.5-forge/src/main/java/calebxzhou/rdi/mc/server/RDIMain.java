@@ -48,9 +48,10 @@ public class RDIMain {
                         booleanValue.set(Boolean.parseBoolean(gameRuleEnv), server);
                         lgr.info("SET GAME RULE {}={}  B", key, gameRuleEnv);
                     } else if (rule instanceof GameRules.IntegerValue) {
-                        RGameRuleIntegerValue integerValue = (RGameRuleIntegerValue) rule;
+                        //星辉魔法mixin冲突 日后再实现
+                        /*RGameRuleIntegerValue integerValue = (RGameRuleIntegerValue) rule;
                         integerValue.set(Integer.parseInt(gameRuleEnv), server);
-                        lgr.info("SET GAME RULE {}={}  I", key, gameRuleEnv);
+                        lgr.info("SET GAME RULE {}={}  I", key, gameRuleEnv);*/
                     }
                 }
             }

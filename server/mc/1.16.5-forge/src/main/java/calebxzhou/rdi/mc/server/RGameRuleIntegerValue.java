@@ -15,7 +15,7 @@ public abstract class RGameRuleIntegerValue extends GameRules.IntegerValue imple
     }
 
     public void set(int value, @Nullable MinecraftServer pServer) {
-        this.setValue(value);
+      //  this.setValue(value);
         onChanged(pServer);
     }
 }
