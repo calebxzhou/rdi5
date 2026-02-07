@@ -210,7 +210,16 @@ fun main() = application {
                 composable<TaskView> {
                     val task = TaskStore.current
                     if (task != null) {
-                        TaskScreen(task, onBack = { navController.popBackStack() })
+                        TaskScreen(
+                            task = task,
+                            autoClose = TaskStore.autoClose,
+                            onBack = { navController.popBackStack() },
+                            onDone = {
+                                TaskStore.onDone?.invoke()
+                                TaskStore.onDone = null
+                                TaskStore.autoClose = false
+                            }
+                        )
                     } else {
                         Text("没有可显示的任务")
                     }

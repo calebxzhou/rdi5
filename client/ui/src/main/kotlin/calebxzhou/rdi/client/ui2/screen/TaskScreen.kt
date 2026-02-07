@@ -66,7 +66,8 @@ import kotlin.concurrent.withLock
 fun TaskScreen(
     task: Task,
     autoClose: Boolean = false,
-    onBack: () -> Unit = {}
+    onBack: () -> Unit = {},
+    onDone: () -> Unit = {}
 ) {
     var currentName by remember { mutableStateOf(task.name) }
     var currentMessage by remember { mutableStateOf("准备中") }
@@ -125,6 +126,7 @@ fun TaskScreen(
             done = true
             currentMessage = "完成"
             currentFraction = 1f
+            onDone()
             if(autoClose) onBack()
         }.onFailure { error ->
             error.printStackTrace()
