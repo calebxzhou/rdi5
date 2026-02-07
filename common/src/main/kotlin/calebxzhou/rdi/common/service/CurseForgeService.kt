@@ -14,8 +14,8 @@ import calebxzhou.rdi.common.service.ModService.modLogo
 import calebxzhou.rdi.common.service.ModService.ofMirrorUrl
 import calebxzhou.rdi.common.service.ModService.readNeoForgeConfig
 import calebxzhou.rdi.common.service.ModService.toVo
-import calebxzhou.rdi.common.service.ModrinthService.mapModrinthProjects
-import calebxzhou.rdi.common.service.ModrinthService.mr2CfSlug
+import calebxzhou.rdi.common.service.ModrinthService.getMultipleProjects
+import calebxzhou.rdi.common.service.ModrinthService.getVersionsFromHashes
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -175,19 +175,24 @@ object CurseForgeService {
     }
 
     suspend fun List<CurseForgePackManifest.File>.mapMods(): List<Mod> {
-
-        // Fetch all mod info and file info in parallel
-        val modInfoMap = getModsInfo(map{it.projectId})
-            .associateBy { it.id }
-        //从modrinth读info是为了知道client side/ server side
-        val cfSlugMrInfo = modInfoMap.values.map { cfInfo ->
-            cfInfo.slug.cf2MrSlug
-        }.mapModrinthProjects().associateBy { it.slug.mr2CfSlug }
-
-        val fileInfoMap = getModFilesInfo(map { it.fileId })
-            .associateBy { it.id }
+        val modInfoMap = getModsInfo(map { it.projectId }).associateBy { it.id }
+        val fileInfoMap = getModFilesInfo(map { it.fileId }).associateBy { it.id }
+        val fileSha1Map = fileInfoMap.mapValues { (_, fileInfo) ->
+            fileInfo.hashes.firstOrNull { it.algo == 1 }?.value?.trim()?.lowercase().orEmpty()
+        }
+        val allSha1 = fileSha1Map.values.filter { it.isNotBlank() }.distinct()
+        val sha1ToMrVersion = if (allSha1.isEmpty()) {
+            emptyMap()
+        } else {
+            getVersionsFromHashes(allSha1)
+        }
+        val mrProjectMap = sha1ToMrVersion.values
+            .map { it.projectId }
+            .distinct()
+            .let { ids ->
+                if (ids.isEmpty()) emptyMap() else getMultipleProjects(ids).associateBy { it.id }
+            }
         val libraryModSlugs = arrayListOf<String>()
-        // Join the data by matching projectId and fileId
         return mapNotNull { curseFile ->
             val modInfo = modInfoMap[curseFile.projectId] ?: let {
                 lgr.error("mod ${curseFile.projectId}/${curseFile.fileId} 在mod info map没有信息")
@@ -198,7 +203,11 @@ object CurseForgeService {
                 lgr.error("mod ${curseFile.projectId}/${curseFile.fileId} file info map没有信息")
                 return@mapNotNull null
             }
-            val side = cfSlugMrInfo[cfSlug]?.run {
+            val mrProject = fileSha1Map[curseFile.fileId]
+                ?.takeIf { it.isNotBlank() }
+                ?.let { sha1ToMrVersion[it] }
+                ?.let { mrProjectMap[it.projectId] }
+            val side = mrProject?.run {
                 if(categories.contains("library")) {
                     libraryModSlugs+=cfSlug
                     return@run Mod.Side.BOTH
@@ -209,7 +218,7 @@ object CurseForgeService {
                 if (clientSide == "unsupported") {
                     return@run Mod.Side.SERVER
                 } else return@run Mod.Side.BOTH
-            } ?: Mod.Side.BOTH
+            } ?: Mod.Side.UNKNOWN
             Mod(
                 platform = "cf",
                 projectId = modInfo.id.toString(),

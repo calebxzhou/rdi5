@@ -105,15 +105,7 @@ object ModrinthService {
             val slug = project?.slug?.takeIf { it.isNotBlank() }
                 ?: entry.path.substringAfterLast('/').substringBeforeLast('.')
                     .ifBlank { version.projectId }
-            val side = project?.run {
-                if (serverSide == "unsupported") {
-                    return@run Mod.Side.CLIENT
-                }
-                if (clientSide == "unsupported") {
-                    return@run Mod.Side.SERVER
-                }
-                Mod.Side.BOTH
-            } ?: Mod.Side.BOTH
+            val side = project?.toModSide() ?: Mod.Side.UNKNOWN
             Mod(
                 platform = "mr",
                 projectId = version.projectId,
@@ -123,8 +115,8 @@ object ModrinthService {
                 side = side,
                 downloadUrls = entry.downloads
             )
-        }.fillModrinthVo()
-
+        }.fillModrinthVo(projects)
+        //有些mod mr没有 但是下载url里有cf file id 可以取出来去CF拿
         val unmatchedEntries = fileEntries.filterKeys { it !in hashVersions.keys }
         val cfFileIdByHash = unmatchedEntries.mapNotNull { (sha1, entry) ->
             val fileId = entry.downloads.firstNotNullOfOrNull { parseCurseForgeFileId(it) }
@@ -135,6 +127,28 @@ object ModrinthService {
         val cfModIds = cfFiles.map { it.modId }.distinct()
         val cfModInfos = CurseForgeService.getModsInfo(cfModIds)
         val cfModInfoMap = cfModInfos.associateBy { it.id }
+
+        // Some CF files are also on Modrinth but with different binary/hash.
+        // Resolve side info by CF slug -> MR slug mapping, then batch query MR projects.
+        val cfSlugToMrSlug = cfModInfos.associate { info ->
+            val mrSlug = CurseForgeService.slugBriefInfo[info.slug.trim().lowercase()]
+                ?.modrinthSlugs
+                ?.firstOrNull { it.isNotBlank() }
+                ?.trim()
+            info.slug to mrSlug
+        }
+        val mrCandidates = buildSet {
+            cfModInfos.forEach { info ->
+                cfSlugToMrSlug[info.slug]?.takeIf { it.isNotBlank() }?.let { add(it) }
+                info.slug.takeIf { it.isNotBlank() }?.let { add(it) }
+            }
+        }.toList()
+        val mrProjectBySlug = if (mrCandidates.isEmpty()) {
+            emptyMap()
+        } else {
+            getMultipleProjects(mrCandidates).associateBy { it.slug.trim().lowercase() }
+        }
+
         val matchedCfMods = cfFileIdByHash.mapNotNull { (sha1, fileId) ->
             val entry = unmatchedEntries[sha1] ?: return@mapNotNull null
             val cfFile = cfFileMap[fileId] ?: return@mapNotNull null
@@ -143,13 +157,18 @@ object ModrinthService {
                 lgr.warn { "找不到cf mod信息：${cfFile.id} ${cfFile.displayName}" }
                 return@mapNotNull null
             }
+            val mrProject = cfSlugToMrSlug[slug]
+                ?.takeIf { it.isNotBlank() }
+                ?.let { mrProjectBySlug[it.trim().lowercase()] }
+                ?: mrProjectBySlug[slug.trim().lowercase()]
+            val side = mrProject?.toModSide() ?: Mod.Side.UNKNOWN
             Mod(
                 platform = "cf",
                 projectId = modInfo.id.toString(),
                 slug = slug,
                 fileId = cfFile.id.toString(),
                 hash = cfFile.fileFingerprint.toString(),
-                side = Mod.Side.BOTH,
+                side = side,
                 downloadUrls = entry.downloads
             )
         }.fillCurseForgeVo()
@@ -165,6 +184,12 @@ object ModrinthService {
                 modloader = parsedModloader
             )
         )
+    }
+
+    private fun ModrinthProject.toModSide(): Mod.Side {
+        if (serverSide == "unsupported") return Mod.Side.CLIENT
+        if (clientSide == "unsupported") return Mod.Side.SERVER
+        return Mod.Side.BOTH
     }
 
     private fun parseCurseForgeFileId(url: String): Int? {
@@ -199,12 +224,12 @@ object ModrinthService {
         )
     }
 
-    suspend fun List<Mod>.fillModrinthVo(): List<Mod> {
+    suspend fun List<Mod>.fillModrinthVo(projects: List<ModrinthProject>?): List<Mod> {
         val modsNeedingVo = filter { it.vo == null && it.platform == "mr" }
         if (modsNeedingVo.isEmpty()) return this
 
         val projectIds = modsNeedingVo.map { it.projectId }.distinct()
-        val projects = getMultipleProjects(projectIds)
+        val projects = projects?:getMultipleProjects(projectIds)
         val projectMap = projects.associateBy { it.id }
 
         forEach { mod ->
@@ -245,34 +270,6 @@ object ModrinthService {
         val officialResponse = doRequest(OFFICIAL_URL)
         return officialResponse
     }
-
-    //ID / slugs
-    suspend fun List<String>.mapModrinthProjects(): List<ModrinthProject> {
-        val normalizedIds = asSequence()
-            .distinct()
-            .toList()
-
-        val chunkSize = 50
-        val projects = mutableListOf<ModrinthProject>()
-
-        normalizedIds.chunked(chunkSize).forEach { chunk ->
-            val response = mrreq("projects", params = mapOf("ids" to Json.encodeToString(chunk)))
-                .body<List<ModrinthProject>>()
-            projects += response
-
-            if (response.size != chunk.size) {
-                val missing = chunk.toSet() - response.map { it.id }.toSet() - response.map { it.slug }.toSet()
-                if (missing.isNotEmpty()) {
-                    lgr.debug { "Modrinth: ${missing.size} ids from chunk unmatched: ${missing.joinToString()}" }
-                }
-            }
-        }
-
-        lgr.info { "Modrinth: fetched ${projects.size} projects for ${normalizedIds.size} requested ids" }
-
-        return projects
-    }
-
     suspend fun getMultipleProjects(idSlugs: List<String>): List<ModrinthProject> {
         val normalizedIds = idSlugs.asSequence()
             .distinct()
