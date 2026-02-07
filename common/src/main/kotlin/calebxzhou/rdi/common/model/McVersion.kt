@@ -3,14 +3,14 @@ package calebxzhou.rdi.common.model
 //https://bmclapi2.bangbang93.com/mc/game/version_manifest_v2.json
 enum class McVersion(
     val mcVer: String,
-    val icon : String,
+    val icon: String,
     val jreVer: Int,
     //预留多loader支持
     val loaderVersions: Map<ModLoader, ModLoader.Version>
 ) {
 
     V211(
-        "1.21.1" ,
+        "1.21.1",
         "assets/icons/mace.png",
         21,
         // "https://piston-meta.mojang.com/v1/packages/a56257b4bc475ecac33571b51b68b33ac046fc72/1.21.1.json",
@@ -25,7 +25,7 @@ enum class McVersion(
     ),
     V201(
         "1.20.1",
-        "assets/icons/brush.png",21,
+        "assets/icons/brush.png", 21,
         // "https://piston-meta.mojang.com/v1/packages/9318a951bbc903b54a21463a7eb8c4d451f7b132/1.20.1.json",
         mapOf(
             ModLoader.forge to ModLoader.Version(
@@ -38,7 +38,7 @@ enum class McVersion(
     ),
     V192(
         "1.19.2",
-        "assets/icons/frog.png",21,
+        "assets/icons/frog.png", 21,
         mapOf(
             ModLoader.forge to ModLoader.Version(
                 ModLoader.forge,
@@ -51,7 +51,7 @@ enum class McVersion(
     ),
     V182(
         "1.18.2",
-        "assets/icons/copper.png",21,
+        "assets/icons/copper.png", 21,
         //https://piston-meta.mojang.com/v1/packages/334b33fcba3c9be4b7514624c965256535bd7eba/1.18.2.json
         mapOf(
             ModLoader.forge to ModLoader.Version(
@@ -64,7 +64,7 @@ enum class McVersion(
     ),
     V165(
         "1.16.5",
-        "assets/icons/zoglin.webp",8,
+        "assets/icons/zoglin.webp", 8,
         mapOf(
             ModLoader.forge to ModLoader.Version(
                 ModLoader.forge,
@@ -77,7 +77,10 @@ enum class McVersion(
 
     ;
 
-    companion object{
+    //1.16及以下 服务端核心
+    val serverJarName get() = "minecraft_server.${mcVer}.jar"
+
+    companion object {
         fun from(mcVer: String): McVersion? = entries.firstOrNull { it.mcVer == mcVer }
     }
 }

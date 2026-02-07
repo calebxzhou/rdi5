@@ -16,5 +16,12 @@ enum class ModLoader {
         val installerSha1: String
     ){
         val id get() = dirName.replace("${loader.name}-","")
+        val serverJarName get() ="forge-${id}.jar"
+        val serverArgsPath get() = { unix: Boolean ->
+             when (loader) {
+                neoforge -> "@libraries/net/neoforged/neoforge/"
+                forge -> "@libraries/net/minecraftforge/forge/"
+            } + "${id}/${if(unix) "unix" else "win"}_args.txt"
+        }
     }
 }
