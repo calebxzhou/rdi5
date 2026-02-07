@@ -2,13 +2,13 @@ package calebxzhou.rdi.common.moddata
 
 import calebxzhou.mykotutils.log.Loggers
 import calebxzhou.rdi.common.json
+import calebxzhou.rdi.common.net.ktorClient
 import calebxzhou.rdi.service.McmodService
 import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
@@ -19,58 +19,146 @@ import kotlin.math.max
 
 /**
  * calebxzhou @ 2025-10-14 14:40
+ * upd 26.02.07
  * 从mc百科获取mod的中文名称 简介 图标等信息 保存到mcmod_mod_data.json
  */
+internal val mcmodDataDir = File("mcmod-data").apply { mkdir() }
 val lgr by Loggers
-fun main() {
-    //1.21.1 neoforge
-    val baseUrl = "https://www.mcmod.cn/modlist.html?mcver=1.21.1&platform=1&api=13&sort=createtime"
-    runBlocking {
-        val mods = fetchAllPages(baseUrl)
-        lgr.info { "抓取完成：共 ${mods.size} 个模组" }
-        File("mcmod_mod_data.json").writeText(mods.json)
-    }
+suspend fun main() {
+    listOf("1.7.10", "1.12.2", "1.16.5", "1.18.2", "1.20.1", "1.21.1")
+        .forEach { fetchAllPages("https://www.mcmod.cn/modlist.html?mcver=${it}&platform=1&sort=createtime") }
 }
+
 //mc百科的mod信息
 @Serializable
 data class McmodModBriefInfo(
     //页面id  /class/{id}.html
     val id: Int,
     val logoUrl: String,
-    val name:String,
+    val name: String,
     //中文名
-    val nameCn: String?=null,
+    val nameCn: String? = null,
     //一句话介绍
     val intro: String,
 )
 
-private suspend fun fetchAllPages(baseUrl: String): List<McmodModBriefInfo> {
-    val results = arrayListOf<McmodModBriefInfo>()
+private val MCVER_REGEX = Regex("[?&]mcver=([^&]+)")
 
-    val firstDoc = loadPageDocument(buildPageUrl(baseUrl, null)) ?: return results
-    val firstPageInfo = parsePageInfo(firstDoc)
-    val startPage = firstPageInfo.currentPage
-    val totalPages = max(firstPageInfo.totalPages, startPage)
-    val expectedTotalItems = firstPageInfo.totalItems
+private fun extractMcVer(url: String): String {
+    return MCVER_REGEX.find(url)?.groupValues?.get(1) ?: "unknown"
+}
 
-    lgr.info("当前 ${firstPageInfo.currentPage} / ${totalPages} 页，共计 ${expectedTotalItems} 条")
+private fun getJsonFile(mcVer: String, page: Int): File {
+    return File(mcmodDataDir, "${mcVer}_${page}.json")
+}
 
-    results += extractModInfos(firstDoc)
+private fun getHtmlFile(mcVer: String, page: Int): File {
+    return File(mcmodDataDir, "${mcVer}_${page}.html")
+}
 
-    var page = max(startPage, 1)
+private suspend fun fetchAllPages(baseUrl: String) {
+    lgr.info { baseUrl }
+    val mcVer = extractMcVer(baseUrl)
 
-    while (page < totalPages) {
-        page += 1
-        val pageUrl = buildPageUrl(baseUrl, page)
-        val document = loadPageDocument(pageUrl) ?: break
-        val pageInfo = parsePageInfo(document)
-        lgr.info("当前 ${pageInfo.currentPage} / ${totalPages} 页，共计 ${expectedTotalItems} 条")
-        results += extractModInfos(document)
-        delay(500)
+    // Phase 1: Download all HTML pages
+    lgr.info("=== 阶段1: 下载HTML ===")
+    val totalPages = downloadAllHtmlPages(baseUrl, mcVer)
+
+    // Phase 2: Parse all HTML to JSON
+    lgr.info("=== 阶段2: 解析HTML到JSON ===")
+    parseAllHtmlToJson(mcVer, totalPages)
+
+    lgr.info("$mcVer 完成")
+}
+
+private suspend fun downloadAllHtmlPages(baseUrl: String, mcVer: String): Int {
+    // Check if first page JSON exists to skip, otherwise download HTML
+    val firstJsonFile = getJsonFile(mcVer, 1)
+    val firstHtmlFile = getHtmlFile(mcVer, 1)
+
+    var totalPages = 1
+
+    // Need to fetch first page to get total pages count (unless we already have all JSONs)
+    if (firstJsonFile.exists()) {
+        lgr.info("跳过已存在: ${firstJsonFile.name}")
+        // Try to infer total pages from existing files
+        val existingJsonFiles = mcmodDataDir.listFiles { f ->
+            f.name.startsWith("${mcVer}_") && f.name.endsWith(".json")
+        } ?: emptyArray()
+        totalPages = existingJsonFiles.mapNotNull {
+            it.nameWithoutExtension.substringAfter("${mcVer}_").toIntOrNull()
+        }.maxOrNull() ?: 1
+
+        // Still need to check actual total from server
+        val firstHtml = downloadPageHtml(buildPageUrl(baseUrl, null))
+        if (firstHtml != null) {
+            val doc = Jsoup.parse(firstHtml, baseUrl)
+            val pageInfo = parsePageInfo(doc)
+            totalPages = max(pageInfo.totalPages, totalPages)
+        }
+    } else if (firstHtmlFile.exists()) {
+        lgr.info("HTML已存在: ${firstHtmlFile.name}")
+        val doc = Jsoup.parse(firstHtmlFile.readText(), baseUrl)
+        val pageInfo = parsePageInfo(doc)
+        totalPages = max(pageInfo.totalPages, pageInfo.currentPage)
+    } else {
+        val firstHtml = downloadPageHtml(buildPageUrl(baseUrl, null)) ?: return 0
+        firstHtmlFile.writeText(firstHtml)
+        lgr.info("已下载: ${firstHtmlFile.name}")
+
+        val doc = Jsoup.parse(firstHtml, baseUrl)
+        val pageInfo = parsePageInfo(doc)
+        totalPages = max(pageInfo.totalPages, pageInfo.currentPage)
     }
 
-    lgr.info("合计收集 ${results.size} / ${expectedTotalItems} 条")
-    return results
+    lgr.info("共 ${totalPages} 页")
+
+    // Download remaining pages sequentially with 100ms delay
+    for (page in 2..totalPages) {
+        val jsonFile = getJsonFile(mcVer, page)
+        val htmlFile = getHtmlFile(mcVer, page)
+        
+        if (jsonFile.exists()) {
+            lgr.info("跳过已存在: ${jsonFile.name}")
+            continue
+        }
+        
+        if (htmlFile.exists()) {
+            lgr.info("HTML已存在: ${htmlFile.name}")
+            continue
+        }
+        
+        val pageUrl = buildPageUrl(baseUrl, page)
+        val html = downloadPageHtml(pageUrl) ?: continue
+        htmlFile.writeText(html)
+        lgr.info("已下载: ${htmlFile.name} ($page/$totalPages)")
+        
+        delay(100)
+    }
+    
+    return totalPages
+}
+
+private fun parseAllHtmlToJson(mcVer: String, totalPages: Int) {
+    for (page in 1..totalPages) {
+        val jsonFile = getJsonFile(mcVer, page)
+        val htmlFile = getHtmlFile(mcVer, page)
+
+        if (jsonFile.exists()) {
+            lgr.info("跳过已存在: ${jsonFile.name}")
+            continue
+        }
+
+        if (!htmlFile.exists()) {
+            lgr.warn("HTML文件不存在: ${htmlFile.name}")
+            continue
+        }
+
+        val doc = Jsoup.parse(htmlFile.readText(), "https://www.mcmod.cn/")
+        val modInfos = extractModInfos(doc)
+        jsonFile.writeText(modInfos.json)
+        lgr.info("已解析: ${htmlFile.name} -> ${jsonFile.name} (${modInfos.size}条)")
+    }
 }
 
 private fun buildPageUrl(baseUrl: String, page: Int?): String {
@@ -81,28 +169,50 @@ private fun buildPageUrl(baseUrl: String, page: Int?): String {
                 "${match.groupValues[1]}page=$page"
             }
         }
+
         baseUrl.contains('?') -> "$baseUrl&page=$page"
         else -> "$baseUrl?page=$page"
     }
 }
 
-private suspend fun loadPageDocument(url: String): Document? {
+private suspend fun downloadPageHtml(url: String, maxRetries: Int = 10): String? {
     val headers = headersForUrl(url)
-    val response = HttpClient().request {
-        url(url)
-        method = HttpMethod.Get
-        headers.forEach { (name, value) -> header(name, value) }
+    var retryCount = 0
+
+    while (true) {
+        val response = ktorClient.let { client ->
+            client.request {
+                url(url)
+                method = HttpMethod.Get
+                headers.forEach { (name, value) -> header(name, value) }
+            }
+        }
+
+
+        if (response.status.value == 429) {
+            retryCount++
+            if (retryCount > maxRetries) {
+                lgr.warn("请求mcmod列表页失败: HTTP 429 重试次数已达上限 url=$url")
+                return null
+            }
+            val waitTime = 500L * retryCount // Backoff: 1s, 2s, 3s...
+            lgr.warn("HTTP 429 限流，等待 ${waitTime}ms 后重试 ($retryCount/$maxRetries)")
+            delay(waitTime)
+            continue
+        }
+
+        if (response.status.value !in 200..299) {
+            lgr.warn("请求mcmod列表页失败: HTTP ${response.status.value} url=$url")
+            return null
+        }
+
+        val body = response.bodyAsText()
+        if (body.isBlank()) {
+            lgr.warn("mcmod列表页返回空内容，url=$url")
+            return null
+        }
+        return body
     }
-    if (response.status.value !in 200..299) {
-        lgr.warn("请求mcmod列表页失败: HTTP ${response.status.value} url=$url")
-        return null
-    }
-    val body = response.bodyAsText()
-    if (body.isBlank()) {
-        lgr.warn("mcmod列表页返回空内容，url=$url")
-        return null
-    }
-    return Jsoup.parse(body, url)
 }
 
 private fun headersForUrl(url: String): List<Pair<String, String>> {
@@ -143,8 +253,8 @@ private fun parsePageInfo(document: Document): PageInfo {
 
 private val CLASS_ID_REGEX = Regex("/class/(\\d+).html")
 
-private fun extractModInfos(document: Document): List<  McmodModBriefInfo> {
-    val result = arrayListOf< McmodModBriefInfo>()
+private fun extractModInfos(document: Document): List<McmodModBriefInfo> {
+    val result = arrayListOf<McmodModBriefInfo>()
 
     val blocks = document.select(".modlist-block")
     if (blocks.isEmpty()) {
@@ -193,7 +303,7 @@ private fun extractModInfos(document: Document): List<  McmodModBriefInfo> {
             intro = intro
         )
         lgr.info("$name $nameCn $pageId")
-        result+= info
+        result += info
     }
 
     lgr.info("页面解析完成，共 ${result.size} 个mod")

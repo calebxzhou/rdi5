@@ -9,12 +9,6 @@ import java.io.File
  * 读取pcl的mod简要信息
  * https://raw.githubusercontent.com/Meloong-Git/PCL/refs/heads/main/Plain%20Craft%20Launcher%202/Resources/ModData.txt
  */
-fun main() {
-    System.setProperty("java.net.useSystemProxies","true")
-    val entries = parsePclModData(File("ModData.txt").readText())
-    lgr.info("已解析 ${entries.size} 条PCL模组简要信息")
-    File("pcl_mod_data.json").writeText(entries.json)
-}
 @Serializable
 data class PCLModBriefInfo(
     val mcmodId: Int,
@@ -24,7 +18,7 @@ data class PCLModBriefInfo(
     val modrinthSlugs: List<String>,
 )
 //from PCL2/ModComp.vb
-private fun parsePclModData(raw: String): List<PCLModBriefInfo> {
+internal fun parsePclModData(raw: String): List<PCLModBriefInfo> {
     val normalized = raw.replace("\r\n", "\n").replace("\r", "")
     val result = mutableListOf<PCLModBriefInfo>()
 
