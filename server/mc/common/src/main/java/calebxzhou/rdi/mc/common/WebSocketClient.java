@@ -7,8 +7,8 @@ import com.neovisionaries.ws.client.WebSocketAdapter;
 import com.neovisionaries.ws.client.WebSocketException;
 import com.neovisionaries.ws.client.WebSocketFactory;
 import com.neovisionaries.ws.client.WebSocketFrame;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.util.List;
@@ -25,7 +25,7 @@ import static calebxzhou.rdi.mc.common.RDI.IHQ_URL;
  */
 public class WebSocketClient {
     private static int reqId = 0;
-    private static final Logger lgr = LoggerFactory.getLogger("rdi-ws-client");
+    private static final Logger lgr = LogManager.getLogger("rdi-ws-client");
     private static final Gson gson = new GsonBuilder().create();
     private static final int CONNECT_TIMEOUT_MS = 10_000;
     private static final ScheduledExecutorService reconnectExecutor = Executors.newSingleThreadScheduledExecutor(r -> {

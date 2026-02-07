@@ -1,13 +1,13 @@
 package calebxzhou.rdi.mc.common;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * calebxzhou @ 2026-01-06 23:56
  */
 public class RDI {
-    private static final Logger lgr = LoggerFactory.getLogger("rdi");
+    private static final Logger lgr = LogManager.getLogger("rdi");
     public static final String IHQ_URL;
     public static final String HOST_ID;
     public static final Boolean ALL_OP;
