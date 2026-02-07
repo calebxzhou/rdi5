@@ -320,7 +320,7 @@ object ModpackService {
     }
     data class UploadPayload(
         val sourceDir: File,
-        val mods: List<Mod>,
+        var mods: MutableList<Mod>,
         val mcVersion: McVersion,
         val modloader: ModLoader,
         val sourceName: String,
@@ -328,8 +328,7 @@ object ModpackService {
     )
 
     data class ParsedUploadPayload(
-        val payload: UploadPayload,
-        val mods: List<Mod>
+        val payload: UploadPayload
     )
 
     suspend fun parseUploadPayload(
@@ -364,7 +363,10 @@ object ModpackService {
             val mcVersion = loaded.mcVersion
             val modloader = loaded.modloader
             val versionName = loaded.index.versionId.ifBlank { "1.0" }
-            val mods = (loaded.mods + embeddedMatches.mods).distinctBy { "${it.platform}:${it.projectId}:${it.fileId}:${it.hash}" }
+            val mods = (loaded.mods + embeddedMatches.mods)
+                .distinctBy { "${it.platform}:${it.projectId}:${it.fileId}:${it.hash}" }
+                .toMutableList()
+            ModService.run { mods.postProcessModSides() }
             return ParsedUploadPayload(
                 UploadPayload(
                     sourceDir = prepared.rootDir,
@@ -373,8 +375,7 @@ object ModpackService {
                     modloader = modloader,
                     sourceName = loaded.index.name,
                     sourceVersion = versionName
-                ),
-                mods
+                )
             )
         }
 
@@ -395,7 +396,10 @@ object ModpackService {
 
             return try {
                 val baseMods = modpackData.manifest.files.mapMods()
-                val mods = (baseMods + embeddedMatches.mods).distinctBy { "${it.platform}:${it.projectId}:${it.fileId}:${it.hash}" }
+                val mods = (baseMods + embeddedMatches.mods)
+                    .distinctBy { "${it.platform}:${it.projectId}:${it.fileId}:${it.hash}" }
+                    .toMutableList()
+                ModService.run { mods.postProcessModSides() }
                 val mcVersion = McVersion.from(modpackData.manifest.minecraft.version)
                 if (mcVersion == null) {
                     onError("不支持的MC版本: ${modpackData.manifest.minecraft.version}")
@@ -418,9 +422,8 @@ object ModpackService {
                         modloader = modloader,
                         sourceName = modpackData.manifest.name,
                         sourceVersion = modpackData.manifest.version.ifBlank { "1.0" }
-                ),
-                mods
-            )
+                    )
+                )
         } catch (e: Exception) {
             onError("解析整合包失败: ${e.message}")
             onProgress("解析整合包失败: ${e.message}")

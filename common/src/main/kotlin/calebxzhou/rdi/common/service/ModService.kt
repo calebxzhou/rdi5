@@ -468,5 +468,40 @@ object ModService {
         lgr.error(lastError) { "Failed to download mod ${mod.slug} from all ${urls.size} URLs" }
         return Result.failure(lastError ?: IllegalStateException("No download URLs available"))
     }
+
+    fun MutableList<Mod>.postProcessModSides(): MutableList<Mod> {
+        if (isEmpty()) return this
+
+        val forceBoth = setOf(
+            "loot-beams-refork",
+            "particular-reforged",
+            "inventory-profiles-next",
+            "inventory-tweaks-refoxed",
+            "just-enough-resources-jer",
+            "radiant-gear",
+            "fusion-connected-textures",
+            "apothic-attributes",
+            "the-twilight-forest",
+        )
+        val forceClient = setOf(
+            "status-effect-bars-reforged",
+            "mafglib",
+            "flighthud-reborn",
+            "i18nupdatemod",
+            "modern-ui",
+            "controllable"
+        )
+
+        forEach { mod ->
+            val slug = mod.slug.trim().lowercase()
+            when {
+                slug.startsWith("ftb") -> mod.side = Mod.Side.BOTH
+                slug in forceBoth -> mod.side = Mod.Side.BOTH
+                slug in forceClient -> mod.side = Mod.Side.CLIENT
+            }
+            mod.vo = mod.vo?.copy(side = mod.side)
+        }
+        return this
+    }
 }
 
