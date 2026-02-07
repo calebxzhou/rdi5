@@ -37,6 +37,8 @@ object GameService {
     private val lgr by Loggers
     var started = false
         private set
+    var serverStarted = false
+        private set
     val DIR = File(RDIClient.DIR, "mc").apply { mkdirs() }
     private val libsDir = DIR.resolve("libraries").apply { mkdirs() }
     private val assetsDir = DIR.resolve("assets").apply { mkdirs() }
@@ -234,17 +236,19 @@ object GameService {
 
     private suspend fun downloadLibraryArtifact(
         library: MojangLibrary,
+        installer: File? = null,
         onProgress: (DownloadProgress) -> Unit
     ): Result<File> {
         val artifact = library.downloads.artifact
         val relativePath = artifact.path ?: return Result.failure(IllegalStateException("缺少库路径"))
         val target = File(libsDir, relativePath)
-        return downloadLibraryArtifact(artifact, target, onProgress)
+        return downloadLibraryArtifact(artifact, target, installer, onProgress)
     }
 
     private suspend fun downloadLibraryArtifact(
         artifact: MojangDownloadArtifact,
         target: File,
+        installer: File? = null,
         onProgress: (DownloadProgress) -> Unit
     ): Result<File> {
         if (target.exists()) {
@@ -253,15 +257,32 @@ object GameService {
                 return Result.success(target)
             }
         }
-        //net/minecraftforge/forge/1.16.5-36.2.42/forge-1.16.5-36.2.42.jar 下不了 跳过 universal已经有了
-        if (artifact.sha1 == "caca08d22543cbe101d64d171738e1ff6eef4de3")
-            return Result.success(target)
         target.parentFile?.mkdirs()
+
+        // Older Forge installers may provide libraries with empty URL.
+        // Prefer extracting them from installer's maven/ tree.
+        val rawUrl = artifact.url.trim()
+        if (rawUrl.isEmpty()) {
+            val extracted = tryExtractLibraryFromInstaller(installer, artifact, target)
+            if (extracted) {
+                val extractedSha = runCatching { target.sha1 }.getOrNull()
+                if (extractedSha != null && extractedSha.equals(artifact.sha1, true)) {
+                    onProgress(DownloadProgress(target.length(), target.length(), 0.0))
+                    return Result.success(target)
+                }
+                target.delete()
+            }
+        }
+
+        val resolvedUrl = resolveArtifactUrl(artifact)
+        if (resolvedUrl.isBlank()) {
+            throw IllegalStateException("${target.name} 下载链接为空")
+        }
         val maxRetries = 4
         var attempt = 0
         while (true) {
             val result = target.toPath().downloadFileFrom(
-                url = if (attempt < 2) artifact.url.rewriteMirrorUrl else artifact.url,
+                url = if (attempt < 2) resolvedUrl.rewriteMirrorUrl else resolvedUrl,
                 knownSize = artifact.size
             ) { progress ->
                 onProgress(progress)
@@ -290,6 +311,30 @@ object GameService {
             }
             return Result.success(target)
         }
+    }
+
+    private fun tryExtractLibraryFromInstaller(
+        installer: File?,
+        artifact: MojangDownloadArtifact,
+        target: File
+    ): Boolean {
+        val installerFile = installer ?: return false
+        if (!installerFile.exists()) return false
+        val path = artifact.path?.trimStart('/') ?: return false
+        return runCatching {
+            ZipFile(installerFile).use { zip ->
+                val entry = zip.getEntry("maven/$path")
+                    ?: zip.getEntry(path)
+                    ?: return false
+                target.parentFile?.mkdirs()
+                zip.getInputStream(entry).use { input ->
+                    target.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                true
+            }
+        }.getOrElse { false }
     }
 
     private fun resolveArtifactUrl(artifact: MojangDownloadArtifact): String {
@@ -682,7 +727,7 @@ object GameService {
                     downloadServer(holder, ctx)
                 },
                 Task.Leaf("下载$loader 依赖") { ctx ->
-                    downloadLibrariesTask(holder.loaderLibraries, ctx)
+                    downloadLibrariesTask(holder.loaderLibraries, ctx, holder.installer)
                 },
                 Task.Leaf("下载Mojmap") { ctx ->
                     downloadMojmapIfNeededTask(holder, ctx)
@@ -755,13 +800,34 @@ object GameService {
         ctx.emitProgress(TaskProgress("解析完成", 1f))
     }
 
-    private suspend fun downloadLibrariesTask(libraries: List<MojangLibrary>, ctx: TaskContext) {
-        downloadLibraries(libraries).execute(ctx)
+    private suspend fun downloadLibrariesTask(
+        libraries: List<MojangLibrary>,
+        ctx: TaskContext,
+        installer: File? = null
+    ) {
+        val filtered = libraries.filter { it.shouldDownloadByArch() }
+        if (filtered.isEmpty()) {
+            ctx.emitProgress(TaskProgress("无需下载", 1f))
+            return
+        }
+        val task = Task.Group(
+            name = "下载${filtered.size}个运行库",
+            subTasks = filtered.map { library ->
+                Task.Leaf("运行库 ${library.name}") { childCtx ->
+                    downloadSingleLibrary(library, childCtx, installer)
+                }
+            }
+        )
+        task.execute(ctx)
     }
 
-    private suspend fun downloadSingleLibrary(library: MojangLibrary, ctx: TaskContext) {
+    private suspend fun downloadSingleLibrary(
+        library: MojangLibrary,
+        ctx: TaskContext,
+        installer: File? = null
+    ) {
         ctx.emitProgress(TaskProgress("开始下载...", 0f))
-        downloadLibraryArtifact(library) { progress ->
+        downloadLibraryArtifact(library, installer = installer) { progress ->
             ctx.emitProgress(
                 TaskProgress(
                     "${library.name} ${progress.bytesDownloaded.humanFileSize}/${progress.totalBytes.humanFileSize}",
@@ -772,7 +838,7 @@ object GameService {
         library.nativeArtifact()?.let { nativeArtifact ->
             val nativePath = nativeArtifact.path ?: return@let
             val nativeFile = File(libsDir, nativePath)
-            downloadLibraryArtifact(nativeArtifact, nativeFile) { progress ->
+            downloadLibraryArtifact(nativeArtifact, nativeFile, installer = installer) { progress ->
                 ctx.emitProgress(
                     TaskProgress(
                         "${library.name} ${progress.bytesDownloaded.humanFileSize}/${progress.totalBytes.humanFileSize}",
@@ -916,6 +982,66 @@ object GameService {
         return Result.success(target)
     }
 
+    fun startServer(mcVer: McVersion,loaderVer: ModLoader.Version, workDir: File, onLine: (String) -> Unit): Process {
+        val jrePath = when (mcVer.jreVer) {
+            8 -> {
+                CONF.jre8Path ?: RDIClient.JRE8
+            }
+            else -> {
+                CONF.jre21Path ?: RDIClient.JRE21
+            }
+        }
+        val command = mutableListOf(
+            jrePath,
+            "-Xmx6G",
+        ).apply {
+            when(mcVer){
+                McVersion.V182,
+                McVersion.V192,
+                McVersion.V201,
+                McVersion.V211 -> {
+                    this += loaderVer.serverArgsPath(hostOs.isUnixLike)
+                    this += "%*"
+                }
+                McVersion.V165 -> {
+                    if(loaderVer.loader == ModLoader.forge){
+                        val jarFileName ="forge-${loaderVer.id}.jar"
+                        this += "-jar"
+                        this += jarFileName
+                        Files.createSymbolicLink(workDir.resolve(jarFileName).toPath(),DIR.resolve(jarFileName).toPath())
+                    }
+                }
+            }
+            this += "--nogui"
+        }
+        workDir.resolve("eula.txt").writeText("eula=true")
+        val process = ProcessBuilder(command)
+            .directory(workDir)
+            .redirectErrorStream(true)
+            .start()
+        serverStarted = true
+        thread(name = "mc-server-log-reader", isDaemon = true) {
+            try {
+                process.inputStream.bufferedReader(StandardCharsets.UTF_8).useLines { lines ->
+                    lines.forEach { line ->
+                        if (line.isNotBlank()) {
+
+                            onLine(line)
+                        }
+                    }
+                }
+                val exitCode = process.waitFor()
+                if (exitCode != 0) {
+                    onLine("启动结束，退出代码: $exitCode")
+                } else {
+                    onLine("已退出")
+                }
+            } finally {
+                serverStarted = false
+            }
+        }
+        return process
+    }
     fun start(mcVer: McVersion, versionId: String, vararg jvmArgs: String, onLine: (String) -> Unit): Process {
         val loaderManifest = mcVer.loaderManifest
         val manifest = mcVer.manifest
