@@ -1,11 +1,20 @@
-package calebxzhou.rdi.master.service
+package calebxzhou.rdi.common.service
 
-import calebxzhou.rdi.master.exception.RequestError
 import calebxzhou.rdi.common.serdesJson
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.jsonPrimitive
 import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
 import java.io.DataOutputStream
@@ -59,9 +68,7 @@ data class McServerPingResult(
     val raw: JsonObject
 )
 
-suspend fun main() {
-    println(McServerPinger.ping(50934,"192.168.1.7"))
-}
+class McServerPingException(message: String) : RuntimeException(message)
 
 object McServerPinger {
     private const val DEFAULT_PROTOCOL_VERSION = 763
@@ -89,14 +96,14 @@ object McServerPinger {
                 }
             }
         } catch (e: TimeoutCancellationException) {
-            throw RequestError("Minecraft 服务器状态请求超时 (${timeoutMillis}ms)")
+            throw McServerPingException("Minecraft 服务器状态请求超时 (${timeoutMillis}ms)")
         } catch (e: CancellationException) {
             throw e
-        } catch (e: RequestError) {
+        } catch (e: McServerPingException) {
             throw e
         } catch (e: Throwable) {
             val message = e.message?.takeIf { it.isNotBlank() } ?: e::class.simpleName ?: "未知错误"
-            throw RequestError("Minecraft 服务器状态请求失败: $message")
+            throw McServerPingException("Minecraft 服务器状态请求失败: $message")
         }
     }
 
@@ -118,7 +125,7 @@ object McServerPinger {
 
         val jsonElement = serdesJson.parseToJsonElement(statusJson)
         val jsonObject = jsonElement as? JsonObject
-            ?: throw RequestError("Minecraft 服务器返回的状态格式异常")
+            ?: throw McServerPingException("Minecraft 服务器返回的状态格式异常")
         val payload = serdesJson.decodeFromJsonElement<McServerStatusPayload>(jsonObject)
         return payload.toResult(latency, ip, port, jsonObject)
     }
@@ -154,11 +161,11 @@ object McServerPinger {
 
     private fun readStatusResponse(input: DataInputStream, charset: Charset): String {
         val packetLength = input.readVarInt()
-        if (packetLength <= 0) throw RequestError("Minecraft 服务器未返回状态数据")
+        if (packetLength <= 0) throw McServerPingException("Minecraft 服务器未返回状态数据")
 
         val packetId = input.readVarInt()
         if (packetId != STATUS_RESPONSE_PACKET_ID) {
-            throw RequestError("Minecraft 服务器返回了未知的状态包 (id=$packetId)")
+            throw McServerPingException("Minecraft 服务器返回了未知的状态包 (id=$packetId)")
         }
 
         val jsonLength = input.readVarInt()
@@ -182,7 +189,7 @@ object McServerPinger {
         output.write(payload)
         output.flush()
 
-        input.readVarInt() // response length, ignored
+        input.readVarInt()
         val echoedTimestamp = input.readLong()
         return (System.currentTimeMillis() - echoedTimestamp).coerceAtLeast(0)
     }
@@ -218,7 +225,7 @@ private fun DataInputStream.readVarInt(): Int {
         numRead++
 
         if (numRead > 5) {
-            throw RequestError("收到了无效的 VarInt 编码")
+            throw McServerPingException("收到了无效的 VarInt 编码")
         }
 
         if ((read and 0x80) != 0x80) {
