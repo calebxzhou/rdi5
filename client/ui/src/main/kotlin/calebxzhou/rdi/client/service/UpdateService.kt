@@ -63,7 +63,7 @@ object UpdateService {
     ) {
         runCatching {
             onStatus("正在检查更新...")
-            val mcTargets = McVersion.entries.flatMap { mcVer ->
+            val mcTargets = McVersion.entries.filter { it.enabled }.flatMap { mcVer ->
                 mcVer.loaderVersions.keys.map { loader ->
                     val slug = "${mcVer.mcVer}-${loader.name.lowercase()}"
                     slug to DL_MOD_DIR.resolve("rdi-5-mc-client-$slug.jar").absoluteFile
