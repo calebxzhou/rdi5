@@ -953,14 +953,16 @@ object HostService {
                     }
                 }
             //1.16.5以下装入核心
-            this += Mount()
-                .withType(MountType.BIND)
-                .withSource(sharedLibsDir.resolve(loaderVer.serverJarName).absolutePath)
-                .withTarget("/opt/server/${loaderVer.serverJarName}")
-            this += Mount()
-                .withType(MountType.BIND)
-                .withSource(sharedLibsDir.resolve(modpack.mcVer.serverJarName).absolutePath)
-                .withTarget("/opt/server/${modpack.mcVer.serverJarName}")
+            if(modpack.mcVer == McVersion.V165){
+                this += Mount()
+                    .withType(MountType.BIND)
+                    .withSource(sharedLibsDir.resolve(loaderVer.serverJarName).absolutePath)
+                    .withTarget("/opt/server/${loaderVer.serverJarName}")
+                this += Mount()
+                    .withType(MountType.BIND)
+                    .withSource(sharedLibsDir.resolve(modpack.mcVer.serverJarName).absolutePath)
+                    .withTarget("/opt/server/${modpack.mcVer.serverJarName}")
+            }
 
             if (worldId != null) {
                 //使用存档
