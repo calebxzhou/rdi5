@@ -64,6 +64,29 @@ object DockerService {
         client.listContainersCmd()
             .withShowAll(includeStopped)
             .exec()
+    /**
+     * Limit CPU after container has started
+     * @param cpuQuota CPU quota in microseconds (100000 = 1 CPU core)
+     * @param cpuPeriod CPU period in microseconds (default 100000)
+     */
+    fun limitCpu(containerName: String, cpuQuota: Long, cpuPeriod: Long = 100_000L) {
+        findContainer(containerName)?.run {
+            client.updateContainerCmd(id)
+                .withCpuQuota(cpuQuota)
+                .withCpuPeriod(cpuPeriod)
+                .exec()
+        }
+    }
+
+    /**
+     * Limit to specific number of CPU cores
+     * @param cores Number of CPU cores (e.g., 0.5 for half a core, 2.0 for 2 cores)
+     */
+    fun limitCpuCores(containerId: String, cores: Double) {
+        val cpuPeriod = 100_000L
+        val cpuQuota = (cores * cpuPeriod).toLong()
+        limitCpu(containerId, cpuQuota, cpuPeriod)
+    }
 
     fun createContainer(
         port: Int,
@@ -76,7 +99,7 @@ object DockerService {
 
         val hostConfig = HostConfig.newHostConfig()
             .withPortBindings(parse("$port:$port"))
-            .withCpuCount(2L)  // Limit to 2 CPUs
+            .withCpuCount(6L)
             .withMemory(6L * 1024 * 1024 * 1024)  // 8GB RAM limit
             .withMemorySwap(10L * 1024 * 1024 * 1024)  //4G swap
             .withPidsLimit(512L)
