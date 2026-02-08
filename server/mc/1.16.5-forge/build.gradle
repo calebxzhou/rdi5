@@ -22,7 +22,8 @@ evaluationDependsOn(":s-mc-common")
 sourceCompatibility = targetCompatibility = compileJava.sourceCompatibility = compileJava.targetCompatibility = '1.8'
 
 mixin {
-    add sourceSets.main, "rdi.refmap.json"
+    add sourceSets.main, "rdi.mixins.refmap.json"
+    config "rdi.mixins.json"  // Add this line
 }
 
 minecraft {
@@ -49,27 +50,28 @@ sourceSets {
         java {
             srcDir project(":s-mc-common").sourceSets.main.java.srcDirs
         }
-        resources {
-            srcDir 'src/generated/resources'
-        }
     }
 }
-def shadedConfiguration = configurations.maybeCreate('shaded')
-configurations {
-    implementation.extendsFrom shaded
-}
+jarJar.enable()
 dependencies {
     minecraft "net.minecraftforge:forge:${project.mcVersion}-${project.forgeVersion}"
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
     evaluationDependsOn(':s-mc-common')
     implementation project(':s-mc-common')
 //    additionalRuntimeClasspath project(':s-mc-common')
-    shaded 'com.neovisionaries:nv-websocket-client:2.14'
+    jarJar(implementation('com.neovisionaries:nv-websocket-client:[2.0,3)'))
+}
+tasks.named('jarJar') {
+    archiveClassifier = ''
 }
 
+// Also disable the regular jar if you only want the jarJar output
+tasks.named('jar') {
+    archiveClassifier = 'slim'  // or use enabled = false to skip it entirely
+}
 jar {
-    from {
-        shadedConfiguration.collect { it.isDirectory() ? it : zipTree(it) }
+    from(sourceSets.main.output) {
+        include "rdi.mixins.refmap.json"
     }
     manifest {
         attributes(["Specification-Title"     : project.name,
