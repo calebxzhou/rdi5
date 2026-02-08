@@ -57,6 +57,7 @@ fun LoginScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var okMessage by remember { mutableStateOf<String?>(null) }
     var symlinkError by remember { mutableStateOf<String?>(null) }
+    var updateCheckComplete by remember { mutableStateOf(false) }
 
     fun attemptLogin() {
         if (qq.isBlank() || pwd.isBlank()) {
@@ -95,6 +96,7 @@ fun LoginScreen(
         if (server.noUpdate) {
             updateStatus = "已跳过更新"
             updateDetail = ""
+            updateCheckComplete = true
         } else {
             UpdateService.startUpdateFlow(
                 onStatus = { updateStatus = it; lgr.info { it } },
@@ -108,6 +110,7 @@ fun LoginScreen(
                     exitProcess(0)
                 }
             )
+            updateCheckComplete = true
         }
     }
     LaunchedEffect(okMessage) {
@@ -230,7 +233,7 @@ fun LoginScreen(
                         onClick = {
                             attemptLogin()
                         },
-                        enabled = !submitting
+                        enabled = !submitting && updateCheckComplete
                     ) {
                         Text(if (submitting) "登录中..." else "登录")
                     }
