@@ -3,7 +3,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 val ktorVersion = "3.3.3"
-val version = "5.10.6.1"
+val version = "5.10.7"
 project.version = version
 plugins {
     kotlin("jvm") version "2.2.21"
@@ -89,7 +89,10 @@ dependencies {
     testImplementation(kotlin("test"))
     implementation("io.netty:netty-all:4.2.7.Final")
     implementation(project(":common"))
+
     implementation("com.github.Towdium:PinIn:1.6.0")
+// Source: https://mvnrepository.com/artifact/net.raphimc/MinecraftAuth
+    implementation("net.raphimc:MinecraftAuth:5.0.0")
 
     runtimeOnly("org.hotswapagent:hotswap-agent-core:2.0.1")
     implementation("com.github.oshi:oshi-core:6.9.1")
@@ -189,7 +192,7 @@ tasks.register<Exec>("makeShipPack") {
    // dependsOn(tasks.named("出core2-local"))
 
     val shipDir = layout.projectDirectory.dir("${System.getProperty("user.home")}\\Documents\\rdi5ship")
-    val filesNeed = listOf("lib", "双击启动.cmd", "fonts", "jre","jre8")
+    val filesNeed = listOf("lib", "双击启动.cmd", "fonts", "jre")
     val zipFile = shipDir.file("rdi5ship-${version}.zip")
 
     workingDir = shipDir.asFile
