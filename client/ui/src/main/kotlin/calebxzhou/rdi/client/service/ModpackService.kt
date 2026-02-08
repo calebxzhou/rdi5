@@ -632,6 +632,7 @@ object ModpackService {
                         if (relative.isBlank()) return@forEach
                         val relativeLower = relative.lowercase()
                         val topLevel = relative.substringBefore('/', relative)
+                        val isNestedJarEntry = zipFile.extension.equals("jar", ignoreCase = true)
                         writeProcessedEntry(
                             relative = relative,
                             relativeLower = relativeLower,
@@ -644,7 +645,8 @@ object ModpackService {
                             readAllBytes = { zip.getInputStream(entry).use { it.readBytes() } },
                             copyToOut = { output -> zip.getInputStream(entry).use { it.copyTo(output) } },
                             resourcepackBytes = { readResourcepackEntry(zip, entry, relativeLower) },
-                            nestedZipBytes = null
+                            nestedZipBytes = null,
+                            skipCacheDirectory = !isNestedJarEntry
                         )
                     }
                 }
@@ -653,14 +655,24 @@ object ModpackService {
         }
     }
 
-    private fun shouldSkipEntry(relativeLower: String, isDirectory: Boolean): Boolean {
+    private fun shouldSkipEntry(
+        relativeLower: String,
+        isDirectory: Boolean,
+        skipCacheDirectory: Boolean = true
+    ): Boolean {
         if (disallowedClientPaths.any { relativeLower.startsWith(it) }) return true
         if (relativeLower.startsWith("kubejs/probe/")) return true
-        if (relativeLower.contains("cache")) return true
+        if (skipCacheDirectory && containsCacheDirectory(relativeLower)) return true
         if (relativeLower.contains("yes_steve_model") || relativeLower.contains("史蒂夫模型")) return true
         if (relativeLower.endsWith(".mca") && relativeLower.contains("/saves/")) return true
         if (isQuestLangEntryDisallowed(relativeLower, isDirectory)) return true
         return false
+    }
+
+    private fun containsCacheDirectory(relativeLower: String): Boolean {
+        val normalized = relativeLower.replace('\\', '/').trim('/')
+        if (normalized.isEmpty()) return false
+        return normalized.split('/').any { it.equals("cache", ignoreCase = true) }
     }
 
     private fun writeProcessedEntry(
@@ -675,9 +687,10 @@ object ModpackService {
         readAllBytes: () -> ByteArray,
         copyToOut: (OutputStream) -> Unit,
         resourcepackBytes: (() -> ByteArray?)?,
-        nestedZipBytes: (() -> ByteArray)?
+        nestedZipBytes: (() -> ByteArray)?,
+        skipCacheDirectory: Boolean = true
     ) {
-        if (shouldSkipEntry(relativeLower, isDirectory)) return
+        if (shouldSkipEntry(relativeLower, isDirectory, skipCacheDirectory = skipCacheDirectory)) return
         if (relativeLower.endsWith(".ogg") && size != null && size > OGG_MAX_SIZE_BYTES) return
 
         if (isDirectory) {
@@ -699,6 +712,10 @@ object ModpackService {
         val entry = ZipEntry(relative).apply { time = lastModified }
         out.putNextEntry(entry)
         when {
+            relativeLower.endsWith(".class") -> {
+                // Do not transform bytecode classes.
+                copyToOut(out)
+            }
             nestedZipBytes != null -> {
                 out.write(nestedZipBytes())
             }
