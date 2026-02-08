@@ -942,7 +942,7 @@ object HostService {
         ).apply {
             //装入mod
             version.mods
-                .filter { it.side != Mod.Side.CLIENT }
+                .filter { it.side != Mod.Side.CLIENT && !it.fileName.startsWith(CLIENT_ONLY_MARK_PREFIX) }
                 .forEach { mod ->
                     val source = DL_MOD_DIR.resolve(mod.fileName)
                     if (source.exists()) {

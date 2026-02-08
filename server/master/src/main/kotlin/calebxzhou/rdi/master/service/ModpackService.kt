@@ -78,6 +78,8 @@ val Modpack.Version.zip
 val Modpack.Version.clientZip
     get() = dir.parentFile.resolve("${name}-client.zip")
 
+const val CLIENT_ONLY_MARK_PREFIX = "C" + "$$" + "_"
+
 fun Route.modpackRoutes() {
     route("/modpack") {
         get {
@@ -522,7 +524,10 @@ object ModpackService {
             throw RequestError("版本压缩文件不存在: ${version.zip}")
         }
         onProgress("开始安装整合包..")
-        unzipOverrides(version.zip, hostDir)
+        unzipOverrides(version.zip, hostDir, includeClientOnlyMarkedMods = false)
+        hostDir.resolve("mods").listFiles()
+            ?.filter { it.isFile && it.name.startsWith(CLIENT_ONLY_MARK_PREFIX) && it.extension.equals("jar", true) }
+            ?.forEach { runCatching { it.delete() } }
         //删掉i18n
         val i18nUpdateMod = hostDir.resolve("mods").resolve("I18nUpdateMod.jar")
         if (i18nUpdateMod.exists()) {
@@ -550,13 +555,20 @@ object ModpackService {
         }
     }
 
-    private fun unzipOverrides(zipFile: File, targetDir: File) {
+    private fun unzipOverrides(
+        zipFile: File,
+        targetDir: File,
+        includeClientOnlyMarkedMods: Boolean = true
+    ) {
         val versionDirPath = targetDir.toPath()
         // Use ZipFile with charset detection to handle Chinese filenames
         open(zipFile).use { zip ->
             zip.entries().asSequence().forEach { entry ->
                 val relativePath = extractOverridesRelativePath(entry.name)
                 if (relativePath != null) {
+                    if (!includeClientOnlyMarkedMods && isClientOnlyMarkedModPath(relativePath)) {
+                        return@forEach
+                    }
                     val resolvedPath = versionDirPath.resolve(relativePath).normalize()
                     if (!resolvedPath.startsWith(versionDirPath)) {
                         throw RequestError("非法文件路径: ${entry.name}")
@@ -634,8 +646,10 @@ object ModpackService {
             }
             version.dir.mkdirs()
             onProgress("解压整合包文件..")
-            unzipOverrides(version.zip, version.dir)
-            val serverMods = version.mods.filter { it.side != Mod.Side.CLIENT }
+            unzipOverrides(version.zip, version.dir, includeClientOnlyMarkedMods = false)
+            val serverMods = version.mods.filter {
+                it.side != Mod.Side.CLIENT && !it.fileName.startsWith(CLIENT_ONLY_MARK_PREFIX)
+            }
             val modDownloadTask = ModService.downloadModsTask(serverMods)
             with(ServerTaskRunner) {
                 modDownloadTask.start { progress ->
@@ -911,6 +925,13 @@ object ModpackService {
         val relativeSegments = segments.drop(overridesIndex + 1)
         if (relativeSegments.isEmpty()) return null
         return relativeSegments.joinToString("/")
+    }
+
+    private fun isClientOnlyMarkedModPath(relativePath: String): Boolean {
+        val normalized = relativePath.replace('\\', '/').trimStart('/')
+        if (!normalized.startsWith("mods/")) return false
+        val fileName = normalized.substringAfterLast('/')
+        return fileName.startsWith(CLIENT_ONLY_MARK_PREFIX) && fileName.endsWith(".jar", ignoreCase = true)
     }
 
     fun open(zipFile: File): ZipFile {
