@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.dp
 import calebxzhou.mykotutils.hwspec.HwSpec
 import calebxzhou.mykotutils.std.humanFileSize
 import calebxzhou.rdi.client.AppConfig
-import calebxzhou.rdi.client.ProxyConfig
+import calebxzhou.rdi.common.ProxyConfig
 import calebxzhou.rdi.client.net.loggedAccount
 import calebxzhou.rdi.client.net.server
 import calebxzhou.rdi.client.service.PlayerInfoCache

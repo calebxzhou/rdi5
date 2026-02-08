@@ -1,5 +1,6 @@
 package calebxzhou.rdi.common.net
 
+import calebxzhou.rdi.common.CommonConfig
 import calebxzhou.rdi.common.DIR
 import calebxzhou.rdi.common.serdesJson
 import io.ktor.client.*
@@ -69,6 +70,12 @@ class DynamicProxySelector(
     private val fallback: ProxySelector? = ProxySelector.getDefault()
 ) : ProxySelector() {
     override fun select(uri: URI): List<Proxy> {
+        val cfg = CommonConfig.proxyConfig
+        if (!cfg.enabled) return listOf(Proxy.NO_PROXY)
+        if (!cfg.systemProxy) {
+            if (cfg.host.isBlank() || cfg.port <= 0) return listOf(Proxy.NO_PROXY)
+            return listOf(Proxy(Proxy.Type.HTTP, InetSocketAddress(cfg.host, cfg.port)))
+        }
         val selector = ProxySelector.getDefault() ?: fallback ?: return listOf(Proxy.NO_PROXY)
         val proxies = selector.select(uri) ?: return listOf(Proxy.NO_PROXY)
         val filtered = proxies.filterNot { proxy ->
@@ -82,7 +89,7 @@ class DynamicProxySelector(
     }
 
     override fun connectFailed(uri: URI, sa: SocketAddress, ioe: IOException) {
-        val selector = ProxySelector.getDefault() ?: fallback
-        selector?.connectFailed(uri, sa, ioe)
+        if (!CommonConfig.proxyConfig.systemProxy) return
+        (ProxySelector.getDefault() ?: fallback)?.connectFailed(uri, sa, ioe)
     }
 }
