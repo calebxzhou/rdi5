@@ -1,12 +1,15 @@
 package calebxzhou.rdi.common.model
 
+import calebxzhou.rdi.common.RDI
+
 //https://bmclapi2.bangbang93.com/mc/game/version_manifest_v2.json
 enum class McVersion(
     val mcVer: String,
     val icon: String,
     val jreVer: Int,
     //预留多loader支持
-    val loaderVersions: Map<ModLoader, ModLoader.Version>
+    val loaderVersions: Map<ModLoader, ModLoader.Version>,
+    val enabled: Boolean = true,
 ) {
 
     V211(
@@ -72,7 +75,7 @@ enum class McVersion(
                 "https://maven.minecraftforge.net/net/minecraftforge/forge/1.16.5-36.2.42/forge-1.16.5-36.2.42-installer.jar",
                 "e09ecf910e4d5eae12fb3564d9b7de212c1958b2"
             )
-        )
+        ),enabled = false
     ),
 
     ;

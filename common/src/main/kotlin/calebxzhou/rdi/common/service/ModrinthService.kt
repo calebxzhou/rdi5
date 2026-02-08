@@ -82,7 +82,7 @@ object ModrinthService {
             throw ModpackException("整合包缺少 minecraft 版本")
         }
         val parsedMcVersion = McVersion.from(mcVersion)
-        if (parsedMcVersion == null) {
+        if (parsedMcVersion == null || !parsedMcVersion.enabled) {
             throw ModpackException("不支持的MC版本: $mcVersion")
         }
         val loaderKey = index.dependencies.keys.firstOrNull { ModLoader.from(it) != null }

@@ -283,7 +283,7 @@ object CurseForgeService {
             }
 
             val supportedVersion = McVersion.from(manifest.minecraft.version)
-            if (supportedVersion == null) {
+            if (supportedVersion == null || !supportedVersion.enabled) {
                 val supportedList = McVersion.entries.joinToString(", ") { it.mcVer }
                 throw ModpackException("不支持的 MC 版本: ${manifest.minecraft.version}，当前只支持: $supportedList")
             }
