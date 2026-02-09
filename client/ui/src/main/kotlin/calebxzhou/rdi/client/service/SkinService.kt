@@ -1,7 +1,5 @@
 package calebxzhou.rdi.client.service
 
-import calebxzhou.mykotutils.mojang.MojangApi
-import calebxzhou.mykotutils.mojang.MojangApi.textures
 import calebxzhou.rdi.client.model.BSSkin
 import calebxzhou.rdi.client.model.BSSkinData
 import calebxzhou.rdi.client.net.loggedAccount
@@ -10,6 +8,8 @@ import calebxzhou.rdi.common.exception.RequestError
 import calebxzhou.rdi.common.model.RAccount
 import calebxzhou.rdi.common.net.httpRequest
 import calebxzhou.rdi.common.serdesJson
+import calebxzhou.rdi.common.service.MojangApi
+import calebxzhou.rdi.common.service.MojangApi.textures
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
