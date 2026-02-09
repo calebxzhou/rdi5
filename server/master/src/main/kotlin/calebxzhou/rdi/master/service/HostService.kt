@@ -263,11 +263,9 @@ object HostService {
 
     val dbcl = DB.getCollection<Host>("host")
 
-    init {
-        runBlocking {
-            dbcl.createIndex(Indexes.ascending("port"))
-        }
-    }
+    private val hostStates = ConcurrentHashMap<ObjectId, HostState>()
+    private val skipWorldSizeUpdate = ConcurrentHashMap.newKeySet<ObjectId>()
+    private val staleCleanupJob: Job
 
     private const val PORT_START = 50000
     private const val PORT_END_EXCLUSIVE = 60000
@@ -280,11 +278,65 @@ object HostService {
 
     private data class HostState(
         var shutFlag: Int = 0,
-        var session: DefaultWebSocketServerSession? = null
+        var session: DefaultWebSocketServerSession? = null,
+        var shutdownJob: Job? = null
     )
 
-    private val hostStates = ConcurrentHashMap<ObjectId, HostState>()
-    private val skipWorldSizeUpdate = ConcurrentHashMap.newKeySet<ObjectId>()
+
+    init {
+        runBlocking {
+            dbcl.createIndex(Indexes.ascending("port"))
+        }
+        // Start periodic cleanup of stale entries
+        staleCleanupJob = idleMonitorScope.launch {
+            while (isActive) {
+                delay(5.minutes)
+                cleanupStaleEntries()
+            }
+        }
+    }
+
+    fun shutdown() {
+        lgr.info { "Shutting down HostService..." }
+        stopIdleMonitor()
+        staleCleanupJob.cancel()
+        idleMonitorScope.cancel()
+        // Force close all sessions
+        hostStates.values.forEach { state ->
+            state.session?.let { session ->
+                session.launch {
+                    runCatching { session.close(CloseReason(CloseReason.Codes.GOING_AWAY, "Server shutdown")) }
+                }
+            }
+            state.shutdownJob?.cancel()
+        }
+        hostStates.clear()
+        skipWorldSizeUpdate.clear()
+        lgr.info { "HostService shutdown complete" }
+    }
+
+    private fun cleanupStaleEntries() {
+        val staleHosts = mutableSetOf<ObjectId>()
+        hostStates.forEach { (hostId, state) ->
+            if (state.session == null && state.shutFlag <= 0 && state.shutdownJob?.isActive != true) {
+                staleHosts.add(hostId)
+            }
+        }
+        staleHosts.forEach { hostId ->
+            hostStates.remove(hostId)
+            lgr.debug { "Cleaned up stale HostState for $hostId" }
+        }
+
+        // Also cleanup skipWorldSizeUpdate for deleted hosts
+        val allHostIds = runBlocking {
+            dbcl.find().map { it._id }.toList().toSet()
+        }
+        val staleWorldSkips = skipWorldSizeUpdate.filter { it !in allHostIds }
+        staleWorldSkips.forEach {
+            skipWorldSizeUpdate.remove(it)
+            lgr.debug { "Cleaned up stale skipWorldSizeUpdate for $it" }
+        }
+    }
 
 
     private val Host.containerEnv
@@ -445,10 +497,12 @@ object HostService {
             if (state.session === session) {
                 state.session = null
                 lgr.info { "Host $hostId gameplay 通道已断开" }
-                if (state.shutFlag <= 0) {
-                    hostStates.remove(hostId, state)
-                }
-                idleMonitorScope.launch {
+
+                // Cancel any existing shutdown job to prevent accumulation
+                state.shutdownJob?.cancel()
+
+                // Launch new shutdown job and track it
+                state.shutdownJob = idleMonitorScope.launch {
                     delay(3.seconds)
                     val currentSession = hostStates[hostId]?.session
                     if (currentSession != null) {
@@ -466,6 +520,12 @@ object HostService {
                                 lgr.info { "Host $hostId 容器已处于停止状态" }
                             } else {
                                 lgr.warn(error) { "Host $hostId 通道断开后停止容器失败: ${error.message}" }
+                            }
+                        }
+                        .also {
+                            // Clean up after shutdown completes
+                            if (state.shutFlag <= 0 && state.session == null) {
+                                hostStates.remove(hostId, state)
                             }
                         }
                 }
@@ -647,6 +707,16 @@ object HostService {
         val triggered = AtomicBoolean(false)
         val listenerHolder = arrayOfNulls<Closeable>(1)
         val closeListener = { runCatching { listenerHolder[0]?.close() } }
+
+        // Add timeout to prevent listener leak
+        val timeoutJob = ioScope.launch {
+            delay(5.minutes)
+            if (!triggered.get()) {
+                lgr.info { "Host ${_id} crash listener timeout reached, closing" }
+                closeListener()
+            }
+        }
+
         listenerHolder[0] = DockerService.listenLog(
             _id.str,
             onLine = { line ->
@@ -656,6 +726,7 @@ object HostService {
                             || line.contains("Missing or unsupported mandatory dependencies")
                         )) {
                     if (triggered.compareAndSet(false, true)) {
+                        timeoutJob.cancel()
                         closeListener()
                         ioScope.launch {
                             val ok = runCatching { analyzeCrashReport() }.getOrElse {
@@ -677,6 +748,7 @@ object HostService {
             onError = { err ->
                 if (!triggered.get()) {
                     lgr.warn(err) { "Host ${_id} 监听日志失败" }
+                    timeoutJob.cancel()
                 }
             }
         )
@@ -739,7 +811,10 @@ object HostService {
     fun stopIdleMonitor() {
         idleMonitorJob?.cancel()
         idleMonitorJob = null
-        hostStates.values.forEach { it.shutFlag = 0 }
+        hostStates.values.forEach { state ->
+            state.shutFlag = 0
+            state.shutdownJob?.cancel()
+        }
     }
 
     private suspend fun runIdleMonitorTick(forceStop: Boolean = false) {
@@ -793,7 +868,8 @@ object HostService {
     private fun clearShutFlag(hostId: ObjectId) {
         hostStates[hostId]?.let { state ->
             state.shutFlag = 0
-            if (state.session == null) {
+            state.shutdownJob?.cancel()
+            if (state.session == null && state.shutdownJob?.isActive != true) {
                 hostStates.remove(hostId, state)
             }
         }
@@ -850,6 +926,7 @@ object HostService {
 
     suspend fun RAccount.createHost(host: Host.CreateDto) {
         host.name.validateName()
+        if(!hasMsid) throw RequestError("必须绑定微软账号才能创建地图")
         val playerId = _id
         if (getByOwner(playerId).size > 3 && !this.isDav) {
             throw RequestError("最多只可创建3张地图")
@@ -997,7 +1074,16 @@ object HostService {
         host.dir.deleteRecursivelyNoSymlink()
         host.dir.delete()
         DockerService.deleteContainer(host._id.str)
-        clearShutFlag(host._id)
+
+        // Force cleanup all tracking structures to prevent memory leaks
+        hostStates.remove(host._id)?.let { state ->
+            state.shutdownJob?.cancel()
+            state.session?.launch {
+                runCatching { state.session?.close(CloseReason(CloseReason.Codes.NORMAL, "Host deleted")) }
+            }
+        }
+        skipWorldSizeUpdate.remove(host._id)
+
         dbcl.deleteOne(eq("_id", host._id))
     }
 
@@ -1246,7 +1332,7 @@ object HostService {
     ) {
         val logFile = hostDir.resolve("logs").resolve("latest.log")
         if (!logFile.exists()) {
-            session.send(ServerSentEvent(event = "error", data = "日志文件不存在"))
+            session.send(ServerSentEvent(data = "没有日志"))
             return
         }
         val buffer = ArrayDeque<String>(maxLines)
