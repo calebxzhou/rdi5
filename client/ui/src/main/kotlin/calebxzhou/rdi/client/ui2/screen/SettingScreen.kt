@@ -15,19 +15,22 @@ import androidx.compose.ui.unit.dp
 import calebxzhou.mykotutils.hwspec.HwSpec
 import calebxzhou.mykotutils.std.humanFileSize
 import calebxzhou.rdi.client.AppConfig
-import calebxzhou.rdi.common.ProxyConfig
 import calebxzhou.rdi.client.net.loggedAccount
+import calebxzhou.rdi.client.net.rdiRequest
+import calebxzhou.rdi.client.net.rdiRequestU
 import calebxzhou.rdi.client.net.server
 import calebxzhou.rdi.client.service.PlayerInfoCache
 import calebxzhou.rdi.client.service.PlayerService
+import calebxzhou.rdi.client.service.SettingsService
 import calebxzhou.rdi.client.ui2.*
+import calebxzhou.rdi.client.ui2.comp.HeadButton
 import calebxzhou.rdi.client.ui2.comp.PasswordField
+import calebxzhou.rdi.common.model.RAccount
+import calebxzhou.rdi.common.service.CryptoManager
 import io.ktor.http.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
-import java.lang.management.ManagementFactory
 
 /**
  * calebxzhou @ 2026-01-24 18:36
@@ -40,7 +43,7 @@ fun SettingScreen(
     val scope = rememberCoroutineScope()
     val scaffoldState = rememberScaffoldState()
     val config = remember { AppConfig.load() }
-    val totalMemoryMb = remember { getTotalPhysicalMemoryMb() }
+    val totalMemoryMb = remember { SettingsService.getTotalPhysicalMemoryMb() }
     var category by remember { mutableStateOf(SettingCategory.Account) }
     var useMirror by remember { mutableStateOf(config.useMirror) }
     var maxMemoryText by remember { mutableStateOf(if (config.maxMemory <= 0) "" else config.maxMemory.toString()) }
@@ -56,7 +59,6 @@ fun SettingScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var saving by remember { mutableStateOf(false) }
     var showChangeProfile by remember { mutableStateOf(false) }
-
     MainBox {
         MainColumn {
             TitleRow("设置", onBack) {
@@ -69,38 +71,33 @@ fun SettingScreen(
                     if (saving) return@CircleIconButton
                     saving = true
                     scope.launch {
-                        val memoryValue = maxMemoryText.trim().takeIf { it.isNotEmpty() }?.toIntOrNull()
-                        if (maxMemoryText.isNotBlank() && memoryValue == null) {
-                            errorMessage = "最大内存格式不正确"
+                        // Validate memory
+                        val memoryValidation = SettingsService.validateMemory(maxMemoryText, totalMemoryMb)
+                        if (!memoryValidation.success) {
+                            errorMessage = memoryValidation.errorMessage
                             saving = false
                             return@launch
                         }
-                        if (memoryValue != null && memoryValue != 0) {
-                            if (memoryValue <= 4096) {
-                                errorMessage = "最大内存必须大于4096MB"
-                                saving = false
-                                return@launch
-                            }
-                            if (totalMemoryMb > 0 && memoryValue >= totalMemoryMb) {
-                                errorMessage = "最大内存必须小于总内存 ${totalMemoryMb}MB"
-                                saving = false
-                                return@launch
-                            }
+
+                        // Validate proxy port
+                        val proxyValidation = SettingsService.validateProxyPort(proxyPortText)
+                        if (!proxyValidation.success) {
+                            errorMessage = proxyValidation.errorMessage
+                            saving = false
+                            return@launch
                         }
+
+                        // Validate Java paths
                         val jre21 = jre21Path.trim().takeIf { it.isNotEmpty() }
                         val jre8 = jre8Path.trim().takeIf { it.isNotEmpty() }
-                        val proxyPort = proxyPortText.trim().takeIf { it.isNotEmpty() }?.toIntOrNull()
-                        if (proxyPortText.isNotBlank() && proxyPort == null) {
-                            errorMessage = "代理端口格式不正确"
-                            saving = false
-                            return@launch
-                        }
+
                         val java21Ok = withContext(Dispatchers.IO) {
-                            jre21?.let { validateJavaPath(it, 21) } ?: Result.success(Unit)
+                            jre21?.let { SettingsService.validateJavaPath(it, 21) } ?: Result.success(Unit)
                         }
                         val java8Ok = withContext(Dispatchers.IO) {
-                            jre8?.let { validateJavaPath(it, 8) } ?: Result.success(Unit)
+                            jre8?.let { SettingsService.validateJavaPath(it, 8) } ?: Result.success(Unit)
                         }
+
                         java21Ok.exceptionOrNull()?.let {
                             errorMessage = it.message ?: "Java 21 路径无效"
                             saving = false
@@ -111,24 +108,27 @@ fun SettingScreen(
                             saving = false
                             return@launch
                         }
-                        val next = AppConfig(
+
+                        // Save settings
+                        SettingsService.saveSettings(
                             useMirror = useMirror,
-                            maxMemory = memoryValue ?: 0,
-                            jre21Path = jre21,
-                            jre8Path = jre8,
+                            maxMemoryText = maxMemoryText,
+                            jre21Path = jre21Path,
+                            jre8Path = jre8Path,
                             carrier = carrier,
-                            proxyConfig = ProxyConfig(
-                                enabled = proxyEnabled,
-                                systemProxy = proxySystem,
-                                host = proxyHost,
-                                port = proxyPort ?: 10808,
-                                usr = proxyUsr.takeIf { it.isNotBlank() },
-                                pwd = proxyPwd.takeIf { it.isNotBlank() }
-                            )
-                        )
-                        AppConfig.save(next)
-                        errorMessage = null
-                        scaffoldState.snackbarHostState.showSnackbar("设置已保存")
+                            proxyEnabled = proxyEnabled,
+                            proxySystem = proxySystem,
+                            proxyHost = proxyHost,
+                            proxyPortText = proxyPortText,
+                            proxyUsr = proxyUsr,
+                            proxyPwd = proxyPwd
+                        ).onSuccess {
+                            errorMessage = null
+                            scaffoldState.snackbarHostState.showSnackbar("设置已保存")
+                        }.onFailure {
+                            errorMessage = "保存失败: ${it.message}"
+                        }
+
                         saving = false
                     }
                 }
@@ -520,70 +520,6 @@ private fun NetworkSettings(
     }
 }
 
-private fun getTotalPhysicalMemoryMb(): Int {
-    val osBean = runCatching {
-        ManagementFactory.getOperatingSystemMXBean()
-    }.getOrNull()
-    val totalBytes = (osBean as? com.sun.management.OperatingSystemMXBean)
-        ?.totalPhysicalMemorySize
-        ?: return 0
-    return (totalBytes / (1024L * 1024L)).toInt()
-}
-
-private fun validateJavaPath(rawPath: String, expectedMajor: Int): Result<Unit> {
-    val resolved = resolveJavaExecutable(rawPath) ?: return Result.failure(
-        IllegalStateException("Java 路径无效: $rawPath")
-    )
-    val version = readJavaMajorVersion(resolved) ?: return Result.failure(
-        IllegalStateException("无法识别 Java 版本: ${resolved.absolutePath}")
-    )
-    if (version != expectedMajor) {
-        return Result.failure(
-            IllegalStateException("Java 版本应为 $expectedMajor，当前为 $version")
-        )
-    }
-    return Result.success(Unit)
-}
-
-private fun resolveJavaExecutable(rawPath: String): File? {
-    val input = File(rawPath.trim())
-    if (input.isDirectory) {
-        val exe = input.resolve("bin").resolve(if (isWindows()) "java.exe" else "java")
-        return exe.takeIf { it.exists() }
-    }
-    if (input.exists()) {
-        val name = input.name.lowercase()
-        if (isWindows()) {
-            return input.takeIf { name == "java.exe" }
-        }
-        return input.takeIf { name == "java" }
-    }
-    val exe = File(rawPath.trim() + if (isWindows()) ".exe" else "")
-    return exe.takeIf { it.exists() }
-}
-
-private fun readJavaMajorVersion(javaExe: File): Int? {
-    return runCatching {
-        val process = ProcessBuilder(javaExe.absolutePath, "-version")
-            .redirectErrorStream(true)
-            .start()
-        val output = process.inputStream.bufferedReader().readText()
-        process.waitFor()
-        val match = Regex("version \"([0-9]+)(?:\\.([0-9]+))?.*\"").find(output)
-            ?: return@runCatching null
-        val major = match.groupValues.getOrNull(1)?.toIntOrNull() ?: return@runCatching null
-        if (major == 1) {
-            match.groupValues.getOrNull(2)?.toIntOrNull()
-        } else {
-            major
-        }
-    }.getOrNull()
-}
-
-private fun isWindows(): Boolean {
-    return System.getProperty("os.name").contains("windows", ignoreCase = true)
-}
-
 @Composable
 private fun CarrierSelector(
     selected: Int,
@@ -652,22 +588,16 @@ private fun ChangeProfileDialog(
             TextButton(
                 enabled = !submitting,
                 onClick = {
-                    val nameBytes = name.toByteArray(Charsets.UTF_8).size
-                    if (nameBytes !in 3..24) {
-                        errorMessage = "昵称须在3~24个字节，当前为${nameBytes}"
+                    val validation = SettingsService.validateProfileChange(name, pwd, account.name)
+                    if (!validation.success) {
+                        errorMessage = validation.errorMessage
                         return@TextButton
                     }
-                    if (pwd.isNotEmpty() && pwd.length !in 6..16) {
-                        errorMessage = "密码长度须在6~16个字符"
-                        return@TextButton
-                    }
+
                     val params = mutableMapOf<String, Any>()
                     if (name != account.name) params["name"] = name
                     if (pwd.isNotEmpty() && pwd != account.pwd) params["pwd"] = pwd
-                    if (params.isEmpty()) {
-                        errorMessage = "没有修改内容"
-                        return@TextButton
-                    }
+
                     submitting = true
                     errorMessage = null
                     scope.launch {
@@ -679,6 +609,7 @@ private fun ChangeProfileDialog(
                             PlayerInfoCache -= loggedAccount._id
                         }.getOrElse {
                             errorMessage = "修改失败: ${it.message}"
+                            submitting = false
                             return@launch
                         }
                         submitting = false

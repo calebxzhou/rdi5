@@ -17,7 +17,6 @@ fun main() {
 
 object RDIClient {
     val DIR: File = File(System.getProperty("user.dir")).absoluteFile
-    val JRE8 = DIR.resolve("jre8").resolve("bin").resolve("java.exe").absolutePath
     val JRE21 = javaExePath
     init {
         lgr.info { "RDI启动中" }
