@@ -36,11 +36,20 @@ val ioScope: CoroutineScope
     }
     )
 fun ioTask(handler: suspend () -> Unit) = ioScope.launch { handler() }
+fun err(reason: String): Result<Unit> {
+    return Result.failure<Unit>(RequestError(reason))
+}
+inline fun <reified T> ok(obj: T): Result<T> {
+    return Result.success(obj)
+}
+fun ok(): Result<Unit> {
+    return Result.success(Unit)
+}
 
 val ObjectId.str get() = toHexString()
 fun String.validateName(): Result<Unit> {
     val trimmed = this.trim()
     val len = trimmed.displayLength
-    if (len !in 3..32) throw RequestError("名称长度需在3~32个字符（一个汉字算两个）")
+    if (len !in 3..32) throw RequestError("名称长度需在3~32个字符，当前为${len}（一个汉字算两个）")
     return Result.success(Unit)
 }
