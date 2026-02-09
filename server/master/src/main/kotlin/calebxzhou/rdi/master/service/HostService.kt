@@ -5,6 +5,7 @@ import calebxzhou.mykotutils.std.deleteRecursivelyNoSymlink
 import calebxzhou.mykotutils.std.jarResource
 import calebxzhou.mykotutils.std.readAllString
 import calebxzhou.rdi.common.DL_MOD_DIR
+import calebxzhou.rdi.common.exception.RequestError
 import calebxzhou.rdi.common.json
 import calebxzhou.rdi.common.model.*
 import calebxzhou.rdi.common.service.McServerPinger
@@ -15,7 +16,6 @@ import calebxzhou.rdi.common.util.validateName
 import calebxzhou.rdi.master.DB
 import calebxzhou.rdi.master.HOSTS_DIR
 import calebxzhou.rdi.master.exception.ParamError
-import calebxzhou.rdi.master.exception.RequestError
 import calebxzhou.rdi.master.model.WsMessage
 import calebxzhou.rdi.master.net.*
 import calebxzhou.rdi.master.service.HostService.addMember

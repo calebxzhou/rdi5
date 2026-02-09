@@ -1,7 +1,7 @@
 package calebxzhou.rdi.master.service
 
 import calebxzhou.mykotutils.std.sha1
-import calebxzhou.rdi.master.exception.RequestError
+import calebxzhou.rdi.common.exception.RequestError
 import calebxzhou.rdi.master.net.param
 import calebxzhou.rdi.master.net.response
 import io.ktor.server.response.*

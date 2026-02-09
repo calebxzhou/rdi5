@@ -1,32 +1,22 @@
 package calebxzhou.rdi.master.service
 
-import calebxzhou.rdi.master.CONF
-import calebxzhou.rdi.master.exception.RequestError
-import calebxzhou.rdi.common.model.HostStatus
 import calebxzhou.mykotutils.log.Loggers
+import calebxzhou.rdi.common.exception.RequestError
+import calebxzhou.rdi.common.model.HostStatus
+import calebxzhou.rdi.master.CONF
 import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.api.async.ResultCallback.Adapter
-import com.github.dockerjava.api.command.BuildImageResultCallback
-import com.github.dockerjava.api.exception.NotFoundException
 import com.github.dockerjava.api.model.*
 import com.github.dockerjava.api.model.PortBinding.parse
 import com.github.dockerjava.core.DefaultDockerClientConfig
 import com.github.dockerjava.core.DockerClientBuilder
 import com.github.dockerjava.okhttp.OkDockerHttpClient
 import com.github.dockerjava.transport.DockerHttpClient
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import org.apache.commons.compress.archivers.tar.TarArchiveEntry
-import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
 import java.io.Closeable
-import java.io.File
-import java.nio.file.Files
-import java.nio.file.Path
 
 object DockerService {
     private val lgr by Loggers
+
     private val client: DockerClient by lazy {
         val dockerConfig = CONF.docker
         val configBuilder = DefaultDockerClientConfig.createDefaultConfigBuilder()

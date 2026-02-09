@@ -1,9 +1,9 @@
 package calebxzhou.rdi.master
 
+import calebxzhou.rdi.common.exception.RequestError
 import calebxzhou.rdi.common.serdesJson
 import calebxzhou.rdi.master.exception.AuthError
 import calebxzhou.rdi.master.exception.ParamError
-import calebxzhou.rdi.master.exception.RequestError
 import calebxzhou.rdi.master.net.response
 import calebxzhou.rdi.master.service.*
 import calebxzhou.rdi.master.service.PlayerService.accountCol
@@ -79,7 +79,9 @@ fun main(): Unit =runBlocking {
 
     HostService.startIdleMonitor()
     Runtime.getRuntime().addShutdownHook(Thread {
-        HostService.stopIdleMonitor()
+        lgr.info { "Application shutdown initiated..." }
+        HostService.shutdown()
+        lgr.info { "Application shutdown complete" }
     })
     // Launch both servers concurrently in the coroutine scope
     launch {
@@ -176,4 +178,3 @@ fun startHttp(){
         }
     }.start(wait = true)
 }
-

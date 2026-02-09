@@ -4,7 +4,6 @@ import calebxzhou.mykotutils.std.humanDateTimeNow
 import calebxzhou.rdi.master.DB
 import calebxzhou.rdi.master.SYSTEM_SENDER_ID
 import calebxzhou.rdi.master.exception.ParamError
-import calebxzhou.rdi.master.exception.RequestError
 import calebxzhou.rdi.common.model.RAccount
 import calebxzhou.rdi.master.net.idParam
 import calebxzhou.rdi.master.net.ok
@@ -15,6 +14,7 @@ import calebxzhou.rdi.master.service.MailService.getInbox
 import calebxzhou.rdi.master.service.MailService.getMail
 import calebxzhou.rdi.master.service.MailService.mailId
 import calebxzhou.mykotutils.log.Loggers
+import calebxzhou.rdi.common.exception.RequestError
 import calebxzhou.rdi.common.model.Mail
 import calebxzhou.rdi.common.util.ioScope
 import com.mongodb.client.model.Filters
