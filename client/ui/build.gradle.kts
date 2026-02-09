@@ -90,7 +90,7 @@ dependencies {
     implementation("io.netty:netty-all:4.2.7.Final")
     implementation(project(":common"))
 
-    implementation("com.github.Towdium:PinIn:1.6.0")
+    //implementation("com.github.Towdium:PinIn:1.6.0")
 // Source: https://mvnrepository.com/artifact/net.raphimc/MinecraftAuth
     implementation("net.raphimc:MinecraftAuth:5.0.0")
 
@@ -104,7 +104,6 @@ dependencies {
     implementation("calebxzhou.mykotutils:std:0.1")
     implementation("calebxzhou.mykotutils:log:0.1")
     implementation("calebxzhou.mykotutils:hwspec:0.1")
-    implementation("calebxzhou.mykotutils:mojang:0.1")
 
     // Expanded mcLibs dependencies
     implementation("io.ktor:ktor-client-okhttp:$ktorVersion")
