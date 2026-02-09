@@ -95,7 +95,7 @@ object DockerService {
             .withPidsLimit(512L)
             .withExtraHosts("host.docker.internal:host-gateway")
             .withMounts(mounts)
-            //.withAutoRemove(true)
+            .withCapAdd(Capability.NET_ADMIN)
 
 
         val createCmd = client.createContainerCmd(image)
