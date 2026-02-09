@@ -8,6 +8,7 @@ import calebxzhou.rdi.client.Const
 import calebxzhou.rdi.client.ScreenSize
 import calebxzhou.rdi.client.model.*
 import calebxzhou.rdi.client.net.loggedAccount
+import calebxzhou.rdi.common.exception.RequestError
 import calebxzhou.rdi.common.json
 import calebxzhou.rdi.common.model.*
 import calebxzhou.rdi.common.model.LibraryOsArch.Companion.detectHostOs
@@ -735,9 +736,9 @@ object GameService {
                 Task.Leaf("运行安装器") { ctx ->
                     runInstallerBootstrapperTask(holder, ctx)
                 },
-                 Task.Leaf("运行安装器服务端") { ctx ->
-                     runServerInstallerBootstrapperTask(holder, ctx)
-                 }
+                Task.Leaf("运行安装器服务端") { ctx ->
+                    runServerInstallerBootstrapperTask(holder, ctx)
+                }
             ),
         )
     }
@@ -748,7 +749,7 @@ object GameService {
         val loader: ModLoader,
         var installer: File? = null,
         var installBooter: File? = null,
-        var loaderVersionManifest: MojangVersionManifest=version.metadata,
+        var loaderVersionManifest: MojangVersionManifest = version.metadata,
         var installProfile: LoaderInstallProfile? = null,
         var loaderLibraries: List<MojangLibrary> = emptyList()
     )
@@ -982,11 +983,12 @@ object GameService {
         return Result.success(target)
     }
 
-    fun startServer(mcVer: McVersion,loaderVer: ModLoader.Version, workDir: File, onLine: (String) -> Unit): Process {
+    fun startServer(mcVer: McVersion, loaderVer: ModLoader.Version, workDir: File, onLine: (String) -> Unit): Process {
         val jrePath = when (mcVer.jreVer) {
             8 -> {
-                CONF.jre8Path ?: RDIClient.JRE8
+                CONF.jre8Path ?: throw RequestError("请前往设置Java8路径")
             }
+
             else -> {
                 CONF.jre21Path ?: RDIClient.JRE21
             }
@@ -995,7 +997,7 @@ object GameService {
             jrePath,
             "-Xmx6G",
         ).apply {
-            when(mcVer){
+            when (mcVer) {
                 McVersion.V182,
                 McVersion.V192,
                 McVersion.V201,
@@ -1003,12 +1005,16 @@ object GameService {
                     this += loaderVer.serverArgsPath(hostOs.isUnixLike)
                     this += "%*"
                 }
+
                 McVersion.V165 -> {
-                    if(loaderVer.loader == ModLoader.forge){
-                        val jarFileName ="forge-${loaderVer.id}.jar"
+                    if (loaderVer.loader == ModLoader.forge) {
+                        val jarFileName = "forge-${loaderVer.id}.jar"
                         this += "-jar"
                         this += jarFileName
-                        Files.createSymbolicLink(workDir.resolve(jarFileName).toPath(),DIR.resolve(jarFileName).toPath())
+                        Files.createSymbolicLink(
+                            workDir.resolve(jarFileName).toPath(),
+                            DIR.resolve(jarFileName).toPath()
+                        )
                     }
                 }
             }
@@ -1042,6 +1048,7 @@ object GameService {
         }
         return process
     }
+
     fun start(mcVer: McVersion, versionId: String, vararg jvmArgs: String, onLine: (String) -> Unit): Process {
         val loaderManifest = mcVer.loaderManifest
         val manifest = mcVer.manifest
@@ -1096,7 +1103,7 @@ object GameService {
         val jrePath = when (mcVer.jreVer) {
 
             8 -> {
-                CONF.jre8Path ?: RDIClient.JRE8
+                CONF.jre8Path ?: throw RequestError("请前往设置Java8路径")
             }
 
             else -> {
