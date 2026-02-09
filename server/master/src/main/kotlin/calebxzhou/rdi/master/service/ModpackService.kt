@@ -11,11 +11,11 @@ import calebxzhou.rdi.common.service.ModService
 import calebxzhou.rdi.common.service.ServerTaskRunner
 import calebxzhou.rdi.common.util.ioScope
 import calebxzhou.rdi.common.util.str
+import calebxzhou.rdi.common.util.validateName
 import calebxzhou.rdi.master.DB
 import calebxzhou.rdi.master.GAME_LIBS_DIR
 import calebxzhou.rdi.master.MODPACK_DATA_DIR
 import calebxzhou.rdi.master.exception.ParamError
-import calebxzhou.rdi.master.exception.RequestError
 import calebxzhou.rdi.master.net.*
 import calebxzhou.rdi.master.service.HostService.status
 import calebxzhou.rdi.master.service.ModpackService.changeOptions
@@ -156,7 +156,7 @@ fun Route.modpackRoutes() {
                     val ctx = call.modpackGuardContext()
                     val verName = param("verName").trim()
                     //limit 1 GB
-                    val multipart = call.receiveMultipart(formFieldLimit = 1024 * 1024 * 1024)
+                    val multipart = call.receiveMultipart(formFieldLimit = 128 * 1024 * 1024)
                     var zipBytes: ByteArray? = null
                     var mods: MutableList<Mod>? = null
 
@@ -254,10 +254,8 @@ object ModpackService {
     suspend fun ModpackContext.changeOptions(payload: Modpack.OptionsDto) {
         val updates = mutableListOf<Bson>()
         payload.name?.let { name ->
-            val trimmed = name.trim()
-            if (trimmed.isBlank()) throw ParamError("名称不能为空")
-            validateModpackName(trimmed)
-            updates += Updates.set(Modpack::name.name, trimmed)
+            name.validateName().getOrNull()
+            updates += Updates.set(Modpack::name.name, name)
         }
         payload.iconUrl?.let {
             validateIconUrl(it)
