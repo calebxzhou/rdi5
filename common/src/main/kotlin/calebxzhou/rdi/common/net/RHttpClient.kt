@@ -58,6 +58,7 @@ val ktorClient =
             install(ContentEncoding) {
                 deflate(1.0F)
                 gzip(0.9F)
+                identity()
             }
             install(HttpTimeout) {
                 requestTimeoutMillis = 20_000

@@ -360,9 +360,10 @@ object ModpackService {
     }
 
     suspend fun create(uid: ObjectId, name: String, ver: McVersion, modLoader: ModLoader): Modpack {
-        validateModpackName(name)
+        name.validateName().getOrNull()
         val modpackCount = dbcl.countDocuments(eq("authorId", uid)).toInt()
         val player = PlayerService.getById(uid)
+        if(player?.hasMsid==true) throw RequestError("必须有微软账号才能传包")
         if (modpackCount >= MAX_MODPACK_PER_USER && player?.isDav == false) {
             throw RequestError("一个人最多传${MAX_MODPACK_PER_USER}个包")
         }

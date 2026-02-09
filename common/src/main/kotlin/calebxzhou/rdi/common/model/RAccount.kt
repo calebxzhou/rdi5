@@ -1,11 +1,13 @@
 package calebxzhou.rdi.common.model
 
 import calebxzhou.rdi.common.UNKNOWN_PLAYER_ID
+import calebxzhou.rdi.common.UUIDSerializer
 import calebxzhou.rdi.common.util.toUUID
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import org.bson.types.ObjectId
+import java.util.UUID
 
 /*val account
     get() = RAccount.now ?: RAccount.DEFAULT.also { lgr.warn("用户未登录 使用默认账号") }*/
@@ -17,10 +19,22 @@ data class RAccount(
     var pwd: String,
     var qq: String,
     val score: Int = 0,
+    @Serializable(with = UUIDSerializer::class)
+    val msid: UUID? = null,
+    @Contextual
+    val inviter: ObjectId?=null,
     var cloth: Cloth = Cloth(),
 ) {
     @Transient
-    var jwt: String?=null
+    var jwt: String? = null
+    @Serializable
+    data class RegisterDto(
+        val name: String,
+        val qq: String,
+        val pwd: String,
+        val msa: MsaAccountInfo?,
+    )
+
     @Serializable
     data class Cloth(
         var isSlim: Boolean = true,
@@ -56,9 +70,8 @@ data class RAccount(
 
     }
 
-    @Contextual
     val uuid get() = _id.toUUID()
     val dto get() = Dto(_id, name, cloth)
-
+    val hasMsid get() = msid != null
 }
 val RAccount.isDav get() = name == "davickk"

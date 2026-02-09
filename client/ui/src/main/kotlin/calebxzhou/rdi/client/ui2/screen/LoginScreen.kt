@@ -23,9 +23,7 @@ import calebxzhou.rdi.client.service.UpdateService
 import calebxzhou.rdi.client.ui2.BottomSnakebar
 import calebxzhou.rdi.client.ui2.MainBox
 import calebxzhou.rdi.client.ui2.comp.PasswordField
-import calebxzhou.rdi.common.exception.RequestError
 import calebxzhou.rdi.lgr
-import io.ktor.http.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -38,7 +36,8 @@ import kotlin.system.exitProcess
  */
 @Composable
 fun LoginScreen(
-    onLoginSuccess: (() -> Unit)? = null
+    onLoginSuccess: (() -> Unit)? = null,
+    onOpenRegister: (() -> Unit)? = null
 ) {
     var showPassword by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -50,7 +49,6 @@ fun LoginScreen(
     var pwd by remember { mutableStateOf("") }
     var submitting by remember { mutableStateOf(false) }
     var showAccounts by remember { mutableStateOf(false) }
-    var showRegister by remember { mutableStateOf(false) }
     var loginError by remember { mutableStateOf<String?>(null) }
     var updateStatus by remember { mutableStateOf("正在检查更新...") }
     var updateDetail by remember { mutableStateOf("") }
@@ -199,7 +197,7 @@ fun LoginScreen(
                     }) {
                         Text("创建桌面快捷方式", fontWeight = FontWeight.Bold)
                     }
-                    TextButton(onClick = { showRegister = true }) {
+                    TextButton(onClick = { onOpenRegister?.invoke() }) {
                         Text("注册")
                     }
                 }
@@ -263,116 +261,6 @@ fun LoginScreen(
         }
         BottomSnakebar(snackbarHostState)
     }
-
-    if (showRegister) {
-        RegisterDialog(
-            onDismiss = {
-                showRegister = false
-            },
-            onSuccess = {
-                showRegister = false
-                okMessage = "注册成功，请登录"
-            }
-        )
-    }
-}
-
-@Composable
-private fun RegisterDialog(
-    onDismiss: () -> Unit,
-    onSuccess: () -> Unit
-) {
-    val scope = rememberCoroutineScope()
-    var name by remember { mutableStateOf("") }
-    var qq by remember { mutableStateOf("") }
-    var pwd by remember { mutableStateOf("") }
-    var pwd2 by remember { mutableStateOf("") }
-    var submitting by remember { mutableStateOf(false) }
-    var showPassword by remember { mutableStateOf(false) }
-    var showPassword2 by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("注册新账号") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("")
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("昵称 支持中文") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = qq,
-                    onValueChange = { qq = it },
-                    label = { Text("QQ号") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                PasswordField(
-                    value = pwd,
-                    onValueChange = { pwd = it },
-                    label = "密码",
-                    showPassword = showPassword,
-                    onToggleVisibility = { showPassword = !showPassword },
-                    onEnter = {}
-                )
-                PasswordField(
-                    value = pwd2,
-                    onValueChange = { pwd2 = it },
-                    label = "确认密码",
-                    showPassword = showPassword2,
-                    onToggleVisibility = { showPassword2 = !showPassword2 },
-                    onEnter = {}
-                )
-                errorMessage?.let { Text(it, color = MaterialTheme.colors.error) }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                enabled = !submitting,
-                onClick = {
-                    if (pwd != pwd2) {
-                        errorMessage = "两次输入的密码不一致"
-                        return@TextButton
-                    }
-                    if (name.isBlank() || qq.isBlank() || pwd.isBlank()) {
-                        errorMessage = "未填写完整"
-                        return@TextButton
-                    }
-                    submitting = true
-                    scope.launch {
-                        val err = withContext(Dispatchers.IO) {
-                            runCatching {
-                                val resp = server.makeRequest<Unit>(
-                                    "player/register",
-                                    HttpMethod.Post,
-                                    params = mapOf("name" to name, "qq" to qq, "pwd" to pwd)
-                                )
-                                if (!resp.ok) throw RequestError(resp.msg)
-                            }.exceptionOrNull()
-                        }
-                        submitting = false
-                        if (err != null) {
-                            errorMessage = err.message ?: "注册失败"
-                        } else {
-                            onSuccess()
-                        }
-                    }
-                }
-            ) {
-                Text(if (submitting) "注册中..." else "注册")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("取消")
-            }
-        }
-    )
 }
 
 private fun createShortcut(): Result<Unit> {

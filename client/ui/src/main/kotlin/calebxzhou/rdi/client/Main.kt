@@ -146,6 +146,15 @@ fun main() = application {
                             navController.navigate(HostList) {
                                 popUpTo(Login) { inclusive = true }
                             }
+                        },
+                        onOpenRegister = { navController.navigate(Register) }
+                    )
+                }
+                composable<Register> {
+                    RegisterScreen(
+                        onBack = { navController.popBackStack() },
+                        onRegisterSuccess = {
+                            navController.popBackStack()
                         }
                     )
                 }

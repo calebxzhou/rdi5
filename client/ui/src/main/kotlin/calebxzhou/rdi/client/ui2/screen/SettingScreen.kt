@@ -272,15 +272,88 @@ private fun SettingNav(
 private fun AccountSettings(
     onChangeProfile: () -> Unit
 ) {
+    val scope = rememberCoroutineScope()
+    var invitedPlayers by remember { mutableStateOf<List<RAccount.Dto>>(emptyList()) }
+    var loading by remember { mutableStateOf(false) }
+    var showInviteDialog by remember { mutableStateOf(false) }
+
+    // Load invited players on first composition
+    LaunchedEffect(Unit) {
+        loading = true
+        scope.rdiRequest<List<RAccount.Dto>>(
+            "player/invite",
+            onDone = { loading = false },
+            onErr = {
+                // Silently fail, just show empty list
+            }
+        ) {
+            it.data?.let { invitedPlayers = it }
+        }
+    }
+
     Column(modifier = Modifier.fillMaxWidth()) {
         Text("账号信息", style = MaterialTheme.typography.h6)
         Space8h()
         Text("QQ：${loggedAccount.qq}")
         Text("昵称：${loggedAccount.name}")
         Space8h()
+        Text("邀请你的朋友一起玩RDI。（对方不需要微软账号）")
+        Space8h()
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("已经邀请：${invitedPlayers.size}/5")
+            Spacer(Modifier.width(8.dp))
+            if (loading) {
+                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+            }
+        }
+
+        if (invitedPlayers.isNotEmpty()) {
+            Space8h()
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    invitedPlayers.forEach { player ->
+                        HeadButton(player.id)
+
+                    }
+                }
+            }
+        }
+
+        Space8h()
+        TextButton(
+            onClick = { showInviteDialog = true },
+            enabled = invitedPlayers.size < 5
+        ) {
+            Text("邀请")
+        }
         TextButton(onClick = onChangeProfile) {
             Text("修改个人信息")
         }
+    }
+
+    if (showInviteDialog) {
+        InvitePlayerDialog(
+            onDismiss = { showInviteDialog = false },
+            onSuccess = {
+                showInviteDialog = false
+                // Refresh invited players list
+                loading = true
+                scope.rdiRequest<List<RAccount.Dto>>(
+                    "player/invite",
+                    onDone = { loading = false },
+                    onErr = {}
+                ) {
+                    it.data?.let { invitedPlayers = it }
+                }
+            }
+        )
     }
 }
 
@@ -627,3 +700,76 @@ private fun ChangeProfileDialog(
         }
     )
 }
+
+@Composable
+private fun InvitePlayerDialog(
+    onDismiss: () -> Unit,
+    onSuccess: () -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    var regCode by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var submitting by remember { mutableStateOf(false) }
+
+    androidx.compose.material.AlertDialog(
+        onDismissRequest = { if (!submitting) onDismiss() },
+        title = { Text("邀请玩家") },
+        text = {
+            Column {
+                Text(
+                    "请让你的朋友在注册界面填写信息后，点击「生成邀请码」，然后将邀请码粘贴到下方：",
+                    style = MaterialTheme.typography.body2,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                OutlinedTextField(
+                    value = regCode,
+                    onValueChange = { regCode = it },
+                    label = { Text("邀请码") },
+                    placeholder = { Text("粘贴邀请码...") },
+                    singleLine = false,
+                    maxLines = 5,
+                    enabled = !submitting,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                errorMessage?.let {
+                    Space8h()
+                    Text(it, color = MaterialTheme.colors.error)
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = !submitting && regCode.isNotBlank(),
+                onClick = {
+                    if (regCode.isBlank()) {
+                        errorMessage = "请输入邀请码"
+                        return@TextButton
+                    }
+
+                    submitting = true
+                    errorMessage = null
+                    scope.rdiRequestU(
+                        "player/invite",
+                        params = mapOf("regCode" to regCode.trim()),
+                        onDone = { submitting = false },
+                        onErr = { errorMessage = "邀请失败: ${it.message}" }
+                    ) {
+                        onSuccess()
+                    }
+                }
+            ) {
+                if (submitting) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                } else {
+                    Text("确定")
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { if (!submitting) onDismiss() }) {
+                Text("取消")
+            }
+        }
+    )
+}
+

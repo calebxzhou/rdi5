@@ -1,29 +1,39 @@
 package calebxzhou.rdi.master.service
 
-import calebxzhou.mykotutils.log.Loggers
 import calebxzhou.mykotutils.hwspec.HwSpec
+import calebxzhou.mykotutils.log.Loggers
 import calebxzhou.mykotutils.std.displayLength
 import calebxzhou.mykotutils.std.getDateTimeNow
 import calebxzhou.mykotutils.std.isValidHttpUrl
+import calebxzhou.rdi.common.exception.RequestError
+import calebxzhou.rdi.common.model.MojangPlayerProfile
+import calebxzhou.rdi.common.model.MsaAccountInfo
+import calebxzhou.rdi.common.model.RAccount
+import calebxzhou.rdi.common.serdesJson
+import calebxzhou.rdi.common.service.CryptoManager
+import calebxzhou.rdi.common.service.MojangApi
+import calebxzhou.rdi.common.service.MojangApi.dashless
+import calebxzhou.rdi.common.util.ok
 import calebxzhou.rdi.master.CRASH_REPORT_DIR
 import calebxzhou.rdi.master.DB
 import calebxzhou.rdi.master.exception.AuthError
 import calebxzhou.rdi.master.exception.ParamError
-import calebxzhou.rdi.master.exception.RequestError
 import calebxzhou.rdi.master.model.AuthLog
-import calebxzhou.rdi.common.serdesJson
-import calebxzhou.rdi.common.model.RAccount
 import calebxzhou.rdi.master.net.*
+import calebxzhou.rdi.master.service.PlayerService.bindMSAccount
 import calebxzhou.rdi.master.service.PlayerService.changeCloth
 import calebxzhou.rdi.master.service.PlayerService.changeProfile
 import calebxzhou.rdi.master.service.PlayerService.clearCloth
+import calebxzhou.rdi.master.service.PlayerService.getInvitedPlayers
+import calebxzhou.rdi.master.service.PlayerService.inviteRegister
 import com.mongodb.client.model.Filters.eq
 import com.mongodb.client.model.Filters.`in`
 import com.mongodb.client.model.Updates
 import com.mongodb.client.model.Updates.combine
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
-import io.ktor.server.response.header
+import io.ktor.server.request.*
+import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.toList
@@ -65,11 +75,7 @@ fun Route.playerRoutes() {
             response(data = emptyList<RAccount.Dto>())
         }
         post("/register") {
-            PlayerService.register(
-                param("name"),
-                param("pwd"),
-                param("qq")
-            )
+            PlayerService.register(call.receive())
             ok()
         }
         post("/jwt") {
@@ -119,6 +125,19 @@ fun Route.playerRoutes() {
                     .changeProfile(paramNull("name"), paramNull("qq"), paramNull("pwd"))
                 ok()
             }
+            post("/bind-ms") {
+                call.player().bindMSAccount(call.receive())
+                ok()
+            }
+            route("/invite") {
+                post {
+                    call.player().inviteRegister(call.receive())
+                    ok()
+                }
+                get {
+                    call.player().getInvitedPlayers().map { it.dto }.let { response(data = it) }
+                }
+            }
         }
     }
 }
@@ -130,10 +149,15 @@ object PlayerService {
     val authLogCol = DB.getCollection<AuthLog>("auth_log")
     private val lgr by Loggers
 
+    // Validate name characters: a-Z, 0-9, _, -, and CJK characters
+    val validNamePattern =
+        Regex("^[a-zA-Z0-9_\\-\\u4E00-\\u9FFF\\u3400-\\u4DBF\\u20000-\\u2A6DF\\u2A700-\\u2B73F\\u2B740-\\u2B81F\\u2B820-\\u2CEAF\\uF900-\\uFAFF\\u2F800-\\u2FA1F]+$")
+
     data class LoginResult(val account: RAccount, val token: String)
 
     suspend fun getByQQ(qq: String): RAccount? = accountCol.find(eq("qq", qq)).firstOrNull()
     suspend fun getByName(name: String): RAccount? = accountCol.find(eq("name", name)).firstOrNull()
+    suspend fun getByMsid(msid: java.util.UUID): RAccount? = accountCol.find(eq("msid", msid)).firstOrNull()
 
     suspend fun get(usr: String): RAccount? {
         if (ObjectId.isValid(usr)) {
@@ -155,19 +179,33 @@ object PlayerService {
     suspend fun has(id: ObjectId): Boolean = accountCol
         .countDocuments(equalById(id)) > 0
 
+    suspend fun hasQQ(qq: String): Boolean = accountCol
+        .countDocuments(eq("qq", qq)) > 0
+
+    suspend fun hasName(name: String): Boolean = accountCol
+        .countDocuments(eq("name", name)) > 0
+
     suspend fun validate(usr: String, pwd: String): RAccount? {
         val account = get(usr)
         return if (account == null || account.pwd != pwd) null else account
     }
 
+    suspend fun RAccount.getInvitedPlayers(): List<RAccount> {
+        return accountCol.find(eq(RAccount::inviter.name, _id)).toList()
+    }
+
+    suspend fun RAccount.getInvitedCount(): Long {
+        return accountCol.countDocuments(eq(RAccount::inviter.name, _id))
+    }
+
     suspend fun RAccount.clearCloth() {
-        accountCol.updateOne(uidFilter, Updates.unset("cloth"))
+        accountCol.updateOne(uidFilter, Updates.unset(RAccount::cloth.name))
     }
 
     suspend fun RAccount.changeCloth(isSlim: Boolean, skin: String, cape: String?) {
         if (!skin.isValidHttpUrl()) throw ParamError("皮肤链接格式错误")
-        if (cape!=null&&!cape.isValidHttpUrl()) throw ParamError("披风链接格式错误")
-        accountCol.updateOne(uidFilter, Updates.set("cloth", RAccount.Cloth(isSlim, skin, cape)))
+        if (cape != null && !cape.isValidHttpUrl()) throw ParamError("披风链接格式错误")
+        accountCol.updateOne(uidFilter, Updates.set(RAccount::cloth.name, RAccount.Cloth(isSlim, skin, cape)))
     }
 
     suspend fun getSkin(uid: ObjectId): RAccount.Cloth {
@@ -176,22 +214,106 @@ object PlayerService {
         return cloth.copy(cape = normalizedCape)
     }
 
-    suspend fun register(name: String, pwd: String, qq: String): RAccount {
-        if (getByQQ(qq) != null || getByName(name) != null) throw RequestError("QQ或昵称被占用")
+    suspend fun RAccount.RegisterDto.validate(): Result<Unit> {
+        if (hasQQ(qq)) throw RequestError("QQ被占用")
+        if (hasName(name)) throw RequestError("昵称被占用")
+        if (!name.matches(validNamePattern)) {
+            throw RequestError("昵称只能包含字母数字汉字")
+        }
         val nameSize = name.displayLength
         if (nameSize !in 3..24) {
             throw RequestError("昵称长度应在3~24，当前为${nameSize}")
         }
         if (qq.length !in 5..10 || !qq.all { it.isDigit() }) {
             throw RequestError("QQ号格式不正确")
-
         }
         if (pwd.length !in 6..16) {
             throw RequestError("密码长度须在6~16个字符")
         }
-        val account = RAccount(_id = ObjectId(), name = name, pwd = pwd, qq = qq)
+        return ok()
+    }
+
+    suspend fun MsaAccountInfo.validate(): Result<MojangPlayerProfile> {
+        if (getByMsid(uuid) != null) {
+            throw RequestError("此微软账号已被使用")
+        }
+        val msprof = MojangApi.getProfileByToken(token).getOrElse {
+            it.printStackTrace()
+            throw RequestError("无效的MC会话，请重新登录")
+        }.apply {
+            if (id != uuid.dashless) {
+                throw RequestError("登录会话不匹配 请重试")
+            }
+        }
+        return ok(msprof)
+    }
+
+    suspend fun RAccount.inviteRegister(regCode: String) {
+        if (!hasMsid) throw RequestError("你需要先绑定微软账号")
+        if (getInvitedCount() >= 5) throw RequestError("最多邀请5个玩家")
+
+        val invReg = serdesJson.decodeFromString<RAccount.RegisterDto>(CryptoManager.decrypt(regCode))
+        invReg.validate().getOrElse { throw RequestError("受邀者信息错误：${it.message}") }
+
+        val account = RAccount(
+            _id = ObjectId(),
+            name = invReg.name,
+            pwd = invReg.pwd,
+            qq = invReg.qq,
+            inviter = this._id,
+            cloth = RAccount.Cloth() // Use default cloth for invited users
+        )
         accountCol.insertOne(account)
-        return account
+    }
+
+    suspend fun register(dto: RAccount.RegisterDto) {
+        dto.validate()
+        val msa = dto.msa ?: throw RequestError("无效的微软账号")
+        val msprof = msa.validate().getOrElse { throw RequestError("微软账号认证错误：${it.message}") }
+
+        val cloth = msprof.extractMSACloth()
+
+
+        val account = RAccount(
+            _id = ObjectId(),
+            name = dto.name,
+            pwd = dto.pwd,
+            qq = dto.qq,
+            msid = msa.uuid,
+            cloth = cloth
+        )
+        accountCol.insertOne(account)
+    }
+
+    private fun MojangPlayerProfile.extractMSACloth(): RAccount.Cloth {
+        val msprof = this
+        // Get skin: prefer ACTIVE, then first, then default
+        val activeSkin = msprof.skins.firstOrNull { it.state == "ACTIVE" }
+        val selectedSkin = activeSkin ?: msprof.skins.firstOrNull()
+
+        // Get cape: prefer ACTIVE, then first, then null
+        val activeCape = msprof.capes.firstOrNull { it.state == "ACTIVE" }
+        val selectedCape = activeCape ?: msprof.capes.firstOrNull()
+
+        val cloth = RAccount.Cloth(
+            isSlim = selectedSkin?.variant == "SLIM",
+            skin = selectedSkin?.url ?: RAccount.Cloth().skin,
+            cape = selectedCape?.url
+        )
+        return cloth
+    }
+
+    suspend fun RAccount.bindMSAccount(msa: MsaAccountInfo) {
+        val msprof = msa.validate().getOrElse { throw RequestError("微软账号认证错误：${it.message}") }
+        val cloth = msprof.extractMSACloth()
+        // Update cloth and msid in database
+        accountCol.updateOne(
+            uidFilter,
+            combine(
+                Updates.set(RAccount::cloth.name, cloth),
+                Updates.set("msid", msa.uuid)
+            )
+        )
     }
 
     suspend fun login(usr: String, pwd: String, specJson: String?, clientIp: String): RAccount {
@@ -254,6 +376,7 @@ object PlayerService {
 
     suspend fun getInfoByNames(names: List<String>): List<RAccount.Dto> =
         names.map { getByName(it)?.dto ?: RAccount.DEFAULT.dto }
+
     suspend fun getInfoByIds(uids: List<ObjectId>): List<RAccount.Dto> =
         uids.map { getById(it)?.dto ?: RAccount.DEFAULT.dto }
 

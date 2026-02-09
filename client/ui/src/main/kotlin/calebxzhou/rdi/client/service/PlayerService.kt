@@ -18,8 +18,13 @@ import io.ktor.http.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import net.raphimc.minecraftauth.MinecraftAuth
+import net.raphimc.minecraftauth.java.JavaAuthManager
+import net.raphimc.minecraftauth.msa.model.MsaDeviceCode
+import net.raphimc.minecraftauth.msa.service.impl.DeviceCodeMsaAuthService
 import org.bson.types.ObjectId
 import java.util.concurrent.TimeUnit
+import java.util.function.Consumer
 
 
 object PlayerInfoCache {
@@ -132,6 +137,12 @@ object PlayerService {
         val resp = server.makeRequest<Unit>("player/skin", HttpMethod.Post,params = params)
         if(resp.ok) Ok()
         else throw RequestError(resp.msg)
+    }
+    fun microsoftLogin(onDevice: (MsaDeviceCode) -> Unit): JavaAuthManager {
+        return JavaAuthManager.create(MinecraftAuth.createHttpClient("rdi-client"))
+            .login(::DeviceCodeMsaAuthService, Consumer { deviceCode: MsaDeviceCode ->
+                onDevice(deviceCode)
+            })
     }
 
 }
