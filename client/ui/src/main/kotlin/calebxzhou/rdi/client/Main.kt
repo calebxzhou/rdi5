@@ -147,11 +147,13 @@ fun main() = application {
                                 popUpTo(Login) { inclusive = true }
                             }
                         },
-                        onOpenRegister = { navController.navigate(Register) }
+                        onOpenRegister = { msa -> navController.navigate(Register(msa)) }
                     )
                 }
                 composable<Register> {
+                    val route = it.toRoute<Register>()
                     RegisterScreen(
+                        route.msa,
                         onBack = { navController.popBackStack() },
                         onRegisterSuccess = {
                             navController.popBackStack()

@@ -304,6 +304,21 @@ object ModpackService {
         return dbcl.find(`in`("_id", ids)).toList()
     }
 
+    fun String.validateVerName(): Result<Unit> {
+        val trimmed = this.trim()
+
+        // Check if version name starts with 'v' or 'V'
+        if (trimmed.startsWith("v", ignoreCase = true)) {
+            throw RequestError("版本名不能以 v 或 V 开头")
+        }
+
+        // Check if version name matches the valid name regex
+        if (!trimmed.matches(VALID_NAME_REGEX)) {
+            throw RequestError("版本名只能包含字母 数字 点 汉字")
+        }
+        return ok()
+    }
+
     suspend fun toModpackVoList(modpacks: List<Modpack>): List<Modpack.BriefVo> {
         if (modpacks.isEmpty()) return emptyList()
 

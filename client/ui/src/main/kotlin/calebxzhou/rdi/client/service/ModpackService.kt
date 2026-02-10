@@ -18,6 +18,7 @@ import calebxzhou.rdi.common.service.ModrinthService
 import calebxzhou.rdi.common.service.ModrinthService.mapModrinthVersions
 import calebxzhou.rdi.common.service.ModrinthService.toCardVo
 import calebxzhou.rdi.common.util.str
+import calebxzhou.rdi.common.util.validateName
 import io.ktor.client.plugins.*
 import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
@@ -1025,9 +1026,9 @@ object ModpackService {
         }
 
         try {
-            validateModpackName(name)
+            name.validateName().getOrThrow()
         } catch (e: Exception) {
-            onError(e.message ?: "整合包名称不合法")
+            onError(e.message?:"")
             return null
         }
         onProgress("创建整合包 ${name}...")

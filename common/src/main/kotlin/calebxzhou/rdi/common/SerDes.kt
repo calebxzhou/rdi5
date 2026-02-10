@@ -1,5 +1,6 @@
 package calebxzhou.rdi.common
 
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
@@ -8,6 +9,10 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
+import org.bson.BsonBinary
+import org.bson.UuidRepresentation
+import org.bson.codecs.kotlinx.BsonDecoder
+import org.bson.codecs.kotlinx.BsonEncoder
 import org.bson.types.ObjectId
 import java.util.UUID
 
@@ -45,11 +50,32 @@ object ObjectIdSerializer : KSerializer<ObjectId> {
 object UUIDSerializer : KSerializer<UUID> {
     override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("UUID", PrimitiveKind.STRING)
 
+    @OptIn(ExperimentalSerializationApi::class)
     override fun serialize(encoder: Encoder, value: UUID) {
-        encoder.encodeString(value.toString())
+        when (encoder) {
+            is BsonEncoder -> {
+                // For MongoDB BSON, encode as Binary UUID
+                encoder.encodeBsonValue(BsonBinary(value, UuidRepresentation.STANDARD))
+            }
+            else -> {
+                // For JSON and other formats, encode as String
+                encoder.encodeString(value.toString())
+            }
+        }
     }
 
+    @OptIn(ExperimentalSerializationApi::class)
     override fun deserialize(decoder: Decoder): UUID {
-        return UUID.fromString(decoder.decodeString())
+        return when (decoder) {
+            is BsonDecoder -> {
+                // For MongoDB BSON, decode from Binary
+                val bsonBinary = decoder.decodeBsonValue().asBinary()
+                bsonBinary.asUuid(UuidRepresentation.STANDARD)
+            }
+            else -> {
+                // For JSON and other formats, decode from String
+                UUID.fromString(decoder.decodeString())
+            }
+        }
     }
 }

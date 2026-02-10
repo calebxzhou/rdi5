@@ -111,7 +111,9 @@ dependencies {
     implementation("io.ktor:ktor-client-auth:$ktorVersion")
     implementation("io.ktor:ktor-client-encoding:$ktorVersion")
     implementation("org.jsoup:jsoup:1.19.1")
-    implementation("org.mongodb:bson:5.1.0")
+    implementation("org.mongodb:bson:5.6.3")
+    // Source: https://mvnrepository.com/artifact/org.mongodb/bson-kotlinx
+    implementation("org.mongodb:bson-kotlinx:5.6.3")
     implementation("com.github.ben-manes.caffeine:caffeine:3.2.2")
     implementation("io.ktor:ktor-server-core:$ktorVersion")
     implementation("io.ktor:ktor-server-websockets:$ktorVersion")

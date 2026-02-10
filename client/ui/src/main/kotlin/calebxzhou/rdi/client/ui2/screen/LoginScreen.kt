@@ -29,6 +29,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import kotlin.system.exitProcess
+import androidx.compose.ui.window.Dialog
 
 
 /**
@@ -37,7 +38,7 @@ import kotlin.system.exitProcess
 @Composable
 fun LoginScreen(
     onLoginSuccess: (() -> Unit)? = null,
-    onOpenRegister: (() -> Unit)? = null
+    onOpenRegister: ((Boolean) -> Unit)? = null
 ) {
     var showPassword by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -56,6 +57,7 @@ fun LoginScreen(
     var okMessage by remember { mutableStateOf<String?>(null) }
     var symlinkError by remember { mutableStateOf<String?>(null) }
     var updateCheckComplete by remember { mutableStateOf(false) }
+    var showMsAccountDialog by remember { mutableStateOf(false) }
 
     fun attemptLogin() {
         if (qq.isBlank() || pwd.isBlank()) {
@@ -197,7 +199,7 @@ fun LoginScreen(
                     }) {
                         Text("创建桌面快捷方式", fontWeight = FontWeight.Bold)
                     }
-                    TextButton(onClick = { onOpenRegister?.invoke() }) {
+                    TextButton(onClick = { showMsAccountDialog = true }) {
                         Text("注册")
                     }
                 }
@@ -260,6 +262,50 @@ fun LoginScreen(
             }
         }
         BottomSnakebar(snackbarHostState)
+
+        // MS Account Dialog
+        if (showMsAccountDialog) {
+            Dialog(onDismissRequest = { showMsAccountDialog = false }) {
+                Surface(
+                    shape = MaterialTheme.shapes.medium,
+                    color = MaterialTheme.colors.surface,
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(24.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Text(
+                            "你有微软MC账号吗？",
+                            style = MaterialTheme.typography.h6
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = {
+                                    showMsAccountDialog = false
+                                    onOpenRegister?.invoke(true)
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("有")
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    showMsAccountDialog = false
+                                    onOpenRegister?.invoke(false)
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("没有")
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

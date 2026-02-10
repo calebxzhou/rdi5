@@ -39,10 +39,10 @@ import calebxzhou.rdi.common.model.Task
 import calebxzhou.rdi.common.model.isDav
 import calebxzhou.rdi.common.model.latest
 import calebxzhou.rdi.common.model.validateIconUrl
-import calebxzhou.rdi.common.model.validateModpackName
 import calebxzhou.rdi.common.serdesJson
 import calebxzhou.rdi.common.service.CurseForgeService.fillCurseForgeVo
 import calebxzhou.rdi.common.service.ModrinthService.fillModrinthVo
+import calebxzhou.rdi.common.util.validateName
 import io.ktor.http.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -307,9 +307,11 @@ fun ModpackInfoScreen(
                                     Text(statusText.asIconText, color = statusColor)
                                     Space8w()
                                     if (version.status == Modpack.Status.OK) {
+                                        val allowCreateHost = loggedAccount.hasMsid
                                         CircleIconButton(
                                             icon = "\uDB86\uDD4B",
-                                            tooltip = "选定此版本创建地图",
+                                            tooltip = if(allowCreateHost)"选定此版本创建地图" else "绑定微软MC账号创建地图",
+                                            enabled = allowCreateHost,
                                             bgColor = MaterialColor.GREEN_700.color
                                         ) {
                                             val skyblock = version.mods.any { it.slug == "skyblock-builder" }
@@ -440,15 +442,15 @@ fun ModpackInfoScreen(
                 TextButton(onClick = {
                     scope.launch {
                         try {
-                            validateModpackName(editName)
+                            editName.validateName().getOrThrow()
                         } catch (e: Exception) {
-                            errorMessage = e.message ?: "整合包名称不合法"
+                            errorMessage = e.message
                             return@launch
                         }
                         try {
                             validateIconUrl(editIconUrl.trim().ifBlank { null })
                         } catch (e: Exception) {
-                            errorMessage = e.message ?: "图标链接不合法"
+                            errorMessage = e.message ?: "图标链接错误"
                             return@launch
                         }
                         val body = serdesJson.encodeToString(

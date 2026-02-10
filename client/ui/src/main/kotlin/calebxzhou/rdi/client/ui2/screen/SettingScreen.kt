@@ -8,9 +8,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import calebxzhou.mykotutils.hwspec.HwSpec
 import calebxzhou.mykotutils.std.humanFileSize
@@ -25,12 +30,16 @@ import calebxzhou.rdi.client.service.SettingsService
 import calebxzhou.rdi.client.ui2.*
 import calebxzhou.rdi.client.ui2.comp.HeadButton
 import calebxzhou.rdi.client.ui2.comp.PasswordField
+import calebxzhou.rdi.common.json
+import calebxzhou.rdi.common.model.MsaAccountInfo
 import calebxzhou.rdi.common.model.RAccount
-import calebxzhou.rdi.common.service.CryptoManager
 import io.ktor.http.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import net.raphimc.minecraftauth.msa.model.MsaDeviceCode
+import java.awt.Desktop
+import java.net.URI
 
 /**
  * calebxzhou @ 2026-01-24 18:36
@@ -268,6 +277,7 @@ private fun SettingNav(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AccountSettings(
     onChangeProfile: () -> Unit
@@ -276,7 +286,11 @@ private fun AccountSettings(
     var invitedPlayers by remember { mutableStateOf<List<RAccount.Dto>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
     var showInviteDialog by remember { mutableStateOf(false) }
-
+    var startMsBind by remember { mutableStateOf(false) }
+    var pendingBind by remember { mutableStateOf(false) }
+    var msaInfo by remember { mutableStateOf<MsaAccountInfo?>(null) }
+    var msaDeviceCode by remember { mutableStateOf<MsaDeviceCode?>(null) }
+    var errMsg by remember { mutableStateOf<String?>(null) }
     // Load invited players on first composition
     LaunchedEffect(Unit) {
         loading = true
@@ -290,52 +304,113 @@ private fun AccountSettings(
             it.data?.let { invitedPlayers = it }
         }
     }
-
+    fun clearMsaState(){
+        startMsBind = false
+        msaInfo = null
+        msaDeviceCode = null
+    }
     Column(modifier = Modifier.fillMaxWidth()) {
-        Text("账号信息", style = MaterialTheme.typography.h6)
+        RowV {
+            Text("账号信息", style = MaterialTheme.typography.h6)
+            Space8w()
+            CircleIconButton("\uE690", "修改个人信息") {
+                onChangeProfile()
+            }
+            Space8w()
+            errMsg?.let { ErrorText(it) }
+        }
         Space8h()
         Text("QQ：${loggedAccount.qq}")
         Text("昵称：${loggedAccount.name}")
         Space8h()
-        Text("邀请你的朋友一起玩RDI。（对方不需要微软账号）")
         Space8h()
-
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("已经邀请：${invitedPlayers.size}/5")
-            Spacer(Modifier.width(8.dp))
-            if (loading) {
-                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-            }
+        if (startMsBind) {
+            Text("即将登录微软账号，点击复制浏览器中打开链接，请在5分钟内登录")
+            Text("不要切换到其他页面！", fontWeight = FontWeight.Bold)
+            Text("登录完成后稍等10秒，会自动读取账号信息以进行下一步")
+        }
+        msaDeviceCode?.let { msaDeviceCode ->
+            Text(
+                text = msaDeviceCode.directVerificationUri,
+                color = MaterialTheme.colors.primary,
+                style = LocalTextStyle.current.copy(textDecoration = TextDecoration.Underline),
+                modifier = Modifier
+                    .clickable {
+                        clipboard(msaDeviceCode.directVerificationUri)
+                    }
+                    .pointerHoverIcon(PointerIcon.Hand)
+            )
         }
 
-        if (invitedPlayers.isNotEmpty()) {
+        Space8h()
+        if (loggedAccount.hasMsid) {
+
+            Text("已绑定微软MC账号，邀请你的朋友一起玩RDI。")
             Space8h()
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
 
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    invitedPlayers.forEach { player ->
-                        HeadButton(player.id)
+            RowV {
+                Text("已邀请：${invitedPlayers.size}/5人")
+                Spacer(Modifier.width(8.dp))
+                if (loading) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                }
+                invitedPlayers.forEach { player ->
+                    HeadButton(player.id)
+                }
+                if (invitedPlayers.size < 5) {
+                    CircleIconButton("\uF234", "邀请") {
+                        showInviteDialog = true
+                    }
+                }
+            }
+        } else {
+            if (!startMsBind){
+                RowV {
+                    Text("绑定微软MC账号，可获得更丰富的RDI体验 👉")
+                    Space8w()
+                    CircleIconButton("\uE70F", "绑定微软MC账号") {
+                        startMsBind = true
+                        scope.launch(Dispatchers.IO) {
+                            val manager = PlayerService.microsoftLogin { code ->
+                                msaDeviceCode = code
+                                // Open verification URI in user's browser
+                                if (Desktop.isDesktopSupported()) {
+                                    Desktop.getDesktop().browse(URI(code.directVerificationUri))
+                                }
+                            }.getOrElse {
+                                it.printStackTrace()
+                                errMsg = "登录微软MC失败：${it.message}"
+                                return@launch
+                            }
+                            msaInfo = MsaAccountInfo(
+                                manager.minecraftProfile.upToDate.id,
+                                manager.minecraftProfile.upToDate.name,
+                                manager.minecraftToken.upToDate.token,
+                            )
 
+                        }
+                    }
+                }
+            }
+        }
+        msaInfo?.let { info ->
+            Text("读取信息成功！昵称：${info.name} MSID: ${info.uuid}")
+            RowV {
+                Text("绑定后将不能修改，如果确定账号信息正确，")
+                Space8w()
+                CircleIconButton("\uDB82\uDE50", "ok", bgColor = MaterialColor.GREEN_900.color, enabled = !pendingBind) {
+                    scope.rdiRequestU("player/bind-ms", body = info.json, onDone = {
+                        clearMsaState()
+                        pendingBind=false
+                    }, onErr = {
+                        errMsg = "绑定失败：${it.message}，请重试"
+                    }) {
+                        loggedAccount = loggedAccount.copy(msid = info.uuid)
                     }
                 }
             }
         }
 
-        Space8h()
-        TextButton(
-            onClick = { showInviteDialog = true },
-            enabled = invitedPlayers.size < 5
-        ) {
-            Text("邀请")
-        }
-        TextButton(onClick = onChangeProfile) {
-            Text("修改个人信息")
-        }
     }
 
     if (showInviteDialog) {
@@ -644,19 +719,19 @@ private fun InvitePlayerDialog(
 
     androidx.compose.material.AlertDialog(
         onDismissRequest = { if (!submitting) onDismiss() },
-        title = { Text("邀请玩家") },
+        title = { Text("邀请朋友注册") },
         text = {
             Column {
                 Text(
-                    "请让你的朋友在注册界面填写信息后，点击「生成邀请码」，然后将邀请码粘贴到下方：",
+                    "在下方粘贴朋友发给你的注册码。",
                     style = MaterialTheme.typography.body2,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
                 OutlinedTextField(
                     value = regCode,
                     onValueChange = { regCode = it },
-                    label = { Text("邀请码") },
-                    placeholder = { Text("粘贴邀请码...") },
+                    label = { Text("注册码") },
+                    placeholder = { Text("粘贴注册码...") },
                     singleLine = false,
                     maxLines = 5,
                     enabled = !submitting,
@@ -673,7 +748,7 @@ private fun InvitePlayerDialog(
                 enabled = !submitting && regCode.isNotBlank(),
                 onClick = {
                     if (regCode.isBlank()) {
-                        errorMessage = "请输入邀请码"
+                        errorMessage = "请输入注册码"
                         return@TextButton
                     }
 
@@ -681,7 +756,7 @@ private fun InvitePlayerDialog(
                     errorMessage = null
                     scope.rdiRequestU(
                         "player/invite",
-                        params = mapOf("regCode" to regCode.trim()),
+                        body = regCode,
                         onDone = { submitting = false },
                         onErr = { errorMessage = "邀请失败: ${it.message}" }
                     ) {

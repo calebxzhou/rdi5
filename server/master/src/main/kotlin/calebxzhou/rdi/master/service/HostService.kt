@@ -253,6 +253,7 @@ data class HostContext(
 ) {
     var reqId = 0
     val targetMember get() = targetMemberNull ?: throw ParamError("玩家${player.name}不是此地图的受邀成员")
+    suspend fun getTargetPlayer() = PlayerService.getById(targetMember.id) ?: throw ParamError("玩家${player.name}不存在")
 }
 
 object HostService {
@@ -1560,7 +1561,7 @@ object HostService {
         val current = getById(host._id) ?: throw RequestError("无此地图")
         val recipient = targetMember
         if (current.ownerId == recipient.id) throw RequestError("不能转给自己")
-
+        if(!getTargetPlayer().hasMsid) throw RequestError("找不到对方的微软账号")
         val previousOwner = current.members.find { it.id == current.ownerId }
             ?: throw RequestError("当前拥有者不在成员列表")
         val hasRecipient = current.members.any { it.id == recipient.id }

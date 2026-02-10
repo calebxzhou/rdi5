@@ -31,6 +31,7 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.modifier.modifierLocalProvider
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -47,6 +48,8 @@ import calebxzhou.rdi.RDIClient
 import calebxzhou.rdi.client.IconFontFamily
 import kotlinx.coroutines.launch
 import org.jetbrains.skia.Image
+import java.awt.Toolkit
+import java.awt.datatransfer.StringSelection
 import javax.swing.JOptionPane
 
 /**
@@ -85,6 +88,23 @@ fun alertErrOs(msg: String) {
         msg,
         "错误",
         JOptionPane.ERROR_MESSAGE
+    )
+}
+
+fun clipboard(text: String) {
+    val clipboard = Toolkit.getDefaultToolkit().systemClipboard
+    clipboard.setContents(StringSelection(text), null)
+}
+
+@Composable
+inline fun RowV(
+    modifier: Modifier = Modifier,
+    horizontalArrangement: Arrangement.Horizontal = Arrangement.Start,
+    content: @Composable (RowScope.() -> Unit)
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier, horizontalArrangement = horizontalArrangement, content = content
     )
 }
 
@@ -221,7 +241,7 @@ private fun IconButtonBase(
     val ringStroke = 3.dp
     val useLongPress = longPressDelay > 0L
     var isPressing by remember { mutableStateOf(false) }
-    
+
     val pressModifier = if (useLongPress) {
         Modifier.pointerInput(longPressDelay, enabled) {
             if (!enabled) return@pointerInput
@@ -255,11 +275,11 @@ private fun IconButtonBase(
     } else {
         Modifier
     }
-    
+
     // Calculate remaining seconds
     val remainingSeconds = ((1f - progress.value) * longPressDelay / 1000f)
     val remainingText = String.format("\uE641 %.1fs", remainingSeconds).asIconText
-    
+
     // Determine popup alignment based on tooltipAnchorPosition
     val popupAlignment = when (tooltipAnchorPosition) {
         TooltipAnchorPosition.Above -> Alignment.TopCenter
@@ -270,7 +290,7 @@ private fun IconButtonBase(
         TooltipAnchorPosition.Below -> IntOffset(0, 40)
         else -> IntOffset(0, 8)
     }
-    
+
     val drawButton = @Composable {
         Box(
             modifier = Modifier
@@ -304,7 +324,7 @@ private fun IconButtonBase(
             contentAlignment = Alignment.Center
         ) {
             content(Modifier.size(size.dp))
-            
+
             // Show remaining time popup during long press
             if (useLongPress && isPressing && progress.value > 0f) {
                 Popup(
@@ -328,7 +348,7 @@ private fun IconButtonBase(
             }
         }
     }
-    
+
     // Keep original tooltip for hover behavior
     tooltip?.let { tip ->
         SimpleTooltip(tip, tooltipAnchorPosition) { drawButton() }
@@ -346,7 +366,7 @@ fun ImageIconButton(
     bgColor: Color = Color.White,
     enabled: Boolean = true,
     longPressDelay: Long = 0L,
-    onClick: () -> Unit={}
+    onClick: () -> Unit = {}
 ) {
     IconButtonBase(
         tooltip = tooltip,
@@ -418,7 +438,7 @@ fun CircleIconButton(
             // Use Box instead of TextButton for long press mode to avoid event consumption
             Box(
                 modifier = modifier
-                    .background( if(enabled) bgColor else MaterialColor.GRAY_200.color, CircleShape),
+                    .background(if (enabled) bgColor else MaterialColor.GRAY_200.color, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -513,17 +533,20 @@ fun Space24w() {
 fun Space8h() {
     Spacer(modifier = Modifier.height(8.dp))
 }
+
 @Composable
-fun RowScope.SpacerFullW(){
+fun RowScope.SpacerFullW() {
     Spacer(Modifier.weight(1f))
 }
+
 fun iconBitmap(icon: String): ImageBitmap {
     RDIClient.jarResource("assets/icons/$icon.png").use {
         return it.readBytes().decodeToImageBitmap()
     }
 }
+
 @Composable
-fun ErrorText(text: String){
+fun ErrorText(text: String) {
     Text("\uF467 $text".asIconText, color = MaterialTheme.colors.error)
 }
 

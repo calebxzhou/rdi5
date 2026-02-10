@@ -93,7 +93,12 @@ fun ModpackListScreen(
                 onOpenMcVersions.invoke()
             }
             Space8w()
-            CircleIconButton("\uDB80\uDFD5", "上传整合包") {
+            val allow = loggedAccount.hasMsid
+            CircleIconButton(
+                "\uDB80\uDFD5",
+                tooltip = if(allow)"上传整合包" else "绑定微软MC账号上传整合包",
+                enabled = allow,
+            ) {
                 val file = pickModpackFile(
                     onError = { msg -> errorMessage = msg }
                 ) ?: return@CircleIconButton

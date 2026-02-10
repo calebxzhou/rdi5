@@ -5,6 +5,7 @@ import calebxzhou.mykotutils.log.Loggers
 import calebxzhou.mykotutils.std.displayLength
 import calebxzhou.mykotutils.std.getDateTimeNow
 import calebxzhou.mykotutils.std.isValidHttpUrl
+import calebxzhou.rdi.common.VALID_NAME_REGEX
 import calebxzhou.rdi.common.exception.RequestError
 import calebxzhou.rdi.common.model.MojangPlayerProfile
 import calebxzhou.rdi.common.model.MsaAccountInfo
@@ -149,10 +150,6 @@ object PlayerService {
     val authLogCol = DB.getCollection<AuthLog>("auth_log")
     private val lgr by Loggers
 
-    // Validate name characters: a-Z, 0-9, _, -, and CJK characters
-    val validNamePattern =
-        Regex("^[a-zA-Z0-9_\\-\\u4E00-\\u9FFF\\u3400-\\u4DBF\\u20000-\\u2A6DF\\u2A700-\\u2B73F\\u2B740-\\u2B81F\\u2B820-\\u2CEAF\\uF900-\\uFAFF\\u2F800-\\u2FA1F]+$")
-
     data class LoginResult(val account: RAccount, val token: String)
 
     suspend fun getByQQ(qq: String): RAccount? = accountCol.find(eq("qq", qq)).firstOrNull()
@@ -217,7 +214,7 @@ object PlayerService {
     suspend fun RAccount.RegisterDto.validate(): Result<Unit> {
         if (hasQQ(qq)) throw RequestError("QQ被占用")
         if (hasName(name)) throw RequestError("昵称被占用")
-        if (!name.matches(validNamePattern)) {
+        if (!name.matches(VALID_NAME_REGEX)) {
             throw RequestError("昵称只能包含字母数字汉字")
         }
         val nameSize = name.displayLength
@@ -252,7 +249,10 @@ object PlayerService {
         if (!hasMsid) throw RequestError("你需要先绑定微软账号")
         if (getInvitedCount() >= 5) throw RequestError("最多邀请5个玩家")
 
-        val invReg = serdesJson.decodeFromString<RAccount.RegisterDto>(CryptoManager.decrypt(regCode))
+        val invReg = runCatching {
+            serdesJson.decodeFromString<RAccount.RegisterDto>(CryptoManager.decrypt(regCode))
+        }.getOrElse {
+            it.printStackTrace();throw RequestError("无效的注册码") }
         invReg.validate().getOrElse { throw RequestError("受邀者信息错误：${it.message}") }
 
         val account = RAccount(
