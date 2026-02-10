@@ -1,6 +1,5 @@
 package calebxzhou.rdi.common.model
 
-import calebxzhou.mykotutils.std.displayLength
 import calebxzhou.rdi.common.exception.RequestError
 import calebxzhou.rdi.common.net.httpRequest
 import io.ktor.client.request.*
@@ -21,7 +20,7 @@ class Modpack(
     val modloader: ModLoader,
     val mcVer: McVersion,
     val sourceUrl: String? = null,
-    val versions: List<Version> = arrayListOf(),
+    val versions: MutableList<Version> = arrayListOf(),
 ) {
 
     @Serializable
@@ -37,6 +36,32 @@ class Modpack(
         val status: Status,
         val mods: MutableList<Mod> = arrayListOf(),
     ) {
+    }
+
+    /* @Serializable
+     class CreateDto(
+         val name: String,
+         val iconUrl: String? = null,
+         val info: String = "暂无简介",
+         val modloader: ModLoader,
+         val mcVer: McVersion,
+     ){
+
+     }*/
+    @Serializable
+    class AddVersionDto(
+
+    )
+
+    @Serializable
+    class CreateWithVersionDto(
+        val name: String,
+        val mcVer: McVersion,
+        val modLoader: ModLoader,
+        val verName: String,
+        val mods: MutableList<Mod>
+    ) {
+
     }
 
     @Serializable
@@ -87,11 +112,8 @@ class Modpack(
 
 val List<Modpack.Version>.latest get() = maxBy { it.time }
 
-suspend fun validateModpackName(name: String): Result<Unit> {
-    val trimmed = name.trim()
-    val len = trimmed.displayLength
-    if (len !in 3..32) throw RequestError("整合包名称长度需在3~32个字符")
-    return Result.success(Unit)
+fun Modpack.hasVer(verName: String): Boolean {
+    return versions.any { it.name == verName }
 }
 
 suspend fun validateIconUrl(iconUrl: String?): Result<Unit> {

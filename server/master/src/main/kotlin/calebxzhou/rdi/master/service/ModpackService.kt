@@ -4,12 +4,14 @@ import calebxzhou.mykotutils.log.Loggers
 import calebxzhou.mykotutils.std.deleteRecursivelyNoSymlink
 import calebxzhou.mykotutils.std.sha1
 import calebxzhou.mykotutils.std.toFixed
+import calebxzhou.rdi.common.VALID_NAME_REGEX
 import calebxzhou.rdi.common.exception.RequestError
 import calebxzhou.rdi.common.model.*
 import calebxzhou.rdi.common.serdesJson
 import calebxzhou.rdi.common.service.ModService
 import calebxzhou.rdi.common.service.ServerTaskRunner
 import calebxzhou.rdi.common.util.ioScope
+import calebxzhou.rdi.common.util.ok
 import calebxzhou.rdi.common.util.str
 import calebxzhou.rdi.common.util.validateName
 import calebxzhou.rdi.master.DB
@@ -19,7 +21,7 @@ import calebxzhou.rdi.master.exception.ParamError
 import calebxzhou.rdi.master.net.*
 import calebxzhou.rdi.master.service.HostService.status
 import calebxzhou.rdi.master.service.ModpackService.changeOptions
-import calebxzhou.rdi.master.service.ModpackService.createVersion
+import calebxzhou.rdi.master.service.ModpackService.createWithVersion
 import calebxzhou.rdi.master.service.ModpackService.deleteModpack
 import calebxzhou.rdi.master.service.ModpackService.deleteVersion
 import calebxzhou.rdi.master.service.ModpackService.getVersionFile
@@ -91,14 +93,32 @@ fun Route.modpackRoutes() {
 
         }
         post {
-            response(
-                data = ModpackService.create(
-                    call.uid,
-                    param("name"),
-                    McVersion.valueOf(param("mcVer")),
-                    ModLoader.valueOf(param("modloader"))
-                )
-            )
+            val multipart = call.receiveMultipart(formFieldLimit = 128 * 1024 * 1024)
+            var zipBytes: ByteArray? = null
+            var dto: Modpack.CreateWithVersionDto? = null
+            while (true) {
+                val part = multipart.readPart() ?: break
+                when (part) {
+                    is PartData.FormItem -> if (part.name == "dto") {
+                        dto = runCatching { serdesJson.decodeFromString<Modpack.CreateWithVersionDto>(part.value) }
+                            .getOrElse { throw ParamError("格式错误: ${it.message}") }
+                    }
+
+                    is PartData.FileItem -> if (part.name == "file") {
+                        zipBytes = part.provider().toByteArray()
+                    }
+
+                    is PartData.BinaryItem -> if (part.name == "file") {
+                        zipBytes = part.provider().readByteArray()
+                    }
+
+                    else -> {}
+                }
+            }
+
+            val payload = zipBytes ?: throw ParamError("缺少文件")
+            dto?.createWithVersion(call.player(), payload)
+            ok()
         }
         get("/my") {
             val mods = ModpackService.listByAuthor(call.uid)
@@ -187,7 +207,7 @@ fun Route.modpackRoutes() {
                     }
                     val modList = mods ?: arrayListOf()
 
-                    ctx.requireAuthor().createVersion(verName, payload, modList)
+                    // ctx.requireAuthor().createVersion(verName, payload, modList)
                     ok()
 
                 }
@@ -287,6 +307,11 @@ object ModpackService {
 
     suspend fun listByAuthor(uid: ObjectId): List<Modpack> = dbcl.find(eq("authorId", uid)).toList()
 
+    private suspend fun hasModpack(name: String): Boolean = dbcl.countDocuments(eq(Modpack::name.name, name)) > 0
+
+    private suspend fun getModpackCount(uid: ObjectId): Int =
+        dbcl.countDocuments(eq(Modpack::authorId.name, uid)).toInt()
+
     suspend fun getById(id: ObjectId): Modpack? = dbcl.find(eq("_id", id)).firstOrNull()
 
     suspend fun searchByName(name: String): List<Modpack> {
@@ -373,28 +398,56 @@ object ModpackService {
         )
     }
 
-    suspend fun create(uid: ObjectId, name: String, ver: McVersion, modLoader: ModLoader): Modpack {
+    suspend fun Modpack.CreateWithVersionDto.createWithVersion(player: RAccount, zipBytes: ByteArray) {
         name.validateName().getOrNull()
-        val modpackCount = dbcl.countDocuments(eq("authorId", uid)).toInt()
-        val player = PlayerService.getById(uid)
-        if(player?.hasMsid==true) throw RequestError("必须有微软账号才能传包")
-        if (modpackCount >= MAX_MODPACK_PER_USER && player?.isDav == false) {
+        verName.validateVerName().getOrNull()
+        if (!player.hasMsid) throw RequestError("必须有微软账号才能传包")
+        if (getModpackCount(player._id) >= MAX_MODPACK_PER_USER && !player.isDav) {
             throw RequestError("一个人最多传${MAX_MODPACK_PER_USER}个包")
         }
-        if (dbcl.countDocuments(eq(Modpack::name.name, name)) > 0) {
-            throw RequestError("别人传过这个包了")
-        }
-        val modPack = Modpack(
-            name = name,
-            authorId = uid,
-            mcVer = ver,
+        if (hasModpack(name)) throw RequestError("别人传过这个包了")
+        val modpack = Modpack(
+            name = this.name,
+            authorId = player._id,
+            mcVer = mcVer,
             modloader = modLoader
         )
-        dbcl.insertOne(modPack)
-        if (!modPack.dir.exists()) {
-            modPack.dir.mkdirs()
+        modpack.dir.mkdirs()
+        mods.sortBy { it.slug.lowercase() }
+        val version = Modpack.Version(
+            modpackId = modpack._id,
+            name = verName,
+            changelog = "新上传",
+            status = Modpack.Status.WAIT,
+            mods = mods,
+            time = System.currentTimeMillis()
+        )
+        modpack.versions += version
+        version.dir.mkdirs()
+        version.zip.writeBytes(zipBytes)
+        version.processMods(modpack)
+        dbcl.insertOne(modpack)
+        ioScope.launch {
+            lgr.info { "开始构建 ${modpack.name}:${version.name}" }
+            val mailId = MailService.sendSystemMail(
+                player._id,
+                "整合包${verName}构建中",
+                "开始构建整合包 ${modpack.name} 版本${version.name}\n"
+            )._id
+            runCatching {
+                modpack.buildVersion(version) {
+                    lgr.info { it }
+                    MailService.changeMail(mailId, newContent = it)
+                }
+            }.onFailure { error ->
+                lgr.error(error) { "构建失败 ${modpack.name}:${version.name}" }
+                MailService.changeMail(
+                    mailId,
+                    "整合包构建失败：${modpack.name}",
+                    "无法构建整合包，错误原因：${error.message}"
+                )
+            }
         }
-        return modPack
     }
 
     fun ModpackContext.rebuildVersion() {
@@ -480,52 +533,6 @@ object ModpackService {
             .filter { it.isFile }
             .map { it.relativeTo(dir).invariantSeparatorsPath }
             .toList()
-    }
-
-    fun ModpackContext.createVersion(verName: String, zipBytes: ByteArray, mods: MutableList<Mod>) {
-        if (verName.isBlank()) throw RequestError("版本名不能为空")
-        if (modpack.versions.any { it.name == verName }) {
-            throw RequestError("版本已存在")
-        }
-        mods.sortBy { it.slug.lowercase() }
-
-        val version = Modpack.Version(
-            modpackId = modpack._id,
-            name = verName,
-            changelog = "新上传",
-            status = Modpack.Status.WAIT,
-            mods = mods,
-            time = System.currentTimeMillis()
-        )
-        version.dir.mkdirs()
-        version.zip.writeBytes(zipBytes)
-        version.processMods(modpack)
-        ioScope.launch {
-            dbcl.updateOne(
-                eq("_id", modpack._id),
-                Updates.push(Modpack::versions.name, version)
-            )
-            lgr.info { "开始构建 ${modpack.name}:${version.name}" }
-            val mailId = MailService.sendSystemMail(
-                player._id,
-                "整合包${verName}构建中",
-                "开始构建整合包 ${modpack.name} 版本${version.name}\n"
-            )._id
-            runCatching {
-                modpack.buildVersion(version) {
-                    lgr.info { it }
-                    MailService.changeMail(mailId, newContent = it)
-                }
-            }
-                .onFailure { error ->
-                    lgr.error(error) { "构建失败 ${modpack.name}:${version.name}" }
-                    MailService.changeMail(
-                        mailId,
-                        "整合包构建失败：${modpack.name}",
-                        "无法构建整合包，错误原因：${error.message}"
-                    )
-                }
-        }
     }
 
     suspend fun Modpack.installToHost(verName: String, host: Host, onProgress: (String) -> Unit) {
