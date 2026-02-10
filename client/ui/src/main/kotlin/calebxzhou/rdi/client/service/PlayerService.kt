@@ -1,7 +1,6 @@
 package calebxzhou.rdi.client.service
 
 import calebxzhou.mykotutils.hwspec.HwSpec
-import calebxzhou.mykotutils.std.Ok
 import calebxzhou.rdi.client.auth.LocalCredentials
 import calebxzhou.rdi.client.model.LoginInfo
 import calebxzhou.rdi.client.net.loggedAccount
@@ -11,6 +10,7 @@ import calebxzhou.rdi.common.exception.RequestError
 import calebxzhou.rdi.common.model.RAccount
 import calebxzhou.rdi.common.model.Response
 import calebxzhou.rdi.common.serdesJson
+import calebxzhou.rdi.common.util.ok
 import calebxzhou.rdi.lgr
 import com.github.benmanes.caffeine.cache.Caffeine
 import io.ktor.client.call.*
@@ -38,9 +38,11 @@ object PlayerInfoCache {
     operator fun minusAssign(uid: ObjectId) {
         cache.invalidate(uid)
     }
+
     suspend operator fun get(uid: ObjectId): RAccount.Dto {
         return getAsync(uid)
     }
+
     suspend fun getAsync(uid: ObjectId): RAccount.Dto {
         cache.getIfPresent(uid)?.let { return it }
         val deferred = mutex.withLock {
@@ -50,6 +52,7 @@ object PlayerInfoCache {
         scheduleBatch()
         return deferred.await()
     }
+
     private fun scheduleBatch() {
         if (batchJob?.isActive == true) return
         batchJob = scope.launch {
@@ -76,6 +79,7 @@ object PlayerInfoCache {
         }
     }
 }
+
 object PlayerService {
 
     suspend fun login(usr: String, pwd: String): Result<RAccount> = runCatching {
@@ -93,12 +97,13 @@ object PlayerService {
             }
         }
         account.jwt = resp.headers["jwt"]
-        val loginInfo = LoginInfo(account.qq, account.name,account.pwd)
+        val loginInfo = LoginInfo(account.qq, account.name, account.pwd)
         creds.loginInfos += account._id to loginInfo
         creds.save()
         loggedAccount = account
         account
     }
+
     suspend fun getJwt(usr: String, pwd: String): String {
         return server.makeRequest<String>(
             "player/jwt",
@@ -115,6 +120,7 @@ object PlayerService {
             RAccount.DEFAULT.dto
         }
     }
+
     suspend fun getPlayerInfos(uids: List<ObjectId>): List<RAccount.Dto> {
         if (uids.isEmpty()) return emptyList()
         return try {
@@ -126,7 +132,8 @@ object PlayerService {
             emptyList()
         }
     }
-    suspend fun setCloth(cloth: RAccount.Cloth) : Result<Unit> = runCatching {
+
+    suspend fun setCloth(cloth: RAccount.Cloth): Result<Unit> = runCatching {
         val params = mutableMapOf<String, Any>()
         params["isSlim"] = cloth.isSlim.toString()
         params["skin"] = cloth.skin
@@ -134,12 +141,13 @@ object PlayerService {
             params["cape"] = it
         }
 
-        val resp = server.makeRequest<Unit>("player/skin", HttpMethod.Post,params = params)
-        if(resp.ok) Ok()
+        val resp = server.makeRequest<Unit>("player/skin", HttpMethod.Post, params = params)
+        if (resp.ok) ok()
         else throw RequestError(resp.msg)
     }
-    fun microsoftLogin(onDevice: (MsaDeviceCode) -> Unit): JavaAuthManager {
-        return JavaAuthManager.create(MinecraftAuth.createHttpClient("rdi-client"))
+
+    fun microsoftLogin(onDevice: (MsaDeviceCode) -> Unit): Result<JavaAuthManager> = runCatching {
+        JavaAuthManager.create(MinecraftAuth.createHttpClient("rdi-client"))
             .login(::DeviceCodeMsaAuthService, Consumer { deviceCode: MsaDeviceCode ->
                 onDevice(deviceCode)
             })
