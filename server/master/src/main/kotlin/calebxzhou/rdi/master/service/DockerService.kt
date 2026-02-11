@@ -91,7 +91,7 @@ object DockerService {
             .withPortBindings(parse("$port:$port"))
             .withCpuCount(6L)
             .withMemory(6L * 1024 * 1024 * 1024)  // 8GB RAM limit
-            .withMemorySwap(10L * 1024 * 1024 * 1024)  //4G swap
+            .withMemorySwap(12L * 1024 * 1024 * 1024)  //4G swap
             .withPidsLimit(512L)
             .withExtraHosts("host.docker.internal:host-gateway")
             .withMounts(mounts)
