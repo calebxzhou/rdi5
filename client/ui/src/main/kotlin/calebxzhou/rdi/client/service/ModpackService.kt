@@ -286,8 +286,7 @@ object ModpackService {
         val dir: File,
         val verName: String,
         val vo: Modpack.BriefVo,
-        val createTime: Long,
-        val sizeBytes: Long
+        val createTime: Long
     ){
         val versionId = dir.name
     }
@@ -308,12 +307,7 @@ object ModpackService {
                         java.nio.file.attribute.BasicFileAttributes::class.java
                     ).creationTime().toMillis()
                 }.getOrElse { dir.lastModified() }
-                val sizeBytes = runCatching {
-                    dir.walkTopDown()
-                        .filter { it.isFile }
-                        .sumOf { it.length() }
-                }.getOrElse { 0L }
-                LocalDir(dir,verName, vo, createTime, sizeBytes)
+                LocalDir(dir,verName, vo, createTime)
             }
         }
 
