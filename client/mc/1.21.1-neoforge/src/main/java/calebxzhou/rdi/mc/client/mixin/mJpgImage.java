@@ -20,16 +20,6 @@ public class mJpgImage {
     @Redirect(method = "read(Lcom/mojang/blaze3d/platform/NativeImage$Format;Ljava/nio/ByteBuffer;)Lcom/mojang/blaze3d/platform/NativeImage;",
             at = @At(value = "INVOKE", target = "Lnet/minecraft/util/PngInfo;validateHeader(Ljava/nio/ByteBuffer;)V"))
     private static void RDI$AlsoValidateJpegHeader(ByteBuffer buffer) {
-        //优先读png 失败了读jpg
-        /*try {
-            JpegUtils.validatePngHeader(buffer);
-        } catch (Exception e) {
-            // If JPEG validation fails, try PNG validation
-            try {
-                JpegUtils.validateJpegHeader(buffer);
-            } catch (Exception pngException) {
-                pngException.printStackTrace();
-            }
-        }*/
+        //跳过png验证 允许读jpg
     }
 }

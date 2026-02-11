@@ -37,6 +37,7 @@ public class mPlayerInfoUpdatePacket {
         //在这里注入不会阻塞主线程
         if (actions.contains(ClientboundPlayerInfoUpdatePacket.Action.ADD_PLAYER)) {
             var newEntries = entries.stream().map(entry -> {
+                lgr.info("Inject Profile for {}",entry.profileId());
                 var profile = Minecraft.getInstance().getMinecraftSessionService().fetchProfile(entry.profileId(), false).profile();
                 lgr.info("Injected profile for {}: {}", entry.profileId(), profile.getProperties().get("textures"));
                 return new ClientboundPlayerInfoUpdatePacket.Entry(

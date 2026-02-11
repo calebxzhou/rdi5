@@ -13,9 +13,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(HttpTexture.class)
 public class mHttpTexture {
 
-    @Inject(method = "processLegacySkin",at= @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/platform/NativeImage;close()V",shift = At.Shift.BEFORE,ordinal = 1), cancellable = true)
+  /*  @Inject(method = "processLegacySkin",at= @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/platform/NativeImage;close()V",shift = At.Shift.BEFORE,ordinal = 1), cancellable = true)
     private void RDI$AllowHDSkin(NativeImage image, CallbackInfoReturnable<NativeImage> cir){
         //如果超过64x32尺寸的皮肤,不close 不return null 而是返回处理后的高清皮肤
         cir.setReturnValue(image);
-    }
+    }*/
 }
