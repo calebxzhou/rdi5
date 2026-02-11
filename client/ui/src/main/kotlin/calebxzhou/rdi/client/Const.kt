@@ -5,9 +5,6 @@ import org.bson.types.ObjectId
 object Const {
 
     const val MODID = "rdi"
-    //是否为调试模式,本地用
-    @JvmStatic
-    var DEBUG = System.getProperty("rdi.debug").toBoolean()
     var USE_MOCK_DATA = System.getProperty("rdi.mockData").toBoolean()
     val SEED = 1145141919810L
     val DEFAULT_MODPACK_ID = ObjectId("abcdefabcdefabcdefabcdef")

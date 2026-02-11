@@ -32,6 +32,7 @@ import calebxzhou.rdi.client.ui2.McPlayStore
 import calebxzhou.rdi.client.ui2.ModpackUploadStore
 import calebxzhou.rdi.client.ui2.TaskStore
 import calebxzhou.rdi.client.ui2.screen.*
+import calebxzhou.rdi.common.DEBUG
 import calebxzhou.rdi.common.model.McVersion
 import calebxzhou.rdi.common.model.RAccount
 import calebxzhou.rdi.common.model.Task
@@ -58,6 +59,9 @@ lateinit var CodeFontFamily: FontFamily
 lateinit var IconFontFamily: FontFamily
 lateinit var ScreenSize: Pair<Dp, Dp>
 fun main() = application {
+    if(DEBUG){
+        System.setProperty("javax.net.ssl.trustStoreType", "Windows-ROOT")
+    }
     val windowIcon = remember {
         jarResource("icon.png").use { stream ->
             BitmapPainter(stream.readAllBytes().decodeToImageBitmap())
@@ -286,6 +290,9 @@ fun main() = application {
                                 navController.navigate(ModpackList)
                             }
                         },
+                        onOpenUpload = { modpackId, modpackName ->
+                            navController.navigate(ModpackUpload)
+                        },
                         onCreateHost = { modpackId, modpackName, packVer, skyblock ->
                             navController.navigate(
                                 HostCreate(
@@ -313,7 +320,9 @@ fun main() = application {
                     } else {
                         ModpackUploadScreen(
                             uploadPayload = preset.payload,
-                            onBack = { navController.navigate(ModpackList) }
+                            onBack = { navController.navigate(ModpackList) },
+                            updateModpackId = preset.updateModpackId,
+                            updateModpackName = preset.updateModpackName
                         )
                     }
                 }
@@ -326,6 +335,10 @@ fun main() = application {
                         onOpenTask = { task ->
                             openTaskView(task, false, null)
                         },
+                        onOpenPlay = { playArgs ->
+                            McPlayStore.current = playArgs
+                            navController.navigate(McPlayView)
+                        }
                     )
                 }
             }

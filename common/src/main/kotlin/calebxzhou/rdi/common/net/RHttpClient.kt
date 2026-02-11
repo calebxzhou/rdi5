@@ -1,6 +1,7 @@
 package calebxzhou.rdi.common.net
 
 import calebxzhou.rdi.common.CommonConfig
+import calebxzhou.rdi.common.DEBUG
 import calebxzhou.rdi.common.DIR
 import calebxzhou.rdi.common.serdesJson
 import io.ktor.client.*
@@ -16,13 +17,14 @@ import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import okhttp3.Cache
-import java.net.InetSocketAddress
-import java.net.Proxy
-import java.net.ProxySelector
-import java.net.SocketAddress
-import java.net.URI
 import java.io.IOException
+import java.net.*
+import java.security.SecureRandom
+import java.security.cert.X509Certificate
 import java.util.concurrent.TimeUnit
+import javax.net.ssl.SSLContext
+import javax.net.ssl.TrustManager
+import javax.net.ssl.X509TrustManager
 import kotlin.time.Duration.Companion.seconds
 
 suspend inline fun httpRequest(crossinline builder: HttpRequestBuilder.() -> Unit): HttpResponse = ktorClient.request(builder)
@@ -30,42 +32,59 @@ fun HttpRequestBuilder.json() = contentType(ContentType.Application.Json)
 private val CACHE_DIR = DIR.resolve("cache").resolve("http").apply { mkdirs() }
 private const val HTTP_CACHE_SIZE_BYTES = 4*1024L * 1024 * 1024 // 1GB
 
-val ktorClient =
-        HttpClient(OkHttp) {
-            expectSuccess = false
-            engine {
-                config {
-                    followRedirects(true)
-                    connectTimeout(10, TimeUnit.SECONDS)
-                    readTimeout(0, TimeUnit.SECONDS)
-                    proxySelector(DynamicProxySelector())
-                    cache(Cache(CACHE_DIR, HTTP_CACHE_SIZE_BYTES))
+val ktorClient by lazy {
+    HttpClient(OkHttp) {
+        expectSuccess = false
+        engine {
+            config {
+                followRedirects(true)
+                connectTimeout(10, TimeUnit.SECONDS)
+                readTimeout(0, TimeUnit.SECONDS)
+                proxySelector(DynamicProxySelector())
+                cache(Cache(CACHE_DIR, HTTP_CACHE_SIZE_BYTES))
+
+                // Trust all certificates in DEBUG mode (for self-signed certs)
+                if (DEBUG) {
+                    val trustAllCerts = arrayOf<TrustManager>(object : X509TrustManager {
+                        override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {}
+                        override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {}
+                        override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
+                    })
+
+                    val sslContext = SSLContext.getInstance("TLS").apply {
+                        init(null, trustAllCerts, SecureRandom())
+                    }
+
+                    sslSocketFactory(sslContext.socketFactory, trustAllCerts[0] as X509TrustManager)
+                    hostnameVerifier { _, _ -> true }
                 }
             }
-            BrowserUserAgent()
-            install(ContentNegotiation) {
-                json(serdesJson)
-
-            }
-            install(HttpCache) {
-                publicStorage(FileStorage(CACHE_DIR))
-            }
-            install(SSE) {
-                maxReconnectionAttempts = 4
-                reconnectionTime = 5.seconds
-                bufferPolicy = SSEBufferPolicy.LastEvents(10)
-            }
-            install(ContentEncoding) {
-                deflate(1.0F)
-                gzip(0.9F)
-                identity()
-            }
-            install(HttpTimeout) {
-                requestTimeoutMillis = 20_000
-                connectTimeoutMillis = 10_000
-                socketTimeoutMillis = 60_000
-            }
         }
+        BrowserUserAgent()
+        install(ContentNegotiation) {
+            json(serdesJson)
+
+        }
+        install(HttpCache) {
+            publicStorage(FileStorage(CACHE_DIR))
+        }
+        install(SSE) {
+            maxReconnectionAttempts = 4
+            reconnectionTime = 5.seconds
+            bufferPolicy = SSEBufferPolicy.LastEvents(10)
+        }
+        install(ContentEncoding) {
+            deflate(1.0F)
+            gzip(0.9F)
+            identity()
+        }
+        install(HttpTimeout) {
+            requestTimeoutMillis = 20_000
+            connectTimeoutMillis = 10_000
+            socketTimeoutMillis = 60_000
+        }
+    }
+}
 
 class DynamicProxySelector(
     private val fallback: ProxySelector? = ProxySelector.getDefault()

@@ -14,7 +14,8 @@ data class DatabaseConfig(
 
 @Serializable
 data class ServerConfig(
-    val port: Int = 65231
+    val port: Int = 65231,
+    val httpsPort: Int = 65331
 )
 
 @Serializable

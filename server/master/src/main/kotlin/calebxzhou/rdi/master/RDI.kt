@@ -1,5 +1,6 @@
 package calebxzhou.rdi.master
 
+import calebxzhou.rdi.common.DEBUG
 import calebxzhou.rdi.common.exception.RequestError
 import calebxzhou.rdi.common.serdesJson
 import calebxzhou.rdi.master.exception.AuthError
@@ -13,6 +14,7 @@ import com.mongodb.ServerAddress
 import com.mongodb.client.model.IndexOptions
 import com.mongodb.client.model.Indexes
 import com.mongodb.kotlin.client.coroutine.MongoClient
+import com.sun.org.apache.bcel.internal.Const
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
@@ -24,16 +26,24 @@ import io.ktor.server.netty.*
 import io.ktor.server.plugins.compression.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.statuspages.*
+import io.ktor.server.request.httpMethod
+import io.ktor.server.request.uri
 import io.ktor.server.routing.*
 import io.ktor.server.sse.*
 import io.ktor.server.websocket.*
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.bson.UuidRepresentation
 import org.bson.codecs.configuration.CodecRegistries.fromProviders
 import org.bson.codecs.configuration.CodecRegistries.fromRegistries
 import org.bson.codecs.pojo.PojoCodecProvider
 import java.io.File
+import java.io.FileInputStream
+import java.security.KeyFactory
+import java.security.KeyStore
+import java.security.cert.CertificateFactory
+import java.security.cert.X509Certificate
+import java.security.spec.PKCS8EncodedKeySpec
+import java.util.*
 import kotlin.time.Duration.Companion.seconds
 
 val CONF = AppConfig.load()
@@ -65,6 +75,9 @@ val GAME_LIBS_DIR = storageDir(CONF.storage.gameLibsDir, "game-libs")
 val WORLDS_DIR = storageDir(CONF.storage.worldsDir, "worlds")
 class RDI {}
 fun main(): Unit =runBlocking {
+    if(DEBUG){
+        System.setProperty("javax.net.ssl.trustStoreType", "Windows-ROOT")
+    }
     CONF.storage.dlModsDir?.let { System.setProperty("rdi.modDir",it) }
 
     CRASH_REPORT_DIR.mkdirs()
@@ -83,76 +96,177 @@ fun main(): Unit =runBlocking {
         HostService.shutdown()
         lgr.info { "Application shutdown complete" }
     })
-    // Launch both servers concurrently in the coroutine scope
-    launch {
-        startHttp()
-    }
-
+    // Start server with HTTP and optionally HTTPS on the same port
+    startServer()
 
 }
-fun startHttp(){
-    embeddedServer(Netty, host = "::", port = CONF.server.port){
-        install(StatusPages) {
-            status(HttpStatusCode.NotFound) { call, status ->
-                call.response<Unit>(-404, "找不到请求的内容",null)
-            }
-            //参数不全/有问题
-            exception<ParamError> { call, cause ->
-                call.response<Unit>(false, cause.message ?: "参数错误",null)
-            }
-            //逻辑错误
-            exception<RequestError> { call, cause ->
-                call.response<Unit>(false, cause.message ?: "逻辑错误",null)
-            }
-            //认证错误
-            exception<AuthError> { call, cause ->
-                call.response<Unit>(-401, cause.message ?: "账密错/未登录",null, HttpStatusCode.Unauthorized)
-            }
 
-            //其他内部错误
-            exception<Throwable> { call, cause ->
-                cause.printStackTrace()
-                call.response<Unit>(-500, cause.message ?: "未知错误",null)
-            }
-        }
-        install(ContentNegotiation) {
-            json(serdesJson) // Apply the custom Json configuration
+fun startServer() {
+    val certPath = System.getProperty("rdi.cert")
+    val keyPath = System.getProperty("rdi.key")
+
+    // Check if SSL should be enabled
+    val sslEnabled = certPath != null
+    var keyStore: KeyStore? = null
+
+    if (sslEnabled) {
+        val certFile = File(certPath!!)
+        // Use explicit key path if provided, otherwise derive from cert path
+        val keyFile = if (keyPath != null) {
+            File(keyPath)
+        } else {
+            File(certPath.replace("-cert.pem", "-key.pem"))
         }
 
-        install(Authentication) {
-            val jwtConfig = CONF.jwt
-            jwt("auth-jwt") {
-                realm = jwtConfig.realm
-                verifier(JwtService.verifier)
-                validate { credential ->
-                    val uidClaim = credential.payload.getClaim("uid").asString()
-                    if (!uidClaim.isNullOrBlank()) JWTPrincipal(credential.payload) else null
-                }
-                challenge { _, _ ->
-                    call.response<Unit>(-401, "token×",null, HttpStatusCode.Unauthorized)
-                }
+        if (!certFile.exists()) {
+            lgr.warn { "Certificate file not found: $certPath, starting HTTP only" }
+        } else if (!keyFile.exists()) {
+            lgr.warn { "Key file not found: ${keyFile.absolutePath}, starting HTTP only" }
+        } else {
+            try {
+                keyStore = createKeyStoreFromPem(certFile, keyFile)
+                lgr.info { "SSL enabled with cert: $certPath, key: ${keyFile.absolutePath}" }
+            } catch (e: Exception) {
+                lgr.error(e) { "Failed to load SSL certificate, starting HTTP only" }
             }
         }
-        install(Compression) {
-            gzip {
-                matchContentType(ContentType.Text.Any, ContentType.Application.Json)
-            }
-            deflate {
-                matchContentType(ContentType.Text.Any, ContentType.Application.Json)
+    }
+
+    // Start server with conditional SSL
+    embeddedServer(Netty, configure = {
+        // HTTP connector
+        connector {
+            host = "::"
+            port = CONF.server.port
+        }
+        // HTTPS connector (only if keyStore is available) - same port
+        if (keyStore != null) {
+            sslConnector(
+                keyStore = keyStore,
+                keyAlias = "rdiserver",
+                keyStorePassword = { "changeit".toCharArray() },
+                privateKeyPassword = { "changeit".toCharArray() }
+            ) {
+                host = "::"
+                port = CONF.server.httpsPort
             }
         }
-        install(SSE)
-        install(WebSockets){
-            pingPeriod = 15.seconds
-            timeout = 10.seconds
-            maxFrameSize = Long.MAX_VALUE
-            masking = false
+    }) {
+        configureServer()
+    }.start(wait = true)
+
+    if (keyStore != null) {
+        lgr.info { "Server started with HTTP on port ${CONF.server.port} and HTTPS on port ${CONF.server.httpsPort}" }
+    } else {
+        lgr.info { "Server started with HTTP only on port ${CONF.server.port}" }
+    }
+}
+
+private fun createKeyStoreFromPem(certFile: File, keyFile: File): KeyStore {
+    // Read certificate
+    val certFactory = CertificateFactory.getInstance("X.509")
+    val cert = FileInputStream(certFile).use { fis ->
+        certFactory.generateCertificate(fis) as X509Certificate
+    }
+
+    // Read private key
+    val keyContent = keyFile.readText()
+        .replace("-----BEGIN PRIVATE KEY-----", "")
+        .replace("-----END PRIVATE KEY-----", "")
+        .replace("-----BEGIN RSA PRIVATE KEY-----", "")
+        .replace("-----END RSA PRIVATE KEY-----", "")
+        .replace("\\s".toRegex(), "")
+
+    val keyBytes = Base64.getDecoder().decode(keyContent)
+    val keySpec = PKCS8EncodedKeySpec(keyBytes)
+    val keyFactory = KeyFactory.getInstance("RSA")
+    val privateKey = keyFactory.generatePrivate(keySpec)
+
+    // Create KeyStore
+    val keyStore = KeyStore.getInstance(KeyStore.getDefaultType())
+    keyStore.load(null, null)
+    keyStore.setKeyEntry(
+        "rdiserver",
+        privateKey,
+        "changeit".toCharArray(),
+        arrayOf(cert)
+    )
+
+    return keyStore
+}
+
+private fun Application.configureServer() {
+    install(StatusPages) {
+        status(HttpStatusCode.NotFound) { call, status ->
+            call.response<Unit>(-404, "找不到请求的内容", null)
         }
-        routing {
-            playerRoutes()
-            updateRoutes()
-            yggdrasilRoutes()
-            /*get("/sponsors") {
+        //参数不全/有问题
+        exception<ParamError> { call, cause ->
+            call.response<Unit>(false, cause.message ?: "参数错误", null)
+        }
+        //逻辑错误
+        exception<RequestError> { call, cause ->
+            call.response<Unit>(false, cause.message ?: "逻辑错误", null)
+        }
+        //认证错误
+        exception<AuthError> { call, cause ->
+            call.response<Unit>(-401, cause.message ?: "账密错/未登录", null, HttpStatusCode.Unauthorized)
+        }
+
+        //其他内部错误
+        exception<Throwable> { call, cause ->
+            cause.printStackTrace()
+            call.response<Unit>(-500, cause.message ?: "未知错误", null)
+        }
+    }
+    install(ContentNegotiation) {
+        json(serdesJson) // Apply the custom Json configuration
+    }
+
+    install(Authentication) {
+        val jwtConfig = CONF.jwt
+        jwt("auth-jwt") {
+            realm = jwtConfig.realm
+            verifier(JwtService.verifier)
+            validate { credential ->
+                val uidClaim = credential.payload.getClaim("uid").asString()
+                if (!uidClaim.isNullOrBlank()) JWTPrincipal(credential.payload) else null
+            }
+            challenge { _, _ ->
+                call.response<Unit>(-401, "token×", null, HttpStatusCode.Unauthorized)
+            }
+        }
+    }
+    install(Compression) {
+        gzip {
+            matchContentType(ContentType.Text.Any, ContentType.Application.Json)
+            excludeContentType(ContentType.Text.EventStream)
+        }
+        deflate {
+            matchContentType(ContentType.Text.Any, ContentType.Application.Json)
+            excludeContentType(ContentType.Text.EventStream)
+        }
+    }
+    install(SSE)
+    install(WebSockets) {
+        pingPeriod = 15.seconds
+        timeout = 10.seconds
+        maxFrameSize = Long.MAX_VALUE
+        masking = false
+    }
+
+    // Log all requests in DEBUG mode
+    if (DEBUG) {
+        intercept(ApplicationCallPipeline.Monitoring) {
+            lgr.info { "[REQ] ${call.request.httpMethod.value} ${call.request.uri}" }
+        }
+    }
+
+    routing {
+        playerRoutes()
+        updateRoutes()
+        yggdrasilRoutes()
+        /*get("/sponsors") {
                 call.respondText("""
                     2025-04-11,ChenQu,100
                     123
@@ -167,14 +281,14 @@ fun startHttp(){
                     UpdateService.getModFile(call)
                 }
             }*/
-            hostPlayRoutes()
-            authenticate( "auth-jwt") {
-                hostRoutes()
-                worldRoutes()
-                chatRoutes()
-                modpackRoutes()
-                mailRoutes()
-            }
+        hostPlayRoutes()
+        authenticate("auth-jwt") {
+            hostRoutes()
+            worldRoutes()
+            chatRoutes()
+            modpackRoutes()
+            mailRoutes()
         }
-    }.start(wait = true)
+    }
+
 }

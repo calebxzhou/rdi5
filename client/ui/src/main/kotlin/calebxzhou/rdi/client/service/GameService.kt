@@ -8,6 +8,7 @@ import calebxzhou.rdi.client.Const
 import calebxzhou.rdi.client.ScreenSize
 import calebxzhou.rdi.client.model.*
 import calebxzhou.rdi.client.net.loggedAccount
+import calebxzhou.rdi.common.DEBUG
 import calebxzhou.rdi.common.exception.RequestError
 import calebxzhou.rdi.common.json
 import calebxzhou.rdi.common.model.*
@@ -1096,6 +1097,9 @@ object GameService {
         }.toMutableList().apply {
             this += useMemStr
             this += jvmArgs
+            if(DEBUG){
+                this +=  "-Djavax.net.ssl.trustStoreType=Windows-ROOT"
+            }
         }
 
         lgr.info { "JVM Args: ${processedJvmArgs.joinToString(" ")}" }

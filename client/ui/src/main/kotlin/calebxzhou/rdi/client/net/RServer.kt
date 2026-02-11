@@ -1,6 +1,7 @@
 package calebxzhou.rdi.client.net
 
 import calebxzhou.rdi.client.Const
+import calebxzhou.rdi.common.DEBUG
 import calebxzhou.rdi.common.exception.RequestError
 import calebxzhou.rdi.common.model.RAccount
 import calebxzhou.rdi.common.model.Response
@@ -11,6 +12,7 @@ import calebxzhou.rdi.lgr
 import io.ktor.client.call.*
 import io.ktor.client.plugins.compression.*
 import io.ktor.client.plugins.sse.*
+import io.ktor.client.plugins.timeout
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
@@ -43,16 +45,16 @@ class RServer(
                 ServerData.Type.OTHER
             )
         }*/
-    val hqUrl = "http://${ip}:${hqPort}"
+    val hqUrl = "https://${ip}:${hqPort}"
 
     companion object {
         val OFFICIAL_DEBUG = RServer(
-            "127.0.0.1", "127.0.0.1", 65231, 65230
+            "localhost", "localhost", 65331, 65230
         )
         val OFFICIAL_NNG = RServer(
-            "rdi.calebxzhou.cn", "b5rdi.calebxzhou.cn", 65231, 65230
+            "rdi.calebxzhou.cn", "b5rdi.calebxzhou.cn", 65331, 65230
         )
-        var now: RServer = if (Const.DEBUG) OFFICIAL_DEBUG else OFFICIAL_NNG
+        var now: RServer = if (DEBUG) OFFICIAL_DEBUG else OFFICIAL_NNG
 
     }
 
@@ -97,13 +99,13 @@ class RServer(
         params: Map<String, Any> = mapOf(),
         crossinline builder: HttpRequestBuilder.() -> Unit = {}
     ): Response<T> {
-        if (Const.DEBUG) {
+        if (DEBUG) {
             val paramsStr =
                 if (params.isEmpty()) "{}" else params.entries.joinToString(", ", "{", "}") { "${it.key}=${it.value}" }
             lgr.info { "[HQ REQ] ${method.value} /$path $paramsStr" }
         }
         val response = createRequest(path, method, params, builder).body<Response<T>>()
-        if (Const.DEBUG) {
+        if (DEBUG) {
             val dataStr = when (val data = response.data) {
                 null -> "null"
                 is String -> if (data.length > 200) data.take(200) + "..." else data
@@ -143,15 +145,20 @@ class RServer(
         onClosed: suspend () -> Unit = {},
         onEvent: suspend (ServerSentEvent) -> Unit,
     ) = ioTask {
-        val urlString = if (path.startsWith("http", ignoreCase = true)) {
-            path
-        } else {
-            "$hqUrl/${path.trimStart('/')}"
+        val urlString = "$hqUrl/${path.trimStart('/')}"
+
+        if (DEBUG) {
+            lgr.info { "[SSE] Connecting to: $urlString" }
         }
 
         try {
             ktorClient.sse(urlString, {
                 accountAuthHeader()
+                // Disable all timeouts for long-lived SSE connections
+                timeout {
+                    requestTimeoutMillis = 60000
+                    socketTimeoutMillis = 60000
+                }
                 params.forEach { (key, value) ->
                     when (value) {
                         null -> Unit
@@ -163,8 +170,14 @@ class RServer(
                 bufferPolicy?.let { bufferPolicy(it) }
                 configureRequest()
             }) {
+                if (DEBUG) {
+                    lgr.info { "[SSE] Connected successfully" }
+                }
                 try {
                     incoming.collect { event ->
+                        if (DEBUG) {
+                            lgr.info { "[SSE] Event: ${event.event}, data: ${event.data?.take(100)}" }
+                        }
                         when (event.event) {
                             "heartbeat" -> {
                                 lgr.info("SSE heartbeat")
@@ -175,12 +188,16 @@ class RServer(
                         }
                     }
                 } finally {
+                    if (DEBUG) {
+                        lgr.info { "[SSE] Connection closed" }
+                    }
                     onClosed()
                 }
             }
         } catch (cancel: CancellationException) {
             throw cancel
         } catch (t: Throwable) {
+            lgr.error(t) { "[SSE] Connection failed" }
             onError(t)
             throw t
         }
