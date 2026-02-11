@@ -1,7 +1,7 @@
 
 FROM eclipse-temurin:21-jdk
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends tzdata bash gosu locales \
+    && apt-get install -y --no-install-recommends tzdata bash gosu locales iproute2 iptables \
     && rm -rf /var/lib/apt/lists/*
 ENV TZ=Asia/Shanghai
 RUN echo "LC_ALL=en_US.UTF-8" >> /etc/environment \

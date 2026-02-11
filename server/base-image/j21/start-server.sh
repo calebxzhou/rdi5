@@ -8,12 +8,23 @@ chown -R rdi:rdi /home/rdi /opt/server /data
 
 # Get the Docker host IP (default gateway)
 HOST_IP=$(ip route | grep default | awk '{print $3}')
-echo "Detected Docker host IP: ${HOST_IP}" >&2
+echo "Detected Docker host IP (gateway): ${HOST_IP}" >&2
+
+# Also resolve host.docker.internal if available (Docker Desktop uses a different IP)
+HOST_DOCKER_INTERNAL_IP=""
+if getent hosts host.docker.internal >/dev/null 2>&1; then
+    HOST_DOCKER_INTERNAL_IP=$(getent hosts host.docker.internal | awk '{print $1}')
+    echo "Detected host.docker.internal IP: ${HOST_DOCKER_INTERNAL_IP}" >&2
+fi
 
 # Whitelist configuration (comma-separated ip:port pairs)
 # Default: host machine IP with port 65231
 # Format: "ip1:port1,ip2:port2" e.g., "192.168.1.1:65231,10.0.0.1:443"
-OUTGOING_WHITELIST="${OUTGOING_WHITELIST:-${HOST_IP}:65231}"
+DEFAULT_WHITELIST="${HOST_IP}:65231"
+if [ -n "${HOST_DOCKER_INTERNAL_IP}" ] && [ "${HOST_DOCKER_INTERNAL_IP}" != "${HOST_IP}" ]; then
+    DEFAULT_WHITELIST="${DEFAULT_WHITELIST},${HOST_DOCKER_INTERNAL_IP}:65231"
+fi
+OUTGOING_WHITELIST="${OUTGOING_WHITELIST:-${DEFAULT_WHITELIST}}"
 
 # Restrict outgoing connections to whitelisted ip:port combinations only
 echo "Applying firewall rules..." >&2
@@ -47,6 +58,10 @@ for entry in "${WHITELIST_ENTRIES[@]}"; do
         fi
     fi
 done
+
+# Allow DNS resolution (needed to resolve host.docker.internal and other hostnames)
+iptables -A OUTPUT -p udp --dport 53 -j ACCEPT
+iptables -A OUTPUT -p tcp --dport 53 -j ACCEPT
 
 # Set default policy to DROP for all other outgoing connections
 iptables -P OUTPUT DROP
