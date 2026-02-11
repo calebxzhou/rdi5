@@ -51,7 +51,8 @@ import javax.swing.filechooser.FileNameExtensionFilter
 fun McVersionScreen(
     onBack: () -> Unit,
     requiredMcVer: McVersion? = null,
-    onOpenTask: ((Task) -> Unit)? = null
+    onOpenTask: ((Task) -> Unit)? = null,
+    onOpenPlay: ((McPlayArgs) -> Unit)? = null
 ) {
     val scope = rememberCoroutineScope()
     var loading by remember { mutableStateOf(true) }
@@ -253,7 +254,26 @@ fun McVersionScreen(
                                     errorMessage = "无法打开目录: ${it.message}"
                                 }
                             }
-                        } 
+                        }
+                        CircleIconButton("\uEB9B","测试运行",size=size, enabled = selected!=null){
+                            selected?.let { packdir->
+                                val args = listOf(
+                                    "-Drdi.ihq.url=${server.hqUrl}",
+                                    "-Drdi.game.ip=${server.ip}:${server.gamePort}",
+                                    "-Drdi.host.name=test",
+                                    "-Drdi.host.port=25565"
+                                )
+                                val mcVer = packdir.vo.mcVer
+                                val versionId = packdir.versionId
+                                val playArgs = McPlayArgs(
+                                    title = "测试运行 - ${packdir.vo.name} ${packdir.verName}",
+                                    mcVer = mcVer,
+                                    versionId = versionId,
+                                    jvmArgs = args
+                                )
+                                onOpenPlay?.invoke(playArgs)
+                            }
+                        }
                         CircleIconButton(
                             "\uEF11",
                             "导出日志",
