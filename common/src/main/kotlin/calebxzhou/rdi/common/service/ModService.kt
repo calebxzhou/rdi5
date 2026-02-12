@@ -318,7 +318,7 @@ object ModService {
                 val result = downloadSingleCFMod(mod, fileInfo, 4) { progress ->
                     ctx.emitProgress(
                         TaskProgress(
-                            "下载中 ${mod.slug}",
+                            "Mod下载中 ${mod.slug}",
                             progress.fraction.coerceIn(0f, 1f)
                         )
                     )
@@ -334,10 +334,10 @@ object ModService {
         val modsWithUrls = mods.filter { it.downloadUrls.isNotEmpty() }
         val tasks = modsWithUrls.map { mod ->
             Task.Leaf("下载 ${mod.slug}") { ctx ->
-                val result = downloadSingleMRMod(mod, 4) { progress ->
+                val result = downloadSingleMRMod(mod) { progress ->
                     ctx.emitProgress(
                         TaskProgress(
-                            "下载中 ${mod.slug}",
+                            "Mod下载中 ${mod.slug}",
                             progress.fraction.coerceIn(0f, 1f)
                         )
                     )
@@ -373,7 +373,6 @@ object ModService {
         suspend fun attemptDownload(url: String, label: String): Result<Path> = runCatching {
             val downloadedPath = targetPath.downloadFileFrom(
                 url,
-                rangeParallelism = rangeParallelism,
                 onProgress = onProgress
             ).getOrElse { throw it }
 
@@ -407,7 +406,6 @@ object ModService {
 
     private suspend fun downloadSingleMRMod(
         mod: Mod,
-        rangeParallelism: Int,
         onProgress: (DownloadProgress) -> Unit
     ): Result<Path> {
         val targetPath = mod.targetPath
@@ -434,7 +432,6 @@ object ModService {
             val result = runCatching {
                 val downloadedPath = targetPath.downloadFileFrom(
                     if(useMirror) url.ofMirrorUrl else url,
-                    rangeParallelism = rangeParallelism,
                     onProgress = onProgress
                 ).getOrElse { throw it }
 
