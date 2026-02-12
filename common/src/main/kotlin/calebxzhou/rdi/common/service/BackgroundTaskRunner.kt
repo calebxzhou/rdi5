@@ -7,7 +7,7 @@ import calebxzhou.rdi.common.model.TaskProgress
 import calebxzhou.rdi.common.model.execute
 import kotlin.math.roundToInt
 
-object ServerTaskRunner {
+object BackgroundTaskRunner {
     private val lgr by Loggers
 
     suspend fun Task.start(onProgress: ((TaskProgress) -> Unit)? = null) {
