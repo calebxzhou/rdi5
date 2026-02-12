@@ -874,8 +874,7 @@ object ModpackService {
         onError: (String) -> Unit,
         onDone: (String) -> Unit
     ) {
-        val modpack = getOrCreateModpack(payload, modpackName, updateModpackId, onProgress, onError) ?: return
-        onProgress("正在解压此包...请等一两分钟")
+        onProgress("正在打包整合包...请等一两分钟")
         val uploadZip = runCatching { buildZipFromDir(payload.sourceDir, payload.sourceName) }
             .getOrElse {
                 payload.sourceDir.deleteRecursively()
@@ -883,23 +882,167 @@ object ModpackService {
                 return
             }
 
-        if (modpack.versions.any { it.name.equals(versionName, ignoreCase = true) }) {
-            onError("${modpack.name}包已经有$versionName 这个版本了")
-            uploadZip.delete()
-            payload.sourceDir.deleteRecursively()
-            return
-        }
-
-        val modpackId = modpack._id.toHexString()
-        val versionEncoded = versionName.urlEncoded
-
-        onProgress("创建版本 ${versionName}...")
-
         val totalBytes = uploadZip.length()
         val startTime = System.nanoTime()
         var lastProgressUpdate = 0L
-        val modsJson = serdesJson.encodeToString(mods)
-        val boundary = "rdi-modpack-${System.currentTimeMillis()}"
+
+        try {
+            if (updateModpackId != null) {
+                // Upload new version to existing modpack
+                uploadNewVersion(
+                    modpackId = updateModpackId,
+                    versionName = versionName,
+                    mods = mods,
+                    uploadZip = uploadZip,
+                    totalBytes = totalBytes,
+                    startTime = startTime,
+                    lastProgressUpdate = lastProgressUpdate,
+                    onProgress = onProgress,
+                    onError = onError,
+                    onDone = onDone
+                )
+            } else {
+                // Create new modpack with first version
+                uploadNewModpack(
+                    modpackName = modpackName,
+                    versionName = versionName,
+                    mcVersion = payload.mcVersion,
+                    modloader = payload.modloader,
+                    mods = mods,
+                    uploadZip = uploadZip,
+                    totalBytes = totalBytes,
+                    startTime = startTime,
+                    lastProgressUpdate = lastProgressUpdate,
+                    onProgress = onProgress,
+                    onError = onError,
+                    onDone = onDone
+                )
+            }
+        } finally {
+            uploadZip.delete()
+            payload.sourceDir.deleteRecursively()
+        }
+    }
+
+    private suspend fun uploadNewModpack(
+        modpackName: String,
+        versionName: String,
+        mcVersion: McVersion,
+        modloader: ModLoader,
+        mods: List<Mod>,
+        uploadZip: File,
+        totalBytes: Long,
+        startTime: Long,
+        lastProgressUpdate: Long,
+        onProgress: (String) -> Unit,
+        onError: (String) -> Unit,
+        onDone: (String) -> Unit
+    ) {
+        onProgress("创建新整合包 $modpackName...")
+
+        val dto = Modpack.CreateWithVersionDto(
+            name = modpackName,
+            verName = versionName,
+            mcVer = mcVersion,
+            modLoader = modloader,
+            mods = mods.toMutableList()
+        )
+        val dtoJson = serdesJson.encodeToString(dto)
+
+        var lastUpdate = lastProgressUpdate
+        val multipartContent = MultiPartFormDataContent(
+            formData {
+                append(
+                    key = "dto",
+                    value = dtoJson,
+                    headers = Headers.build {
+                        append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                    }
+                )
+                append(
+                    key = "file",
+                    value = InputProvider { uploadZip.inputStream().asInput().buffered() },
+                    headers = Headers.build {
+                        append(HttpHeaders.ContentType, ContentType.Application.Zip.toString())
+                        append(HttpHeaders.ContentDisposition, "filename=\"${uploadZip.name}\"")
+                    }
+                )
+            }
+        )
+
+        val createResp = server.makeRequest<Unit>(
+            path = "modpack",
+            method = HttpMethod.Post,
+        ) {
+            timeout {
+                requestTimeoutMillis = 60 * 60 * 1000L
+                socketTimeoutMillis = 60 * 60 * 1000L
+            }
+            setBody(multipartContent)
+            onUpload { bytesSentTotal, contentLength ->
+                val now = System.nanoTime()
+                val shouldUpdate = contentLength != null && bytesSentTotal == contentLength ||
+                    now - lastUpdate > 75_000_000L
+                if (shouldUpdate) {
+                    lastUpdate = now
+                    val elapsedSeconds = (now - startTime) / 1_000_000_000.0
+                    val total = contentLength?.takeIf { it > 0 } ?: totalBytes
+                    val percent = if (total <= 0) 100 else ((bytesSentTotal * 100) / total).toInt()
+                    val speed = if (elapsedSeconds <= 0) 0.0 else bytesSentTotal / elapsedSeconds
+                    onProgress(
+                        buildString {
+                            appendLine("正在上传整合包 $modpackName...")
+                            appendLine(
+                                "进度：${
+                                    percent.coerceIn(
+                                        0,
+                                        100
+                                    )
+                                }% (${bytesSentTotal.humanFileSize}/${total.humanFileSize})"
+                            )
+                            appendLine("速度：${speed.humanSpeed}")
+                        }
+                    )
+                }
+            }
+        }
+
+        if (!createResp.ok) {
+            onError(createResp.msg)
+            return
+        }
+
+        val elapsedSeconds = (System.nanoTime() - startTime) / 1_000_000_000.0
+        val speed = if (elapsedSeconds <= 0) 0.0 else totalBytes / elapsedSeconds
+        onDone(
+            buildString {
+                appendLine("文件大小: ${totalBytes.humanFileSize}")
+                appendLine("平均速度: ${speed.humanSpeed}")
+                appendLine("耗时: ${"%.1f".format(elapsedSeconds)}秒")
+                appendLine("传完了 服务器要开始构建 等5分钟 结果发你信箱里")
+            }
+        )
+    }
+
+    private suspend fun uploadNewVersion(
+        modpackId: ObjectId,
+        versionName: String,
+        mods: List<Mod>,
+        uploadZip: File,
+        totalBytes: Long,
+        startTime: Long,
+        lastProgressUpdate: Long,
+        onProgress: (String) -> Unit,
+        onError: (String) -> Unit,
+        onDone: (String) -> Unit
+    ) {
+        onProgress("上传新版本 $versionName...")
+
+        val modpackIdStr = modpackId.toHexString()
+        val versionEncoded = versionName.urlEncoded
+        val modsJson = serdesJson.encodeToString(mods.toMutableList())
+
+        var lastUpdate = lastProgressUpdate
         val multipartContent = MultiPartFormDataContent(
             formData {
                 append(
@@ -917,12 +1060,11 @@ object ModpackService {
                         append(HttpHeaders.ContentDisposition, "filename=\"${uploadZip.name}\"")
                     }
                 )
-            },
-            boundary = boundary
+            }
         )
 
         val createVersionResp = server.makeRequest<Unit>(
-            path = "modpack/$modpackId/version/$versionEncoded",
+            path = "modpack/$modpackIdStr/version/$versionEncoded",
             method = HttpMethod.Post,
         ) {
             timeout {
@@ -933,9 +1075,9 @@ object ModpackService {
             onUpload { bytesSentTotal, contentLength ->
                 val now = System.nanoTime()
                 val shouldUpdate = contentLength != null && bytesSentTotal == contentLength ||
-                    now - lastProgressUpdate > 75_000_000L
+                    now - lastUpdate > 75_000_000L
                 if (shouldUpdate) {
-                    lastProgressUpdate = now
+                    lastUpdate = now
                     val elapsedSeconds = (now - startTime) / 1_000_000_000.0
                     val total = contentLength?.takeIf { it > 0 } ?: totalBytes
                     val percent = if (total <= 0) 100 else ((bytesSentTotal * 100) / total).toInt()
@@ -960,8 +1102,6 @@ object ModpackService {
 
         if (!createVersionResp.ok) {
             onError(createVersionResp.msg)
-            uploadZip.delete()
-            payload.sourceDir.deleteRecursively()
             return
         }
 
@@ -975,73 +1115,6 @@ object ModpackService {
                 appendLine("传完了 服务器要开始构建 等5分钟 结果发你信箱里")
             }
         )
-        uploadZip.delete()
-        payload.sourceDir.deleteRecursively()
-    }
-
-    private suspend fun getOrCreateModpack(
-        payload: UploadPayload,
-        name: String,
-        targetModpackId: ObjectId?,
-        onProgress: (String) -> Unit,
-        onError: (String) -> Unit
-    ): Modpack? {
-        onProgress(
-            if (targetModpackId != null) {
-                "获取整合包 ${name}..."
-            } else {
-                "检查整合包 ${name}..."
-            }
-        )
-        val myModpacksResp = server.makeRequest<List<Modpack>>(
-            path = "modpack/my",
-            method = HttpMethod.Get
-        )
-        if (!myModpacksResp.ok) {
-            onError(myModpacksResp.msg)
-            return null
-        }
-        val myModpacks = myModpacksResp.data.orEmpty()
-
-        if (targetModpackId != null) {
-            val target = myModpacks.firstOrNull { it._id == targetModpackId }
-            if (target == null) {
-                onError("未找到要更新的整合包")
-                return null
-            }
-            onProgress("为已有整合包 ${target.name} 上传新版")
-            return target
-        }
-
-        val existing = myModpacks.firstOrNull { it.name.equals(name, ignoreCase = true) }
-        if (existing != null) {
-            onProgress("使用已有整合包 ${name}")
-            return existing
-        }
-
-        try {
-            name.validateName().getOrThrow()
-        } catch (e: Exception) {
-            onError(e.message?:"")
-            return null
-        }
-        onProgress("创建整合包 ${name}...")
-        val mcVersion = payload.mcVersion
-        val modloader = payload.modloader
-        val createResp = server.makeRequest<Modpack>(
-            path = "modpack",
-            method = HttpMethod.Post,
-            params = mapOf(
-                "name" to name,
-                "mcVer" to mcVersion,
-                "modloader" to modloader
-            )
-        )
-        if (!createResp.ok || createResp.data == null) {
-            onError(createResp.msg)
-            return null
-        }
-        return createResp.data
     }
 
     private enum class PackType { MODRINTH, CURSEFORGE, UNKNOWN }

@@ -312,19 +312,11 @@ fun main() = application {
                     val preset = remember {
                         ModpackUploadStore.preset.also { ModpackUploadStore.preset = null }
                     }
-                    if (preset == null) {
-                        LaunchedEffect(Unit) {
-                            navController.navigate(ModpackList)
-                        }
-                        Text("缺少上传数据，正在返回整合包列表...")
-                    } else {
-                        ModpackUploadScreen(
-                            uploadPayload = preset.payload,
-                            onBack = { navController.navigate(ModpackList) },
-                            updateModpackId = preset.updateModpackId,
-                            updateModpackName = preset.updateModpackName
-                        )
-                    }
+                    ModpackUploadScreen(
+                        onBack = { navController.navigate(ModpackList) },
+                        updateModpackId = preset?.updateModpackId,
+                        updateModpackName = preset?.updateModpackName
+                    )
                 }
                 composable<RMcVersion> {
                     val route = it.toRoute<RMcVersion>()

@@ -59,6 +59,9 @@ class Modpack(
         val mcVer: McVersion,
         val modLoader: ModLoader,
         val verName: String,
+        val iconUrl:String?=null,
+        val sourceUrl: String? =null,
+        val info: String? =null,
         val mods: MutableList<Mod>
     ) {
 

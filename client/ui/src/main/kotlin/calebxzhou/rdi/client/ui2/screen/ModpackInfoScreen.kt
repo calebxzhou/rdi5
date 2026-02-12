@@ -154,6 +154,22 @@ fun ModpackInfoScreen(
                 if (isAuthor) {
                     Space8w()
                     CircleIconButton(
+                        icon = "\uF093",
+                        tooltip = "上传新版本",
+                        bgColor = MaterialColor.BLUE_900.color
+                    ) {
+                        if (onOpenUpload == null) {
+                            okMessage = "暂不支持在此页面上传新版本"
+                            return@CircleIconButton
+                        }
+                        ModpackUploadStore.preset = ModpackUploadStore.Preset(
+                            updateModpackId = pack?._id,
+                            updateModpackName = pack?.name
+                        )
+                        onOpenUpload(pack!!._id, pack!!.name)
+                    }
+                    Space8w()
+                    CircleIconButton(
                         icon = "\uF01F",
                         tooltip = "修改信息",
                         bgColor = MaterialColor.YELLOW_900.color
@@ -559,4 +575,6 @@ fun ModpackInfoScreen(
             }
         )
     }
+
 }
+
