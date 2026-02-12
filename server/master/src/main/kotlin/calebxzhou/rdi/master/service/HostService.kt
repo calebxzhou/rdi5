@@ -16,6 +16,7 @@ import calebxzhou.rdi.common.util.validateName
 import calebxzhou.rdi.master.DB
 import calebxzhou.rdi.master.HOSTS_DIR
 import calebxzhou.rdi.master.exception.ParamError
+import calebxzhou.rdi.master.lgr
 import calebxzhou.rdi.master.model.WsMessage
 import calebxzhou.rdi.master.net.*
 import calebxzhou.rdi.master.service.HostService.addMember
@@ -488,7 +489,7 @@ object HostService {
             }
         }
         state.session = session
-        DockerService.limitCpuCores(hostId.str,2.5)
+        DockerService.limitCpuCores(hostId.str,4.0)
         lgr.info { "host $hostId gameplay 通道已连接" }
         return true
     }
