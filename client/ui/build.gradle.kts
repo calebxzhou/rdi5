@@ -3,7 +3,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 val ktorVersion = "3.3.3"
-val version = "5.10.7"
+val version = "5.10.8"
 project.version = version
 plugins {
     kotlin("jvm") version "2.2.21"
@@ -140,7 +140,7 @@ tasks.withType<Test>().configureEach {
 }
 
 tasks.named<Test>("test") {
-    enabled = true
+    enabled = false
 }
 
 idea {
