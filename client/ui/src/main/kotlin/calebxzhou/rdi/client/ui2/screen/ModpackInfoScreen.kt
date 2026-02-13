@@ -177,7 +177,7 @@ fun ModpackInfoScreen(
                         pack.let {
                             editName = it.name
                             editIconUrl = it.icon ?: ""
-                            editInfo = it.info
+                            editInfo = it.info?:"无"
                             editSourceUrl = it.sourceUrl ?: ""
                             showEditDialog = true
                         }
@@ -294,7 +294,7 @@ fun ModpackInfoScreen(
                         }
                     }
                     1 -> {
-                        Text(pack.info)
+                        Text(pack.info?:"无")
                     }
                     else -> {
                         Space8h()

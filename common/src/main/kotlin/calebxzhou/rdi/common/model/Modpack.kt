@@ -16,7 +16,7 @@ class Modpack(
     @Contextual
     val authorId: ObjectId,
     val iconUrl: String? = null,
-    val info: String = "暂无简介",
+    val info: String? = null,
     val modloader: ModLoader,
     val mcVer: McVersion,
     val sourceUrl: String? = null,
@@ -38,16 +38,6 @@ class Modpack(
     ) {
     }
 
-    /* @Serializable
-     class CreateDto(
-         val name: String,
-         val iconUrl: String? = null,
-         val info: String = "暂无简介",
-         val modloader: ModLoader,
-         val mcVer: McVersion,
-     ){
-
-     }*/
     @Serializable
     class AddVersionDto(
 
@@ -80,7 +70,7 @@ class Modpack(
         val modCount: Int = 0,
         val fileSize: Long = 0L,
         val icon: String? = null,
-        val info: String = "暂无简介",
+        val info: String? = null,
     )
 
     @Serializable
@@ -94,7 +84,7 @@ class Modpack(
         val modCount: Int,
         val sourceUrl: String? = null,
         val icon: String? = null,
-        val info: String = "暂无简介",
+        val info: String? = null,
         val modloader: ModLoader,
         val mcVer: McVersion,
         val versions: List<Version> = arrayListOf(),

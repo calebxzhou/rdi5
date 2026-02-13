@@ -124,7 +124,7 @@ fun Modpack.BriefVo.ModpackCard(
                     )
                 }
                 Text(
-                    text = info.trim().ifBlank { "" },
+                    text = info?.trim()?:"无简介",
                     style = MaterialTheme.typography.body2,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
