@@ -32,22 +32,27 @@ import io.ktor.server.routing.*
 import io.ktor.server.sse.*
 import io.ktor.server.websocket.*
 import kotlinx.coroutines.runBlocking
+import org.bouncycastle.asn1.pkcs.PrivateKeyInfo
+import org.bouncycastle.jce.provider.BouncyCastleProvider
+import org.bouncycastle.openssl.PEMKeyPair
+import org.bouncycastle.openssl.PEMParser
+import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter
 import org.bson.UuidRepresentation
 import org.bson.codecs.configuration.CodecRegistries.fromProviders
 import org.bson.codecs.configuration.CodecRegistries.fromRegistries
 import org.bson.codecs.pojo.PojoCodecProvider
 import java.io.File
 import java.io.FileInputStream
-import java.security.KeyFactory
+import java.io.FileReader
 import java.security.KeyStore
+import java.security.PrivateKey
+import java.security.Security
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
-import java.security.spec.PKCS8EncodedKeySpec
-import java.util.*
 import kotlin.time.Duration.Companion.seconds
 
 val CONF = AppConfig.load()
-val lgr = KotlinLogging.logger {  }
+val lgr = KotlinLogging.logger { }
 val DB = MongoClient.create(
     MongoClientSettings.builder()
         .applyToClusterSettings { builder ->
@@ -63,6 +68,7 @@ val DB = MongoClient.create(
             )
         )
         .build()).getDatabase(CONF.database.name)
+
 private fun storageDir(path: String?, defaultName: String): File {
     val trimmed = path?.trim().orEmpty()
     return if (trimmed.isBlank()) File(defaultName) else File(trimmed)
@@ -73,22 +79,25 @@ val MODPACK_DATA_DIR = storageDir(CONF.storage.modpackDir, "modpack")
 val HOSTS_DIR = storageDir(CONF.storage.hostsDir, "hosts")
 val GAME_LIBS_DIR = storageDir(CONF.storage.gameLibsDir, "game-libs")
 val WORLDS_DIR = storageDir(CONF.storage.worldsDir, "worlds")
+
 class RDI {}
-fun main(): Unit =runBlocking {
-    if(DEBUG){
+
+fun main(): Unit = runBlocking {
+    if (DEBUG) {
         System.setProperty("javax.net.ssl.trustStoreType", "Windows-ROOT")
     }
-    CONF.storage.dlModsDir?.let { System.setProperty("rdi.modDir",it) }
+    CONF.storage.dlModsDir?.let { System.setProperty("rdi.modDir", it) }
 
     CRASH_REPORT_DIR.mkdirs()
     MODPACK_DATA_DIR.mkdirs()
     HOSTS_DIR.mkdirs()
     GAME_LIBS_DIR.mkdirs()
     WORLDS_DIR.mkdirs()
-        lgr.info { "init db" }
+    lgr.info { "worlds: ${WORLDS_DIR.absolutePath}" }
+    lgr.info { "init db" }
 
-        accountCol.createIndex(Indexes.ascending("qq"), IndexOptions().unique(true))
-        accountCol.createIndex(Indexes.ascending("name"), IndexOptions().unique(true))
+    accountCol.createIndex(Indexes.ascending("qq"), IndexOptions().unique(true))
+    accountCol.createIndex(Indexes.ascending("name"), IndexOptions().unique(true))
 
     HostService.startIdleMonitor()
     Runtime.getRuntime().addShutdownHook(Thread {
@@ -163,33 +172,50 @@ fun startServer() {
 }
 
 private fun createKeyStoreFromPem(certFile: File, keyFile: File): KeyStore {
-    // Read certificate
+    // Add BouncyCastle provider
+    Security.addProvider(BouncyCastleProvider())
+
+    // Read full certificate chain (leaf + intermediates)
     val certFactory = CertificateFactory.getInstance("X.509")
-    val cert = FileInputStream(certFile).use { fis ->
-        certFactory.generateCertificate(fis) as X509Certificate
+    val certChain = FileInputStream(certFile).use { fis ->
+        certFactory.generateCertificates(fis)
+            .map { it as X509Certificate }
+            .toTypedArray()
+    }
+    if (certChain.isEmpty()) {
+        throw IllegalArgumentException("No certificates found in: ${certFile.absolutePath}")
+    }
+    lgr.info { "Loaded ${certChain.size} certificate(s) from chain" }
+
+    // Read private key using BouncyCastle PEMParser
+    val privateKey: PrivateKey = FileReader(keyFile).use { reader ->
+        val pemParser = PEMParser(reader)
+        val pemObject = pemParser.readObject()
+        val converter = JcaPEMKeyConverter().setProvider("BC")
+
+        when (pemObject) {
+            is PEMKeyPair -> {
+                // PKCS#1 format (RSA PRIVATE KEY)
+                converter.getPrivateKey(pemObject.privateKeyInfo)
+            }
+            is PrivateKeyInfo -> {
+                // PKCS#8 format (PRIVATE KEY)
+                converter.getPrivateKey(pemObject)
+            }
+            else -> {
+                throw IllegalArgumentException("Unsupported PEM object type: ${pemObject?.javaClass?.name}")
+            }
+        }
     }
 
-    // Read private key
-    val keyContent = keyFile.readText()
-        .replace("-----BEGIN PRIVATE KEY-----", "")
-        .replace("-----END PRIVATE KEY-----", "")
-        .replace("-----BEGIN RSA PRIVATE KEY-----", "")
-        .replace("-----END RSA PRIVATE KEY-----", "")
-        .replace("\\s".toRegex(), "")
-
-    val keyBytes = Base64.getDecoder().decode(keyContent)
-    val keySpec = PKCS8EncodedKeySpec(keyBytes)
-    val keyFactory = KeyFactory.getInstance("RSA")
-    val privateKey = keyFactory.generatePrivate(keySpec)
-
-    // Create KeyStore
+    // Create KeyStore with full certificate chain
     val keyStore = KeyStore.getInstance(KeyStore.getDefaultType())
     keyStore.load(null, null)
     keyStore.setKeyEntry(
         "rdiserver",
         privateKey,
         "changeit".toCharArray(),
-        arrayOf(cert)
+        certChain
     )
 
     return keyStore
