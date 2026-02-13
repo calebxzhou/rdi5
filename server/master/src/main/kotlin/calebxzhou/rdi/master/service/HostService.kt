@@ -489,7 +489,7 @@ object HostService {
             }
         }
         state.session = session
-        DockerService.limitCpuCores(hostId.str,4.0)
+        //DockerService.limitCpuCores(hostId.str,4.0)
         lgr.info { "host $hostId gameplay 通道已连接" }
         return true
     }
