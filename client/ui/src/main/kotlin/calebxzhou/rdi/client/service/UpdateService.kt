@@ -107,6 +107,7 @@ object UpdateService {
             onDetail("")
         }.onFailure {
             onStatus("更新流程遇到错误")
+            it.printStackTrace()
             onDetail(it.message ?: "未知错误")
         }
     }
@@ -139,6 +140,7 @@ object UpdateService {
                 ?.let { "${it / 1000}KB/s" } ?: "--"
             onDetail("$label $percentText $downloadedText/$totalText $speedText")
         }.getOrElse {
+            it.printStackTrace()
             tempFile.delete()
             onDetail("下载失败，请检查网络后重试")
             return false
