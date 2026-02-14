@@ -190,7 +190,7 @@ object GameService {
         val serverTargetFile = holder.installProfile?.serverJarPath
             ?.replace("{LIBRARY_DIR}", libsDir.absolutePath)
             ?.replace("{MINECRAFT_VERSION}", mcVerStr)
-            ?.let { File(it).apply { mkdirs() } }
+            ?.let { File(it).apply { parentFile?.mkdirs() } }
             ?: DIR.resolve("minecraft_server.${mcVerStr}.jar")
         ctx.emitProgress(TaskProgress("开始下载...", 0.1f))
         downloadArtifact("服务端核心 $mcVerStr", server, serverTargetFile) { progress ->
