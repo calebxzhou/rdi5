@@ -12,7 +12,6 @@ import calebxzhou.rdi.common.service.CurseForgeService
 import calebxzhou.rdi.common.util.ioTask
 import calebxzhou.rdi.master.MODPACK_DATA_DIR
 import calebxzhou.rdi.master.service.*
-import calebxzhou.rdi.master.service.ModpackService.createVersion
 import calebxzhou.rdi.master.service.ModpackService.deleteModpack
 import com.mongodb.client.model.InsertOneOptions
 import com.mongodb.client.model.UpdateOptions
@@ -207,7 +206,6 @@ class ModpackTest {
             val ctx = ModpackContext(player, modpack, null)
             val mods = loadTestMods().take(2).toMutableList()
 
-            ctx.createVersion("1.0.1", samplePackZip(), mods)
             advanceUntilIdle()
 
             val versionDir = modpack.dir.resolve("1.0.1")
@@ -300,7 +298,6 @@ class ModpackTest {
         authorId = playerId,
         mcVer = McVersion.V211,
         modloader = ModLoader.neoforge,
-        versions = emptyList()
     )
 
     private fun testVersion(modpack: Modpack, name: String) = Modpack.Version(

@@ -1,5 +1,8 @@
-import calebxzhou.mykotutils.curseforge.CurseForgeApi
 import calebxzhou.mykotutils.std.jarResource
+import calebxzhou.rdi.client.net.loggedAccount
+import calebxzhou.rdi.client.net.server
+import calebxzhou.rdi.client.service.ModpackService
+import calebxzhou.rdi.client.service.PlayerService
 import calebxzhou.rdi.common.json
 import calebxzhou.rdi.common.model.Mod
 import calebxzhou.rdi.common.model.Modpack
@@ -7,10 +10,6 @@ import calebxzhou.rdi.common.model.RAccount
 import calebxzhou.rdi.common.serdesJson
 import calebxzhou.rdi.common.service.CurseForgeService
 import calebxzhou.rdi.common.service.CurseForgeService.mapMods
-import calebxzhou.rdi.client.net.loggedAccount
-import calebxzhou.rdi.client.net.server
-import calebxzhou.rdi.client.service.ModpackService
-import calebxzhou.rdi.client.service.PlayerService
 import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
 import org.bson.types.ObjectId
@@ -79,7 +78,7 @@ class ModpackTest {
     @Test
     fun cfModFile(){
         runBlocking {
-            CurseForgeApi.getModFileInfo(1150640,6743799)?.let { print(it.json)
+            CurseForgeService.getModFileInfo(1150640,6743799)?.let { print(it.json)
 			print(it.realDownloadUrl)}
         }
     }
