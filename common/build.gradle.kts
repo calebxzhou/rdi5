@@ -44,7 +44,7 @@ dependencies {
     implementation("io.github.oshai:kotlin-logging-jvm:${kotlinLoggingVersion}")
     testImplementation("io.github.oshai:kotlin-logging-jvm:${kotlinLoggingVersion}")
 
-    implementation("net.benwoodworth.knbt:knbt:0.11.8")
+    implementation("net.benwoodworth.knbt:knbt:0.11.9")
 
 	testImplementation(kotlin("test"))
 }
