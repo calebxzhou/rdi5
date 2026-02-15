@@ -1,0 +1,37 @@
+package calebxzhou.rdi.client.service
+
+import java.io.File
+
+actual object ClientDirs {
+    /**
+     * Must be initialized from MainActivity via [init] before use.
+     * Uses context.getExternalFilesDir(dirName).
+     */
+    private lateinit var baseDir: File
+
+    private val fclMinecraftDir = File("/storage/emulated/0/FCL/.minecraft")
+
+    fun init(externalFilesDir: File) {
+        baseDir = externalFilesDir
+        // Ensure all dirs exist
+        dlPacksDir.mkdirs()
+        versionsDir.mkdirs()
+        dlModsDir.mkdirs()
+        packProcDir.mkdirs()
+        mcDir.mkdirs()
+        librariesDir.mkdirs()
+        assetsDir.mkdirs()
+        assetIndexesDir.mkdirs()
+        assetObjectsDir.mkdirs()
+    }
+
+    actual val dlPacksDir: File get() = baseDir.resolve("dl-packs")
+    actual val versionsDir: File get() = fclMinecraftDir.resolve("versions")
+    actual val dlModsDir: File get() = baseDir.resolve("dl-mods")
+    actual val packProcDir: File get() = baseDir.resolve("pack-proc")
+    actual val mcDir: File get() = fclMinecraftDir
+    actual val librariesDir: File get() = fclMinecraftDir.resolve("libraries")
+    actual val assetsDir: File get() = fclMinecraftDir.resolve("assets")
+    actual val assetIndexesDir: File get() = assetsDir.resolve("indexes")
+    actual val assetObjectsDir: File get() = assetsDir.resolve("objects")
+}

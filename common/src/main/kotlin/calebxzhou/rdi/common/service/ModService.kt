@@ -1,8 +1,6 @@
 package calebxzhou.rdi.common.service
 
 import calebxzhou.mykotutils.log.Loggers
-import calebxzhou.mykotutils.std.murmur2
-import calebxzhou.mykotutils.std.sha1
 import calebxzhou.rdi.common.DL_MOD_DIR
 import calebxzhou.rdi.common.model.*
 import calebxzhou.rdi.common.net.DownloadProgress
@@ -15,9 +13,11 @@ import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.InputStream
 import java.nio.file.Path
+import java.security.MessageDigest
 import java.util.jar.JarFile
 import java.util.jar.JarInputStream
 import kotlin.io.path.exists
+import kotlin.io.path.inputStream
 
 
 object ModService {
@@ -250,11 +250,48 @@ object ModService {
             .replace("cdn.modrinth.com", "mod.mcimirror.top")
             .replace("api.curseforge.com", "mod.mcimirror.top/curseforge")
 
+    private fun readResourceText(resourcePath: String): String? {
+        val classLoaders = listOfNotNull(
+            ModService::class.java.classLoader,
+            Thread.currentThread().contextClassLoader,
+            ClassLoader.getSystemClassLoader()
+        ).distinct()
+
+        val resourceCandidates = listOf(
+            resourcePath,
+            "/$resourcePath",
+            "assets/$resourcePath",
+            "resources/$resourcePath"
+        )
+
+        classLoaders.forEach { loader ->
+            resourceCandidates.forEach { candidate ->
+                val normalized = candidate.removePrefix("/")
+                val text = runCatching {
+                    loader.getResourceAsStream(normalized)?.bufferedReader()?.use { it.readText() }
+                }.getOrNull()
+                if (!text.isNullOrBlank()) return text
+            }
+        }
+
+        val fileCandidates = listOf(
+            File(resourcePath),
+            File("common/src/main/resources/$resourcePath"),
+            File("client/ui/src/commonMain/resources/$resourcePath")
+        )
+        fileCandidates.forEach { file ->
+            val text = runCatching {
+                if (file.exists()) file.readText() else null
+            }.getOrNull()
+            if (!text.isNullOrBlank()) return text
+        }
+        return null
+    }
+
     fun loadBriefInfo(): List<ModBriefInfo> {
         val resourcePath = "mod_brief_info.json"
         val raw = runCatching {
-            ModService::class.java.classLoader.getResourceAsStream(resourcePath)?.bufferedReader()
-                ?.use { it.readText() }
+            readResourceText(resourcePath)
         }.onFailure {
             lgr.error(it) { "Failed to read $resourcePath" }
         }.getOrNull()
@@ -356,11 +393,24 @@ object ModService {
     ): Result<Path> {
         val targetPath = mod.targetPath
         val expectedFingerprint = fileInfo.fileFingerprint
+        val expectedSha1 = fileInfo.hashes
+            .firstOrNull { it.algo == 1 }
+            ?.value
+            ?.trim()
+            ?.lowercase()
+            .orEmpty()
 
-        // Check if file already exists with correct fingerprint
-        if (targetPath.exists() && targetPath.murmur2 == expectedFingerprint) {
-            lgr.debug { "Mod file already exists and fingerprint matches: $targetPath" }
-            return Result.success(targetPath)
+        // Check if file already exists with expected hash/fingerprint.
+        if (targetPath.exists()) {
+            val alreadyOk = if (expectedSha1.isNotBlank()) {
+                targetPath.sha1Hex() == expectedSha1
+            } else {
+                targetPath.murmur2Hash() == expectedFingerprint
+            }
+            if (alreadyOk) {
+                lgr.debug { "Mod file already exists and hash matches: $targetPath" }
+                return Result.success(targetPath)
+            }
         }
 
         val officialUrl = fileInfo.realDownloadUrl
@@ -376,11 +426,21 @@ object ModService {
                 onProgress = onProgress
             ).getOrElse { throw it }
 
-            // Verify fingerprint after download
-            if (downloadedPath.murmur2 != expectedFingerprint) {
-                throw IllegalStateException(
-                    "Downloaded mod ${mod.slug} fingerprint mismatch: expected $expectedFingerprint, got ${downloadedPath.murmur2}"
-                )
+            // Prefer SHA1 verification when API provides it; fallback to murmur2 fingerprint.
+            if (expectedSha1.isNotBlank()) {
+                val actualSha1 = downloadedPath.sha1Hex()
+                if (actualSha1 != expectedSha1) {
+                    throw IllegalStateException(
+                        "Downloaded mod ${mod.slug} SHA1 mismatch: expected $expectedSha1, got $actualSha1"
+                    )
+                }
+            } else {
+                val actualFingerprint = downloadedPath.murmur2Hash()
+                if (actualFingerprint != expectedFingerprint) {
+                    throw IllegalStateException(
+                        "Downloaded mod ${mod.slug} fingerprint mismatch: expected $expectedFingerprint, got $actualFingerprint"
+                    )
+                }
             }
             downloadedPath
         }.onFailure { err ->
@@ -415,7 +475,7 @@ object ModService {
             // For MR mods, we use the hash from the mod object
             val expectedHash = mod.hash
             if (expectedHash.isNotBlank()) {
-                val actualHash = targetPath.sha1
+                val actualHash = targetPath.sha1Hex()
                 if (actualHash == expectedHash) {
                     lgr.debug { "Mod file already exists and hash matches: $targetPath" }
                     return Result.success(targetPath)
@@ -437,7 +497,7 @@ object ModService {
 
                 // Verify SHA1 hash after download
                 if (expectedHash.isNotBlank()) {
-                    val actualHash = downloadedPath.sha1
+                    val actualHash = downloadedPath.sha1Hex()
                     if (actualHash != expectedHash) {
                         throw IllegalStateException(
                             "Downloaded mod ${mod.slug} SHA1 mismatch: expected $expectedHash, got $actualHash"
@@ -464,6 +524,93 @@ object ModService {
         // All URLs failed
         lgr.error(lastError) { "Failed to download mod ${mod.slug} from all ${urls.size} URLs" }
         return Result.failure(lastError ?: IllegalStateException("No download URLs available"))
+    }
+
+    private fun Path.sha1Hex(): String {
+        val digest = MessageDigest.getInstance("SHA-1")
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        inputStream().buffered().use { input ->
+            while (true) {
+                val read = input.read(buffer)
+                if (read <= 0) break
+                digest.update(buffer, 0, read)
+            }
+        }
+        return digest.digest().joinToString("") { "%02x".format(it) }
+    }
+
+    private fun Path.murmur2Hash(seed: Int = 1): Long {
+        val m = 0x5bd1e995
+        val r = 24
+        val length = toFile().length().toInt()
+        var h = seed xor length
+        val tail = ByteArray(4)
+        var tailSize = 0
+
+        fun mixChunk(bytes: ByteArray, offset: Int) {
+            var k = (bytes[offset].toInt() and 0xff) or
+                    ((bytes[offset + 1].toInt() and 0xff) shl 8) or
+                    ((bytes[offset + 2].toInt() and 0xff) shl 16) or
+                    ((bytes[offset + 3].toInt() and 0xff) shl 24)
+            k *= m
+            k = k xor (k ushr r)
+            k *= m
+            h *= m
+            h = h xor k
+        }
+
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        inputStream().buffered().use { input ->
+            while (true) {
+                val read = input.read(buffer)
+                if (read <= 0) break
+                var index = 0
+                if (tailSize > 0) {
+                    while (tailSize < 4 && index < read) {
+                        tail[tailSize++] = buffer[index++]
+                    }
+                    if (tailSize == 4) {
+                        mixChunk(tail, 0)
+                        tailSize = 0
+                    }
+                }
+
+                val blockLimit = read - ((read - index) and 3)
+                while (index < blockLimit) {
+                    mixChunk(buffer, index)
+                    index += 4
+                }
+
+                while (index < read) {
+                    tail[tailSize++] = buffer[index++]
+                }
+            }
+        }
+
+        when (tailSize) {
+            3 -> {
+                h = h xor ((tail[2].toInt() and 0xff) shl 16)
+                h = h xor ((tail[1].toInt() and 0xff) shl 8)
+                h = h xor (tail[0].toInt() and 0xff)
+                h *= m
+            }
+
+            2 -> {
+                h = h xor ((tail[1].toInt() and 0xff) shl 8)
+                h = h xor (tail[0].toInt() and 0xff)
+                h *= m
+            }
+
+            1 -> {
+                h = h xor (tail[0].toInt() and 0xff)
+                h *= m
+            }
+        }
+
+        h = h xor (h ushr 13)
+        h *= m
+        h = h xor (h ushr 15)
+        return h.toLong() and 0xffffffffL
     }
 
     fun MutableList<Mod>.postProcessModSides(): MutableList<Mod> {

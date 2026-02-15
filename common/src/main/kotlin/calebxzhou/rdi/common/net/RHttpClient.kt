@@ -17,6 +17,7 @@ import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import okhttp3.Cache
+import java.io.File
 import java.io.IOException
 import java.net.*
 import java.security.SecureRandom
@@ -29,7 +30,12 @@ import kotlin.time.Duration.Companion.seconds
 
 suspend inline fun httpRequest(crossinline builder: HttpRequestBuilder.() -> Unit): HttpResponse = ktorClient.request(builder)
 fun HttpRequestBuilder.json() = contentType(ContentType.Application.Json)
-private val CACHE_DIR = DIR.resolve("cache").resolve("http").apply { mkdirs() }
+/**
+ * Set this before first use of [ktorClient] to override the HTTP cache directory.
+ * Desktop: defaults to DIR/cache/http
+ * Android: set to application.cacheDir.resolve("http") in MainActivity
+ */
+var httpCacheDir: File = DIR.resolve("cache").resolve("http").apply { mkdirs() }
 private const val HTTP_CACHE_SIZE_BYTES = 4*1024L * 1024 * 1024 // 1GB
 
 val ktorClient by lazy {
@@ -41,7 +47,7 @@ val ktorClient by lazy {
                 connectTimeout(10, TimeUnit.SECONDS)
                 readTimeout(0, TimeUnit.SECONDS)
                 proxySelector(DynamicProxySelector())
-                cache(Cache(CACHE_DIR, HTTP_CACHE_SIZE_BYTES))
+                cache(Cache(httpCacheDir.apply { mkdirs() }, HTTP_CACHE_SIZE_BYTES))
 
                 // Trust all certificates in DEBUG mode (for self-signed certs)
                 if (DEBUG) {
@@ -66,7 +72,7 @@ val ktorClient by lazy {
 
         }
         install(HttpCache) {
-            publicStorage(FileStorage(CACHE_DIR))
+            publicStorage(FileStorage(httpCacheDir))
         }
         install(SSE) {
             maxReconnectionAttempts = 4

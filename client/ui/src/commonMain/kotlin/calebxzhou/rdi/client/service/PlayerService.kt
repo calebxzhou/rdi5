@@ -1,0 +1,105 @@
+package calebxzhou.rdi.client.service
+
+import calebxzhou.rdi.client.ui.getHwSpecJson
+import calebxzhou.mykotutils.log.Loggers
+import calebxzhou.rdi.client.auth.LocalCredentials
+import calebxzhou.rdi.client.model.LoginInfo
+import calebxzhou.rdi.client.net.loggedAccount
+import calebxzhou.rdi.client.net.server
+import calebxzhou.rdi.common.exception.RequestError
+import calebxzhou.rdi.common.model.RAccount
+import calebxzhou.rdi.common.model.Response
+import calebxzhou.rdi.common.serdesJson
+import calebxzhou.rdi.common.util.ok
+import io.ktor.client.call.*
+import io.ktor.http.*
+import net.raphimc.minecraftauth.MinecraftAuth
+import net.raphimc.minecraftauth.java.JavaAuthManager
+import net.raphimc.minecraftauth.msa.model.MsaDeviceCode
+import net.raphimc.minecraftauth.msa.service.impl.DeviceCodeMsaAuthService
+import org.bson.types.ObjectId
+import java.util.function.Consumer
+
+val playerInfoCache = PlayerInfoCache<RAccount.Dto>().apply {
+    batchFetcher = { ids ->
+        val objectIds = ids.map { ObjectId(it) }
+        val infos = runCatching { PlayerService.getPlayerInfos(objectIds) }.getOrNull()
+        infos?.associate { it.id.toHexString() to it }.orEmpty()
+    }
+    defaultFactory = { id ->
+        RAccount.Dto(ObjectId(id), RAccount.DEFAULT.name, RAccount.Cloth())
+    }
+}
+
+object PlayerService {
+    private val lgr by Loggers
+    fun microsoftLogin(onDevice: (MsaDeviceCode) -> Unit): Result<JavaAuthManager> = runCatching {
+        JavaAuthManager.create(MinecraftAuth.createHttpClient("rdi-client"))
+            .login(::DeviceCodeMsaAuthService, Consumer { deviceCode: MsaDeviceCode ->
+                onDevice(deviceCode)
+            })
+    }
+    suspend fun login(usr: String, pwd: String): Result<RAccount> = runCatching {
+        val creds = LocalCredentials.read()
+        val spec = getHwSpecJson()
+
+        val resp = server.createRequest(
+            path = "player/login",
+            method = HttpMethod.Post,
+            params = mutableMapOf("usr" to usr, "pwd" to pwd, "spec" to spec)
+        )
+        val account = resp.body<Response<RAccount>>().run {
+            data ?: run {
+                throw RequestError(msg)
+            }
+        }
+        account.jwt = resp.headers["jwt"]
+        val loginInfo = LoginInfo(account.qq, account.name, account.pwd, System.currentTimeMillis())
+        creds.loginInfos += account._id.toHexString() to loginInfo
+        creds.save()
+        loggedAccount = account
+        account
+    }
+
+    suspend fun getJwt(usr: String, pwd: String): String {
+        return server.makeRequest<String>(
+            "player/jwt",
+            HttpMethod.Post,
+            params = mapOf("usr" to usr, "pwd" to pwd)
+        ).data!!
+    }
+
+    suspend fun getPlayerInfo(uid: ObjectId): RAccount.Dto {
+        return try {
+            server.makeRequest<RAccount.Dto>("player/${uid}/info").data ?: RAccount.DEFAULT.dto
+        } catch (e: Exception) {
+            lgr.warn("获取玩家信息失败", e)
+            RAccount.DEFAULT.dto
+        }
+    }
+
+    suspend fun getPlayerInfos(uids: List<ObjectId>): List<RAccount.Dto> {
+        if (uids.isEmpty()) return emptyList()
+        return try {
+            val idsParam = uids.joinToString("\n") { it.toHexString() }
+            server.makeRequest<List<RAccount.Dto>>("player/infos", params = mapOf("ids" to idsParam)).data
+                ?: emptyList()
+        } catch (e: Exception) {
+            lgr.warn("批量获取玩家信息失败", e)
+            emptyList()
+        }
+    }
+
+    suspend fun setCloth(cloth: RAccount.Cloth): Result<Unit> = runCatching {
+        val params = mutableMapOf<String, Any>()
+        params["isSlim"] = cloth.isSlim.toString()
+        params["skin"] = cloth.skin
+        cloth.cape?.let {
+            params["cape"] = it
+        }
+
+        val resp = server.makeRequest<Unit>("player/skin", HttpMethod.Post, params = params)
+        if (resp.ok) ok()
+        else throw RequestError(resp.msg)
+    }
+}

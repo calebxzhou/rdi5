@@ -1,18 +1,21 @@
 import org.gradle.jvm.tasks.Jar
+import org.gradle.api.tasks.bundling.Zip
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 
 val ktorVersion = "3.3.3"
-val version = "5.10.8"
+val version = "5.11"
 project.version = version
+
 plugins {
-    kotlin("jvm") version "2.2.21"
+    kotlin("multiplatform") version "2.2.21"
     kotlin("plugin.serialization") version "2.2.21"
     id("org.jetbrains.kotlin.plugin.compose") version "2.2.21"
     id("org.jetbrains.compose") version "1.10.0-rc02"
-    `java-library`
+    id("com.android.application") version "8.12.0"
     idea
-    application
 }
 
 tasks.named<Wrapper>("wrapper") {
@@ -29,41 +32,181 @@ repositories {
 base {
     archivesName.set("rdi-5-ui")
 }
-val hotDevClassName = providers.gradleProperty("className")
-    .orElse("calebxzhou.rdi.client.MainKt")
 
-tasks.matching { it.name == "hotRun" }.configureEach {
-    val runDir = layout.projectDirectory.dir("run").asFile
-    doFirst {
-        runDir.mkdirs()
+kotlin {
+    jvm("desktop")
+
+    androidTarget {
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_21)
+        }
     }
-    if (this is JavaExec) {
-        workingDir = runDir
-        jvmArgs(
-            "-Drdi.debug=true",
-           // "-Drdi.init.screen=ml",
-           // "-Drdi.mockData=true",
-            "-Drdi.account=eyJfaWQiOiI2OGIzMTRiYmFkYWY1MmRkYWI5NmI1ZWQiLCJuYW1lIjoiMTIzMTIzIiwicHdkIjoiMTIzQEBAIiwicXEiOiIxMjMxMjMifQ=="
-        )
+
+    sourceSets {
+        val commonMain by getting {
+            dependencies {
+                val composeVersion = "1.10.0-rc02"
+                implementation("org.jetbrains.compose.runtime:runtime:$composeVersion")
+                implementation("org.jetbrains.compose.foundation:foundation:$composeVersion")
+                implementation("org.jetbrains.compose.material:material:$composeVersion")
+                implementation("org.jetbrains.compose.ui:ui:$composeVersion")
+                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
+                implementation(project(":common"))
+                implementation("net.raphimc:MinecraftAuth:5.0.0")
+                implementation("io.ktor:ktor-client-core:$ktorVersion")
+                implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
+                implementation("io.ktor:ktor-client-encoding:$ktorVersion")
+                implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
+                implementation("io.github.oshai:kotlin-logging-jvm:7.0.6")
+                implementation("calebxzhou.mykotutils:std:0.1")
+                implementation("calebxzhou.mykotutils:log:0.1")
+                implementation("org.mongodb:bson:5.6.3")
+                implementation("org.mongodb:bson-kotlinx:5.6.3")
+                implementation("org.jetbrains.androidx.navigation:navigation-compose:2.9.1")
+                implementation("org.jetbrains.compose.material3:material3:1.10.0-alpha05")
+                implementation("net.peanuuutz.tomlkt:tomlkt:0.5.0")
+                implementation("com.github.oshi:oshi-core:6.9.3") {
+                    exclude(group = "net.java.dev.jna")
+                }
+            }
+        }
+
+        val desktopMain by getting {
+            dependencies {
+                implementation(compose.desktop.currentOs)
+                implementation("org.jetbrains.androidx.navigation:navigation-compose:2.9.1")
+                implementation("org.jetbrains.compose.material3:material3-desktop:1.10.0-rc02")
+    
+                // JNA/Oshi dependencies (JNA excluded from commonMain)
+                implementation("net.java.dev.jna:jna:5.18.1")
+                implementation("net.java.dev.jna:jna-platform:5.18.1")
+
+
+                val lwjglVersion = "3.3.3"
+                val components = listOf("", "glfw", "opengl")
+                components.forEach { component ->
+                    val suffix = if (component.isNotEmpty()) "-$component" else ""
+                    implementation("org.lwjgl:lwjgl${suffix}:$lwjglVersion")
+                    implementation("org.lwjgl:lwjgl${suffix}:$lwjglVersion:natives-windows")
+                }
+
+                implementation("io.netty:netty-all:4.2.7.Final")
+                implementation(project(":common"))
+
+
+                runtimeOnly("org.hotswapagent:hotswap-agent-core:2.0.1")
+                implementation("com.github.oshi:oshi-core:6.9.1")
+                implementation("com.electronwill.night-config:toml:3.8.3")
+                implementation("ch.qos.logback:logback-classic:1.5.21")
+                implementation("io.github.oshai:kotlin-logging-jvm:7.0.6")
+
+
+                implementation("calebxzhou.mykotutils:std:0.1")
+                implementation("calebxzhou.mykotutils:log:0.1")
+
+                implementation("io.ktor:ktor-client-okhttp:$ktorVersion")
+                implementation("io.ktor:ktor-client-core:$ktorVersion")
+                implementation("io.ktor:ktor-client-auth:$ktorVersion")
+                implementation("io.ktor:ktor-client-encoding:$ktorVersion")
+                implementation("org.jsoup:jsoup:1.19.1")
+                implementation("org.mongodb:bson:5.6.3")
+                implementation("org.mongodb:bson-kotlinx:5.6.3")
+                implementation("com.github.ben-manes.caffeine:caffeine:3.2.2")
+                implementation("io.ktor:ktor-server-core:$ktorVersion")
+                implementation("io.ktor:ktor-server-websockets:$ktorVersion")
+                implementation("io.ktor:ktor-server-netty:$ktorVersion")
+                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
+                implementation("org.jetbrains.kotlinx:kotlinx-serialization-cbor:1.9.0")
+                implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
+                implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
+            }
+        }
+
+        val desktopTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
+            }
+        }
+
+        val androidMain by getting {
+            dependencies {
+                implementation(project(":common"))
+                implementation("io.ktor:ktor-client-android:$ktorVersion")
+                implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
+                implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
+                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
+                implementation("androidx.activity:activity-compose:1.9.3")
+                // Use slf4j-simple on Android instead of logback (logback uses Class.getModule() which doesn't exist on Android)
+                implementation("org.slf4j:slf4j-simple:2.0.16")
+                // JNA AAR includes Android native .so files (regular JAR only has desktop natives)
+                implementation("net.java.dev.jna:jna:5.18.1@aar")
+                // JNA Platform JAR (interfaces only, safe for Android if excluded JNA JAR)
+                implementation("net.java.dev.jna:jna-platform:5.18.1") {
+                    exclude(module = "jna")
+                }
+                // oshi with JNA JAR excluded (AAR above replaces it)
+                implementation("com.github.oshi:oshi-core:6.9.3") {
+                    exclude(group = "net.java.dev.jna")
+                }
+            }
+            // Exclude logback from all transitive dependencies in Android
+            configurations.all {
+                if (name.contains("android", ignoreCase = true) || name.contains("Android")) {
+                    exclude(group = "ch.qos.logback", module = "logback-classic")
+                    exclude(group = "ch.qos.logback", module = "logback-core")
+                }
+            }
+        }
     }
 }
-tasks.named<Jar>("jar") {
-    archiveFileName.set("rdi-5-ui.jar")
-    manifest {
-        attributes(
-            mapOf(
-                "Implementation-Title" to project.name,
-                "Implementation-Version" to project.version,
-                "Built-By" to System.getProperty("user.name"),
-                "Build-Timestamp" to SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
-                    .format(Date()),
-                "Created-By" to "Gradle ${gradle.gradleVersion}"
+
+android {
+    namespace = "calebxzhou.rdi.client"
+    compileSdk = 35
+
+    defaultConfig {
+        applicationId = "calebxzhou.rdi.client"
+        minSdk = 26
+        targetSdk = 35
+        versionCode = 1
+        versionName = version
+    }
+
+    sourceSets["main"].assets.srcDir("src/commonMain/resources")
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
+    }
+
+    packaging {
+        resources {
+            excludes += listOf(
+                "META-INF/INDEX.LIST",
+                "META-INF/DEPENDENCIES",
+                "META-INF/LICENSE",
+                "META-INF/LICENSE.txt",
+                "META-INF/license.txt",
+                "META-INF/NOTICE",
+                "META-INF/NOTICE.txt",
+                "META-INF/notice.txt",
+                "META-INF/ASL2.0",
+                "META-INF/AL2.0",
+                "META-INF/LGPL2.1",
+                "META-INF/*.kotlin_module",
+                "META-INF/versions/**",
+                "META-INF/io.netty.versions.properties",
+                "META-INF/MANIFEST.MF"
             )
-        )
+        }
     }
-//archiveClassifier.set("plain")
 }
-java.toolchain.languageVersion.set(JavaLanguageVersion.of(21))
+
+compose.desktop {
+    application {
+        mainClass = "calebxzhou.rdi.client.MainKt"
+    }
+}
 
 allprojects {
     configurations.all {
@@ -71,57 +214,6 @@ allprojects {
             force("org.slf4j:slf4j-api:2.0.16")
         }
     }
-}
-
-dependencies {
-    implementation(compose.desktop.currentOs)
-    implementation("org.jetbrains.androidx.navigation:navigation-compose:2.9.1")
-    // Source: https://mvnrepository.com/artifact/org.jetbrains.compose.material3/material3-desktop
-    implementation("org.jetbrains.compose.material3:material3-desktop:1.10.0-alpha05")
-    val lwjglVersion = "3.3.3"
-    val components = listOf("", "glfw", "opengl")
-    components.forEach { component ->
-        val suffix = if (component.isNotEmpty()) "-$component" else ""
-        implementation("org.lwjgl:lwjgl${suffix}:$lwjglVersion")
-        implementation("org.lwjgl:lwjgl${suffix}:$lwjglVersion:natives-windows")
-    }
-
-    testImplementation(kotlin("test"))
-    implementation("io.netty:netty-all:4.2.7.Final")
-    implementation(project(":common"))
-
-    //implementation("com.github.Towdium:PinIn:1.6.0")
-// Source: https://mvnrepository.com/artifact/net.raphimc/MinecraftAuth
-    implementation("net.raphimc:MinecraftAuth:5.0.0")
-
-    runtimeOnly("org.hotswapagent:hotswap-agent-core:2.0.1")
-    implementation("com.github.oshi:oshi-core:6.9.1")
-    implementation("com.electronwill.night-config:toml:3.8.3")
-    implementation("ch.qos.logback:logback-classic:1.5.21")
-    implementation("io.github.oshai:kotlin-logging-jvm:7.0.6")
-    implementation("net.peanuuutz.tomlkt:tomlkt:0.5.0")
-
-    implementation("calebxzhou.mykotutils:std:0.1")
-    implementation("calebxzhou.mykotutils:log:0.1")
-    implementation("calebxzhou.mykotutils:hwspec:0.1")
-
-    // Expanded mcLibs dependencies
-    implementation("io.ktor:ktor-client-okhttp:$ktorVersion")
-    implementation("io.ktor:ktor-client-core:$ktorVersion")
-    implementation("io.ktor:ktor-client-auth:$ktorVersion")
-    implementation("io.ktor:ktor-client-encoding:$ktorVersion")
-    implementation("org.jsoup:jsoup:1.19.1")
-    implementation("org.mongodb:bson:5.6.3")
-    // Source: https://mvnrepository.com/artifact/org.mongodb/bson-kotlinx
-    implementation("org.mongodb:bson-kotlinx:5.6.3")
-    implementation("com.github.ben-manes.caffeine:caffeine:3.2.2")
-    implementation("io.ktor:ktor-server-core:$ktorVersion")
-    implementation("io.ktor:ktor-server-websockets:$ktorVersion")
-    implementation("io.ktor:ktor-server-netty:$ktorVersion")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-cbor:1.9.0")
-    implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
-    implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
 }
 
 configurations.configureEach {
@@ -139,25 +231,53 @@ tasks.withType<Test>().configureEach {
     useJUnitPlatform()
 }
 
-tasks.named<Test>("test") {
-    enabled = false
-}
-
 idea {
     module {
         isDownloadSources = true
         isDownloadJavadoc = true
     }
 }
+
+val runDir = layout.projectDirectory.dir("run").asFile
+val hotRunBaseJvmArgs = listOf(
+    "-Drdi.debug=true",
+    "-Drdi.noHttps=true",
+    "-Drdi.account=eyJfaWQiOiI2OGIzMTRiYmFkYWY1MmRkYWI5NmI1ZWQiLCJuYW1lIjoiMTIzMTIzIiwicHdkIjoiMTIzQEBAIiwicXEiOiIxMjMxMjMifQ=="
+)
+
+tasks.withType<JavaExec>().configureEach {
+    workingDir = runDir
+    doFirst {
+        runDir.mkdirs()
+    }
+}
+
+tasks.matching { it.name == "hotRunDesktop" }.configureEach {
+    notCompatibleWithConfigurationCache("uses project file operations at execution time")
+    if (this is JavaExec) {
+        systemProperties = System.getProperties().filter { it.key.toString().startsWith("rdi.") } as MutableMap<String, Any?>
+        jvmArgs(hotRunBaseJvmArgs)
+    }
+}
+tasks.register<Sync>("desktopInstallLibs") {
+    dependsOn("desktopJar")
+    from(configurations.getByName("desktopRuntimeClasspath"))
+    from(tasks.named<Jar>("desktopJar"))
+    into(layout.buildDirectory.dir("install/ui/lib"))
+}
+
+
 fun registerCopyTask(name: String, extraDestinations: List<String> = emptyList()) {
     tasks.register(name) {
         notCompatibleWithConfigurationCache("uses project file operations at execution time")
-        dependsOn(tasks.named("installDist"))
+
+        dependsOn("desktopInstallLibs")
+
         val baseDestinations = listOf(
-            layout.projectDirectory.dir("..\\..\\server\\master\\run\\client-libs\\lib"),
-            layout.projectDirectory.dir("${System.getProperty("user.home")}\\Documents\\rdi5ship\\lib")
+            file("../../server/master/run/client-libs/lib"),
+            File(System.getProperty("user.home"), "Documents/rdi5ship/lib")
         )
-        val destinationDirs = baseDestinations + extraDestinations.map { layout.projectDirectory.dir(it) }
+        val destinationDirs = baseDestinations + extraDestinations.map { file(it) }
 
         doLast {
             val srcDir = layout.buildDirectory.dir("install/ui/lib").get().asFile
@@ -165,14 +285,13 @@ fun registerCopyTask(name: String, extraDestinations: List<String> = emptyList()
                 throw GradleException("未找到目录: $srcDir")
             }
             val srcFileNames = srcDir.listFiles()?.map { it.name }?.toSet() ?: emptySet()
-            destinationDirs.forEach { target ->
-                val targetDir = target.asFile
+
+            destinationDirs.forEach { targetDir ->
                 targetDir.mkdirs()
                 copy {
                     from(srcDir)
                     into(targetDir)
                 }
-                // Delete unused libraries in target
                 targetDir.listFiles()?.forEach { file ->
                     if (file.name !in srcFileNames) {
                         val deleted = file.deleteRecursively()
@@ -187,46 +306,31 @@ fun registerCopyTask(name: String, extraDestinations: List<String> = emptyList()
         }
     }
 }
+
 registerCopyTask("出core2-local")
 registerCopyTask("出core2-release", listOf("\\\\rdi\\rdi55\\ihq\\client-libs\\lib"))
-tasks.register<Exec>("makeShipPack") {
-   // dependsOn(tasks.named("出core2-local"))
 
-    val shipDir = layout.projectDirectory.dir("${System.getProperty("user.home")}\\Documents\\rdi5ship")
+tasks.register<Zip>("makeShipPack") {
+    val shipDir = File(System.getProperty("user.home"), "Documents/rdi5ship")
     val filesNeed = listOf("lib", "双击启动.cmd", "fonts", "jre")
-    val zipFile = shipDir.file("rdi5ship-${version}.zip")
 
-    workingDir = shipDir.asFile
+    group = "distribution"
+    description = "Create shipping zip in Documents/rdi5ship."
+    dependsOn("出core2-local")
+
+    destinationDirectory.set(shipDir)
+    archiveFileName.set("rdi5ship-${version}.zip")
+
+    from(File(shipDir, "lib")) { into("lib") }
+    from(File(shipDir, "fonts")) { into("fonts") }
+    from(File(shipDir, "jre")) { into("jre") }
+    from(shipDir) { include("双击启动.cmd") }
 
     doFirst {
-        val shipDirFile = shipDir.asFile
-        val sevenZip = File("C:\\Program Files\\7-Zip\\7z.exe")
-        if (!sevenZip.exists()) throw GradleException("未找到 7-Zip: $sevenZip")
-        if (!shipDirFile.exists()) throw GradleException("未找到 ship 目录: $shipDirFile")
-
+        if (!shipDir.exists()) throw GradleException("未找到 ship 目录: $shipDir")
         filesNeed.forEach { name ->
-            val target = File(shipDirFile, name)
+            val target = File(shipDir, name)
             if (!target.exists()) throw GradleException("缺少文件或目录: $target")
         }
-
-        val zipTarget = zipFile.asFile
-        if (zipTarget.exists() && !zipTarget.delete()) {
-            throw GradleException("无法删除旧压缩包: $zipTarget")
-        }
-
-        commandLine(
-            sevenZip.absolutePath,
-            "a",
-            "-tzip",
-            "-mmt",
-
-            zipTarget.absolutePath,
-            *filesNeed.toTypedArray()
-        )
     }
-}
-
-
-application {
-    mainClass.set("calebxzhou.rdi.client.MainKt")
 }

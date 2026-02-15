@@ -1,0 +1,38 @@
+> Task :common:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :common:compileKotlin UP-TO-DATE
+> Task :common:compileJava NO-SOURCE
+> Task :common:processResources NO-SOURCE
+> Task :common:classes UP-TO-DATE
+> Task :common:jar UP-TO-DATE
+> Task :kmpPartiallyResolvedDependenciesChecker
+> Task :checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :copyNonXmlValueResourcesForCommonMain NO-SOURCE
+> Task :prepareComposeResourcesTaskForCommonMain NO-SOURCE
+> Task :generateResourceAccessorsForCommonMain SKIPPED
+> Task :convertXmlValueResourcesForDesktopMain NO-SOURCE
+> Task :copyNonXmlValueResourcesForDesktopMain NO-SOURCE
+> Task :prepareComposeResourcesTaskForDesktopMain NO-SOURCE
+> Task :generateResourceAccessorsForDesktopMain SKIPPED
+> Task :generateActualResourceCollectorsForDesktopMain SKIPPED
+> Task :generateComposeResClass SKIPPED
+> Task :generateExpectResourceCollectorsForCommonMain SKIPPED
+
+> Task :compileKotlinDesktop
+w: file:///C:/Users/calebxzhou/Documents/coding/rdi5/client/ui/src/desktopMain/kotlin/calebxzhou/rdi/client/net/RServer.kt:115:17 'fun info(msg: String?): Unit' is deprecated. Use info {} instead.
+w: file:///C:/Users/calebxzhou/Documents/coding/rdi5/client/ui/src/desktopMain/kotlin/calebxzhou/rdi/client/net/RServer.kt:183:37 'fun info(msg: String?): Unit' is deprecated. Use info {} instead.
+w: file:///C:/Users/calebxzhou/Documents/coding/rdi5/client/ui/src/desktopMain/kotlin/calebxzhou/rdi/client/service/PlayerService.kt:119:17 'fun warn(msg: String?, t: Throwable?): Unit' is deprecated. Use warn {} instead.
+w: file:///C:/Users/calebxzhou/Documents/coding/rdi5/client/ui/src/desktopMain/kotlin/calebxzhou/rdi/client/service/PlayerService.kt:131:17 'fun warn(msg: String?, t: Throwable?): Unit' is deprecated. Use warn {} instead.
+w: file:///C:/Users/calebxzhou/Documents/coding/rdi5/client/ui/src/desktopMain/kotlin/calebxzhou/rdi/client/service/SettingsService.kt:23:15 'val totalPhysicalMemorySize: Long' is deprecated. Deprecated in Java.
+w: file:///C:/Users/calebxzhou/Documents/coding/rdi5/client/ui/src/desktopMain/kotlin/calebxzhou/rdi/client/ui2/comp/HostCard.kt:56:18 'fun Modifier.pointerMoveFilter(onMove: (Offset) -> Boolean = ..., onExit: () -> Boolean = ..., onEnter: () -> Boolean = ...): Modifier' is deprecated. Use onPointerEvent or hoverable.
+
+[Incubating] Problems report is available at: file:///C:/Users/calebxzhou/Documents/coding/rdi5/client/ui/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.2.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 24s
+4 actionable tasks: 2 executed, 2 up-to-date
