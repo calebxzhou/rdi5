@@ -12,6 +12,7 @@
     "mAllowChineseNameLogin",
     "mChatMsg",
     "mChinesePlayerName",
+    "mPlusTimeout",
     "mSaveBandwidth",
     "mServerLoginPacketListener"
   ],
