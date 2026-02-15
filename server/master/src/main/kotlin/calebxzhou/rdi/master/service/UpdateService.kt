@@ -31,6 +31,14 @@ fun Route.updateRoutes() = route("/update") {
         if (!file.exists() || !file.isFile) throw RequestError("无此文件")
         call.respondFile(file)
     }
+    get("/ui/ver"){
+        val coreFile = uiLibsDir.resolve("rdi-5-ui.jar")
+        if (!coreFile.exists() || !coreFile.isFile) throw RequestError("找不到UI核心文件")
+        val version = java.util.jar.JarFile(coreFile).use { jar ->
+            jar.manifest?.mainAttributes?.getValue("Implementation-Version")
+        } ?: throw RequestError("无法读取版本号")
+        response(data = version)
+    }
     /*get("/ui/hash") {
         response(data = uiFile.sha1)
     }
@@ -43,6 +51,7 @@ fun Route.updateRoutes() = route("/update") {
         if(!jarFile.exists()) throw RequestError("无此版本的MC核心库")
         response(data = jarFile.sha1)
     }
+
     get("/mc/{ver}"){
         val jarFile = CLIENT_LIBS_DIR.resolve("$mcCoreFilePrefix-${param("ver")}.jar")
         if(!jarFile.exists()) throw RequestError("无此版本的MC核心库")
