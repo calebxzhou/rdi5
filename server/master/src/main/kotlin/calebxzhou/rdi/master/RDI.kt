@@ -264,12 +264,23 @@ private fun Application.configureServer() {
         }
     }
     install(Compression) {
+        val contentTypes = arrayOf(
+            ContentType.Text.Any,
+            ContentType.Application.Json,
+            ContentType.Application.JavaScript,
+            ContentType.Application.Xml,
+            ContentType.Application.Xml_Dtd,
+            ContentType.Application.Yaml,
+            ContentType.Application.FormUrlEncoded,
+            ContentType.Application.Wasm,
+
+            )
         gzip {
-            matchContentType(ContentType.Text.Any, ContentType.Application.Json)
+            matchContentType(*contentTypes)
             excludeContentType(ContentType.Text.EventStream)
         }
         deflate {
-            matchContentType(ContentType.Text.Any, ContentType.Application.Json)
+            matchContentType(*contentTypes)
             excludeContentType(ContentType.Text.EventStream)
         }
     }
