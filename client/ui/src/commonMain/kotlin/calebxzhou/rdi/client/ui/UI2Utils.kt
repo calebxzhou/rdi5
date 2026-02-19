@@ -399,6 +399,9 @@ fun TitleRow(
     longPressToBack: Boolean = false,
     content: @Composable (RowScope.() -> Unit)
 ) {
+    platformBackHandler {
+        onBack.invoke()
+    }
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
         val density = LocalDensity.current
         val maxWidthPx = with(density) { maxWidth.toPx() }

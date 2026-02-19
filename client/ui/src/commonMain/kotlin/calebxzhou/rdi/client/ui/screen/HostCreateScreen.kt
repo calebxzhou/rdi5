@@ -201,12 +201,6 @@ fun HostCreateScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             TitleRow(title, onBack) {
-                statusMessage?.let {
-                    Text(it, color = MaterialTheme.colors.error)
-                }
-                errorMessage?.let {
-                    Text(it, color = MaterialTheme.colors.error)
-                }
                 if (loading) {
                     CircularProgressIndicator()
                 }
@@ -215,6 +209,14 @@ fun HostCreateScreen(
                 }
             }
             Space8h()
+            statusMessage?.let {
+                Text(it, color = MaterialTheme.colors.error)
+                Space8h()
+            }
+            errorMessage?.let {
+                Text(it, color = MaterialTheme.colors.error)
+                Space8h()
+            }
             Column(modifier = Modifier.fillMaxWidth()) {
                 BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
                     val compactLayout = maxWidth < 960.dp

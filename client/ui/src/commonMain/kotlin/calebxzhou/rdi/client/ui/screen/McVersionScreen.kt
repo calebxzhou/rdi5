@@ -8,9 +8,11 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.AlertDialog
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
+import androidx.compose.material.TextButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -55,6 +57,8 @@ fun McVersionScreen(
     var localDirs by remember { mutableStateOf<List<ModpackLocalDir>>(emptyList()) }
     var selectedPack by remember { mutableStateOf<ModpackLocalDir?>(null) }
     var packActionMessage by remember { mutableStateOf<String?>(null) }
+    var fclDialogText by remember { mutableStateOf<String?>(null) }
+    var fclDialogDirName by remember { mutableStateOf<String?>(null) }
 
     fun reload() {
         loading = true
@@ -84,7 +88,7 @@ fun McVersionScreen(
             TitleRow("MC资源管理", onBack) {
                 if (isDesktop) {
                     Text("若下载不成功，可尝试从网盘下载，然后手动导入。")
-                    CircleIconButton("\uDB85\uDC03","从网盘下载"){
+                    CircleIconButton("\uDB85\uDC03", "从网盘下载") {
                         openUrl("https://www.123865.com/s/iWSWvd-Zrtdd")
                     }
                     Space8w()
@@ -116,27 +120,26 @@ fun McVersionScreen(
                     Spacer(modifier = Modifier.height(6.dp))
                 }
                 Spacer(modifier = Modifier.height(8.dp))
-                if (isDesktop) {
-                    LazyVerticalGrid(
-                        columns = GridCells.Adaptive(300.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.heightIn(min = 0.dp, max = 800.dp)
-                    ) {
-                        items(McVersion.entries) { mcver ->
-                            McVersionCard(
-                                mcver = mcver,
-                                highlight = requiredMcVer == mcver,
-                                onOpenTask = onOpenTask
-                            )
-                        }
+
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(300.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.heightIn(min = 0.dp, max = 800.dp)
+                ) {
+                    items(McVersion.entries) { mcver ->
+                        McVersionCard(
+                            mcver = mcver,
+                            highlight = requiredMcVer == mcver,
+                            onOpenTask = onOpenTask,
+                            onOpenFclDialog = { text, dirName ->
+                                fclDialogText = text
+                                fclDialogDirName = dirName
+                            }
+                        )
                     }
-                } else {
-                    Text(
-                        text = "请使用FCL启动器下载MC资源",
-                        color = MaterialColor.GRAY_900.color
-                    )
                 }
+
                 Spacer(modifier = Modifier.height(16.dp))
                 val selected = selectedPack
                 BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
@@ -229,7 +232,8 @@ fun McVersionScreen(
                                         errorMessage = "未找到对应版本信息，可能已被删除"
                                         return@launch
                                     }
-                                    val task = version.startInstall(packdir.vo.mcVer, packdir.vo.modloader, packdir.vo.name)
+                                    val task =
+                                        version.startInstall(packdir.vo.mcVer, packdir.vo.modloader, packdir.vo.name)
                                     if (onOpenTask != null) {
                                         onOpenTask(task)
                                     } else {
@@ -260,17 +264,11 @@ fun McVersionScreen(
                             }
                             CircleIconButton("\uEB9B", "测试运行", size = size, enabled = selected != null) {
                                 selected?.let { packdir ->
-                                    val args = listOf(
-                                        "-Drdi.ihq.url=${server.hqUrl}",
-                                        "-Drdi.game.ip=${server.ip}:${server.gamePort}",
-                                        "-Drdi.host.name=test",
-                                        "-Drdi.host.port=25565"
-                                    )
                                     val playArgs = McPlayArgs(
                                         title = "测试运行 - ${packdir.vo.name} ${packdir.verName}",
                                         mcVer = packdir.vo.mcVer,
                                         versionId = packdir.versionId,
-                                        jvmArgs = args
+                                        "${server.hqUrl}\n${server.ip}:${server.gamePort}\ntest\n25565"
                                     )
                                     onOpenPlay?.invoke(playArgs)
                                 }
@@ -351,5 +349,49 @@ fun McVersionScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
+    }
+
+    fclDialogText?.let {
+        AlertDialog(
+            onDismissRequest = {
+                fclDialogText = null
+                fclDialogDirName = null
+            },
+            title = { Text("FCL下载提示") },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 280.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Text(
+                        text = it.asIconText,
+                        color = MaterialColor.GRAY_900.color
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    fclDialogText = null
+                    fclDialogDirName = null
+                }) {
+                    Text("取消")
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val dirName = fclDialogDirName
+                    if (!dirName.isNullOrBlank()) {
+                        copyToClipboard(dirName)
+                    }
+                    openGameLauncher()
+                    fclDialogText = null
+                    fclDialogDirName = null
+                }) {
+                    Text("复制版本名称并启动FCL")
+                }
+            }
+        )
     }
 }

@@ -9,6 +9,28 @@ val ktorVersion = "3.3.3"
 val version = "5.11"
 project.version = version
 
+/*val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+if (keystorePropertiesFile.exists()) {
+    keystorePropertiesFile.inputStream().use(keystoreProperties::load)
+}
+
+fun signingValue(key: String, envName: String): String? =
+    keystoreProperties.getProperty(key)?.takeIf { it.isNotBlank() }
+        ?: providers.gradleProperty("rdi.signing.$key").orNull?.takeIf { it.isNotBlank() }
+        ?: System.getenv(envName)?.takeIf { it.isNotBlank() }
+
+val releaseStoreFilePath = signingValue("storeFile", "RDI_SIGNING_STORE_FILE")
+val releaseStorePassword = signingValue("storePassword", "RDI_SIGNING_STORE_PASSWORD")
+val releaseKeyAlias = signingValue("keyAlias", "RDI_SIGNING_KEY_ALIAS")
+val releaseKeyPassword = signingValue("keyPassword", "RDI_SIGNING_KEY_PASSWORD")
+val hasReleaseSigning = listOf(
+    releaseStoreFilePath,
+    releaseStorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword
+).all { !it.isNullOrBlank() }*/
+
 plugins {
     kotlin("multiplatform") version "2.2.21"
     kotlin("plugin.serialization") version "2.2.21"
@@ -179,6 +201,32 @@ android {
         targetCompatibility = JavaVersion.VERSION_21
     }
 
+   /* signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(releaseStoreFilePath!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+                enableV1Signing = true
+                enableV2Signing = true
+            }
+        }
+    }
+
+    buildTypes {
+        getByName("release") {
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            } else {
+                logger.lifecycle(
+                    "Release signing is not configured. " +
+                        "Provide client/ui/keystore.properties or rdi.signing.* Gradle properties."
+                )
+            }
+        }
+    }*/
+
     packaging {
         resources {
             excludes += listOf(
@@ -334,3 +382,17 @@ tasks.register<Zip>("makeShipPack") {
         }
     }
 }
+
+/*tasks.register("assembleSignedRelease") {
+    group = "build"
+    description = "Build a signed release APK. Requires signing config values."
+    dependsOn("assembleRelease")
+    doFirst {
+        if (!hasReleaseSigning) {
+            throw GradleException(
+                "Release signing not configured. Set storeFile/storePassword/keyAlias/keyPassword " +
+                    "in client/ui/keystore.properties or rdi.signing.* properties."
+            )
+        }
+    }
+}*/

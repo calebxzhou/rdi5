@@ -30,10 +30,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.draw.shadow
 import calebxzhou.rdi.client.model.firstLoader
+import calebxzhou.rdi.client.model.firstLoaderVersion
 import calebxzhou.rdi.client.model.metadata
 import calebxzhou.rdi.client.service.GameService
 import calebxzhou.rdi.client.ui.CircleIconButton
 import calebxzhou.rdi.client.ui.MaterialColor
+import calebxzhou.rdi.client.ui.isDesktop
 import calebxzhou.rdi.client.ui.loadImageBitmap
 import calebxzhou.rdi.common.model.McVersion
 import calebxzhou.rdi.common.model.Task
@@ -47,7 +49,8 @@ import calebxzhou.rdi.common.model.Task
 fun McVersionCard(
     mcver: McVersion,
     highlight: Boolean = false,
-    onOpenTask: ((Task) -> Unit)? = null
+    onOpenTask: ((Task) -> Unit)? = null,
+    onOpenFclDialog: (String, String) -> Unit,
 ) {
     val iconBitmap = remember(mcver) {
         loadImageBitmap(mcver.icon)
@@ -76,7 +79,10 @@ fun McVersionCard(
             Box(
                 modifier = Modifier
                     .size(64.dp)
-                    .background(MaterialColor.GRAY_200.color, androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+                    .background(
+                        MaterialColor.GRAY_200.color,
+                        androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+                    )
                     .padding(4.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -112,21 +118,41 @@ fun McVersionCard(
                     modifier = Modifier.horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    CircleIconButton("\uF019", "下载全部所需文件") {
-                        onOpenTask?.invoke(GameService.downloadVersion(mcver, mcver.firstLoader))
-                    }
-                    CircleIconButton("\uF305", "仅下载MC核心", bgColor = Color.Gray) {
-                        onOpenTask?.invoke(GameService.downloadClient(mcver.metadata))
-                    }
-                    CircleIconButton("\uDB84\uDE5F", "仅下载运行库", bgColor = Color.Gray) {
-                        onOpenTask?.invoke(GameService.downloadLibraries(mcver.metadata.libraries))
-                    }
-                    CircleIconButton("\uF001", "仅下载音频资源", bgColor = Color.Gray) {
-                        onOpenTask?.invoke(GameService.downloadAssets(mcver.metadata))
-                    }
-                    mcver.loaderVersions.forEach { (loader, _) ->
-                        CircleIconButton("\uEEFF", "安装${loader.name.lowercase()}", bgColor = Color.Gray) {
-                            onOpenTask?.invoke(GameService.downloadLoader(mcver, loader))
+                    if (isDesktop) {
+
+                        CircleIconButton("\uF019", "下载全部所需文件") {
+                            onOpenTask?.invoke(GameService.downloadVersion(mcver, mcver.firstLoader))
+                        }
+                        CircleIconButton("\uF305", "仅下载MC核心", bgColor = Color.Gray) {
+                            onOpenTask?.invoke(GameService.downloadClient(mcver.metadata))
+                        }
+                        CircleIconButton("\uDB84\uDE5F", "仅下载运行库", bgColor = Color.Gray) {
+                            onOpenTask?.invoke(GameService.downloadLibraries(mcver.metadata.libraries))
+                        }
+                        CircleIconButton("\uF001", "仅下载音频资源", bgColor = Color.Gray) {
+                            onOpenTask?.invoke(GameService.downloadAssets(mcver.metadata))
+                        }
+                        mcver.loaderVersions.forEach { (loader, _) ->
+                            CircleIconButton("\uEEFF", "安装${loader.name.lowercase()}", bgColor = Color.Gray) {
+                                onOpenTask?.invoke(GameService.downloadLoader(mcver, loader))
+                            }
+                        }
+                    } else {
+                        CircleIconButton("\uF019", "使用FCL下载") {
+                            val guideText = buildString {
+                                appendLine("1.打开FCL启动器")
+                                appendLine("2.点击左侧的\uDB80\uDD62按钮")
+                                appendLine("3.在上方选择“游戏”")
+                                appendLine("4.选择${mcver.mcVer}")
+                                appendLine("5.点击${mcver.firstLoader.name}")
+                                appendLine("6.点击版本${mcver.firstLoaderVersion.ver}")
+                                appendLine("7.填入名称${mcver.firstLoaderVersion.dirName}，填错会导致无法启动！")
+                                append("8.点击名称栏右侧的\uDB80\uDDDA等待安装完成")
+                            }
+                            onOpenFclDialog.invoke(
+                                guideText,
+                                mcver.firstLoaderVersion.dirName
+                            )
                         }
                     }
                 }

@@ -7,7 +7,7 @@ data class McPlayArgs(
     val title: String,
     val mcVer: McVersion,
     val versionId: String,
-    val jvmArgs: List<String>
+    val playArg: String,
 )
 
 object McPlayStore {

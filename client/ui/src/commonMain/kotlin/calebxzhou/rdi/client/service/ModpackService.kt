@@ -8,6 +8,7 @@ import calebxzhou.rdi.client.model.firstLoaderDir
 import calebxzhou.rdi.client.model.loaderManifest
 import calebxzhou.rdi.client.net.server
 import calebxzhou.rdi.client.ui.McPlayArgs
+import calebxzhou.rdi.client.ui.isDesktop
 import calebxzhou.rdi.common.exception.RequestError
 import calebxzhou.rdi.common.json
 import calebxzhou.rdi.common.model.*
@@ -17,7 +18,9 @@ import io.ktor.http.*
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.io.files.FileNotFoundException
 import org.bson.types.ObjectId
+import java.io.File
 
 /**
  * Common modpack download/install service.
@@ -72,26 +75,67 @@ object ModpackService {
             ctx.emitProgress(TaskProgress("下载完成", 1f))
         }
 
+        val prepareVersionDirTask = Task.Leaf("准备安装目录") { ctx ->
+            if (versionDir.exists()) {
+                ctx.emitProgress(TaskProgress("清理旧版本文件...", null))
+                if (!versionDir.deleteRecursively()) {
+                    throw IllegalStateException("无法清理旧版本目录: ${versionDir.absolutePath}")
+                }
+            }
+            if (!versionDir.exists()) {
+                versionDir.mkdirs()
+            }
+            ctx.emitProgress(TaskProgress("目录已就绪", 1f))
+        }
+
         val extractTask = Task.Leaf("解压客户端整合包") { ctx ->
             val clientPack = clientPackFile ?: throw IllegalStateException("客户端包未准备好")
-            if (versionDir.exists()) {
-                versionDir.deleteRecursively()
-            }
-            versionDir.mkdirs()
-            ctx.emitProgress(TaskProgress("解压中...", null))
+            val ioBufferSize = 64 * 1024
+            val copyBuffer = ByteArray(ioBufferSize)
+            ctx.emitProgress(TaskProgress("扫描压缩包内容...", 0f))
             clientPack.openChineseZip().use { zip ->
-                zip.entries().asSequence().forEach { entry ->
+                val entries = zip.entries().asSequence().toList()
+                val fileEntries = entries.filterNot { it.isDirectory }
+                val knownTotalBytes = fileEntries.mapNotNull { entry ->
+                    entry.size.takeIf { it > 0L }
+                }.sum()
+                var extractedFiles = 0
+                var extractedBytes = 0L
+                var lastEmitTs = 0L
+                val createdDirs = hashSetOf(versionDir.absolutePath)
+
+                fileEntries.forEachIndexed { index, entry ->
                     val relativePath = entry.name.trimStart('/')
+                    if (relativePath.isBlank()) return@forEachIndexed
                     val destination = versionDir.resolve(relativePath)
-                    if (entry.isDirectory) {
-                        destination.mkdirs()
-                    } else {
-                        destination.parentFile?.mkdirs()
-                        zip.getInputStream(entry).use { input ->
-                            destination.outputStream().use { output ->
-                                input.copyTo(output)
+                    destination.parentFile?.let { parent ->
+                        val parentPath = parent.absolutePath
+                        if (parentPath !in createdDirs) {
+                            parent.mkdirs()
+                            createdDirs += parentPath
+                        }
+                    }
+                    zip.getInputStream(entry).use { input ->
+                        destination.outputStream().buffered(ioBufferSize).use { output ->
+                            while (true) {
+                                val read = input.read(copyBuffer)
+                                if (read <= 0) break
+                                output.write(copyBuffer, 0, read)
+                                extractedBytes += read
                             }
                         }
+                    }
+                    extractedFiles += 1
+                    val now = System.currentTimeMillis()
+                    val shouldEmit = now - lastEmitTs >= 120L || index == fileEntries.lastIndex
+                    if (shouldEmit) {
+                        val fraction = if (knownTotalBytes > 0L) {
+                            (extractedBytes.toFloat() / knownTotalBytes.toFloat()).coerceIn(0f, 1f)
+                        } else {
+                            extractedFiles.toFloat() / fileEntries.size.coerceAtLeast(1)
+                        }
+                        ctx.emitProgress(TaskProgress("解压中 $extractedFiles/${fileEntries.size}", fraction))
+                        lastEmitTs = now
                     }
                 }
             }
@@ -114,14 +158,7 @@ object ModpackService {
                 ctx.emitProgress(TaskProgress("已处理 ${index + 1}/${modFiles.size}", fraction))
             }
 
-            val mcSlug = "${mcVersion.mcVer}-${modLoader.name.lowercase()}"
-            val mcCoreSource = ClientDirs.dlModsDir.resolve("rdi-5-mc-client-$mcSlug.jar")
-            val mcCoreTarget = modsDir.resolve("rdi-5-mc-client-$mcSlug.jar")
-            if (mcCoreSource.exists()) {
-                linkOrCopyMod(mcCoreSource, mcCoreTarget)
-            } else {
-                throw IllegalStateException("缺少核心文件: ${mcCoreSource.absolutePath}")
-            }
+            installRdiCore(mcVersion, modLoader, modsDir)
             ctx.emitProgress(TaskProgress("完成", 1f))
         }
 
@@ -131,7 +168,11 @@ object ModpackService {
             darkMojangStudiosBackground:true
             forceUnicodeFont:true
             """.trimIndent().let { versionDir.resolve("options.txt").writeText(it) }
-            versionDir.resolve(versionDir.name+".json").writeText(mcVersion.loaderManifest.json)
+            try {
+                versionDir.resolve(versionDir.name+".json").writeText(mcVersion.loaderManifest.copy(id=versionDir.name).json)
+            } catch (e: FileNotFoundException) {
+                throw RequestError("没有找到${mcVersion.mcVer}版本的${modLoader.name}，请先安装")
+            }
 
             ctx.emitProgress(TaskProgress("写入完成", 1f))
         }
@@ -141,12 +182,29 @@ object ModpackService {
             subTasks = listOf(
                 downloadModsTask,
                 downloadClientPackTask,
+                prepareVersionDirTask,
                 extractTask,
                 copyModsTask,
                 writeOptionsTask
             )
         )
     }
+
+    fun installRdiCore(
+        mcVersion: McVersion,
+        modLoader: ModLoader,
+        modsDir: File
+    ) {
+        val mcSlug = "${mcVersion.mcVer}-${modLoader.name.lowercase()}"
+        val mcCoreSource = ClientDirs.dlModsDir.resolve("rdi-5-mc-client-$mcSlug.jar")
+        val mcCoreTarget = modsDir.resolve("rdi-5-mc-client-$mcSlug.jar")
+        if (mcCoreSource.exists()) {
+            linkOrCopyMod(mcCoreSource, mcCoreTarget)
+        } else {
+            throw IllegalStateException("缺少核心文件: ${mcCoreSource.absolutePath}")
+        }
+    }
+
 
     fun Modpack.Version.startInstall(
         mcVersion: McVersion,
@@ -221,21 +279,23 @@ suspend fun Host.DetailVo.startPlay(): StartPlayResult {
     if (GameService.started) {
         throw RequestError("mc运行中，如需切换要玩的地图，请先关闭mc")
     }
-
+    if(!isDesktop){
+        val verDir = ModpackService.getVersionDir(version.modpackId,version.name)
+        ModpackService.installRdiCore(modpack.mcVer,modpack.modloader,verDir)
+    }
     val bgp = CONF.carrier != 0
     val versionId = "${modpack.id.str}_${version.name}"
-    val args = listOf(
-        "-Drdi.ihq.url=${server.hqUrl}",
-        "-Drdi.game.ip=${if (bgp) server.bgpIp else server.ip}:${server.gamePort}",
-        "-Drdi.host.name=${name}",
-        "-Drdi.host.port=${port}"
-    )
+    val playArg = "${server.hqUrl}\n" +
+            "${if (bgp) server.bgpIp else server.ip}:${server.gamePort}\n"+
+            "${name}\n"+
+            "$port"
+
     return StartPlayResult.Ready(
         McPlayArgs(
             title = "游玩 $name",
             mcVer = modpack.mcVer,
             versionId = versionId,
-            jvmArgs = args
+            playArg = playArg
         )
     )
 }

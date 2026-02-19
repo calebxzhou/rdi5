@@ -19,10 +19,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import calebxzhou.mykotutils.std.encodeBase64
 import calebxzhou.rdi.client.UIFontFamily
 import calebxzhou.rdi.client.net.loggedAccount
 import calebxzhou.rdi.client.ui.screen.*
 import calebxzhou.rdi.common.model.McVersion
+import calebxzhou.rdi.common.service.MojangApi.dashless
 import calebxzhou.rdi.common.util.toUUID
 import org.bson.types.ObjectId
 
@@ -67,41 +69,36 @@ fun AppNavigation(
         if (showFclLaunchDialog.value) {
             val args = fclLaunchArgs.value
             if (args != null) {
-                val uuid = runCatching {
-                    loggedAccount._id.toUUID().toString().replace("-", "")
-                }.getOrDefault("unknown")
+                val jvmArg = "-Drdi.play=${args.playArg.encodeBase64}"
+                val uuid = loggedAccount._id.toUUID().dashless
                 AlertDialog(
                     onDismissRequest = { showFclLaunchDialog.value = false },
                     title = { Text("在FCL中启动游戏") },
                     text = {
                         Column {
-                            Text("请在Fold Craft Launcher中配置：")
-                            Spacer(Modifier.height(8.dp))
-                            Text("版本: ${args.versionId}")
-                            Spacer(Modifier.height(4.dp))
-                            Text("UUID: $uuid")
-                            if (args.jvmArgs.isNotEmpty()) {
-                                Spacer(Modifier.height(4.dp))
-                                Text("JVM参数: ${args.jvmArgs.joinToString(" ")}")
-                            }
-                            Spacer(Modifier.height(8.dp))
-                            Text("已点击 复制参数 后可粘贴到FCL的JVM参数中。")
+                            Text("0.创建一个离线账户 昵称写${loggedAccount.name}")
+                            Text("1.点击 管理版本")
+                            Text("2.点击 公有目录，点击 刷新")
+                            Text("3.点击 ${args.versionId}")
+                            Text("4.点击 \uF013".asIconText)
+                            Text("5.翻到最下面 找到Java虚拟机参数")
+                            Text("6.粘贴 $jvmArg")
+                            Text("7.翻到最下面 找到自定义UUID")
+                            Text("8.粘贴 $uuid")
                         }
+
                     },
                     confirmButton = {
                         TextButton(onClick = {
-                            val copyText = buildString {
-                                append("版本: ${args.versionId}\n")
-                                append("UUID: $uuid\n")
-                                if (args.jvmArgs.isNotEmpty()) {
-                                    append("JVM参数: ${args.jvmArgs.joinToString(" ")}\n")
-                                }
-                            }
-                            copyToClipboard(copyText)
+                            copyToClipboard(jvmArg)
                             openGameLauncher()
-                            showFclLaunchDialog.value = false
                         }) {
                             Text("复制参数并打开FCL")
+                        }
+                        TextButton(onClick = {
+                            copyToClipboard(uuid)
+                        }) {
+                            Text("复制uuid")
                         }
                     },
                     dismissButton = {

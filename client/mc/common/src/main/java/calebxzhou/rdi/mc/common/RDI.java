@@ -1,8 +1,5 @@
 package calebxzhou.rdi.mc.common;
 
-import com.jetbrains.cef.remote.thrift.annotation.Nullable;
-
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.UUID;

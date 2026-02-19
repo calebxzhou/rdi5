@@ -56,7 +56,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         intent.extras?.getString("debug")?.let {
             DEBUG = it.toBoolean()
-            RServer.OFFICIAL_DEBUG.ip = "liber-hq"
+            RServer.OFFICIAL_DEBUG.ip = "192.168.1.20"
             RServer.OFFICIAL_DEBUG.noHttps=true
         }
 

@@ -11,7 +11,7 @@
     </domain-config>
 
     <!-- Optional: enforce HTTPS for everything else -->
-    <base-config cleartextTrafficPermitted="false">
+    <base-config cleartextTrafficPermitted="true">
         <trust-anchors>
             <certificates src="system" />
             <certificates src="user" />

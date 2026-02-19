@@ -2,7 +2,9 @@ package calebxzhou.rdi.client.ui
 
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
+import androidx.compose.runtime.Composable
 import androidx.navigation.compose.composable
+import calebxzhou.mykotutils.std.encodeBase64
 import calebxzhou.mykotutils.std.jarResource
 import calebxzhou.mykotutils.std.readAllString
 import calebxzhou.rdi.RDIClient
@@ -22,6 +24,16 @@ import javax.swing.JFileChooser
 import javax.swing.filechooser.FileNameExtensionFilter
 
 actual val isDesktop: Boolean = true
+
+@Composable
+actual fun platformBackHandler(enabled: Boolean, onBack: () -> Unit) {
+    // No system back concept on desktop.
+}
+
+@Composable
+actual fun platformKeepScreenOn(enabled: Boolean) {
+    // No screen sleep handling here.
+}
 
 actual fun copyToClipboard(text: String) {
     val clipboard = Toolkit.getDefaultToolkit().systemClipboard
@@ -237,7 +249,7 @@ actual fun androidx.navigation.NavGraphBuilder.addDesktopOnlyRoutes(
                 title = args.title,
                 mcVer = args.mcVer,
                 versionId = args.versionId,
-                jvmArgs = args.jvmArgs.toTypedArray(),
+                jvmArgs = arrayOf("-Drdi.play=${args.playArg.encodeBase64}"),
                 onBack = { navController.popBackStack() }
             )
         } else {

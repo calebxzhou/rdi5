@@ -6,16 +6,21 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Environment
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.composable
 import calebxzhou.rdi.client.service.fetchHwSpec
+import calebxzhou.rdi.client.service.UpdateService
 import calebxzhou.rdi.client.ui.screen.ModpackList
 import calebxzhou.rdi.client.ui.screen.ModpackUpload
 import calebxzhou.rdi.common.hwspec.HwSpec
@@ -30,6 +35,23 @@ object AndroidPlatform {
 }
 
 actual val isDesktop: Boolean = false
+
+@Composable
+actual fun platformBackHandler(enabled: Boolean, onBack: () -> Unit) {
+    BackHandler(enabled = enabled, onBack = onBack)
+}
+
+@Composable
+actual fun platformKeepScreenOn(enabled: Boolean) {
+    val view = LocalView.current
+    DisposableEffect(view, enabled) {
+        val previous = view.keepScreenOn
+        view.keepScreenOn = enabled || previous
+        onDispose {
+            view.keepScreenOn = previous
+        }
+    }
+}
 
 actual fun copyToClipboard(text: String) {
     val cm = AndroidPlatform.appContext.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -65,7 +87,11 @@ actual suspend fun runDesktopUpdateFlow(
     onDetail: (String) -> Unit,
     onRestart: suspend () -> Unit
 ) {
-    // No-op on Android — updates handled via Play Store / APK
+    UpdateService.startUpdateFlow(
+        onStatus = onStatus,
+        onDetail = onDetail,
+        onRestart = null
+    )
 }
 
 actual fun createDesktopShortcut(): Result<Unit> =

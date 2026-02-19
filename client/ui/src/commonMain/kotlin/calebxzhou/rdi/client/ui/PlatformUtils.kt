@@ -1,5 +1,6 @@
 package calebxzhou.rdi.client.ui
 
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.ImageBitmap
 import java.io.File
 import java.io.InputStream
@@ -8,6 +9,22 @@ import java.io.InputStream
  * Whether the current platform is desktop (JVM).
  */
 expect val isDesktop: Boolean
+
+/**
+ * Handle system back press on the current platform.
+ * Android: intercepts device back and calls [onBack] when [enabled].
+ * Desktop: no-op.
+ */
+@Composable
+expect fun platformBackHandler(enabled: Boolean = true, onBack: () -> Unit)
+
+/**
+ * Keep the screen awake while the current screen is visible.
+ * Android: uses View.keepScreenOn.
+ * Desktop: no-op.
+ */
+@Composable
+expect fun platformKeepScreenOn(enabled: Boolean = true)
 
 /**
  * Copy text to system clipboard.
@@ -42,8 +59,9 @@ expect suspend fun pickSaveFile(suggestedName: String, extension: String): File?
 expect fun checkCanCreateSymlink(): Boolean
 
 /**
- * Run the desktop update flow (check for updates, download, restart).
- * Android: no-op.
+ * Run update flow.
+ * Desktop: update MC cores + UI libs and may restart.
+ * Android: update MC cores only.
  */
 expect suspend fun runDesktopUpdateFlow(
     onStatus: (String) -> Unit,

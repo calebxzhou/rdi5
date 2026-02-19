@@ -53,6 +53,7 @@ import calebxzhou.mykotutils.std.toFixed
 import calebxzhou.rdi.client.ui.TitleRow
 import calebxzhou.rdi.client.ui.Space8h
 import calebxzhou.rdi.client.ui.hM
+import calebxzhou.rdi.client.ui.platformKeepScreenOn
 import calebxzhou.rdi.client.ui.wM
 import kotlinx.coroutines.withContext
 import java.util.concurrent.locks.ReentrantLock
@@ -68,6 +69,7 @@ fun TaskScreen(
     onBack: () -> Unit = {},
     onDone: () -> Unit = {}
 ) {
+    platformKeepScreenOn(true)
     var currentName by remember { mutableStateOf(task.name) }
     var currentMessage by remember { mutableStateOf("准备中") }
     var currentFraction by remember { mutableStateOf<Float?>(null) }
@@ -139,37 +141,39 @@ fun TaskScreen(
         Space8h()
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
             val compactHeader = maxWidth < 560.dp
-            if (compactHeader) {
-                Text("进度 ${((currentFraction ?: 0f) * 100).toFixed(1)}% · ${currentMessage.truncate(120)}")
-                Space8h()
-                LinearProgressIndicator(
-                    progress = currentFraction?.coerceIn(0f, 1f) ?: 0f,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                errorMessage?.let {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                if (compactHeader) {
+                    Text("进度 ${((currentFraction ?: 0f) * 100).toFixed(1)}% · ${currentMessage.truncate(120)}")
                     Space8h()
-                    Text(it, color = MaterialTheme.colors.error)
-                }
-            } else {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = currentMessage.truncate(80),
-                        modifier = Modifier.weight(1f)
-                    )
-                    Spacer(8.wM)
                     LinearProgressIndicator(
                         progress = currentFraction?.coerceIn(0f, 1f) ?: 0f,
-                        modifier = Modifier.widthIn(min = 140.dp, max = 320.dp)
+                        modifier = Modifier.fillMaxWidth()
                     )
-                    Spacer(8.wM)
-                    Text("${((currentFraction ?: 0f) * 100).toFixed(1)}%")
-                }
-                errorMessage?.let {
-                    Space8h()
-                    Text(it, color = MaterialTheme.colors.error)
+                    errorMessage?.let {
+                        Space8h()
+                        Text(it, color = MaterialTheme.colors.error)
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = currentMessage.truncate(80),
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(8.wM)
+                        LinearProgressIndicator(
+                            progress = currentFraction?.coerceIn(0f, 1f) ?: 0f,
+                            modifier = Modifier.widthIn(min = 140.dp, max = 320.dp)
+                        )
+                        Spacer(8.wM)
+                        Text("${((currentFraction ?: 0f) * 100).toFixed(1)}%")
+                    }
+                    errorMessage?.let {
+                        Space8h()
+                        Text(it, color = MaterialTheme.colors.error)
+                    }
                 }
             }
         }

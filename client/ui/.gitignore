@@ -26,3 +26,7 @@ runs
 run-data
 
 repo
+keystore.properties
+*.jks
+*.keystore
+/release/

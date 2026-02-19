@@ -15,7 +15,10 @@ enum class ModLoader {
         val installerUrl: String,
         val installerSha1: String
     ){
+        //1.18.2-40.3.12
         val id get() = dirName.replace("${loader.name}-","")
+        //40.3.12
+        val ver get() = dirName.split("-").lastOrNull()?:""
         val serverJarName get() ="forge-${id}.jar"
         val serverArgsPath get() = { unix: Boolean ->
              when (loader) {

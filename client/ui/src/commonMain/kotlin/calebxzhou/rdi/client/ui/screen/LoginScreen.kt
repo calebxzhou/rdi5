@@ -52,7 +52,7 @@ fun LoginScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var okMessage by remember { mutableStateOf<String?>(null) }
     var symlinkError by remember { mutableStateOf<String?>(null) }
-    var updateCheckComplete by remember { mutableStateOf(!isDesktop) } // Android: skip update check
+    var updateCheckComplete by remember { mutableStateOf(false) }
     var showMsAccountDialog by remember { mutableStateOf(false) }
 
     fun attemptLogin() {
@@ -85,17 +85,16 @@ fun LoginScreen(
         }
     }
     LaunchedEffect(Unit) {
-        if (isDesktop) {
-            // Desktop-only: symlink check
-            if (!checkCanCreateSymlink()) {
-                symlinkError = """RDI需要权限为Mod及资源文件创建软连接。
+        // Desktop-only: symlink check
+        if (isDesktop && !checkCanCreateSymlink()) {
+            symlinkError = """RDI需要权限为Mod及资源文件创建软连接。
 请点击上方【创建桌面快捷方式】按钮，从桌面图标运行RDI。"""
-            }
-            // Desktop-only: update check
-            runDesktopUpdateFlow(
-                onStatus = { updateStatus = it },
-                onDetail = { updateDetail = it },
-                onRestart = {
+        }
+        runDesktopUpdateFlow(
+            onStatus = { updateStatus = it },
+            onDetail = { updateDetail = it },
+            onRestart = {
+                if (isDesktop) {
                     updateStatus = "更新完成，客户端将在 5 秒关闭..."
                     for (i in 5 downTo 1) {
                         updateDetail = "${i}秒"
@@ -103,9 +102,9 @@ fun LoginScreen(
                     }
                     kotlin.system.exitProcess(0)
                 }
-            )
-            updateCheckComplete = true
-        }
+            }
+        )
+        updateCheckComplete = true
     }
     LaunchedEffect(okMessage) {
         okMessage?.let {
@@ -261,26 +260,23 @@ fun LoginScreen(
                     Spacer(modifier = Modifier.weight(1f))
                 }
 
-                // Desktop-only: update status display
-                if (isDesktop) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = updateStatus,
+                        style = MaterialTheme.typography.caption,
+                        color = MaterialTheme.colors.onSurface
+                    )
+                    if (updateDetail.isNotBlank()) {
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = updateStatus,
+                            text = updateDetail,
                             style = MaterialTheme.typography.caption,
                             color = MaterialTheme.colors.onSurface
                         )
-                        if (updateDetail.isNotBlank()) {
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = updateDetail,
-                                style = MaterialTheme.typography.caption,
-                                color = MaterialTheme.colors.onSurface
-                            )
-                        }
                     }
                 }
             }
