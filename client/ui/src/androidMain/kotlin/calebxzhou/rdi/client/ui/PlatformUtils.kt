@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Environment
+import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -175,7 +176,22 @@ actual fun androidx.navigation.NavGraphBuilder.addDesktopOnlyRoutes(
 }
 
 actual fun getHwSpecJson(): String {
-    return calebxzhou.rdi.common.serdesJson.encodeToString<HwSpec>(
-        fetchHwSpec()
-    )
+    val hwSpec = runCatching { fetchHwSpec() }
+        .onFailure {
+            // Some Android devices cannot initialize OSHI/JNA native probes.
+            Log.w("RDI-HwSpec", "Failed to fetch hardware info on Android, fallback to empty HwSpec.", it)
+        }
+        .getOrElse {
+            HwSpec(
+                model = "",
+                os = "",
+                cpu = HwSpec.Cpu(name = "", cores = 0, threads = 0, frequency = 0L),
+                gpus = emptyList(),
+                mems = emptyList(),
+                disk = emptyList(),
+                display = emptyList(),
+                videoMode = emptyList()
+            )
+        }
+    return calebxzhou.rdi.common.serdesJson.encodeToString<HwSpec>(hwSpec)
 }

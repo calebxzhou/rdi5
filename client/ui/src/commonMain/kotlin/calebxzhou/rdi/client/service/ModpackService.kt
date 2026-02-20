@@ -6,6 +6,7 @@ import calebxzhou.mykotutils.std.sha1
 import calebxzhou.rdi.CONF
 import calebxzhou.rdi.client.model.firstLoaderDir
 import calebxzhou.rdi.client.model.loaderManifest
+import calebxzhou.rdi.client.net.loggedAccount
 import calebxzhou.rdi.client.net.server
 import calebxzhou.rdi.client.ui.McPlayArgs
 import calebxzhou.rdi.client.ui.isDesktop
@@ -288,7 +289,9 @@ suspend fun Host.DetailVo.startPlay(): StartPlayResult {
     val playArg = "${server.hqUrl}\n" +
             "${if (bgp) server.bgpIp else server.ip}:${server.gamePort}\n"+
             "${name}\n"+
-            "$port"
+            "$port\n"+
+            "${loggedAccount.uuid}\n"+
+            loggedAccount.name
 
     return StartPlayResult.Ready(
         McPlayArgs(

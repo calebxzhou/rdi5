@@ -70,21 +70,18 @@ fun AppNavigation(
             val args = fclLaunchArgs.value
             if (args != null) {
                 val jvmArg = "-Drdi.play=${args.playArg.encodeBase64}"
-                val uuid = loggedAccount._id.toUUID().dashless
                 AlertDialog(
                     onDismissRequest = { showFclLaunchDialog.value = false },
                     title = { Text("在FCL中启动游戏") },
                     text = {
                         Column {
-                            Text("0.创建一个离线账户 昵称写${loggedAccount.name}")
-                            Text("1.点击 管理版本")
-                            Text("2.点击 公有目录，点击 刷新")
+                            Text("0.随意建个离线账户")
+                            Text("1.点 管理版本")
+                            Text("2.点 公有目录，点击 刷新")
                             Text("3.点击 ${args.versionId}")
                             Text("4.点击 \uF013".asIconText)
-                            Text("5.翻到最下面 找到Java虚拟机参数")
+                            Text("5.翻到最下面 找到Java虚拟机参数 全部清空")
                             Text("6.粘贴 $jvmArg")
-                            Text("7.翻到最下面 找到自定义UUID")
-                            Text("8.粘贴 $uuid")
                         }
 
                     },
@@ -94,11 +91,6 @@ fun AppNavigation(
                             openGameLauncher()
                         }) {
                             Text("复制参数并打开FCL")
-                        }
-                        TextButton(onClick = {
-                            copyToClipboard(uuid)
-                        }) {
-                            Text("复制uuid")
                         }
                     },
                     dismissButton = {
@@ -182,7 +174,19 @@ fun AppNavigation(
                 )
             }
             composable<WorldList> {
-                WorldListScreen(onBack = { navController.navigate(HostList) })
+                WorldListScreen(
+                    onBack = { navController.navigate(HostList) },
+                    onOpenBirdView = { worldId ->
+                        navController.navigate(WorldBirdView(worldId))
+                    }
+                )
+            }
+            composable<WorldBirdView> {
+                val route = it.toRoute<WorldBirdView>()
+                WorldBirdViewScreen(
+                    worldId = route.worldId,
+                    onBack = { navController.popBackStack() }
+                )
             }
             composable<HostCreate> {
                 HostCreateScreen(

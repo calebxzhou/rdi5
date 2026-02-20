@@ -12,7 +12,7 @@ class HostTest {
     companion object {
         private val TEST_HOST_ID = ObjectId("696312b0e61232912c744968")
         private const val TEST_USER = "123123"
-        private const val TEST_PASSWORD = "123@@@"
+        private const val TEST_PASSWORD = "123123"
         private val TEST_ACCOUNT_ID = ObjectId("68b314bbadaf52ddab96b5ed")
 
         @JvmStatic
