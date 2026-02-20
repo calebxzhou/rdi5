@@ -18,6 +18,7 @@
     "mMultiScreen",
     "mPlayerTabOverlay",
     "mSkinManager",
-    "mTitleScreen"
+    "mTitleScreen",
+    "mUser"
   ]
 }

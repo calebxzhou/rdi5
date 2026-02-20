@@ -11,7 +11,8 @@
     "mJpgImage",
     "mMultiScreen",
     "mPlayerTabOverlay",
-    "mTitleScreen"
+    "mTitleScreen",
+    "mUser"
   ],
   "injectors": {
     "defaultRequire": 1

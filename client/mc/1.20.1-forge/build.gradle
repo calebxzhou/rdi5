@@ -18,6 +18,10 @@ java {
 }
 sourceSets.main {
     ext["refMap"] = "rdi.mixins.refmap.json"
+    // Make shared assets available in IDE/dev runs (runClient).
+    resources {
+        srcDir project(":c-mc-common").file("src/main/resources")
+    }
 }
 mixin {
     add sourceSets.main, 'rdi.mixins.refmap.json'
@@ -108,9 +112,12 @@ java {
 }
 
 jar {
-    // Bundle compiled outputs from :c-mc-common into this jar
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+    // Bundle compiled classes from :c-mc-common into this jar.
+    // Common resources are already added via sourceSets.main.resources above.
     dependsOn project(":c-mc-common").tasks.named("classes")
-    from(project(":c-mc-common").sourceSets.main.output)
+    from(project(":c-mc-common").sourceSets.main.output.classesDirs)
 
     manifest {
         attributes([

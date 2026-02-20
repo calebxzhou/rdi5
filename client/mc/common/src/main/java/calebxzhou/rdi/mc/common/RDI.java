@@ -12,6 +12,10 @@ public class RDI {
     public static final String GAME_IP;
     public static final String HOST_NAME;
     public static int HOST_PORT;
+    //nullable
+    public static UUID PLAYER_ID;
+    //nullable
+    public static String PLAYER_NAME;
     static {
         String playData = System.getProperty("rdi.play");
         if (playData != null) {
@@ -19,13 +23,15 @@ public class RDI {
             String decoded = new String(decodedBytes, StandardCharsets.UTF_8);
 
             String[] lines = decoded.split("\\r?\\n");
-            if (lines.length < 4) {
-                throw new IllegalStateException("rdi.play decoded content must have at least 4 lines");
+            if (lines.length < 6) {
+                throw new IllegalStateException("RDI参数错误，请重新复制参数！");
             }
             IHQ_URL = lines[0].trim();
             GAME_IP = lines[1].trim();
             HOST_NAME = lines[2].trim();
             HOST_PORT = Integer.parseInt(lines[3].trim());
+            PLAYER_ID = UUID.fromString(lines[4].trim());
+            PLAYER_NAME = lines[5].trim();
         } else {
             String ihqUrl = System.getProperty("rdi.ihq.url");
             if (ihqUrl == null) {
